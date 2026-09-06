@@ -95,7 +95,7 @@ stay exactly as they are.
 ## Installation
 
 ```bash
-git clone https://github.com/<user>/kerjaan.git ~/.claude/skills/kerjaan
+git clone https://github.com/mirzaakhena/kerjaan.git ~/.claude/skills/kerjaan
 ```
 
 The skill then applies in every project. To scope it to one project instead,
