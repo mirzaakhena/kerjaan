@@ -59,16 +59,29 @@ The Telegram bot checks for new messages every few seconds. When two messages
 arrive at nearly the same moment, one of them is sometimes skipped and that
 person never gets a reply.
 
+## How to reproduce
+1. Open a chat with the bot
+2. Send three short messages within one second of each other
+3. Wait ten seconds
+
+Only two replies come back. The third message gets no answer at all, and
+nothing anywhere says it was dropped.
+
 ## Request
 Messages that arrive together must all still get a reply, with none lost.
 
 ## Done when
-- [ ] Send three messages within one second; all three receive a reply
+- [ ] The steps above produce three replies rather than two
 - [ ] Run for a full day with no reports of a missed message
 
 ## Notes
 (none yet)
 ```
+
+Four headings appear in every ticket. `## How to reproduce` is the one
+exception: bug tickets carry it, and `feature` and `task` tickets leave it out
+entirely rather than filling it with "not applicable" — an empty section
+teaches readers to skip sections.
 
 Notice that it names no file, no function, and no library. Technical detail is
 not forbidden — but technical decisions belong to whoever executes the work,
@@ -131,7 +144,7 @@ raises no error and only surfaces months later — so the two are bound into a
 single command, making half an action impossible.
 
 **4. Structure is English; prose is for the reader.** Folder names, frontmatter
-keys, `type` and `priority` values, and the four headings never vary. Not sure
+keys, `type` and `priority` values, and the headings never vary. Not sure
 which side something falls on? Ask whether the word is identical in every
 ticket. If it is, it is structure.
 

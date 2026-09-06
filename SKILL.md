@@ -50,7 +50,7 @@ Answer in conversation. Do not write the answer to a file.
 ## Writing style
 
 Structure is always English: folder names, frontmatter keys, `type` values,
-`priority` values, and the four content headings. These never vary from ticket
+`priority` values, and the content headings. These never vary from ticket
 to ticket, so they stay fixed regardless of who is reading.
 
 Prose follows whatever language the ticket's readers actually speak. English is
@@ -149,6 +149,9 @@ blocked_by: []
 ...
 ```
 
+Bug tickets carry one extra heading, `## How to reproduce`, placed between
+`Background` and `Request`. See below.
+
 | Field | Value |
 |---|---|
 | `type` | `bug`, `feature`, or `task` |
@@ -175,14 +178,24 @@ categorisation, when what actually matters is the content.
 finished"). They are separate because only the second one affects the order in
 which work gets done.
 
-### The four headings
+### The headings
 
-Fixed order, identical for all three types. There is no per-type variation —
-that uniformity is what makes a ticket readable at a glance.
+Fixed order. Four headings appear in every ticket regardless of type, and bug
+tickets add a fifth between the first two. Nothing else varies — that
+uniformity is what makes a ticket readable at a glance.
 
 **`## Background`** — the situation as it stands, for a reader who knows
 nothing. No file names, no function names, no unexplained abbreviations. If a
 technical term is unavoidable, explain it once where it first appears.
+
+**`## How to reproduce`** — **bug tickets only.** A numbered list of steps
+anyone can follow to see the problem for themselves, ending with what actually
+happens. Omit the heading entirely on `feature` and `task` tickets rather than
+writing "not applicable" — an empty section teaches readers to skip sections,
+and that habit eventually costs them a section that mattered.
+
+Write the steps from a cold start: where to begin, what to do, what to look
+for. A reader who has never opened this system should be able to follow them.
 
 **`## Request`** — the outcome that is wanted, not the technical means of
 getting there. The means change during execution; the wanted outcome does not.
@@ -191,6 +204,12 @@ getting there. The means change during execution; the wanted outcome does not.
 could verify on their own**. This is the most honest test of a ticket's
 quality: if the criteria can only be checked by reading code, the ticket is not
 finished being written.
+
+On a bug ticket, do not restate the reproduction steps here. They are already
+written above; point at their outcome instead ("the steps above now produce
+three replies"). The two sections answer different questions — one shows the
+problem as it stands, the other states what proves it is gone — and repeating
+the steps in both means fixing them in both when the flow changes.
 
 **`## Notes`** — optional. Cross-references, decisions, findings. Write
 `(none yet)` when empty.
@@ -219,11 +238,19 @@ The Telegram bot checks for new messages every few seconds. When two messages
 arrive at nearly the same moment, one of them is sometimes skipped and that
 person never gets a reply.
 
+## How to reproduce
+1. Open a chat with the bot
+2. Send three short messages within one second of each other
+3. Wait ten seconds
+
+Only two replies come back. The third message gets no answer at all, and
+nothing anywhere says it was dropped.
+
 ## Request
 Messages that arrive together must all still get a reply, with none lost.
 
 ## Done when
-- [ ] Send three messages within one second; all three receive a reply
+- [ ] The steps above produce three replies rather than two
 - [ ] Run for a full day with no reports of a missed message
 ```
 
@@ -244,9 +271,14 @@ is missing, determines the ID, copies the template, then prints the path of the
 file it created.
 
 Then fill that file in: complete `type`, `priority`, `labels`, `reporter`,
-`assign_to`, and write all four prose sections. A file straight out of the
-script is empty — leaving it that way is the same as not having created a
-ticket at all.
+`assign_to`, and write the prose sections. A file straight out of the script is
+empty — leaving it that way is the same as not having created a ticket at all.
+
+The template holds the four common headings. If this is a bug, add
+`## How to reproduce` yourself, directly after `Background`. It is left out of
+the template on purpose: forgetting to add it to a bug ticket is obvious to the
+first person who tries to reproduce the problem, whereas forgetting to delete
+it from a feature ticket would quietly leave empty sections behind.
 
 If there is not enough information to write `Background` and `Request`
 properly, ask the user first. A half-written ticket is worse than no ticket,
