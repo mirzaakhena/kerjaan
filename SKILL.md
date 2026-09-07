@@ -33,6 +33,42 @@ Moving the file is the only way to change status.
 
 Each folder holds a `.gitkeep` so that empty folders survive in git.
 
+### `in_progress` is not optional
+
+Move a ticket to `in_progress` **before the first change to the repo**, even
+when you fully intend to finish it in one sitting. Especially then.
+
+The temptation to skip it is strong and always sounds reasonable: the ticket
+would live there for a few minutes, nobody would read it in that window, and
+moving it twice feels like ceremony. That reasoning has one flaw — **the board
+does not exist for whoever is doing the work.** It exists for the person who
+opens the repo and wants to know what is in flight without reading a
+conversation log or a diff.
+
+That person is failed in two ways when the step is skipped, and the second is
+far more expensive than the first.
+
+The small failure is accuracy: even when the work finishes cleanly, nobody could
+have told at any point that it had started.
+
+The large failure is recovery. Work stops half-done more often than anyone plans
+for — a session ends, a laptop hangs, a connection drops, attention moves. What
+is left behind is a board saying `todo` and a working tree that already
+disagrees. The question then is not "is this board accurate", it is **"where was
+I?"** — and that answer exists nowhere. `git status` shows which files changed,
+not which ticket they belonged to. The conversation that would have explained it
+is gone with the session. Reconstructing it means reading a diff and guessing at
+intent, which is exactly the work the board was supposed to make unnecessary.
+
+Beware the rationalisation that makes this feel safe: *"I will start and finish
+in one breath, so the ticket would only sit in `in_progress` for a moment."*
+That reasoning assumes the breath completes. It plans for the case where the
+step was unnecessary and ignores the case where it was the only thing that would
+have helped.
+
+The cost of the rule is one command. The cost of skipping it is not knowing
+where you were.
+
 ## What is deliberately absent
 
 Do not create an index, a board README, a status summary, or any kind of
@@ -211,6 +247,24 @@ three replies"). The two sections answer different questions — one shows the
 problem as it stands, the other states what proves it is gone — and repeating
 the steps in both means fixing them in both when the flow changes.
 
+**Criteria can go stale, and a stale one must be struck, not quietly obeyed or
+quietly ignored.** A ticket that sits for a while accumulates decisions made
+after it was written, and one of those decisions eventually contradicts a line
+in this list. When that happens, neither reflex is right: doing the work anyway
+implements something that was deliberately rejected, and skipping it silently
+leaves a reader unable to tell an abandoned criterion from a forgotten one.
+
+Strike the line through, and say in the same breath which decision voided it:
+
+```markdown
+- [x] ~~Supervisors can register new technicians of their own~~ — **voided by
+      [[260907135503]]**, which decided mentoring gets no screens at all
+```
+
+A struck criterion is a fact about the ticket's history, so it stays in the
+file. Deleting it would erase the evidence that somebody considered it and
+decided against it.
+
 **`## Notes`** — optional. Cross-references, decisions, findings. Write
 `(none yet)` when empty.
 
@@ -313,6 +367,24 @@ thing the script locks down is the timekeeping.
 
 Status moves are unrestricted: any folder to any other folder. `backlog`
 straight to `cancel` is fine. No sequence is enforced.
+
+**One move has a gate: entering `review`.** Before moving a ticket there, open
+its `Done when` list and tick the boxes one at a time. Not from memory — read
+each line and check it against what the work actually produced. Anything that
+cannot be ticked means the ticket is not ready for `review`, however finished
+the work felt.
+
+The failure this prevents is specific and easy to fall into: judging the work
+by **what you did** rather than by **what the ticket asked for**. Those two
+drift apart quietly. A criterion written weeks ago describes an outcome nobody
+was thinking about while writing the code, so it goes unmet without anyone
+noticing — and a ticket in `review` claims to be finished, which is a more
+expensive lie than one still sitting in `todo`.
+
+When a criterion turns out to be unmet, that is ordinary and cheap to handle:
+leave the ticket where it is, append a short note saying which line is
+outstanding and why, and finish it. When a criterion turns out to be **void**
+rather than unmet, strike it as described under `Done when` above.
 
 Renaming does not change the ID, and references from other tickets need no
 attention, because references use the ID.

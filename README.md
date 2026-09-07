@@ -125,7 +125,7 @@ grep -l 'priority: high' .kerjaan/todo/*.md
 
 ## Design principles
 
-These four produced every rule in the skill, and they are enough to derive new
+These five produced every rule in the skill, and they are enough to derive new
 rules for situations not covered yet.
 
 **1. One fact lives in one place.** The title exists only in the file name. The
@@ -147,6 +147,17 @@ single command, making half an action impossible.
 keys, `type` and `priority` values, and the headings never vary. Not sure
 which side something falls on? Ask whether the word is identical in every
 ticket. If it is, it is structure.
+
+**5. The board serves whoever was not there.** Not the person doing the work —
+they already know what they are doing. It serves the one who opens the repo
+tomorrow, or after a session ended mid-task, and needs to know what is in flight
+and where it stopped without reading a diff and guessing at intent.
+
+This is why `in_progress` is used even for work that will finish in minutes, and
+why entering `review` requires ticking the `Done when` list line by line rather
+than trusting the feeling of being finished. Both rules cost the worker
+something and pay the reader back. Whenever a step feels like pointless ceremony
+to whoever is doing it, that is the signal to check who it was for.
 
 ## Deliberately absent
 
