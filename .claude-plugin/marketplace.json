@@ -1,0 +1,22 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "kerjaan",
+  "description": "Home of the kerjaan plugin — a markdown-only ticket tracker that lives inside your repo.",
+  "owner": {
+    "name": "mirzaakhena",
+    "url": "https://github.com/mirzaakhena"
+  },
+  "plugins": [
+    {
+      "name": "kerjaan",
+      "description": "A ticket tracker that is nothing but markdown files inside a repo. Ships the board skill, the independent reviewer agent, and the hook that dispatches that reviewer the moment a ticket enters review.",
+      "author": {
+        "name": "mirzaakhena"
+      },
+      "category": "project-management",
+      "source": "./",
+      "homepage": "https://github.com/mirzaakhena/kerjaan",
+      "license": "MIT"
+    }
+  ]
+}

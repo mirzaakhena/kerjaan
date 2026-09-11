@@ -1,0 +1,13 @@
+{
+  "$schema": "https://anthropic.com/claude-code/plugin.schema.json",
+  "name": "kerjaan",
+  "description": "A ticket tracker that is nothing but markdown files inside a repo. Ships the board skill, the independent reviewer agent, and the hook that dispatches that reviewer the moment a ticket enters review.",
+  "version": "1.0.0",
+  "author": {
+    "name": "mirzaakhena"
+  },
+  "homepage": "https://github.com/mirzaakhena/kerjaan",
+  "repository": "https://github.com/mirzaakhena/kerjaan",
+  "license": "MIT",
+  "keywords": ["tickets", "backlog", "project-management", "markdown"]
+}

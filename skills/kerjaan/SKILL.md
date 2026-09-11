@@ -317,7 +317,7 @@ not baked into the ticket as a constraint from the start.
 ### Creating a ticket
 
 ```bash
-~/.claude/skills/kerjaan/scripts/new-ticket.sh backlog "Send notifications through Telegram"
+"${CLAUDE_PLUGIN_ROOT}/skills/kerjaan/scripts/new-ticket.sh" backlog "Send notifications through Telegram"
 ```
 
 Run it from the repo root. The script creates the `.kerjaan/` structure if it
@@ -344,11 +344,11 @@ All three kinds of change go through the same script, always from the repo
 root:
 
 ```bash
-UPD=~/.claude/skills/kerjaan/scripts/update-ticket.sh
+UPD="${CLAUDE_PLUGIN_ROOT}/skills/kerjaan/scripts/update-ticket.sh"
 
-$UPD 260905160401 --status in_progress             # move status
-$UPD 260905160401 --title "A clearer title"        # rename
-$UPD 260905160401                                  # after editing the prose
+"$UPD" 260905160401 --status in_progress             # move status
+"$UPD" 260905160401 --title "A clearer title"        # rename
+"$UPD" 260905160401                                  # after editing the prose
 ```
 
 The first argument may be a 12-digit ID or a file path — use the path when you
@@ -388,6 +388,44 @@ rather than unmet, strike it as described under `Done when` above.
 
 Renaming does not change the ID, and references from other tickets need no
 attention, because references use the ID.
+
+### Review happens by itself
+
+`review` is the one status that does not sit still waiting for someone to
+notice it. The moment a ticket lands there, a reviewer is dispatched:
+
+```
+update-ticket.sh <id> --status review
+        ↓
+scripts/on-ticket-review.sh   (a PostToolUse hook the plugin registers by
+        ↓                      itself, so it covers every repo)
+"dispatch subagent_type kerjaan-reviewer with this ticket ID"
+        ↓
+the reviewer moves the ticket to done/ or back to in_progress/, with a note
+```
+
+The hook fires only when both halves are true: the command really was a move to
+`review`, **and** the ticket file really is in `.kerjaan/review/` afterwards.
+Naming the words in an `echo`, or attempting a move that failed, leaves it
+silent — otherwise a reviewer would be summoned for work that never arrived.
+
+**The reviewer decides, and the reviewer moves the file.** Whoever executed the
+ticket does not get to mark their own work `done`; the last word on whether the
+`Done when` list is satisfied belongs to something that did not write the code
+and has no stake in it passing. It judges by running the checks itself rather
+than by believing what `## Notes` claims, and when a criterion fails it hands
+the ticket back with the evidence rather than quietly fixing the code — the
+gap belongs to whoever created it.
+
+Any session may dispatch the reviewer, with one exception that is the whole
+point: **not the session that did the work.** That session should hand the
+ticket off and move on to the next one rather than waiting; the review lands
+when it lands, and a failed review simply puts the ticket back in
+`in_progress`, which is where a board is supposed to put unfinished work.
+
+Reviewing without the hook is fine too — dispatch `kerjaan-reviewer` with a
+ticket ID whenever a ticket has been sitting in `review/`, for instance when it
+got there before the hook existed.
 
 ### Why searching is not scripted
 

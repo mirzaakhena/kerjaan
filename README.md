@@ -2,8 +2,8 @@
 
 A ticket tracker that is nothing but markdown files inside your repo. No
 server, no database, no board view. Built as a
-[Claude Code skill](https://docs.claude.com/en/docs/claude-code/skills), though
-the format works just as well by hand.
+[Claude Code plugin](https://docs.claude.com/en/docs/claude-code/plugins),
+though the format works just as well by hand.
 
 *"Kerjaan" is Indonesian for "work" — the stuff that needs doing.*
 
@@ -94,21 +94,41 @@ stay exactly as they are.
 
 ## Installation
 
-```bash
-git clone https://github.com/mirzaakhena/kerjaan.git ~/.claude/skills/kerjaan
+Inside Claude Code:
+
+```
+/plugin marketplace add mirzaakhena/kerjaan
+/plugin install kerjaan
 ```
 
-The skill then applies in every project. To scope it to one project instead,
-clone into `<project>/.claude/skills/kerjaan`.
+That is the whole installation. All three pieces arrive together and no
+settings file needs editing:
+
+```
+kerjaan/
+├── skills/kerjaan/     the board: how tickets are written and moved
+├── agents/             kerjaan-reviewer, the independent reviewer
+└── hooks/hooks.json    dispatches that reviewer when a ticket enters review
+```
+
+The plugin applies in every project. It does nothing at all in a repo that has
+no `.kerjaan/` folder, so installing it globally costs nothing.
+
+Installing the skill alone — `git clone` into `~/.claude/skills/` — still works
+and still writes perfectly good tickets. What it loses is the automatic review:
+the reviewer agent and the hook are the two pieces that only a plugin install
+can register.
 
 ## Usage
 
 Usually it is enough to just ask in plain language — "note this down as a bug",
 "move that to review", "what are we working on" — and Claude reaches for the
-skill on its own. The commands themselves, run from the repo root:
+skill on its own, resolving the script paths by itself.
+
+To run the commands by hand, locate them once and work from the repo root:
 
 ```bash
-K=~/.claude/skills/kerjaan/scripts
+K=$(dirname "$(find ~/.claude/plugins -path '*kerjaan/skills/kerjaan/scripts/new-ticket.sh' | head -1)")
 
 # create a ticket (prints the file path; then fill in its prose)
 $K/new-ticket.sh backlog "Send notifications through Telegram"
@@ -122,6 +142,31 @@ $K/update-ticket.sh 260905160401          # after editing the prose
 ls .kerjaan/in_progress/
 grep -l 'priority: high' .kerjaan/todo/*.md
 ```
+
+## Review happens by itself
+
+`review` is the one status that does not sit still waiting for someone to
+notice it. The moment a ticket lands there, a hook dispatches the
+`kerjaan-reviewer` agent:
+
+```
+update-ticket.sh <id> --status review
+        ↓
+the PostToolUse hook fires — but only if the ticket really is in .kerjaan/review/
+        ↓
+kerjaan-reviewer runs the ticket's own "Done when" checks itself
+        ↓
+it moves the ticket to done/, or back to in_progress/ with the evidence
+```
+
+Whoever executed the ticket does not get to mark their own work `done`. The
+last word belongs to something that did not write the code and has no stake in
+it passing — and it judges by running the checks rather than by believing what
+`## Notes` claims.
+
+The session that did the work hands the ticket off and moves on; a failed
+review simply puts the ticket back in `in_progress`, which is where a board is
+supposed to put unfinished work.
 
 ## Design principles
 

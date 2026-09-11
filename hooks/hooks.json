@@ -1,0 +1,19 @@
+{
+  "description": "kerjaan — dispatch the reviewer agent when a ticket enters review",
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/skills/kerjaan/scripts/on-ticket-review.sh\"",
+            "if": "Bash(*update-ticket.sh*)",
+            "timeout": 10,
+            "statusMessage": "Checking for a ticket entering review"
+          }
+        ]
+      }
+    ]
+  }
+}
