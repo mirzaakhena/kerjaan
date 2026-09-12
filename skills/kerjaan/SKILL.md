@@ -409,6 +409,13 @@ The hook fires only when both halves are true: the command really was a move to
 Naming the words in an `echo`, or attempting a move that failed, leaves it
 silent — otherwise a reviewer would be summoned for work that never arrived.
 
+It finds the board from the command's own output, not from where the session
+happens to be sitting. `update-ticket.sh` prints the ticket's absolute path, so
+a session rooted outside the repo — one driving the board from a folder one
+level up, or from somewhere else entirely — still gets its reviewer, and the
+reviewer is told which repo to open. Only when that output is discarded does
+the hook fall back to looking under the session's own directories.
+
 **The reviewer decides, and the reviewer moves the file.** Whoever executed the
 ticket does not get to mark their own work `done`; the last word on whether the
 `Done when` list is satisfied belongs to something that did not write the code

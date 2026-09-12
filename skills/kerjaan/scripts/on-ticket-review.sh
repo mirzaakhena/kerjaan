@@ -42,28 +42,64 @@ esac
 id=$(printf '%s' "$cmd" | grep -oE '[0-9]{12}' | head -1 || true)
 [ -n "$id" ] || exit 0
 
-# The board belongs to the project this session is in. CLAUDE_PROJECT_DIR is
-# the project root; the payload's cwd and $PWD cover the cases where the hook
-# runs somewhere else, such as a sub-repo inside a larger workspace.
-hook_cwd=$(printf '%s' "$payload" | jq -r '.cwd // ""' 2>/dev/null || printf '')
+# Where the board is. The session's cwd is the obvious guess and the wrong one
+# to lean on: a `cd` written inside the command dies with that command, and a
+# session can be rooted somewhere that has no board at all -- a bot's home
+# folder, a workspace one directory up. All three roots below then point at the
+# same boardless place and the hook goes quiet on a ticket that did arrive.
+#
+# What does know is the command's own output. update-ticket.sh prints the
+# ticket's absolute destination path, so read that first and fall back to the
+# roots only when the output was swallowed (redirected, piped, discarded).
+ticket=""
 
-found=0
-for root in "${CLAUDE_PROJECT_DIR:-}" "$hook_cwd" "$PWD"; do
-  [ -n "$root" ] || continue
-  if compgen -G "$root/.kerjaan/review/$id "*.md > /dev/null 2>&1; then
-    found=1
-    break
-  fi
-done
-[ "$found" -eq 1 ] || exit 0
+stdout=$(printf '%s' "$payload" | jq -r '
+  .tool_response
+  | if type == "object" then (.stdout // "") else (. // "" | tostring) end
+' 2>/dev/null || printf '')
 
-jq -n --arg id "$id" '{
+# The path must be absolute, name this ticket, sit in review/, and really
+# exist. A line that only mentions the ticket -- an echo, a log, a command
+# repeated back -- fails the last test and summons nobody.
+while IFS= read -r line; do
+  line="${line%$'\r'}"
+  case "$line" in
+    /*"/.kerjaan/review/$id "*.md) ;;
+    *) continue ;;
+  esac
+  [ -f "$line" ] || continue
+  ticket="$line"
+  break
+done <<STDOUT
+$stdout
+STDOUT
+
+if [ -z "$ticket" ]; then
+  hook_cwd=$(printf '%s' "$payload" | jq -r '.cwd // ""' 2>/dev/null || printf '')
+  for root in "${CLAUDE_PROJECT_DIR:-}" "$hook_cwd" "$PWD"; do
+    [ -n "$root" ] || continue
+    for f in "$root/.kerjaan/review/$id "*.md; do
+      [ -f "$f" ] || continue
+      ticket="$f"
+      break 2
+    done
+  done
+fi
+
+[ -n "$ticket" ] || exit 0
+
+# The reviewer may be dispatched from a session whose cwd is not the repo, so
+# tell it where the board is instead of leaving it to search.
+repo=$(dirname "$(dirname "$(dirname "$ticket")")")
+
+jq -n --arg id "$id" --arg repo "$repo" --arg ticket "$ticket" '{
   hookSpecificOutput: {
     hookEventName: "PostToolUse",
     additionalContext: (
-      "Ticket \($id) has just landed in .kerjaan/review/. Dispatch one " +
-      "subagent right now with subagent_type \"kerjaan-reviewer\" and a " +
-      "prompt containing the ticket ID \($id). That reviewer decides, and " +
+      "Ticket \($id) has just landed in .kerjaan/review/, on the board in " +
+      "\($repo) -- the file is \($ticket). Dispatch one subagent right now " +
+      "with subagent_type \"kerjaan-reviewer\" and a prompt naming that " +
+      "repo and the ticket ID \($id). That reviewer decides, and " +
       "moves the ticket to done/ or back to in_progress/ itself. Do not " +
       "review this ticket yourself, and do not wait for the reviewer to " +
       "finish — carry on with the next piece of work."
