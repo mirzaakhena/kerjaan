@@ -300,4 +300,31 @@ case "$dest_status" in
     ;;
 esac
 
+# --- an idle board with worktrees left over ---------------------------------
+# Nothing in todo, in_progress or review means nothing is in flight, so any
+# worktree still checked out at that moment holds work the board has lost track
+# of. That is the one instant where this can be said with certainty, and it is
+# produced by a move — so the check rides on the move instead of waiting for
+# somebody to remember to run it.
+
+if [ "$dest_status" != "$current_status" ] && git rev-parse --git-dir > /dev/null 2>&1; then
+  in_flight=0
+  for st in todo in_progress review; do
+    for f in "$board/$st"/*.md; do
+      [ -e "$f" ] || continue
+      in_flight=1
+      break 2
+    done
+  done
+
+  if [ "$in_flight" -eq 0 ]; then
+    worktrees="$(git worktree list --porcelain | grep -c '^worktree ' || true)"
+    if [ "${worktrees:-0}" -gt 1 ]; then
+      echo "Note: the board is now idle — nothing in todo, in_progress or review —" >&2
+      echo "  yet these worktrees are still checked out:" >&2
+      git worktree list | tail -n +2 | sed 's/^/    /' >&2
+    fi
+  fi
+fi
+
 printf '%s\n' "$dest"

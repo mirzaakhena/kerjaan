@@ -109,11 +109,9 @@ of these is true:
 
 ### Size is a reason to split, not a reason to wait
 
-The obvious fifth rule — *anything big stays in `backlog`* — is the one to be
-careful with, because it quietly contradicts the second point above.
-Groundwork is almost always big. A board that defers by size fills with small
-wins while the one heavy thing everything else waits on stays in `backlog`, and
-at no single moment does that look like a mistake.
+Never defer a ticket for being big. Groundwork almost always is, and a board
+that defers by size fills with small wins while the one heavy thing everything
+else waits on stays in `backlog`.
 
 A ticket too big to start is usually a ticket whose `Request` holds several
 outcomes at once. Split it by outcome and each piece passes on its own. Size
@@ -134,264 +132,41 @@ say:
 > This one is still `blocked_by` 260907135503, which is sitting in `todo`
 > itself — move it anyway?
 
-Not a silent refusal, and not silent compliance either. They may know something
-the board does not: a dependency that turned out not to be one, a demo
-tomorrow. The check exists to put the fact in front of them, never to overrule
-them.
-
-### Keep it to one screen
-
-`todo` stops meaning "next" as soon as it holds more than can be read at a
-glance. Past that size nobody picks from it, they search it — and searching is
-what `backlog` is for. A `todo` that keeps growing is the board telling you
-that the second question above is not really being asked.
+Neither a silent refusal nor silent compliance. The check puts the fact in
+front of them; the decision stays theirs.
 
 ## The order of the queue
 
-A folder has no order. Which ticket to take first, which two can run side by
-side, and why — none of that fits anywhere in the format so far. `blocked_by`
-covers only the hard case, where one ticket cannot start until another
-finishes. Most ordering is softer than that: two tickets could go in either
-order, but one of them first saves rework.
+A folder has no order, and `blocked_by` covers only the hard case where one
+ticket cannot start until another finishes. When `todo` holds more than one
+ticket and the sequence matters, it is written in `.kerjaan/order.md`: groups
+of tickets that may run in any order, listed in the order the groups should be
+taken, each introduced by one bold sentence saying why. That sentence is the
+reason the file is allowed to exist — it lives nowhere else on the board.
 
-That lives in one file, `.kerjaan/order.md`, covering `todo/` and nothing else.
+`update-ticket.sh` keeps the file in step by itself: a ticket leaving `todo`
+loses its line, and a rename rewrites its title there.
 
-```markdown
-**First, on its own.** Everything below reads the settings file it introduces.
-
-- 260905160401 Add the config loader
-
-**Then these two, in any order.** Neither touches the other's files, so two
-sessions can take one each.
-
-- 260905160502 Import screen
-- 260905160503 Export screen
-
-**Last.** It needs both screens above to exist.
-
-- 260905161001 The nightly summary mail
-```
-
-The format is four rules:
-
-- **Order is position on the page**, top to bottom. Nothing is numbered,
-  because a numbered list has to be renumbered every time its top is taken, and
-  a renumbering that goes wrong goes wrong quietly.
-- **A group is tickets that may run in any order**, including at the same time.
-  One bullet on its own means that ticket stands alone.
-- **The bold lead-in says why, in one sentence.** That sentence is the reason
-  the file exists — it is the part that lives nowhere else on the board.
-- **A bullet is exactly `- <id> <title>` and nothing else.** Reasoning belongs
-  in the lead-in. Keeping the line to that shape is what lets the script edit
-  it safely.
-
-### Why this is not the index that is banned below
-
-A summary restates what the folders already say, so it has no way to be right —
-only to be a copy that was true once. `order.md` is the opposite case: the
-sequence, the parallelism and the reasoning behind them exist nowhere else.
-Delete a status summary and nothing is lost; delete this and the thinking is
-gone.
-
-It still carries the risk of any second list, and the risk is handled rather
-than hoped away:
-
-- **It names IDs, and an ID never changes.** An entry naming a ticket that has
-  left `todo/` is not a subtle lie, it is a mismatch one command finds.
-- **The moves that would break it are bound into the script.**
-  `update-ticket.sh` removes a ticket's line when it leaves `todo` — taking the
-  group's lead-in with it once the last ticket in that group is gone — and
-  rewrites the title on the line when a ticket is renamed. Both are
-  half-actions that raise no error when forgotten, which is the test for what
-  gets scripted.
-- **What is left over is visible rather than silent.** A ticket promoted *into*
-  `todo` needs a place in the file that only a human judgement can choose, so
-  the script says so on stderr instead of guessing.
-
-When the file looks doubtful, check it:
-
-```bash
-diff <(for f in .kerjaan/todo/*.md; do [ -e "$f" ] && basename "$f" | cut -c1-12; done | sort) \
-     <(sed -n 's/^- \([0-9]\{12\}\) .*/\1/p' .kerjaan/order.md | sort)
-```
-
-Silence means they agree. A line on the left is a ticket in `todo/` the order
-never mentions; a line on the right is an entry whose ticket has moved on.
-
-### Starting it, and refilling it
-
-No board needs this file. Write it the first time ordering actually matters —
-two or three tickets in `todo` and a real question about which comes first —
-and not before. Until it exists the script leaves it alone completely, so a
-board that never wants one never sees it.
-
-**Refill when `todo`, `in_progress` and `review` are all three empty** — not
-when `todo` alone runs dry. One command says so, and silence is the answer you
-are looking for:
-
-```bash
-ls .kerjaan/todo/*.md .kerjaan/in_progress/*.md .kerjaan/review/*.md 2>/dev/null
-```
-
-`todo` emptying only means the last ticket was picked up, which is the opposite
-of a quiet moment. And a ticket sitting in `review/` is not finished at all —
-review is the one status that can hand work straight back to `in_progress`.
-Refilling while one is pending means choosing what comes next without knowing
-whether the previous thing is done, and the ticket that bounces back then has
-to compete with work that was started on the assumption it had passed.
-
-All three empty is a different thing entirely: nothing is in flight, nothing is
-waiting on a verdict, and the board is genuinely between batches. That is the
-moment the next batch can be chosen on the merits rather than around work that
-might be about to reappear.
-
-Then propose a batch from `backlog` that passes both questions above, with the
-order and the reasons, and let the user cut it down:
-
-> The board is empty — nothing in `todo`, `in_progress` or `review`. From the
-> backlog I would take 260905160401 first, since the other two read the
-> settings file it adds, then 260905160502 and 260905160503 in either order.
-> Move those three?
-
-Propose; do not move. Filling `todo` is deciding what happens next, and that
-stays the user's call even when the reasoning looks obvious.
-
-Between batches `order.md` is left empty rather than deleted. An empty file is
-the accurate statement — there is a queue and it has nothing in it — and it is
-also where the next batch gets written.
+**Read `${CLAUDE_PLUGIN_ROOT}/skills/kerjaan/references/ordering-the-queue.md` before writing or editing that file, and
+before refilling `todo` from the backlog.** It holds the format, the rule for
+when refilling is due, and the command that finds a file and a folder which
+have drifted apart.
 
 ## Working two tickets at once
 
-One ticket at a time stays the normal way to work, and most boards never need
-anything else. But two tickets sitting in the same group in `order.md` have
-already been declared independent of each other, and that declaration is
-exactly the licence to run them side by side — in separate git worktrees, so
-neither session sees the other's half-finished files.
+One ticket at a time is the normal way to work, and most boards need nothing
+else. Two tickets in the same group in `order.md` have already been declared
+independent of each other, which is the licence to run them side by side in
+separate git worktrees, on branches whose names carry the ticket ID.
 
-**The group is the claim; the worktree is only the mechanism.** If two tickets
-would touch the same files, the answer is not a worktree, it is that they never
-belonged in one group. Putting them there and hoping the merge works out turns
-a planning question into a conflict, at the worst possible moment.
+One trap has to be named here rather than left to be discovered: `.kerjaan/`
+lives inside the repository, so a worktree checks out **a second board**, which
+starts disagreeing with the first immediately and says so to nobody. Both
+scripts refuse to run from a linked worktree for that reason.
 
-```bash
-git worktree add -b tiket-260905160401 ../<repo>-<topic>
-cd ../<repo>-<topic>
-git sparse-checkout set --no-cone '/*' '!/.kerjaan/'
-```
-
-Three things about those commands are deliberate.
-
-**The branch name contains the ticket ID**, and that is the entire link between
-git and the board. The prefix is free — `tiket-`, `kerjaan/`, whatever a
-project already uses — because the ID is what is matched on. Nothing is written
-down anywhere: which branch belongs to which ticket is derived from the name,
-so no record exists that could be forgotten or go stale. This is also why **no
-field is added to the ticket** — a `branch:` key would repeat the ticket's own
-ID back at it, which is exactly what the format forbids.
-
-**The worktree sits beside the repo, never inside it.** A `.worktrees/` folder
-within the repository looks tidier and quietly poisons every check: test
-runners, linters and type checkers walk the whole tree, find a second complete
-copy of the project inside it, and report every problem twice while taking
-twice as long. A sibling directory has none of that, and `git worktree list`
-finds it just as easily.
-
-**The third line is the one that is easiest to skip and most expensive to
-omit.** It is explained next.
-
-While the work happens in that worktree, **every board command still runs from
-the main tree** — the scripts refuse to run anywhere else, for the reason the
-next section gives.
-
-### The board has one home
-
-`.kerjaan/` lives inside the repository, which is the whole point of this
-format — the tickets travel with the code, git holds their history, and one
-commit can carry both a change and the status move that goes with it. But it
-also means **every worktree checks out its own copy of the board.**
-
-That copy is not a backup. It is a second board, and it starts lying
-immediately: the ticket being worked on says `in_progress` in the main tree and
-`todo` in the worktree, because the worktree's copy is frozen at the moment the
-branch was cut. The format's central promise — one ticket, one status, held by
-one folder — is gone, and nothing anywhere reports it. Both boards look
-perfectly ordinary.
-
-It is tempting to conclude the board should move out of the repository
-altogether. It should not. That trades the whole premise for a narrow problem,
-and it does not even solve the disagreement: check out last month's branch and
-the code is old while the board is today's. The fork is not caused by version
-control. It is caused by a second working copy, and that is what gets removed:
-
-- **The third line above takes `.kerjaan/` out of the worktree's checkout.**
-  Not out of git — out of *that tree*. The files stay tracked, the history
-  stays whole, merges from the branch touch nothing under `.kerjaan/`, and
-  there is simply no second board on disk to read or to edit.
-- **Both scripts refuse to run from a linked worktree**, naming the main tree
-  instead. This catches the worktrees created before anyone thought about it,
-  and the ones made by hand.
-
-The two are not redundant. The scripts stop a worktree from *writing* to the
-wrong board; the sparse checkout stops anyone from *reading* one. A stale board
-that is merely read is still believed.
-
-A caveat worth checking on your own git: the pattern above uses non-cone mode,
-which newer versions treat as deprecated even while it keeps working. And a
-project already using sparse-checkout for something else must merge this
-pattern into what it has rather than overwrite it.
-
-### Nothing is remembered; two things are checked
-
-A rule saying "remember every worktree you create" is the weakest kind of rule,
-because breaking it raises no error — and the session that would do the
-remembering is the one that ends. Git already holds the list, perfectly and
-always:
-
-```bash
-git worktree list --porcelain | sed -n 's|^branch refs/heads/||p'
-```
-
-So the board only has to notice at the two moments where forgetting turns
-silent:
-
-**When a ticket reaches `done` or `cancel`, `update-ticket.sh` says so itself.**
-If any branch whose name carries that ID still holds commits that are not in
-`HEAD`, it warns that the board now claims finished work nobody merged. Note
-what this rests on: a project that names its branches `feature/export-screen`
-gets silence rather than a warning, and nothing announces that the safety net
-was never strung. The ID in the branch name is what buys the check. If the branch is merged but
-its worktree is still checked out, it says that too — harmless, but it is
-clutter that hides the dangerous case next time.
-
-**When the board is idle, no worktree may remain.** This is the same moment
-that triggers refilling `todo`: nothing in `todo`, `in_progress` or `review`
-means nothing is in flight, so anything still checked out is work the board has
-lost track of.
-
-```bash
-git worktree list | tail -n +2     # must print nothing when the board is idle
-```
-
-Git also separates the two cases that matter, and they are not equally serious:
-
-```bash
-git branch --no-merged HEAD | grep 260905160401   # work that would be lost
-git branch --merged   HEAD | grep 260905160401    # merged already, just clutter
-```
-
-### `done` does not mean merged
-
-The reviewer moves a ticket to `done`, and the reviewer is forbidden from
-changing the repo — which means it cannot merge. So there is a real window
-where a ticket says `done` while its branch is still separate, and that window
-is not a flaw to be papered over: merging is a decision about the main line,
-and the thing that just judged the work is deliberately the thing with no stake
-in it.
-
-Closing that window belongs to whoever picks up the verdict. Merge the branch,
-remove the worktree, delete the branch — then the ticket and the repository
-finally agree. The warning at `done` exists precisely because that handover is
-easy to drop.
+**Read `${CLAUDE_PLUGIN_ROOT}/skills/kerjaan/references/parallel-work.md` before creating a worktree.** It holds the
+three commands — including the one that keeps the board out of the worktree —
+and what `done` does and does not mean while a branch is still unmerged.
 
 ## What is deliberately absent
 
@@ -412,8 +187,8 @@ an exception to this rule so much as a demonstration of it: what it is for —
 the sequence and the reasoning behind it — no folder can express. It does copy
 one fact, the title, so that a reader sees names rather than numbers; that copy
 is why renaming a ticket goes through the script. Be aware of what this leaves
-uncovered: the consistency check below compares IDs, so a title edited by hand
-is the one drift nothing reports.
+uncovered: the check that compares that file against the folder looks at IDs
+alone, so a title edited by hand is the one drift nothing reports.
 
 ## Writing style
 
@@ -576,24 +351,17 @@ do is go looking for trouble that nothing pointed at. Every review records the
 level it ran at in `## Notes`, so a reader can always tell how much a `done`
 actually cost.
 
-#### Breaking your own code on purpose proves nothing
+#### Do not narrate sabotage in `## Notes`
 
-Deliberately breaking an implementation to watch the tests go red is a good
-technique and it belongs to the reviewer, at `strict`. Its entire value is in
-**who** does it: a check performed by somebody with no stake in the result.
-Done by the person who wrote the code, the engineering is still sound but the
-accounting is not — and the result has nowhere to go. Written into `## Notes`,
-it lands in the one place on this board that can never be evidence, because
-`## Notes` is the claim under test. A reviewer reading it has to record that it
-was a report, not a finding, which is exactly what it will do.
+Breaking an implementation on purpose to watch the tests go red is the
+reviewer's technique, at `strict`, and its value is entirely in being done by
+somebody with no stake. Do it yourself and the result has nowhere to go:
+`## Notes` is the claim under test, never evidence, so a reviewer can only
+record it as a report.
 
-So the effort is real and the payoff is zero, which makes this one of the more
-expensive ways to spend an afternoon here.
-
-If you do it anyway and it turns up a test that cannot go red, **the finding is
-worth keeping — just not as prose.** Fix the test and commit it. A test living
-in the repo is something the reviewer can read and run, so it counts. A
-sentence describing a test you once broke is not.
+If you do it anyway and find a test that cannot go red, **fix the test and
+commit it.** A test in the repo is something the reviewer runs. A sentence
+about one is not.
 
 #### Suggesting a level, and when not to
 
@@ -608,22 +376,16 @@ ticket moves to `review/`, and name the reason rather than the level alone:
 Then do what they say. Offer it when the work landed on money, authentication,
 permissions, data that cannot be recovered, or anything a customer hits first —
 and equally when **you are the one who is unsure** your change is right. That
-last case is the most valuable and the easiest to skip, because admitting
-uncertainty feels like admitting weakness. It is the opposite: a doubt you name
-gets checked, and a doubt you swallow ships.
+last case is the most valuable and the easiest to skip.
 
 **When the user has asked for speed, stop offering.** "Ini cuma mock", "buat
 MVP dulu", "yang penting jalan", "jangan lama-lama" — all of these settle the
-question for the work that follows. Use `quick`, say nothing about levels, and
-carry on. They are not missing information; they have weighed it and chosen.
-Repeating the offer after that is not diligence, it is nagging, and it teaches
-them that telling you their priorities changes nothing.
+question for the work that follows. Use `quick` and say nothing further about
+levels; they have weighed it and chosen.
 
-Two more things that make an offer unwelcome. Do not ask twice about the same
-ticket — once declined, it is settled. And never raise the level on your own
-because you privately think the work deserves it: a reviewer that silently
-costs ten minutes when the user expected one is a reviewer they will start
-working around.
+Do not ask twice about the same ticket — once declined, it is settled. And
+never raise the level on your own: a reviewer that silently costs ten minutes
+when the user expected one is a reviewer they will start working around.
 
 **A level cannot rescue a thin checklist.** The reviewer blocks on `Done when`
 and nothing else, so criteria that only describe the happy path stay unblocked
@@ -856,28 +618,11 @@ gap belongs to whoever created it.
 
 #### Follow-ups the reviewer finds
 
-A review turns up things the ticket never asked about: a real bug in code the
-diff happened to pass through, a check nobody runs, a rough edge worth a ticket
-of its own. **The reviewer writes those down; it does not create them.** The
-next session that has a user in front of it offers them.
-
-Two reasons, and the first is the one that matters.
-
-**A reviewer that can file tickets can launder a failure into one.** Faced with
-a criterion that is not met, moving it into a shiny new ticket and passing the
-old one is a rationalisation that will eventually get made — it feels like
-progress and it reads well in a report. It also destroys the only gate this
-board has. So: **a blocking finding never becomes a new ticket.** That ticket
-goes back to `in_progress` with the evidence, whole.
-
-**A reviewer cannot ask.** It runs with nobody in front of it, and this format
-says a ticket without enough information to write `Background` and `Request`
-properly should not exist yet. A half-written ticket looks like recorded work
-while being none, which is worse than no ticket at all.
-
-So it appends a `### Suggested follow-up` block inside the reviewed ticket's
-`## Notes`. That block outlives the session in a way the reviewer's report does
-not: reports are gone when the session ends, `## Notes` stays in the repo.
+A review turns up things the ticket never asked about. The reviewer does not
+create tickets for them — it cannot ask anybody anything, and a blocking
+finding may never be laundered into one — so it leaves a `### Suggested
+follow-up` block inside the reviewed ticket's `## Notes`, which outlives the
+session in a way its report does not.
 
 When a review comes back, read that block and offer:
 
