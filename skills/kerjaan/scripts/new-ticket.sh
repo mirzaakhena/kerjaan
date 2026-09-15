@@ -54,13 +54,14 @@ fi
 # folder. Nothing about that failure is loud — two boards simply start
 # disagreeing, and both look perfectly normal.
 #
-# A linked worktree can be recognised with certainty rather than guessed at:
-# its git dir sits inside the main one, so the two paths differ. The first
-# entry of `git worktree list` is always the main worktree, which is where the
-# board lives.
+# A linked worktree is recognised by the marker git puts in its git dir: a
+# `gitdir` file, which the main repository's `.git` never has. Comparing the
+# output of `--git-dir` against `--git-common-dir` looks like the obvious test
+# and is wrong — from a subdirectory git answers one of them absolutely and the
+# other relatively, so an ordinary repo would be accused of being a worktree.
 
 if git rev-parse --git-dir > /dev/null 2>&1 \
-  && [ "$(git rev-parse --git-dir)" != "$(git rev-parse --git-common-dir)" ]; then
+  && [ -f "$(git rev-parse --git-dir)/gitdir" ]; then
   main_tree="$(git worktree list --porcelain | sed -n '1s/^worktree //p')"
   echo "This is a linked git worktree, and the board does not live here." >&2
   echo "Acting on the copy of .kerjaan/ in a worktree forks the board: one" >&2

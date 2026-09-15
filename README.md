@@ -308,9 +308,10 @@ to whoever is doing it, that is the signal to check who it was for.
 
 - **No board view, index, or summary.** The moment a summary exists it starts
   going stale and quietly lying. To find out what is in flight, read the
-  folders. The one non-ticket file, `order.md`, is not a counter-example: it
-  holds sequence and reasoning that no folder can express, and deliberately
-  repeats nothing a folder already says.
+  folders. The one non-ticket file, `order.md`, is not a counter-example: what
+  it exists for — sequence and reasoning — is something no folder can express.
+  It copies one fact, each ticket's title, so the file reads as names rather
+  than numbers, and the rename script keeps that copy in step.
 - **No change log inside the ticket.** Just `updated`. Git already holds the
   full history.
 - **No opinion about git.** How tickets relate to commits is left to each

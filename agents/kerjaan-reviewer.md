@@ -105,12 +105,25 @@ before you read any diff; it costs one command:
 git branch --format='%(refname:short)' | grep <id>
 ```
 
-**If that prints a branch, the repo you were dispatched into does not contain
-this work.** Running `git diff` where you are would show you nothing, and
-"nothing was changed" is then a false finding rather than a real one — the most
-embarrassing way this review can fail. Read the change from the branch instead,
-and run the project's checks inside its worktree, which `git worktree list`
-locates:
+Nothing printed means the work is in the tree you are standing in. Carry on.
+
+If it does print a branch, **one more command decides which tree to read**, and
+skipping it is how this goes wrong in the other direction:
+
+```bash
+git merge-base --is-ancestor <branch> HEAD && echo merged || echo separate
+```
+
+**merged** — the branch has already been folded into the tree you are in.
+Review right where you are, and do **not** reach for `git diff HEAD...<branch>`:
+for a merged branch that comparison is empty by definition, and an empty diff
+would tell you nothing was done about a ticket that did plenty.
+
+**separate** — the repo you were dispatched into does not contain this work.
+Running `git diff` where you are would show you nothing, and "nothing was
+changed" is then a false finding rather than a real one — the most embarrassing
+way this review can fail. Read the change from the branch instead, and run the
+project's checks inside its worktree, which `git worktree list` locates:
 
 ```bash
 git log --oneline HEAD..<branch>

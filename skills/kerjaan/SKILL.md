@@ -93,7 +93,8 @@ Mechanical, not a matter of taste. All four must hold:
   moment they are least able to ask the person who wanted it.
 - **No decision is still waiting on the user.** A ticket carrying an open
   question is not ready, however clear the rest of it reads.
-- **`type`, `priority` and `assign_to` are filled in.**
+- **`type` and `priority` are filled in.** `assign_to` may still be empty;
+  who picks a ticket up is often settled by somebody picking it up.
 
 ### Should it be next?
 
@@ -298,6 +299,10 @@ finds it just as easily.
 **The third line is the one that is easiest to skip and most expensive to
 omit.** It is explained next.
 
+While the work happens in that worktree, **every board command still runs from
+the main tree** — the scripts refuse to run anywhere else, for the reason the
+next section gives.
+
 ### The board has one home
 
 `.kerjaan/` lives inside the repository, which is the whole point of this
@@ -351,7 +356,10 @@ silent:
 
 **When a ticket reaches `done` or `cancel`, `update-ticket.sh` says so itself.**
 If any branch whose name carries that ID still holds commits that are not in
-`HEAD`, it warns that the board now claims finished work nobody merged. If the branch is merged but
+`HEAD`, it warns that the board now claims finished work nobody merged. Note
+what this rests on: a project that names its branches `feature/export-screen`
+gets silence rather than a warning, and nothing announces that the safety net
+was never strung. The ID in the branch name is what buys the check. If the branch is merged but
 its worktree is still checked out, it says that too — harmless, but it is
 clutter that hides the dangerous case next time.
 
@@ -400,9 +408,12 @@ grep -l 'priority: high' .kerjaan/todo/*.md
 Answer in conversation. Do not write the answer to a file.
 
 `order.md` is the only file in `.kerjaan/` that is not a ticket, and it is not
-an exception to this rule so much as a demonstration of it: it holds the
-sequence and the reasoning behind it, which no folder can express, and it
-holds nothing that a folder already says.
+an exception to this rule so much as a demonstration of it: what it is for —
+the sequence and the reasoning behind it — no folder can express. It does copy
+one fact, the title, so that a reader sees names rather than numbers; that copy
+is why renaming a ticket goes through the script. Be aware of what this leaves
+uncovered: the consistency check below compares IDs, so a title edited by hand
+is the one drift nothing reports.
 
 ## Writing style
 
@@ -937,7 +948,9 @@ If anything shows up, resolve it like this:
    context, decide which one it actually points at, and fix only those pointing
    at the ticket you just renumbered.
 4. Refresh `updated` on the renumbered ticket and on every ticket whose
-   references changed.
+   references changed. If the renumbered ticket sits in `todo`, its entry in
+   `order.md` carries the old ID too — the `grep` in step 3 finds it, since
+   that file lives under `.kerjaan/` like everything else.
 
 If that minute's sequence numbers are already exhausted up to `99`, shift into
 the next minute (`...160599` → `...160601`). An ID only needs to be unique and

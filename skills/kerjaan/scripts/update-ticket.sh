@@ -67,13 +67,14 @@ done
 # folder. Nothing about that failure is loud — two boards simply start
 # disagreeing, and both look perfectly normal.
 #
-# A linked worktree can be recognised with certainty rather than guessed at:
-# its git dir sits inside the main one, so the two paths differ. The first
-# entry of `git worktree list` is always the main worktree, which is where the
-# board lives.
+# A linked worktree is recognised by the marker git puts in its git dir: a
+# `gitdir` file, which the main repository's `.git` never has. Comparing the
+# output of `--git-dir` against `--git-common-dir` looks like the obvious test
+# and is wrong — from a subdirectory git answers one of them absolutely and the
+# other relatively, so an ordinary repo would be accused of being a worktree.
 
 if git rev-parse --git-dir > /dev/null 2>&1 \
-  && [ "$(git rev-parse --git-dir)" != "$(git rev-parse --git-common-dir)" ]; then
+  && [ -f "$(git rev-parse --git-dir)/gitdir" ]; then
   main_tree="$(git worktree list --porcelain | sed -n '1s/^worktree //p')"
   echo "This is a linked git worktree, and the board does not live here." >&2
   echo "Acting on the copy of .kerjaan/ in a worktree forks the board: one" >&2
@@ -226,6 +227,10 @@ if [ -f "$order" ] && [ "$current_status" = "todo" ] && [ "$dest_status" != "tod
     otmp="$(mktemp)"
     # Drops the ticket's bullet, then drops any group left with no bullets at
     # all — a lead-in sentence introducing nothing is worse than no group.
+    # A group starts at its bold lead-in and runs to the next one, so a lead-in
+    # wrapped over two lines stays whole. Treating every non-bullet line as a
+    # new group would cut such a sentence in half and throw away the first
+    # line, which is the one carrying the reasoning.
     awk -v id="$id" '
       function flush(   i) {
         if (started && kept) { for (i = 0; i < n; i++) print buf[i] }
@@ -233,7 +238,7 @@ if [ -f "$order" ] && [ "$current_status" = "todo" ] && [ "$dest_status" != "tod
       }
       BEGIN { n = 0; kept = 0; started = 0 }
       {
-        if ($0 != "" && $0 !~ /^[[:space:]]/ && $0 !~ /^- /) { flush(); started = 1 }
+        if ($0 ~ /^\*\*/) { flush(); started = 1 }
         if ($0 ~ /^- /) {
           if (index($0, "- " id " ") == 1) { next }
           kept = 1
@@ -269,7 +274,9 @@ fi
 
 case "$dest_status" in
   done|cancel)
-    if git rev-parse --git-dir > /dev/null 2>&1; then
+    # Only on a real move. Refreshing `updated` on a ticket that has sat in
+    # done/ for weeks must not announce that it "has just been moved".
+    if [ "$dest_status" != "$current_status" ] && git rev-parse --git-dir > /dev/null 2>&1; then
       # The link between a branch and a ticket is the ID inside the branch
       # name, whatever prefix a project puts in front of it — `kerjaan/<id>`,
       # `tiket-<id>`, anything. Matching on the ID rather than on a prefix is
