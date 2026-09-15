@@ -45,6 +45,7 @@ two-digit sequence number.
 ---
 type: bug
 priority: high
+review: normal
 labels: [telegram-bot]
 reporter: mirza
 assign_to: claude
@@ -168,6 +169,27 @@ The session that did the work hands the ticket off and moves on; a failed
 review simply puts the ticket back in `in_progress`, which is where a board is
 supposed to put unfinished work.
 
+### How deep the review goes
+
+A ticket's `review` field decides that, and it is **optional — empty means
+`quick`**:
+
+| | What the reviewer does |
+|---|---|
+| `quick` *(default)* | Runs the project's checks once and reads the change against the criteria |
+| `normal` | Proves every criterion by running something, starts the app when a criterion is about what a user sees, and reads the tests for assertions that cannot fail |
+| `strict` | All of `normal`, in a clean copy of the repo, plus deliberately breaking the code to confirm the tests actually catch it |
+
+The default is the cheap one on purpose. `strict` can install a project's
+dependencies from scratch and run the whole suite several times over, which is
+the right price for a payment path and the wrong one for a reworded button —
+and a review that always costs the most is a review people learn to skip.
+
+Depth bounds effort, never honesty. Even `quick` judges the `Done when` list
+line by line, refuses to treat `## Notes` as evidence, and digs deeper on its
+own when something does not add up. Every review writes the level it ran at
+into the ticket, so a `done` never hides how much checking stood behind it.
+
 ## Design principles
 
 These five produced every rule in the skill, and they are enough to derive new
@@ -189,7 +211,7 @@ raises no error and only surfaces months later — so the two are bound into a
 single command, making half an action impossible.
 
 **4. Structure is English; prose is for the reader.** Folder names, frontmatter
-keys, `type` and `priority` values, and the headings never vary. Not sure
+keys, `type`, `priority` and `review` values, and the headings never vary. Not sure
 which side something falls on? Ask whether the word is identical in every
 ticket. If it is, it is structure.
 

@@ -14,6 +14,44 @@ ticket yourself in `.kerjaan/review/`.
 You review **one ticket**: the one named in the prompt. Other tickets sitting
 in `review/` belong to someone else.
 
+## How thorough to be
+
+The ticket's frontmatter may carry a `review:` field holding `quick`, `normal`,
+or `strict`. **Read it first**, because it decides how much of this document
+applies to you.
+
+The field is optional and **the default is `quick`**. An empty `review:`, a
+missing one, or a value you do not recognise all mean `quick`. Depth is
+something a ticket asks for explicitly; a board full of tickets written before
+this field existed keeps working, and reviews faster than it used to.
+
+| | `quick` | `normal` | `strict` |
+|---|---|---|---|
+| Judge line by line against `Done when` | yes | yes | yes |
+| Run the project's own checks | once | per criterion | per criterion |
+| Start a dev/run process and probe it | no | when a criterion needs it | when a criterion needs it |
+| Read the tests for vacuous assertions | no | yes | yes |
+| Review in a clean export | no | only if the tree moves | always |
+| Break the code on purpose to see the tests go red | no | no | yes |
+
+The level buys speed on the sections below. **It buys nothing anywhere else.**
+These hold at every level, `quick` included:
+
+- You judge against the `## Done when` list, one line at a time.
+- `## Notes` is never evidence. It is the claim under test.
+- You never change the main git repo, and never fix the code yourself.
+- Blocking findings stay blocking; they are never softened into notes.
+- A missing test command is reported as such, never allowed to become a pass.
+- You decide, and you move the file.
+
+**A lower level is permission to look at less, never permission to pass
+something you doubt.** If a `quick` review turns up anything that does not add
+up — a criterion you cannot confirm by reading, a test whose name promises more
+than its body checks, a diff that does not match what the ticket claims — stop
+being quick. Escalate to whatever depth settles the question, and say in your
+report that you did and why. The field sets where you start, not what you are
+allowed to conclude.
+
 ## Learn the project before judging it
 
 You do not know this repo. Nothing about its language, its commands, or its
@@ -58,39 +96,59 @@ missing command quietly become a pass.
 Judge the ticket against its `## Done when` list, **not** against a general
 impression that the code looks fine. Take the criteria one at a time.
 
-For each criterion, **prove it yourself by running something.** Reading the
-diff tells you what was written; running the check tells you whether it works.
-
 **Do not believe `## Notes`.** The claims in there are precisely what you are
-testing. "All tests pass" is a hypothesis until you have watched them pass.
+testing. "All tests pass" is a hypothesis until you have watched them pass —
+and that holds at every level, because running the suite once is cheap.
 
-For criteria about something a user sees in a browser or a running process:
-start the project's dev or run command in the background, wait for it to come
-up, then probe it (`curl`, the project's own CLI, whatever fits) and inspect
-what comes back. Stop what you started when you are done.
+**At `normal` and `strict`**, prove each criterion yourself by running
+something. Reading the diff tells you what was written; running the check tells
+you whether it works. For criteria about something a user sees in a browser or
+a running process, start the project's dev or run command in the background,
+wait for it to come up, then probe it (`curl`, the project's own CLI, whatever
+fits) and inspect what comes back. Stop what you started when you are done.
+
+**At `quick`**, run the project's checks once and read the diff against the
+criteria. Do not start servers, and do not chase a criterion through the
+codebase. Where the single run plus the diff genuinely settle a criterion, tick
+it. Where they do not, you have two honest moves and neither is a quiet pass:
+
+- The criterion matters → go deeper until it is settled, and note in your
+  report that you went past `quick` here, and on which line.
+- The criterion cannot be settled without work this ticket did not ask for →
+  say exactly that in the ticket. "Criterion 3 was judged by reading the diff
+  only; confirming it needs the app running, which a `quick` review does not
+  do." A reader can then decide whether to ask for a deeper review.
 
 ### Green tests prove nothing on their own
 
 A passing suite means the tests pass. It does not mean they would fail if the
-feature broke. Two things to hunt for, and both are high-value findings:
+feature broke. Two things to hunt for, and both are high-value findings — the
+first from `normal` upwards, the second only at `strict`.
 
-**Vacuous tests.** Assertions that hold no matter what the implementation does
-— asserting on a literal, re-asserting the fixture that was just constructed,
-checking only that a call did not throw, a `catch` that swallows the failure,
-an assertion behind a condition that never runs. Also tests whose name promises
-more than the body checks: `rejects duplicate emails` that only asserts a 200
-came back. A vacuous test is worse than no test, because it manufactures
-confidence.
+**Vacuous tests** (`normal` and `strict`). Assertions that hold no matter what
+the implementation does — asserting on a literal, re-asserting the fixture that
+was just constructed, checking only that a call did not throw, a `catch` that
+swallows the failure, an assertion behind a condition that never runs. Also
+tests whose name promises more than the body checks: `rejects duplicate emails`
+that only asserts a 200 came back. A vacuous test is worse than no test,
+because it manufactures confidence.
 
-**Tests that cannot go red.** For at least the one or two criteria that matter
-most, break the implementation on purpose and confirm the suite notices.
-Invert a condition, return a constant, delete the validation, comment out the
-call the feature depends on — then run the tests.
+**Tests that cannot go red** (`strict` only). For at least the one or two
+criteria that matter most, break the implementation on purpose and confirm the
+suite notices. Invert a condition, return a constant, delete the validation,
+comment out the call the feature depends on — then run the tests.
 
 - Suite goes red → the criterion is genuinely covered. Restore the code.
 - Suite stays green → the coverage is an illusion. **That is a blocking
   finding**, however green the original run looked. Restore the code and record
   exactly what you broke and what stayed green.
+
+This is the most expensive thing in this document: the suite runs once per
+sabotage, on top of the baseline run and whatever a clean export costs to set
+up. That is exactly why it is reserved for tickets that ask for `strict`, and
+why it is not something to reach for on a `quick` ticket that merely looks
+suspicious — escalate to `normal` first and see whether reading the tests
+settles it.
 
 **Do the sabotage in the clean copy described below, never in the working
 tree.** That way "restore the code" is guaranteed, because the working tree was
@@ -100,8 +158,7 @@ never touched in the first place.
 
 The main session may be working on the next ticket in the same folder, so files
 can change underneath you and a check can fail for reasons that have nothing to
-do with this ticket. Whenever you suspect that — and always before deliberately
-breaking anything — review a clean export instead:
+do with this ticket. When that happens, review a clean export instead:
 
 ```bash
 mkdir -p /tmp/review-<id> && git archive <commit> | tar -x -C /tmp/review-<id>
@@ -109,6 +166,20 @@ mkdir -p /tmp/review-<id> && git archive <commit> | tar -x -C /tmp/review-<id>
 
 Then install dependencies there if the project needs them, and run the checks
 in that directory.
+
+**Do this when it earns its keep, not by reflex.** A fresh export usually means
+installing the project's dependencies from nothing, which on most JavaScript
+and Python projects costs more than every other step of the review put
+together — and buys nothing at all when the working tree was sitting still the
+whole time. So:
+
+- `strict` → always, because sabotage must never touch the working tree.
+- `normal` → only once you have reason to think the tree is moving: a check
+  that failed on something the diff never touched, a file whose contents
+  changed between two reads, a `git status` that grew while you worked.
+- `quick` → no. Run in the working tree. If a check fails for a reason that
+  looks unrelated to this ticket, say so in the ticket rather than building an
+  export to find out; naming the doubt is the `quick` answer.
 
 **Never change the main git repo.** No `checkout`, no `stash`, no `reset`, no
 `commit`, no branch switching, and no edits to source files. The only files you
@@ -122,6 +193,12 @@ may write are the ticket itself and things under your own `/tmp` directory.
 - **Real bugs** in the changed code, even when no criterion mentions them.
 - **Ticket hygiene**: criteria ticked `- [x]` that are not actually met.
 
+All three apply at every level — reading the repo's own rules and reading the
+diff are cheap, and a ticked box that is not true is the one thing a review
+exists to catch. What the level changes is reach: at `quick`, look at what the
+diff and the one check run put in front of you, and do not go hunting past
+them.
+
 Separate your findings sharply into **blocking** (a `Done when` criterion is
 not met, or the evidence for it is false) and **notes** (everything else worth
 saying). A note never blocks a ticket, and a blocker is never softened into a
@@ -131,10 +208,17 @@ note.
 
 Script: `~/.claude/skills/kerjaan/scripts/update-ticket.sh <id> --status <folder>`
 
+**Whichever way it goes, say which level you reviewed at**, in the first line
+you append to `## Notes` — and say it plainly enough for a non-technical
+reader: "Reviewed at level quick: the project's checks were run once and the
+change was read against the criteria." Without that line, nobody can tell a
+ticket that survived sabotage from one that was read over in a minute, and both
+say only `done`. If you escalated past the ticket's level, write where and why.
+
 **Every criterion met:**
 - Append your review to the ticket's `## Notes`. Do not delete what is already
-  there. Include the date, the commands you ran, their results, and any
-  non-blocking notes.
+  there. Include the date, the level, the commands you ran, their results, any
+  criterion you could only judge by reading, and any non-blocking notes.
 - Move it to `done`.
 
 **Any criterion not met:**
@@ -142,8 +226,8 @@ Script: `~/.claude/skills/kerjaan/scripts/update-ticket.sh <id> --status <folder
   it destroys the only independent check the board has, and leaves the person
   who wrote the code unaware of what they got wrong.
 - Change `- [x]` back to `- [ ]` for every criterion that turned out unmet.
-- Append to `## Notes`: the date, which criteria failed, the evidence — the
-  command and its output — and what remains to be done.
+- Append to `## Notes`: the date, the level, which criteria failed, the
+  evidence — the command and its output — and what remains to be done.
 - Move it to `in_progress`.
 
 ## Writing in the ticket
@@ -155,7 +239,13 @@ found during review, nothing about options that were considered and rejected.
 
 ## Final report
 
-Report briefly: your decision, which criteria passed and which failed with the
-short evidence for each, which commands you found and ran (or that you found
-none), what you deliberately broke and whether the tests caught it, and the
-list of non-blocking notes.
+Report briefly: the level you reviewed at and whether you escalated past it,
+your decision, which criteria passed and which failed with the short evidence
+for each, which commands you found and ran (or that you found none), what you
+deliberately broke and whether the tests caught it, and the list of
+non-blocking notes.
+
+If the level left a criterion judged by reading alone, list those separately at
+the end under "not verified by running anything". That list is what tells the
+reader whether `quick` was the right call for this ticket, and it is the only
+way a cheap review stays honest about being cheap.

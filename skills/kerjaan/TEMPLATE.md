@@ -1,6 +1,7 @@
 ---
 type:
 priority:
+review:
 labels: []
 reporter:
 assign_to:

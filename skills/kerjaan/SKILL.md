@@ -86,7 +86,7 @@ Answer in conversation. Do not write the answer to a file.
 ## Writing style
 
 Structure is always English: folder names, frontmatter keys, `type` values,
-`priority` values, and the content headings. These never vary from ticket
+`priority` values, `review` values, and the content headings. These never vary from ticket
 to ticket, so they stay fixed regardless of who is reading.
 
 Prose follows whatever language the ticket's readers actually speak. English is
@@ -163,6 +163,7 @@ ls .kerjaan/*/"260905160401 "*.md
 ---
 type: feature
 priority: high
+review: strict
 labels: [telegram-bot, backend]
 reporter: mirza
 assign_to: claude
@@ -192,6 +193,7 @@ Bug tickets carry one extra heading, `## How to reproduce`, placed between
 |---|---|
 | `type` | `bug`, `feature`, or `task` |
 | `priority` | `high`, `medium`, or `low` |
+| `review` | `quick`, `normal`, or `strict`; empty means `quick` |
 | `labels` | list; may be `[]` |
 | `reporter` | who asked for this |
 | `assign_to` | who executes it; may be empty if undecided |
@@ -213,6 +215,34 @@ categorisation, when what actually matters is the content.
 `blocked_by` expresses a directed dependency ("this cannot start until that is
 finished"). They are separate because only the second one affects the order in
 which work gets done.
+
+### How deeply this ticket gets reviewed
+
+`review` tells the reviewer how hard to dig when this ticket reaches `review/`.
+
+| | What the reviewer does |
+|---|---|
+| `quick` *(default)* | Runs the project's checks once and reads the change against the criteria |
+| `normal` | Proves every criterion by running something, starts the app when a criterion is about what a user sees, and reads the tests for assertions that cannot fail |
+| `strict` | All of `normal`, in a clean copy of the repo, plus deliberately breaking the code to confirm the tests actually catch it |
+
+**Leave it empty unless the ticket needs more.** An empty `review:` means
+`quick`, which is what most tickets want: a wording fix, a renamed button, a
+config change. Depth is expensive — `strict` can install the project's
+dependencies from scratch and run the whole test suite several times over — and
+spending it on a ticket that did not need it teaches people to route around the
+board.
+
+Reach for `normal` when the criteria describe behaviour rather than content,
+and for `strict` when being wrong is expensive: money, authentication,
+permissions, data that cannot be recovered, anything a customer sees first.
+
+The level bounds effort, **not honesty**. A `quick` review still judges the
+`Done when` list line by line, still refuses to take `## Notes` as evidence,
+and still escalates on its own when something does not add up. What it will not
+do is go looking for trouble that nothing pointed at. Every review records the
+level it ran at in `## Notes`, so a reader can always tell how much a `done`
+actually cost.
 
 ### The headings
 
@@ -423,6 +453,15 @@ and has no stake in it passing. It judges by running the checks itself rather
 than by believing what `## Notes` claims, and when a criterion fails it hands
 the ticket back with the evidence rather than quietly fixing the code — the
 gap belongs to whoever created it.
+
+**How long it takes is set by the ticket's `review` field**, described under
+the frontmatter above. Empty means `quick`, so by default a review is one run
+of the project's checks plus a read of the change — minutes, not a coffee
+break. Set `review: normal` or `review: strict` before moving the ticket when
+it deserves more; the reviewer reads the field straight out of the file, so
+nothing else has to be passed along. If you only realise afterwards that a
+ticket needed a deeper look, edit the field and dispatch `kerjaan-reviewer`
+again by hand.
 
 Any session may dispatch the reviewer, with one exception that is the whole
 point: **not the session that did the work.** That session should hand the
