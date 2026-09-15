@@ -60,6 +60,29 @@ while [ "$#" -gt 0 ]; do
   esac
 done
 
+# --- refuse to run from a linked git worktree ------------------------------
+# The board lives inside the repository, so every worktree checks out its own
+# copy of `.kerjaan/`. Treating that copy as a board forks the one guarantee
+# the format makes: a ticket has exactly one status, held by exactly one
+# folder. Nothing about that failure is loud — two boards simply start
+# disagreeing, and both look perfectly normal.
+#
+# A linked worktree can be recognised with certainty rather than guessed at:
+# its git dir sits inside the main one, so the two paths differ. The first
+# entry of `git worktree list` is always the main worktree, which is where the
+# board lives.
+
+if git rev-parse --git-dir > /dev/null 2>&1 \
+  && [ "$(git rev-parse --git-dir)" != "$(git rev-parse --git-common-dir)" ]; then
+  main_tree="$(git worktree list --porcelain | sed -n '1s/^worktree //p')"
+  echo "This is a linked git worktree, and the board does not live here." >&2
+  echo "Acting on the copy of .kerjaan/ in a worktree forks the board: one" >&2
+  echo "ticket ends up with two different statuses, and nothing reports it." >&2
+  echo "Run this from the main worktree instead:" >&2
+  echo "  $main_tree" >&2
+  exit 1
+fi
+
 board="$PWD/.kerjaan"
 [ -d "$board" ] || { echo "No .kerjaan/ in $PWD" >&2; exit 1; }
 
@@ -186,5 +209,88 @@ cat "$tmp" > "$file"
 if [ "$dest" != "$file" ]; then
   mv "$file" "$dest"
 fi
+
+# --- keep the ordering file in step ----------------------------------------
+# `.kerjaan/order.md` lists the tickets sitting in `todo/` in the order they
+# should be picked up. Two ways of breaking it raise no error at all: leaving a
+# ticket listed there after it has moved on, and renaming a ticket so the file
+# spells its title the old way. Both are exactly the silent half-action this
+# script exists to make impossible, so they are bound into the same command.
+#
+# A board that has never written an order file is left completely alone.
+
+order="$board/order.md"
+
+if [ -f "$order" ] && [ "$current_status" = "todo" ] && [ "$dest_status" != "todo" ]; then
+  if grep -q "^- $id " "$order"; then
+    otmp="$(mktemp)"
+    # Drops the ticket's bullet, then drops any group left with no bullets at
+    # all — a lead-in sentence introducing nothing is worse than no group.
+    awk -v id="$id" '
+      function flush(   i) {
+        if (started && kept) { for (i = 0; i < n; i++) print buf[i] }
+        n = 0; kept = 0
+      }
+      BEGIN { n = 0; kept = 0; started = 0 }
+      {
+        if ($0 != "" && $0 !~ /^[[:space:]]/ && $0 !~ /^- /) { flush(); started = 1 }
+        if ($0 ~ /^- /) {
+          if (index($0, "- " id " ") == 1) { next }
+          kept = 1
+        }
+        if (started) { buf[n++] = $0 } else { print }
+      }
+      END { flush() }
+    ' "$order" > "$otmp"
+    cat "$otmp" > "$order"
+    rm -f "$otmp"
+  else
+    echo "Note: $id was not listed in $order — check whether that file is still true." >&2
+  fi
+elif [ -f "$order" ] && [ "$current_status" = "todo" ] && [ "$title_given" -eq 1 ]; then
+  otmp="$(mktemp)"
+  awk -v id="$id" -v t="$dest_title" '
+    { if (index($0, "- " id " ") == 1) { print "- " id " " t } else { print } }
+  ' "$order" > "$otmp"
+  cat "$otmp" > "$order"
+  rm -f "$otmp"
+fi
+
+if [ -f "$order" ] && [ "$dest_status" = "todo" ] && [ "$current_status" != "todo" ]; then
+  echo "Note: $id now sits in todo/ and needs a place in $order." >&2
+fi
+
+# --- work left behind in a branch ------------------------------------------
+# A ticket reaching `done` or `cancel` while its branch still holds commits
+# nobody merged is the expensive silent failure of working in parallel: the
+# board says finished, the work sits in a branch no one will think to look for
+# again, and nothing raises an error. Git already knows the answer, so nothing
+# is recorded anywhere — the branch is derived from the ticket's own ID.
+
+case "$dest_status" in
+  done|cancel)
+    if git rev-parse --git-dir > /dev/null 2>&1; then
+      # The link between a branch and a ticket is the ID inside the branch
+      # name, whatever prefix a project puts in front of it — `kerjaan/<id>`,
+      # `tiket-<id>`, anything. Matching on the ID rather than on a prefix is
+      # what lets a project keep the naming it already uses, and an ID is
+      # distinctive enough that it cannot match something unrelated.
+      branches="$(git for-each-ref --format='%(refname:short)' refs/heads | grep -F "$id" || true)"
+      while IFS= read -r branch; do
+        [ -n "$branch" ] || continue
+        if git merge-base --is-ancestor "refs/heads/$branch" HEAD 2> /dev/null; then
+          if git worktree list --porcelain 2> /dev/null | grep -qx "branch refs/heads/$branch"; then
+            echo "Note: $branch is merged, but its worktree is still checked out." >&2
+            echo "  git worktree remove <path> && git branch -d $branch" >&2
+          fi
+        else
+          echo "WARNING: $branch holds commits that are not in HEAD, and the ticket" >&2
+          echo "  has just been moved to '$dest_status'. That work is unmerged:" >&2
+          echo "  git log --oneline HEAD..$branch" >&2
+        fi
+      done <<< "$branches"
+    fi
+    ;;
+esac
 
 printf '%s\n' "$dest"

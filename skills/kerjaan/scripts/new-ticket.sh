@@ -47,6 +47,29 @@ if [ -z "$title" ]; then
   exit 1
 fi
 
+# --- refuse to run from a linked git worktree ------------------------------
+# The board lives inside the repository, so every worktree checks out its own
+# copy of `.kerjaan/`. Treating that copy as a board forks the one guarantee
+# the format makes: a ticket has exactly one status, held by exactly one
+# folder. Nothing about that failure is loud — two boards simply start
+# disagreeing, and both look perfectly normal.
+#
+# A linked worktree can be recognised with certainty rather than guessed at:
+# its git dir sits inside the main one, so the two paths differ. The first
+# entry of `git worktree list` is always the main worktree, which is where the
+# board lives.
+
+if git rev-parse --git-dir > /dev/null 2>&1 \
+  && [ "$(git rev-parse --git-dir)" != "$(git rev-parse --git-common-dir)" ]; then
+  main_tree="$(git worktree list --porcelain | sed -n '1s/^worktree //p')"
+  echo "This is a linked git worktree, and the board does not live here." >&2
+  echo "Acting on the copy of .kerjaan/ in a worktree forks the board: one" >&2
+  echo "ticket ends up with two different statuses, and nothing reports it." >&2
+  echo "Run this from the main worktree instead:" >&2
+  echo "  $main_tree" >&2
+  exit 1
+fi
+
 # --- make sure the board exists --------------------------------------------
 board="$PWD/.kerjaan"
 for s in "${STATUSES[@]}"; do

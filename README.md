@@ -30,7 +30,8 @@ there is no service to run, host, or pay for.
 ├── in_progress/  being worked on
 ├── review/       done, not yet verified
 ├── done/         passed review
-└── cancel/       abandoned
+├── cancel/       abandoned
+└── order.md      the order to pick `todo` up in — optional
 ```
 
 File name: `<ticket_id> <title>.md`, for example
@@ -144,6 +145,64 @@ ls .kerjaan/in_progress/
 grep -l 'priority: high' .kerjaan/todo/*.md
 ```
 
+## Choosing what is next
+
+`todo` means *ready*, and readiness is checked rather than assumed: nothing in
+`blocked_by` is still open, `Done when` can be verified by a non-technical
+person, no decision is still waiting on the user, and the obvious fields are
+filled in. On top of that it means *next* — the ticket is holding others up, or
+it is groundwork, or it is quick, or it sits next to work already in flight.
+Size is treated as a reason to split a ticket, never as a reason to defer it,
+because groundwork is almost always big and a board that defers by size buries
+exactly the work everything else is waiting for.
+
+A folder has no order, though, and `blocked_by` only covers the hard case where
+one ticket cannot start until another finishes. Softer sequencing lives in
+`.kerjaan/order.md`, which covers `todo/` and nothing else:
+
+```markdown
+**First, on its own.** Everything below reads the settings file it introduces.
+
+- 260905160401 Add the config loader
+
+**Then these two, in any order.** Neither touches the other's files.
+
+- 260905160502 Import screen
+- 260905160503 Export screen
+```
+
+Order is position on the page; tickets sharing a group can run side by side;
+the bold sentence carries the reasoning, which is the part that exists nowhere
+else. `update-ticket.sh` keeps the file honest — a ticket leaving `todo` loses
+its line, and a group loses its lead-in once its last ticket is gone.
+
+The file is optional. Write it the first time ordering actually matters, and
+refill `todo` from `backlog` only when `todo`, `in_progress` and `review` are
+all three empty — a ticket still in review can be handed straight back, so
+until then the board does not yet know what it finished.
+
+## Two tickets at once
+
+Tickets sharing a group in `order.md` have already been declared independent,
+which is the licence to run them side by side in separate git worktrees, on
+branches whose names carry the ticket ID.
+
+Nothing about that is written down. The ticket gains no `branch:` field — the
+ID is already in the branch name, and git's own `worktree list` is a registry
+that cannot go stale. The worktree is created with `.kerjaan/` left out of its
+checkout, because the board lives in the repository and a second checkout of it
+is a second board: the same ticket then reads `in_progress` in one tree and
+`todo` in the other, with nothing to report the disagreement. Both scripts
+refuse to run from a linked worktree for the same reason. What the board adds is noticing at the two moments where
+forgetting turns silent: `update-ticket.sh` warns when a ticket reaches `done`
+or `cancel` while its branch still holds unmerged commits, and an idle board —
+`todo`, `in_progress` and `review` all empty — must have no worktrees left at
+all.
+
+The reviewer checks for a worktree before reading any diff, because reviewing
+the main tree for work that lives on a branch would report "nothing changed"
+about a ticket that changed plenty.
+
 ## Review happens by itself
 
 `review` is the one status that does not sit still waiting for someone to
@@ -168,6 +227,12 @@ it passing — and it judges by running the checks rather than by believing what
 The session that did the work hands the ticket off and moves on; a failed
 review simply puts the ticket back in `in_progress`, which is where a board is
 supposed to put unfinished work.
+
+The reviewer never files tickets of its own. Things it notices outside the
+ticket's criteria go into a `### Suggested follow-up` block in the reviewed
+ticket's notes, for a session with a user in front of it to offer — and an
+unmet criterion is never allowed to become one of those suggestions, because a
+reviewer that can move a failure into a new ticket is no longer a gate.
 
 ### How deep the review goes
 
@@ -241,7 +306,9 @@ to whoever is doing it, that is the signal to check who it was for.
 
 - **No board view, index, or summary.** The moment a summary exists it starts
   going stale and quietly lying. To find out what is in flight, read the
-  folders.
+  folders. The one non-ticket file, `order.md`, is not a counter-example: it
+  holds sequence and reasoning that no folder can express, and deliberately
+  repeats nothing a folder already says.
 - **No change log inside the ticket.** Just `updated`. Git already holds the
   full history.
 - **No opinion about git.** How tickets relate to commits is left to each

@@ -71,7 +71,10 @@ written rules — that is not a finding.
 Do not go hunting for a docs folder the ticket never mentioned.
 
 **4. What was actually built.** `git log --oneline -5`, `git show --stat HEAD`,
-`git diff` — enough to see the shape of the change.
+`git diff` — enough to see the shape of the change. **First make sure you are
+looking at the right tree**, using the section below: on a board that works
+tickets in parallel, the change may not be in the repo you were dispatched
+into at all.
 
 **5. The checks this project can run.** Read them off the repo rather than
 guessing:
@@ -90,6 +93,49 @@ guessing:
 "This project exposes no test command I could find; the criteria below were
 judged by reading the code only." Never invent a command, and never let a
 missing command quietly become a pass.
+
+## First, find the tree the work is actually in
+
+Some boards run two independent tickets side by side, each in its own git
+worktree, on a branch whose name carries the ticket ID — `tiket-<id>`,
+`kerjaan/<id>`, the prefix varies by project, so match on the ID itself. Check
+before you read any diff; it costs one command:
+
+```bash
+git branch --format='%(refname:short)' | grep <id>
+```
+
+**If that prints a branch, the repo you were dispatched into does not contain
+this work.** Running `git diff` where you are would show you nothing, and
+"nothing was changed" is then a false finding rather than a real one — the most
+embarrassing way this review can fail. Read the change from the branch instead,
+and run the project's checks inside its worktree, which `git worktree list`
+locates:
+
+```bash
+git log --oneline HEAD..<branch>
+git diff HEAD...<branch>
+```
+
+The ticket's `## Notes` may also describe where the work lives. Treat that as a
+hint about where to look, never as the answer — `## Notes` is the claim under
+test, and git answers this question directly.
+
+This also settles the "files moving underneath you" problem for free: a
+worktree is already a tree of its own, so there is no need to build a clean
+export just to get separation.
+
+Three limits, and they follow from rules you already have:
+
+- **Do not create or remove worktrees, and do not merge anything.** All three
+  change the state of the main repository, which you never touch.
+- **Do not sabotage inside that worktree.** At `strict`, break the code in your
+  own export instead — `git archive <branch> | tar -x -C /tmp/review-<id>` —
+  so the tree somebody else is working in is never damaged.
+- **An unmerged branch is a note, not a blocking finding.** Merging happens
+  after review by design, so a branch still sitting apart is exactly what you
+  should expect to see. Say in your report whether it was merged; do not fail a
+  ticket for it.
 
 ## How to judge
 
@@ -158,7 +204,8 @@ never touched in the first place.
 
 The main session may be working on the next ticket in the same folder, so files
 can change underneath you and a check can fail for reasons that have nothing to
-do with this ticket. When that happens, review a clean export instead:
+do with this ticket. When the ticket has a worktree of its own, that separation
+already exists and none of this is needed. Otherwise, review a clean export:
 
 ```bash
 mkdir -p /tmp/review-<id> && git archive <commit> | tar -x -C /tmp/review-<id>
@@ -204,6 +251,45 @@ not met, or the evidence for it is false) and **notes** (everything else worth
 saying). A note never blocks a ticket, and a blocker is never softened into a
 note.
 
+## Follow-ups you find — write them, never file them
+
+You will notice things worth doing that this ticket never asked about. **You do
+not create tickets for them.** Writing them down is your job; turning them into
+tickets belongs to a session that has a person in front of it.
+
+**A blocking finding never becomes a follow-up.** When a `Done when` criterion
+is not met, the ticket goes back to `in_progress` with the evidence, whole.
+Moving an unmet criterion into a "suggested follow-up" and passing the ticket
+would read well in a report and would destroy the only independent gate this
+board has. Suggestions are for things outside the criteria — never for things
+the criteria already asked for.
+
+**And you cannot ask anybody anything.** You run with no user in front of you,
+while the kerjaan format says a ticket whose `Background` and `Request` had to
+be guessed should not exist yet. A half-written ticket looks like recorded work
+while being none, which is worse than no ticket.
+
+When you have something worth suggesting, append it inside `## Notes`, after
+your review, under its own heading:
+
+```markdown
+### Suggested follow-up
+
+- **The export runs with no timeout.** When the supplier's server stops
+  answering, the page waits forever and the person sees nothing at all, not
+  even an error. Worth a ticket: the export should give up after a while and
+  say so.
+```
+
+One bullet per suggestion. Lead with what is wrong in bold, then give enough
+background and enough of a wanted outcome that somebody could write the ticket
+without opening the code. Invent no ticket IDs, touch no other ticket, and
+create no files anywhere in `.kerjaan/` — the ticket you are reviewing is still
+the only one you may write to.
+
+Say the same suggestions in your final report, briefly. The report is what the
+session acts on; the block in `## Notes` is what survives the session ending.
+
 ## The decision — you execute it
 
 Script: `~/.claude/skills/kerjaan/scripts/update-ticket.sh <id> --status <folder>`
@@ -242,8 +328,8 @@ found during review, nothing about options that were considered and rejected.
 Report briefly: the level you reviewed at and whether you escalated past it,
 your decision, which criteria passed and which failed with the short evidence
 for each, which commands you found and ran (or that you found none), what you
-deliberately broke and whether the tests caught it, and the list of
-non-blocking notes.
+deliberately broke and whether the tests caught it, the list of non-blocking
+notes, and anything you recorded under `### Suggested follow-up`.
 
 If the level left a criterion judged by reading alone, list those separately at
 the end under "not verified by running anything". That list is what tells the
