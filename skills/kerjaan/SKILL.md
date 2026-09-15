@@ -119,6 +119,12 @@ outcomes at once. Split it by outcome and each piece passes on its own. Size
 justifies waiting only when the ticket genuinely cannot be split **and** none
 of the four reasons above pushes it.
 
+When a ticket is split, the original keeps its ID and becomes the first piece.
+Criteria that moved elsewhere are struck through with a pointer to the ticket
+that took them, exactly as a voided criterion is struck, and each new ticket
+carries `related: [<the original ID>]`. Nothing is deleted and no ticket is
+retired, so a reference followed months later still lands somewhere.
+
 ### When the user asks for a move you would not have made
 
 Run the checks, name in one line the single thing that failed, then do as they
@@ -559,6 +565,25 @@ do is go looking for trouble that nothing pointed at. Every review records the
 level it ran at in `## Notes`, so a reader can always tell how much a `done`
 actually cost.
 
+#### Breaking your own code on purpose proves nothing
+
+Deliberately breaking an implementation to watch the tests go red is a good
+technique and it belongs to the reviewer, at `strict`. Its entire value is in
+**who** does it: a check performed by somebody with no stake in the result.
+Done by the person who wrote the code, the engineering is still sound but the
+accounting is not — and the result has nowhere to go. Written into `## Notes`,
+it lands in the one place on this board that can never be evidence, because
+`## Notes` is the claim under test. A reviewer reading it has to record that it
+was a report, not a finding, which is exactly what it will do.
+
+So the effort is real and the payoff is zero, which makes this one of the more
+expensive ways to spend an afternoon here.
+
+If you do it anyway and it turns up a test that cannot go red, **the finding is
+worth keeping — just not as prose.** Fix the test and commit it. A test living
+in the repo is something the reviewer can read and run, so it counts. A
+sentence describing a test you once broke is not.
+
 #### Suggesting a level, and when not to
 
 **The level is the user's call. Raising it is yours to suggest.** You are the
@@ -767,6 +792,18 @@ When a criterion turns out to be unmet, that is ordinary and cheap to handle:
 leave the ticket where it is, append a short note saying which line is
 outstanding and why, and finish it. When a criterion turns out to be **void**
 rather than unmet, strike it as described under `Done when` above.
+
+**And once the ticket is in `review/`, its code stops being yours.** The move
+was the claim that the work is finished; carrying on with it afterwards — even
+to improve it, even to strengthen a test — makes that claim false in the
+quietest possible way. It also leaves the reviewer judging something that moves
+while it reads, which is the hazard it builds clean exports to escape. Here the
+person moving the files would be the one who asked for the review.
+
+If something genuinely remains, the ticket was not ready: move it back to
+`in_progress` and finish it there. Anything found after the handover is either
+the reviewer's finding, which comes back with evidence, or a follow-up. Neither
+is a quiet edit.
 
 Renaming does not change the ID, and references from other tickets need no
 attention, because references use the ID.

@@ -224,9 +224,11 @@ last word belongs to something that did not write the code and has no stake in
 it passing — and it judges by running the checks rather than by believing what
 `## Notes` claims.
 
-The session that did the work hands the ticket off and moves on; a failed
-review simply puts the ticket back in `in_progress`, which is where a board is
-supposed to put unfinished work.
+The session that did the work hands the ticket off and moves on — and stops
+changing that ticket's code, because the move was the claim that it is
+finished and an edit made afterwards is one the reviewer judges without
+knowing it happened. A failed review simply puts the ticket back in
+`in_progress`, which is where a board is supposed to put unfinished work.
 
 The reviewer never files tickets of its own. Things it notices outside the
 ticket's criteria go into a `### Suggested follow-up` block in the reviewed

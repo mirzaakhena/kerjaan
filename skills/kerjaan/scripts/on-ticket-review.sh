@@ -102,7 +102,12 @@ jq -n --arg id "$id" --arg repo "$repo" --arg ticket "$ticket" '{
       "repo and the ticket ID \($id). That reviewer decides, and " +
       "moves the ticket to done/ or back to in_progress/ itself. Do not " +
       "review this ticket yourself, and do not wait for the reviewer to " +
-      "finish — carry on with the next piece of work."
+      "finish. Ticket \($id) is handed off now: stop changing the code it " +
+      "covers, even to improve it, even to strengthen a test. Moving it here " +
+      "was the claim that it is finished, and an edit made now is one the " +
+      "reviewer judges without knowing it happened. If something genuinely " +
+      "remains, move the ticket back to in_progress instead of working on it " +
+      "where it is. Otherwise pick up a different ticket."
     )
   },
   systemMessage: ("Ticket \($id) entered review — dispatching a reviewer.")
