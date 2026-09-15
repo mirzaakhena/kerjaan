@@ -190,6 +190,17 @@ line by line, refuses to treat `## Notes` as evidence, and digs deeper on its
 own when something does not add up. Every review writes the level it ran at
 into the ticket, so a `done` never hides how much checking stood behind it.
 
+Claude offers a higher level when the change lands somewhere unforgiving —
+money, login, permissions, data you cannot get back — and the choice stays
+yours. Tell it you want speed, or that this is a mock or an MVP, and it stops
+offering and uses `quick`.
+
+One limit worth knowing: the reviewer blocks on `Done when` and nothing else.
+A checklist that only describes the happy path stays unblocked even at
+`strict`, which will verify that happy path thoroughly and pass. If an
+unvalidated input is what worries you, the fix is a criterion that says so —
+not a deeper review.
+
 ## Design principles
 
 These five produced every rule in the skill, and they are enough to derive new
@@ -211,8 +222,8 @@ raises no error and only surfaces months later — so the two are bound into a
 single command, making half an action impossible.
 
 **4. Structure is English; prose is for the reader.** Folder names, frontmatter
-keys, `type`, `priority` and `review` values, and the headings never vary. Not sure
-which side something falls on? Ask whether the word is identical in every
+keys, `type`, `priority` and `review` values, and the headings never vary. Not
+sure which side something falls on? Ask whether the word is identical in every
 ticket. If it is, it is structure.
 
 **5. The board serves whoever was not there.** Not the person doing the work —

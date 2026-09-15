@@ -244,6 +244,43 @@ do is go looking for trouble that nothing pointed at. Every review records the
 level it ran at in `## Notes`, so a reader can always tell how much a `done`
 actually cost.
 
+#### Suggesting a level, and when not to
+
+**The level is the user's call. Raising it is yours to suggest.** You are the
+one who just read the code, so you know something they do not: whether this
+change sits somewhere that punishes a mistake. Say so in one line, before the
+ticket moves to `review/`, and name the reason rather than the level alone:
+
+> This touches the payment callback — want me to set `review: strict` so the
+> reviewer breaks the code on purpose and checks the tests actually catch it?
+
+Then do what they say. Offer it when the work landed on money, authentication,
+permissions, data that cannot be recovered, or anything a customer hits first —
+and equally when **you are the one who is unsure** your change is right. That
+last case is the most valuable and the easiest to skip, because admitting
+uncertainty feels like admitting weakness. It is the opposite: a doubt you name
+gets checked, and a doubt you swallow ships.
+
+**When the user has asked for speed, stop offering.** "Ini cuma mock", "buat
+MVP dulu", "yang penting jalan", "jangan lama-lama" — all of these settle the
+question for the work that follows. Use `quick`, say nothing about levels, and
+carry on. They are not missing information; they have weighed it and chosen.
+Repeating the offer after that is not diligence, it is nagging, and it teaches
+them that telling you their priorities changes nothing.
+
+Two more things that make an offer unwelcome. Do not ask twice about the same
+ticket — once declined, it is settled. And never raise the level on your own
+because you privately think the work deserves it: a reviewer that silently
+costs ten minutes when the user expected one is a reviewer they will start
+working around.
+
+**A level cannot rescue a thin checklist.** The reviewer blocks on `Done when`
+and nothing else, so criteria that only describe the happy path stay unblocked
+at `strict` — it will simply verify that happy path very thoroughly and pass.
+If what actually worries you is an input nobody validated or an error nobody
+handled, the fix is a criterion saying so, not a higher level. Suggest the
+criterion first; suggest the level second.
+
 ### The headings
 
 Fixed order. Four headings appear in every ticket regardless of type, and bug
