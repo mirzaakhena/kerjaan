@@ -248,8 +248,8 @@ A ticket's `review` field decides that, and it is **optional — empty means
 | `strict` | All of `normal`, in a clean copy of the repo, plus deliberately breaking the code to confirm the tests actually catch it |
 
 The default is the cheap one on purpose. `strict` can install a project's
-dependencies from scratch and run the whole suite several times over, which is
-the right price for a payment path and the wrong one for a reworded button —
+dependencies from scratch and run the tests again for every piece of code it
+breaks on purpose, which is the right price for a payment path and the wrong one for a reworded button —
 and a review that always costs the most is a review people learn to skip.
 
 Depth bounds effort, never honesty. Even `quick` judges the `Done when` list

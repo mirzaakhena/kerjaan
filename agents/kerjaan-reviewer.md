@@ -252,24 +252,58 @@ the first.
 **Tests that cannot go red** (`strict` only). For at least the one or two
 criteria that matter most, break the implementation on purpose and confirm the
 suite notices. Invert a condition, return a constant, delete the validation,
-comment out the call the feature depends on — then run the tests.
+comment out the call the feature depends on — then run the tests that guard
+that criterion.
 
-- Suite goes red → the criterion is genuinely covered. Restore the code.
-- Suite stays green → the coverage is an illusion. **That is a blocking
-  finding**, however green the original run looked, even when the code itself
-  is right — at `strict`, teeth in the tests are what the ticket asked for.
-  Restore the code and record exactly what you broke and what stayed green.
+- Those tests go red → the criterion is genuinely covered. Restore the code.
+- Those tests stay green → **run the full suite once before you conclude
+  anything.** A test in some other file may be the one that catches it.
+- The full suite stays green too → the coverage is an illusion. **That is a
+  blocking finding**, however green the original run looked, even when the code
+  itself is right — at `strict`, teeth in the tests are what the ticket asked
+  for. Restore the code and record exactly what you broke and what stayed green.
 
-This is the most expensive thing in this document: the suite runs once per
-sabotage, on top of the baseline run and whatever a clean export costs to set
-up. That is exactly why it is reserved for tickets that ask for `strict`, and
-why it is not something to reach for on a `quick` ticket that merely looks
-suspicious — escalate to `normal` first and see whether reading the tests
-settles it.
+This is the most expensive thing in this document, which is why it is reserved
+for tickets that ask for `strict`, and why it is not something to reach for on
+a `quick` ticket that merely looks suspicious — escalate to `normal` first and
+see whether reading the tests settles it.
 
 **Do the sabotage in the clean copy described below, never in the working
 tree.** That way "restore the code" is guaranteed, because the working tree was
 never touched in the first place.
+
+#### Keeping sabotage cheap
+
+**The full suite runs once, at the start. A sabotage runs only the tests that
+guard its criterion** — the file, or the test names, you found while reading the
+tests — using the project's own runner. The question a sabotage asks is only
+"does this go red", and the answer does not need the whole suite; running it in
+full for every sabotage is where most of a `strict` review's time goes. The
+full suite comes back only in the case above, to confirm a green before it
+becomes a blocker, so no ticket is ever held back because the check was narrow.
+
+**Sabotages may run side by side, when the project allows it.** Plan them all
+first. Then prepare one clean export with dependencies installed, copy it once
+per sabotage, apply one sabotage to each copy, and run the tests in every copy
+at the same time in the background:
+
+```bash
+cp -cR /tmp/review-<id> /tmp/review-<id>-s1   # macOS: an instant clone
+cp -R --reflink=auto /tmp/review-<id> /tmp/review-<id>-s1   # Linux
+```
+
+A copy restores itself: delete it when its run is done. Two conditions, and
+either one sends you back to running sabotages one after another, still
+running only the guarding tests:
+
+- **The tests share something outside the folder** — a fixed port, a database,
+  a file in a fixed location, a cache. Two runs at once would then disturb each
+  other, and a red caused by the neighbour looks exactly like a real one.
+  Read the test setup before assuming there is nothing shared.
+- **A copy does not run where the original did.** Some installed dependencies
+  remember the folder they were installed in; a Python virtual environment is
+  the usual one. If a copied export fails before its tests even start, stop
+  copying.
 
 ### One finding is a sample, not the list
 

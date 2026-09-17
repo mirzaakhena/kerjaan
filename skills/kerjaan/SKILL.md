@@ -336,7 +336,8 @@ which work gets done.
 **Leave it empty unless the ticket needs more.** An empty `review:` means
 `quick`, which is what most tickets want: a wording fix, a renamed button, a
 config change. Depth is expensive — `strict` can install the project's
-dependencies from scratch and run the whole test suite several times over — and
+dependencies from scratch and run tests again for every piece of code it breaks
+on purpose — and
 spending it on a ticket that did not need it teaches people to route around the
 board.
 
