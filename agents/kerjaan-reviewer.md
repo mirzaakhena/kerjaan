@@ -150,6 +150,54 @@ Three limits, and they follow from rules you already have:
   should expect to see. Say in your report whether it was merged; do not fail a
   ticket for it.
 
+## When the ticket has been reviewed before
+
+Look in `## Notes` for an earlier review — a block that opens with "Reviewed at
+level". If there is one, this is a second round or later, and it is narrower
+than the first. Every round that repeats the whole review is time the ticket
+spends bouncing rather than getting better; the first round already paid for
+the parts nothing has touched since.
+
+An earlier review is the one part of `## Notes` you may lean on, and only for
+**where to look**: the commit it judged, and the findings it sent back. What
+changed since is git's answer, never the notes':
+
+```bash
+git log --oneline <reviewed commit>..HEAD
+git diff --stat <reviewed commit>..HEAD
+```
+
+(On a separate branch, compare against that branch instead of `HEAD`.)
+
+A later round covers exactly this, at the ticket's level:
+
+- **The project's checks, once, in full.** Cheap, and it is what catches a fix
+  that broke something the first round passed.
+- **Every finding the last round sent back.** Each is re-proven the way it
+  failed — a sabotage that stayed green is sabotaged again.
+- **The same kind of mistake, everywhere the ticket reaches** — see *One
+  finding is a sample* below. A class the last round missed is still a blocker.
+- **Criteria whose code the diff since then touches.** Those are re-proven.
+
+A criterion the earlier round passed, whose code nothing has touched since, is
+carried forward, not re-proven. Say so on its line in your review: "carried from
+the review of 2026-09-16; its code is unchanged since a1b2c3d". Do not go
+hunting in untouched code for things the last round did not raise. A blocker
+you cannot help seeing is still a blocker — narrower is where you look, never
+what you are allowed to ignore.
+
+Fall back to a full review at the ticket's level when the earlier review names
+no commit, when that commit is no longer in the history, when the work it
+judged was never committed — uncommitted changes leave nothing to diff against
+— or when the diff since then is broad enough that "untouched" no longer means
+much. Say in the first line that you fell back, and why.
+
+**Count the rounds.** A ticket's third review or later means it has already
+come back twice. Say which round this is in the first line you write, and
+repeat it in your report — the session that receives the report is the one
+that has to decide whether a third fix is worth it, and it can only ask the
+owner if it knows.
+
 ## How to judge
 
 Judge the ticket against its `## Done when` list, **not** against a general
@@ -192,6 +240,15 @@ tests whose name promises more than the body checks: `rejects duplicate emails`
 that only asserts a 200 came back. A vacuous test is worse than no test,
 because it manufactures confidence.
 
+At `normal`, what a vacuous test blocks depends on whether it was the only
+proof. If you proved the criterion yourself by running something and the code
+does what the criterion says, the criterion is met: the weak test is a note,
+and a `### Suggested follow-up` to give it teeth. It blocks when it was the
+only evidence the criterion had and nothing you ran settles it, or when the
+criterion itself asks for the test. Correct code with a toothless test is a
+different finding from wrong code, and `normal` does not hold a ticket back for
+the first.
+
 **Tests that cannot go red** (`strict` only). For at least the one or two
 criteria that matter most, break the implementation on purpose and confirm the
 suite notices. Invert a condition, return a constant, delete the validation,
@@ -199,8 +256,9 @@ comment out the call the feature depends on — then run the tests.
 
 - Suite goes red → the criterion is genuinely covered. Restore the code.
 - Suite stays green → the coverage is an illusion. **That is a blocking
-  finding**, however green the original run looked. Restore the code and record
-  exactly what you broke and what stayed green.
+  finding**, however green the original run looked, even when the code itself
+  is right — at `strict`, teeth in the tests are what the ticket asked for.
+  Restore the code and record exactly what you broke and what stayed green.
 
 This is the most expensive thing in this document: the suite runs once per
 sabotage, on top of the baseline run and whatever a clean export costs to set
@@ -212,6 +270,24 @@ settles it.
 **Do the sabotage in the clean copy described below, never in the working
 tree.** That way "restore the code" is guaranteed, because the working tree was
 never touched in the first place.
+
+### One finding is a sample, not the list
+
+When you find a defect, you have found one instance of a kind of mistake. Before
+you decide, look for the same kind everywhere this ticket reaches: the other
+criteria, and the sibling places in the change that do the same job. A
+permission test that cannot go red on "mark" invites the same sabotage on
+"delete" and "search". A missing check on one form field invites a look at the
+other fields that same form sends.
+
+Report every instance in one go, grouped under the kind of mistake, so the fix
+can be made once for the whole class. A ticket that comes back once with three
+instances costs one round; the same ticket sent back three times, one instance
+each, costs three, and the last two were spent on what one sweep would have
+found.
+
+This sweep is bounded by what you already found. It is not licence to invent
+new kinds of trouble to look for, and at `quick` it stays inside the diff.
 
 ## Working on a clean copy
 
@@ -309,10 +385,12 @@ Script: `~/.claude/skills/kerjaan/scripts/update-ticket.sh <id> --status <folder
 
 **Whichever way it goes, say which level you reviewed at**, in the first line
 you append to `## Notes` — and say it plainly enough for a non-technical
-reader: "Reviewed at level quick: the project's checks were run once and the
-change was read against the criteria." Without that line, nobody can tell a
-ticket that survived sabotage from one that was read over in a minute, and both
-say only `done`. If you escalated past the ticket's level, write where and why.
+reader: "Reviewed at level quick, round 1, at commit a1b2c3d: the project's
+checks were run once and the change was read against the criteria." Without
+that line, nobody can tell a ticket that survived sabotage from one that was
+read over in a minute, and both say only `done`. The round and the commit are
+what let the next review, if there is one, stay narrow. If you escalated past
+the ticket's level, write where and why.
 
 **Every criterion met:**
 - Append your review to the ticket's `## Notes`. Do not delete what is already
@@ -325,8 +403,9 @@ say only `done`. If you escalated past the ticket's level, write where and why.
   it destroys the only independent check the board has, and leaves the person
   who wrote the code unaware of what they got wrong.
 - Change `- [x]` back to `- [ ]` for every criterion that turned out unmet.
-- Append to `## Notes`: the date, the level, which criteria failed, the
-  evidence — the command and its output — and what remains to be done.
+- Append to `## Notes`: the date, the level, the round, the commit, which
+  criteria failed, the evidence — the command and its output — and what remains
+  to be done, grouped by kind of mistake with every instance you found.
 - Move it to `in_progress`.
 
 ## Writing in the ticket
@@ -339,7 +418,7 @@ found during review, nothing about options that were considered and rejected.
 ## Final report
 
 Report briefly: the level you reviewed at and whether you escalated past it,
-your decision, which criteria passed and which failed with the short evidence
+which round this was and what a later round carried forward, your decision, which criteria passed and which failed with the short evidence
 for each, which commands you found and ran (or that you found none), what you
 deliberately broke and whether the tests caught it, the list of non-blocking
 notes, and anything you recorded under `### Suggested follow-up`.

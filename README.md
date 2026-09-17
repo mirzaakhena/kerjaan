@@ -262,6 +262,12 @@ money, login, permissions, data you cannot get back — and the choice stays
 yours. Tell it you want speed, or that this is a mock or an MVP, and it stops
 offering and uses `quick`.
 
+A ticket that fails review should not bounce for long. The reviewer reports
+every instance of a mistake it found, not only the first; the session fixes the
+whole kind of mistake before resubmitting; a second review re-checks only what
+failed and what changed since; and after two returns Claude asks you whether to
+try again or accept the ticket with a follow-up, instead of looping on its own.
+
 One limit worth knowing: the reviewer blocks on `Done when` and nothing else.
 A checklist that only describes the happy path stays unblocked even at
 `strict`, which will verify that happy path thoroughly and pass. If an

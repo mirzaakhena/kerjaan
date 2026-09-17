@@ -635,6 +635,32 @@ finding came from. What they decline stays written in the reviewed ticket's
 notes — that is the honest record: somebody saw it and decided against it, and
 that decision is worth keeping.
 
+#### When a review sends the ticket back
+
+**Fix the kind of mistake, not the instance named.** The reviewer groups what
+it found by kind, but it cannot promise it found every place. Before moving the
+ticket to `review` again, look for the same shape across everything this
+ticket touched and fix it there too. Patching only the line quoted is how one
+mistake turns into three rounds.
+
+The next review is narrower by itself: the reviewer reads its own earlier entry,
+checks what changed since through git, and does not re-prove what nothing has
+touched. Nothing needs passing along. **Do not write instructions for the
+reviewer into `## Notes`** — a request for a lighter look, written by whoever
+did the work, is exactly what an independent gate exists to ignore.
+
+**After the second return, ask before trying again.** The reviewer states the
+round. When a ticket comes back from its second review, do not fix and resubmit
+on your own; put the choice to the ticket's owner in one line:
+
+> This came back twice; what is left is that two permission tests cannot fail.
+> Fix and review a third time, or accept it as is and ticket the tests?
+
+If they accept, append to `## Notes` that the owner accepted the ticket over
+the named findings, create the follow-up ticket with `related: [<this ID>]`,
+and move this one to `done` yourself. That is the one time a ticket reaches
+`done` without a passing review, and the note is what keeps it honest.
+
 **How long it takes is set by the ticket's `review` field**, described under
 the frontmatter above. Empty means `quick`, so by default a review is one run
 of the project's checks plus a read of the change — minutes, not a coffee
