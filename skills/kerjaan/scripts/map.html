@@ -29,6 +29,7 @@
   --reconsider: #cf3f8a;
   --hold: #7d88a6;
   --drop: #c2513b;
+  --rootless: #a7afc2;
   --active: #8a4ad6;
   --closed: #cfd5e0;
   --shadow: 0 6px 24px rgba(20, 30, 55, 0.12);
@@ -59,6 +60,7 @@
     --reconsider: #ff72b6;
     --hold: #7f8aa8;
     --drop: #e57a62;
+    --rootless: #4f5a75;
     --active: #c28cff;
     --closed: #2c3650;
     --shadow: 0 8px 30px rgba(0, 0, 0, 0.45);
@@ -168,6 +170,19 @@ details.group .hint { margin: 0 0 4px 16px; font-size: 12px; color: var(--muted)
 .item .t { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; }
 .item .score { font: 500 11px var(--mono); color: var(--c, var(--muted)); align-self: baseline; }
 .item .why { grid-column: 2 / 4; font-size: 11.5px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.seg.sort { margin-bottom: 8px; }
+.family summary { align-items: baseline; }
+.fam-title { min-width: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
+.fam-title .id { font: 500 11.5px var(--mono); color: var(--muted); }
+.family summary b { margin-left: 0; }
+.fam-meta { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 8px; margin: 0 0 4px 16px; font-size: 11.5px; color: var(--muted); }
+.fam-actions { display: flex; gap: 4px; }
+.mini { border: 1px solid var(--line); background: transparent; border-radius: 6px; padding: 0 7px; font-size: 11.5px; }
+.mini:hover { border-color: var(--muted); }
+.family.focused { background: color-mix(in srgb, var(--next) 8%, transparent); border-radius: 6px; }
+.item .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--c); }
+.swatch { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--c); margin: 0 3px 0 2px; }
+.inline-link { border: 0; background: none; padding: 0; font: 500 12.5px var(--mono); color: var(--todo); text-decoration: underline; }
 .formula { margin: 10px 0 0; font-size: 11.5px; color: var(--muted); border-top: 1px solid var(--line); padding-top: 8px; }
 .legend { display: grid; grid-template-columns: auto 1fr; gap: 3px 8px; align-items: center; margin-top: 8px; font-size: 12px; color: var(--muted); }
 .legend svg { display: block; }
@@ -356,23 +371,24 @@ const OPEN = new Set(['backlog', 'todo', 'in_progress', 'review']);
 const PRIORITY_WEIGHT = { high: 3, medium: 2, low: 1 };
 const RADIUS = { high: 10, medium: 7.5, low: 5.5 };
 const TYPES = ['feature', 'bug', 'task', 'chore'];
+// Advice reads `related` as "came from": an open ticket is a leftover of the
+// done ticket it points back to. Leftovers of the most recently touched done
+// ticket are suggested first, while that work is still fresh.
 const ADVICE = {
-  next: { name: 'Pick next', hint: 'Nothing blocks these. Ranked by the score below.' },
-  active: { name: 'In flight', hint: 'Already in progress or review.' },
-  reconsider: { name: 'Reconsider', hint: 'What they depended on was cancelled, or everything around them was.' },
-  ready: { name: 'Also ready', hint: 'Unblocked, lower score.' },
-  hold: { name: 'On hold', hint: 'Waiting for a ticket that is still open.' },
-  drop: { name: 'Skip or cancel?', hint: 'Low priority, unblocks nothing, and has no open neighbours.' },
-  closed: { name: 'Closed', hint: '' },
+  next: { name: 'Warmest leftover' },
+  ready: { name: 'Leftover, ready' },
+  hold: { name: 'On hold' },
+  reconsider: { name: 'Reconsider' },
+  active: { name: 'In flight' },
+  rootless: { name: 'No done parent' },
+  closed: { name: 'Closed' },
 };
-const ADVICE_ORDER = ['next', 'active', 'reconsider', 'ready', 'hold', 'drop'];
 const DECISIONS = [
   { key: 'pick', name: 'Pick up', c: 'next' },
   { key: 'hold', name: 'Hold', c: 'hold' },
   { key: 'skip', name: 'Skip', c: 'ready' },
   { key: 'cancel', name: 'Cancel', c: 'drop' },
 ];
-const NEXT_COUNT = 6;
 const LANE_WIDTH = 440;
 const ROW_STEP = 40;
 const HOUR = 36e5, DAY = 864e5;
@@ -404,7 +420,9 @@ let view = { x: 0, y: 0, k: 0.3 };
 let mode = store.get('mode', 'status');
 let lens = store.get('lens', 'status');
 let edgesOn = new Set(store.get('edges', ['blocks', 'related']));
-let hidden = new Set(store.get('hidden', []));
+// cancel and settled done are noise for choosing what is next, so both start hidden
+let hidden = new Set(store.get('hiddenStatuses', ['cancel']));
+let showSettled = store.get('settled', false);
 let adviceOpen = store.get('advice', innerWidth > 760);
 let selected = null, hovered = null, query = '', matches = [], matchIndex = -1;
 let timeCut = Infinity, timeMin = 0, timeMax = 0, playing = false;
@@ -419,7 +437,7 @@ const mini = $('#minimap'), mctx = mini.getContext('2d');
 function readColors() {
   const cs = getComputedStyle(document.documentElement);
   const names = ['ground', 'ink', 'muted', 'faint', 'line', 'lane', 'edge-related', 'edge-block', 'panel-solid',
-    ...STATUSES, ...Object.keys(ADVICE)];
+    ...STATUSES, ...Object.keys(ADVICE), 'drop'];
   for (const n of names) colors[n] = cs.getPropertyValue('--' + n).trim();
   request();
 }
@@ -451,32 +469,37 @@ function analyse() {
     }
   }
   now = Math.max(...tickets.map((t) => t.msUpdated), 0);
+  // settled: done, and nothing it touches is still open, so it no longer
+  // bears on what comes next
+  const closed = (id) => !OPEN.has(byId.get(id).status);
+  for (const t of tickets) {
+    t.settled = t.status === 'done' && [...related.get(t.id), ...blockers.get(t.id), ...dependents.get(t.id)].every(closed);
+  }
   const orderRank = new Map(board.order.map((id, i) => [id, i + 1]));
 
-  const ready = [];
+  const open = (id) => OPEN.has(byId.get(id).status);
+  const isDone = (id) => byId.get(id).status === 'done';
+  const families = new Map(); // done parent id -> open tickets that came from it
+  const rootless = [];
   for (const t of tickets) {
     t.rank = t.status === 'todo' ? orderRank.get(t.id) || null : null;
-    const a = { kind: 'closed', reasons: [], parts: [], score: 0 };
+    const a = { kind: 'closed', reasons: [], parent: null, alsoFrom: [] };
     t.advice = a;
     if (!OPEN.has(t.status)) continue;
-    const open = (id) => OPEN.has(byId.get(id).status);
     const bl = blockers.get(t.id);
     a.openBlockers = bl.filter(open);
     a.cancelledBlockers = bl.filter((id) => byId.get(id).status === 'cancel');
     a.unlocks = [...downstream(t.id)].filter(open);
-    const nb = [...related.get(t.id)];
-    a.openNeighbours = nb.filter(open);
-    a.cancelledNeighbours = nb.filter((id) => byId.get(id).status === 'cancel');
-    a.warm = nb.filter((id) => byId.get(id).status === 'done' && now - byId.get(id).msUpdated < 2 * DAY);
-    a.age = (now - t.ms) / DAY;
-    a.parts = [
-      ['Priority ' + (t.priority || '—'), 2 * (PRIORITY_WEIGHT[t.priority] || 2)],
-      ['Unblocks ' + plural(a.unlocks.length, 'open ticket'), 1.5 * a.unlocks.length],
-      ['Related ticket done in the last 48 h: ' + a.warm.length, Math.min(a.warm.length, 3)],
-      ['Related to ' + a.openNeighbours.length + ' open', 0.3 * Math.min(a.openNeighbours.length, 4)],
-    ];
-    if (t.status === 'todo') a.parts.push(['Already in todo', 2]);
-    a.score = a.parts.reduce((s, p) => s + p[1], 0);
+
+    // The parent is what the ticket itself points back to: the done ticket in
+    // its own related or blocked_by created closest before it. Only when it
+    // names none does a done ticket that names it count.
+    const own = [...new Set([...t.related, ...t.blockedBy])].filter((id) => byId.has(id) && id !== t.id && isDone(id));
+    const pool = own.length ? own : [...related.get(t.id)].filter(isDone);
+    const before = pool.filter((id) => byId.get(id).ms <= t.ms);
+    const pick = (ids, key) => ids.reduce((best, id) => (!best || byId.get(id)[key] > byId.get(best)[key] ? id : best), null);
+    a.parent = before.length ? pick(before, 'ms') : pick(pool, 'msUpdated');
+    a.alsoFrom = pool.filter((id) => id !== a.parent);
 
     if (t.status === 'in_progress' || t.status === 'review') {
       a.kind = 'active';
@@ -486,33 +509,49 @@ function analyse() {
       a.reasons.push('Blocked by cancelled ' + a.cancelledBlockers.join(', ') + ': drop the block, or cancel this too.');
     } else if (a.openBlockers.length) {
       a.kind = 'hold';
-      a.reasons.push('Waiting for ' + a.openBlockers.join(', ') + '.');
-    } else if (t.priority === 'low' && !a.unlocks.length && !a.warm.length && !a.openNeighbours.length && a.age >= 2) {
-      a.kind = 'drop';
-      a.reasons.push('Low priority, unblocks nothing, no open neighbours, ' + Math.floor(a.age) + ' days old.');
-    } else if (a.cancelledNeighbours.length && !a.openNeighbours.length && !a.warm.length) {
-      a.kind = 'reconsider';
-      a.reasons.push('Every ticket it relates to that is still around was cancelled: ' + a.cancelledNeighbours.join(', ') + '.');
+      a.reasons.push('Waiting for ' + a.openBlockers.join(', ') + ', still ' + a.openBlockers.map((id) => byId.get(id).status).join(', ') + '.');
     } else {
-      a.kind = 'ready';
-      ready.push(t);
+      a.kind = a.parent ? 'ready' : 'rootless';
     }
+    if (a.parent) {
+      if (!families.has(a.parent)) families.set(a.parent, []);
+      families.get(a.parent).push(t);
+    } else rootless.push(t);
+
+    const bits = [];
+    if (a.kind === 'hold' || a.kind === 'reconsider' || a.kind === 'active') bits.push(a.reasons[0]);
+    if (t.status === 'todo') bits.push('already in todo' + (t.rank ? ' #' + t.rank : ''));
+    if (a.unlocks.length) bits.push('frees ' + a.unlocks.length);
+    bits.push((t.priority || 'no') + ' priority');
+    if (a.alsoFrom.length) bits.push('also from ' + a.alsoFrom.length + ' more done');
+    a.short = bits.join(' · ');
   }
-  ready.sort((x, y) => (x.rank ?? 1e9) - (y.rank ?? 1e9) || y.advice.score - x.advice.score || x.id.localeCompare(y.id));
-  ready.slice(0, NEXT_COUNT).forEach((t) => { t.advice.kind = 'next'; });
-  for (const t of tickets) {
-    const a = t.advice;
-    if (a.kind === 'next' || a.kind === 'ready') {
-      const bits = [];
-      if (t.rank) bits.push('#' + t.rank + ' in order.md');
-      if (a.unlocks.length) bits.push('unblocks ' + a.unlocks.length);
-      bits.push((t.priority || 'no') + ' priority');
-      if (a.warm.length) bits.push(a.warm.length + ' neighbour' + (a.warm.length > 1 ? 's' : '') + ' just done');
-      a.short = bits.join(' · ');
-    } else {
-      a.short = a.reasons[0] || '';
-    }
-  }
+
+  // A family is warmer the more recently its done parent was touched; inside
+  // it, what can start comes first, then what frees other tickets.
+  const kindOrder = { active: 0, ready: 1, rootless: 1, reconsider: 2, hold: 3 };
+  const inside = (x, y) => kindOrder[x.advice.kind] - kindOrder[y.advice.kind]
+    || (x.status === 'todo' ? 0 : 1) - (y.status === 'todo' ? 0 : 1)
+    || y.advice.unlocks.length - x.advice.unlocks.length
+    || (PRIORITY_WEIGHT[y.priority] || 0) - (PRIORITY_WEIGHT[x.priority] || 0)
+    || x.id.localeCompare(y.id);
+  familyList = [...families].map(([id, members]) => ({ parent: byId.get(id), members: members.sort(inside) }));
+  rootlessList = rootless.sort(inside);
+  rankFamilies();
+}
+let familyList = [], rootlessList = [];
+let familySort = store.get('familySort', 'warm');
+// warm: the done parent touched most recently first, while the work is fresh.
+// heavy: the family with the most weight ready to start first, counting each
+// ready ticket's priority (high 3, medium 2, low 1) plus the tickets it frees.
+const readyNow = (t) => t.advice.kind === 'next' || t.advice.kind === 'ready';
+const familyWeight = (f) => f.members.filter(readyNow).reduce((s, t) => s + (PRIORITY_WEIGHT[t.priority] || 2) + t.advice.unlocks.length, 0);
+function rankFamilies() {
+  const warm = (x, y) => y.parent.msUpdated - x.parent.msUpdated || y.parent.id.localeCompare(x.parent.id);
+  familyList.sort(familySort === 'heavy' ? (x, y) => familyWeight(y) - familyWeight(x) || warm(x, y) : warm);
+  for (const f of familyList) for (const t of f.members) if (t.advice.kind === 'next') t.advice.kind = 'ready';
+  const first = familyList.find((f) => f.members.some(readyNow));
+  if (first) for (const t of first.members) if (t.advice.kind === 'ready') t.advice.kind = 'next';
 }
 function downstream(id) {
   const out = new Set(), stack = [id];
@@ -731,15 +770,17 @@ function viewport() {
   return { top: bar.bottom + 40, left: left + 64, right: W - right - 24, bottom: H - 80 };
 }
 function visible(n) {
-  return !n.leaving && !hidden.has(n.t.status) && n.t.ms <= timeCut;
+  return !n.leaving && !hidden.has(n.t.status) && (showSettled || !n.t.settled) && n.t.ms <= timeCut;
 }
 function fit(animate = true) {
-  const vis = [...nodes.values()].filter(visible);
+  fitNodes([...nodes.values()].filter(visible), animate);
+}
+function fitNodes(vis, animate = true) {
   if (!vis.length) return;
   const xs = vis.map((n) => n.tx), ys = vis.map((n) => n.ty);
   const box = { x0: Math.min(...xs) - 40, x1: Math.max(...xs) + 40, y0: Math.min(...ys) - 40, y1: Math.max(...ys) + 40 };
   const vp = viewport();
-  const k = clamp(Math.min((vp.right - vp.left) / (box.x1 - box.x0), (vp.bottom - vp.top) / (box.y1 - box.y0)), 0.03, 3);
+  const k = clamp(Math.min((vp.right - vp.left) / (box.x1 - box.x0), (vp.bottom - vp.top) / (box.y1 - box.y0)), 0.03, 1.6);
   goTo((box.x0 + box.x1) / 2, (box.y0 + box.y1) / 2, k, animate);
 }
 let flight = null;
@@ -794,6 +835,10 @@ function frame(ts) {
 
 function focusSet() {
   const id = selected || hovered;
+  if ((!id || !byId.has(id)) && focusFamily) {
+    const f = familyList.find((x) => x.parent.id === focusFamily);
+    if (f) return new Set([f.parent.id, ...f.members.map((t) => t.id)]);
+  }
   if (!id || !byId.has(id)) return null;
   return new Set([id, ...related.get(id), ...upstream(id), ...downstream(id)]);
 }
@@ -1003,7 +1048,9 @@ function draw(ts) {
       ctx.font = '600 12.5px ' + cssVar('--sans');
       const w1 = ctx.measureText(name).width;
       ctx.font = '500 11px ' + cssVar('--mono');
-      const count = String(l.count ?? 0);
+      let shown = 0;
+      for (const n of nodes.values()) if (visible(n) && laneOf(n.t) === l.key) shown++;
+      const count = String(shown);
       const w2 = ctx.measureText(count).width;
       const room = LANE_WIDTH * k - 10;
       const full = w1 + 6 + w2 + 20;
@@ -1131,13 +1178,14 @@ function renderChips() {
   const count = Object.fromEntries(STATUSES.map((s) => [s, 0]));
   for (const t of board.tickets) count[t.status]++;
   $('#chips').innerHTML = STATUSES.map((s) =>
-    `<button class="chip" data-s="${s}" style="--c:var(--${s})" aria-pressed="${!hidden.has(s)}"><i></i>${STATUS_NAME[s]} <b>${count[s]}</b></button>`).join('');
+    `<button class="chip" data-s="${s}" style="--c:var(--${s})" aria-pressed="${!hidden.has(s)}"><i></i>${STATUS_NAME[s]} <b>${count[s]}</b></button>`).join('')
+    + `<button class="chip" data-s="settled" style="--c:var(--done)" aria-pressed="${showSettled}" title="Done tickets whose every relation is done or cancelled"><i></i>Settled done <b>${board.tickets.filter((t) => t.settled).length}</b></button>`;
 }
 $('#chips').addEventListener('click', (e) => {
   const b = e.target.closest('.chip'); if (!b) return;
   const s = b.dataset.s;
-  hidden.has(s) ? hidden.delete(s) : hidden.add(s);
-  store.set('hidden', [...hidden]);
+  if (s === 'settled') { showSettled = !showSettled; store.set('settled', showSettled); }
+  else { hidden.has(s) ? hidden.delete(s) : hidden.add(s); store.set('hiddenStatuses', [...hidden]); }
   renderChips(); renderAdvice(); request();
 });
 
@@ -1146,27 +1194,45 @@ function renderAdvice() {
   el.hidden = !adviceOpen;
   $('#advice-btn').setAttribute('aria-pressed', adviceOpen);
   if (!board) return;
-  const groups = Object.fromEntries(ADVICE_ORDER.map((k) => [k, []]));
-  for (const t of board.tickets) if (groups[t.advice.kind]) groups[t.advice.kind].push(t);
-  for (const k of ['ready', 'drop']) groups[k].sort((a, b) => b.advice.score - a.advice.score);
-  groups.next.sort((a, b) => (a.rank ?? 1e9) - (b.rank ?? 1e9) || b.advice.score - a.advice.score);
-  groups.hold.sort((a, b) => a.advice.openBlockers.length - b.advice.openBlockers.length || b.advice.score - a.advice.score);
   const openCount = board.tickets.filter((t) => OPEN.has(t.status)).length;
-  const openState = store.get('groups', { next: true, active: true, reconsider: true });
-  el.innerHTML = `<h2>What next</h2>
-    <p class="lede">${plural(openCount, 'open ticket')}, read from blocked_by and related. A suggestion, not a verdict.</p>
-    ${ADVICE_ORDER.filter((k) => groups[k].length).map((k) => `
-      <details class="group" data-k="${k}" style="--c:var(--${k})" ${openState[k] ? 'open' : ''}>
-        <summary><i></i>${ADVICE[k].name}<b>${groups[k].length}</b></summary>
-        <p class="hint">${ADVICE[k].hint}</p>
-        ${groups[k].map((t) => `
-          <button class="item${t.id === selected ? ' on' : ''}" data-id="${t.id}" style="--c:var(--${k})">
-            <span class="id">${t.id}</span><span class="t">${esc(t.title)}</span>
-            <span class="score">${k === 'next' || k === 'ready' ? t.advice.score.toFixed(1) : ''}</span>
-            <span class="why">${esc(t.advice.short)}</span>
-          </button>`).join('')}
-      </details>`).join('')}
-    <p class="formula">Score = 2 × priority (high 3, medium 2, low 1) + 1.5 × open tickets it unblocks, directly or down the chain + related tickets done in the last 48 h (max 3) + 0.3 × open related tickets (max 4) + 2 if already in todo. A rank in order.md always comes first.</p>
+  const row = (t) => `
+    <button class="item${t.id === selected ? ' on' : ''}" data-id="${t.id}" style="--c:var(--${t.advice.kind})">
+      <span class="id">${t.id}</span><span class="t">${esc(t.title)}</span>
+      <span class="score"><i class="dot"></i></span>
+      <span class="why">${esc(t.advice.short)}</span>
+    </button>`;
+  const family = (f, i) => {
+    const ready = f.members.filter((t) => t.advice.kind === 'next' || t.advice.kind === 'ready');
+    const key = f.parent.id;
+    const isOpen = familyOpen.has(key) ? familyOpen.get(key) : i < 3;
+    return `
+      <details class="group family${focusFamily === key ? ' focused' : ''}" data-f="${key}" ${isOpen ? 'open' : ''} style="--c:var(--${i === 0 && ready.length ? 'next' : 'done'})">
+        <summary><i></i><span class="fam-title"><span class="id">${key}</span> ${esc(f.parent.title)}</span><b>${f.members.length}</b></summary>
+        <div class="fam-meta">
+          <span>done · last touched ${fmtFull(f.parent.msUpdated)}${familySort === 'heavy' ? ' · weight ' + familyWeight(f) : ''}</span>
+          <span class="fam-actions">
+            <button class="mini" data-show="${key}">Show</button>
+            ${ready.length ? `<button class="mini" data-pick="${key}">Pick ${ready.length} ready</button>` : ''}
+          </span>
+        </div>
+        ${f.members.map(row).join('')}
+      </details>`;
+  };
+  const firstReady = familyList.findIndex((f) => f.members.some((t) => t.advice.kind === 'next'));
+  el.innerHTML = `<h2>Left behind by done work</h2>
+    <p class="lede">${plural(openCount, 'open ticket')}, each under the done ticket it came from.</p>
+    <div class="seg sort" id="family-sort"><span>First</span>
+      <button data-v="warm" aria-pressed="${familySort === 'warm'}" title="The done ticket touched most recently first">Warmest</button>
+      <button data-v="heavy" aria-pressed="${familySort === 'heavy'}" title="Most priority ready to start, plus what it frees">Heaviest</button>
+    </div>
+    ${familyList.map(family).join('')}
+    ${rootlessList.length ? `
+      <details class="group" data-f="__rootless" ${familyOpen.get('__rootless') ? 'open' : ''} style="--c:var(--rootless)">
+        <summary><i></i>No done parent<b>${rootlessList.length}</b></summary>
+        <p class="hint">Nothing it points to is done yet: fresh ideas, or leftovers of work still open.</p>
+        ${rootlessList.map(row).join('')}
+      </details>` : ''}
+    <p class="formula">How a parent is found: the done ticket in the open ticket's own <code>related</code> or <code>blocked_by</code> that was created closest before it. The row's colour is its state: ${['next', 'ready', 'hold', 'reconsider', 'rootless'].map((k) => `<span class="swatch" style="--c:var(--${k})"></span>${ADVICE[k].name.toLowerCase()}`).join(', ')}. ${firstReady > 0 ? 'The families above the first gold one have nothing ready.' : ''}</p>
     <div class="legend">
       ${legendShape('circle')}<span>feature</span>${legendShape('diamond')}<span>bug</span>
       ${legendShape('square')}<span>task</span>${legendShape('triangle')}<span>chore</span>
@@ -1184,13 +1250,44 @@ function legendShape(kind) {
     : `<path d="M13 1.5 L19 12 L7 12Z" fill="${c}"/>`;
   return `<svg width="26" height="14">${inner}</svg>`;
 }
+const familyOpen = new Map();
+let focusFamily = null;
+function showFamily(key) {
+  const f = familyList.find((x) => x.parent.id === key);
+  if (!f) return;
+  focusFamily = key;
+  selected = null; renderDetail();
+  const ns = [f.parent, ...f.members].map((t) => nodes.get(t.id)).filter(Boolean);
+  for (const t of [f.parent, ...f.members]) {
+    if (hidden.has(t.status)) { hidden.delete(t.status); store.set('hiddenStatuses', [...hidden]); }
+  }
+  renderChips(); renderAdvice();
+  fitNodes(ns);
+}
 $('#advice').addEventListener('click', (e) => {
+  const sort = e.target.closest('#family-sort button');
+  if (sort) {
+    familySort = sort.dataset.v; store.set('familySort', familySort);
+    familyOpen.clear(); rankFamilies(); renderAdvice(); renderDetail(); request();
+    return;
+  }
+  const show = e.target.closest('[data-show]');
+  if (show) { e.preventDefault(); return showFamily(show.dataset.show); }
+  const pick = e.target.closest('[data-pick]');
+  if (pick) {
+    e.preventDefault();
+    const f = familyList.find((x) => x.parent.id === pick.dataset.pick);
+    for (const t of f.members) if (t.advice.kind === 'next' || t.advice.kind === 'ready') decisions.set(t.id, 'pick');
+    store.set('decisions:' + board.board, [...decisions]);
+    renderTray(); renderDetail(); request();
+    $('#tray').hidden = false;
+    return;
+  }
   const b = e.target.closest('.item'); if (b) select(b.dataset.id, true);
 });
 $('#advice').addEventListener('toggle', (e) => {
-  const d = e.target; if (!d.dataset || !d.dataset.k) return;
-  const s = store.get('groups', { next: true, active: true, reconsider: true });
-  s[d.dataset.k] = d.open; store.set('groups', s);
+  const d = e.target; if (!d.dataset || !d.dataset.f) return;
+  familyOpen.set(d.dataset.f, d.open);
 }, true);
 
 function linkList(title, ids) {
@@ -1209,12 +1306,16 @@ function renderDetail() {
   if (!t) return;
   const a = t.advice;
   const dec = decisions.get(t.id);
+  const siblings = a.parent ? familyList.find((f) => f.parent.id === a.parent).members.filter((x) => x.id !== t.id).length : 0;
   const adviceBox = a.kind === 'closed' ? '' : `
     <div class="advice-box" style="--c:var(--${a.kind})">
       <strong>${ADVICE[a.kind].name}</strong>
-      ${a.reasons.length ? `<p>${esc(a.reasons.join(' '))}</p>` : ''}
-      <table>${a.parts.map((p) => `<tr><td>${esc(p[0])}</td><td>${p[1] ? '+' + p[1].toFixed(1) : '0'}</td></tr>`).join('')}
-        <tr class="sum"><td>Score${t.rank ? ' (order.md rank #' + t.rank + ' comes first)' : ''}</td><td>${a.score.toFixed(1)}</td></tr></table>
+      <p>${a.parent
+        ? `Came from done <button class="inline-link" data-id="${a.parent}">${a.parent}</button>${siblings ? `, together with ${plural(siblings, 'other open ticket')}` : ''}.`
+        : 'Points to no done ticket yet.'}
+      ${a.unlocks.length ? ` Finishing it frees ${plural(a.unlocks.length, 'ticket')}.` : ''}
+      ${a.reasons.length && a.kind !== 'active' ? ' ' + esc(a.reasons.join(' ')) : ''}</p>
+      ${a.parent ? `<p><button class="mini" data-show="${a.parent}">Show this family on the map</button></p>` : ''}
     </div>`;
   const others = [...related.get(t.id)];
   el.innerHTML = `
@@ -1243,7 +1344,8 @@ function renderDetail() {
 }
 $('#detail').addEventListener('click', (e) => {
   if (e.target.closest('#close')) return select(null);
-  const l = e.target.closest('.link'); if (l) return select(l.dataset.id, true);
+  const l = e.target.closest('.link, .inline-link'); if (l) return select(l.dataset.id, true);
+  const f = e.target.closest('[data-show]'); if (f) return showFamily(f.dataset.show);
   const d = e.target.closest('[data-d]'); if (d) decide(selected, d.dataset.d);
 });
 
@@ -1352,7 +1454,9 @@ function markdown(src) {
 // ---------- selection & search ----------
 function select(id, fly = false) {
   selected = id && byId.has(id) ? id : null;
-  if (selected && hidden.has(byId.get(selected).status)) { hidden.delete(byId.get(selected).status); store.set('hidden', [...hidden]); renderChips(); }
+  if (!id && focusFamily) { focusFamily = null; renderAdvice(); }
+  if (selected && hidden.has(byId.get(selected).status)) { hidden.delete(byId.get(selected).status); store.set('hiddenStatuses', [...hidden]); renderChips(); }
+  if (selected && byId.get(selected).settled && !showSettled) { showSettled = true; store.set('settled', true); renderChips(); }
   if (selected && byId.get(selected).ms > timeCut) { timeCut = Infinity; $('#time').value = 1000; updateTimeLabel(); }
   renderDetail();
   document.querySelectorAll('#advice .item').forEach((b) => b.classList.toggle('on', b.dataset.id === selected));

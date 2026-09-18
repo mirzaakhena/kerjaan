@@ -199,12 +199,20 @@ far as you like: far out it is a constellation, close in every point carries its
 ID, then its title, then its type, priority and labels.
 
 It groups by status, type or label into lanes, or by nothing at all, so that
-related tickets drift together. A side panel reads `blocked_by` and `related` to
-sort the open tickets into *pick next*, *on hold*, *reconsider* (what it
-depended on was cancelled) and *skip or cancel?*, with the score behind each
-one shown in full. Open a ticket, press 1–4 to pick it up, hold, skip or cancel
-it, and the map writes those decisions out as text to paste to Claude. The map
-itself never writes to the board.
+related tickets drift together. Cancelled tickets start hidden, and so do
+*settled* done tickets — done, with every relation done or cancelled — since
+neither bears on what comes next.
+
+The side panel answers *what should come out of backlog next*, reading
+`related` as "came from". Every open ticket sits under its parent: the done
+ticket in its own `related` or `blocked_by` created closest before it. A family
+is what that finished work left behind, and the panel lists families either
+warmest first (the parent touched most recently, while the work is still
+fresh) or heaviest first (the most priority ready to start, plus what it
+frees). Inside a family, what can start comes before what is still blocked.
+Open a ticket, or a whole family, and press 1–4 to pick it up, hold, skip or
+cancel it; the map writes those decisions out as text to paste to Claude. The
+map itself never writes to the board.
 
 It is live: the server watches `.kerjaan/`, so a ticket moved by hand, by a
 script or by Claude glides to its new place while the page is open, with a

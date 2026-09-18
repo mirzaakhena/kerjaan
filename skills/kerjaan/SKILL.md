@@ -203,8 +203,13 @@ node "${CLAUDE_PLUGIN_ROOT}/skills/kerjaan/scripts/map.mjs" "$PWD" --open
 ```
 
 It reads `.kerjaan/` on every change and writes nothing, so it is not the kind
-of summary the section above forbids. Its advice panel is a heuristic over
-`blocked_by`, `related` and priority, not a decision: the user still chooses.
+of summary the section above forbids. Its advice panel groups every open
+ticket under the done ticket it came from — the done ticket in its own
+`related` or `blocked_by` created closest before it — so the user can pick up
+what a piece of finished work left behind. That is a reading of the links, not
+a decision: the user still chooses. It relies on `related` pointing back to
+where a ticket came from, which is one more reason to fill it in when a ticket
+is born out of another.
 When the user pastes back the decisions it produced, apply them through the
 normal operations below — moving a ticket, writing `order.md`, adding a cancel
 reason — and apply the checks in "What belongs in `todo`" as if the user had
