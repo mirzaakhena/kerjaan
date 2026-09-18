@@ -5,8 +5,9 @@ description: Ticket tracker made of plain markdown files inside a repo, under a 
 
 # kerjaan
 
-A ticket tracker that is nothing but markdown files inside a repo. No server,
-no database, no board view.
+A ticket tracker that is nothing but markdown files inside a repo. No
+database, and no board view stored anywhere — the one view there is, the map,
+is drawn live from the folders.
 
 Three kinds of people read these tickets: the person who owns the work, the
 person or agent who executes it, and **non-technical readers who never write
@@ -189,6 +190,25 @@ one fact, the title, so that a reader sees names rather than numbers; that copy
 is why renaming a ticket goes through the script. Be aware of what this leaves
 uncovered: the check that compares that file against the folder looks at IDs
 alone, so a title edited by hand is the one drift nothing reports.
+
+## The map
+
+When the user asks to see the board, a map, a graph, or what depends on what —
+"show me the map", "tampilkan petanya", "which ticket should be next" when the
+board is too big to answer by reading — start the live map in the background
+and hand over the address it prints:
+
+```bash
+node "${CLAUDE_PLUGIN_ROOT}/skills/kerjaan/scripts/map.mjs" "$PWD" --open
+```
+
+It reads `.kerjaan/` on every change and writes nothing, so it is not the kind
+of summary the section above forbids. Its advice panel is a heuristic over
+`blocked_by`, `related` and priority, not a decision: the user still chooses.
+When the user pastes back the decisions it produced, apply them through the
+normal operations below — moving a ticket, writing `order.md`, adding a cancel
+reason — and apply the checks in "What belongs in `todo`" as if the user had
+asked in words, because they did.
 
 ## Writing style
 

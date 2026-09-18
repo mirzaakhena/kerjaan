@@ -1,7 +1,8 @@
 # kerjaan
 
 A ticket tracker that is nothing but markdown files inside your repo. No
-server, no database, no board view. Built as a
+database, and no board view stored anywhere — the one view there is gets drawn
+live from the folders. Built as a
 [Claude Code plugin](https://docs.claude.com/en/docs/claude-code/plugins),
 though the format works just as well by hand.
 
@@ -181,6 +182,36 @@ refill `todo` from `backlog` only when `todo`, `in_progress` and `review` are
 all three empty — a ticket still in review can be handed straight back, so
 until then the board does not yet know what it finished.
 
+## The map
+
+When the board outgrows `ls`, draw it:
+
+```bash
+node skills/kerjaan/scripts/map.mjs /path/to/repo --open
+```
+
+Every ticket is a point. Top to bottom is the time it was created, and tickets
+written in the same minute sit side by side. Colour is the status, shape the
+type (circle feature, diamond bug, rounded square task), size the priority, and
+the ring around a point is how much of its `Done when` is ticked. Arrows run
+from a blocker to the ticket it holds up; soft curves are `related`. Zoom as
+far as you like: far out it is a constellation, close in every point carries its
+ID, then its title, then its type, priority and labels.
+
+It groups by status, type or label into lanes, or by nothing at all, so that
+related tickets drift together. A side panel reads `blocked_by` and `related` to
+sort the open tickets into *pick next*, *on hold*, *reconsider* (what it
+depended on was cancelled) and *skip or cancel?*, with the score behind each
+one shown in full. Open a ticket, press 1–4 to pick it up, hold, skip or cancel
+it, and the map writes those decisions out as text to paste to Claude. The map
+itself never writes to the board.
+
+It is live: the server watches `.kerjaan/`, so a ticket moved by hand, by a
+script or by Claude glides to its new place while the page is open, with a
+note saying what changed. A slider replays the board being written, ticket by
+ticket. It needs Node 18 or newer and nothing else, listens on `127.0.0.1`
+only, and dies with its process.
+
 ## Two tickets at once
 
 Tickets sharing a group in `order.md` have already been declared independent,
@@ -317,7 +348,9 @@ to whoever is doing it, that is the signal to check who it was for.
   folders. The one non-ticket file, `order.md`, is not a counter-example: what
   it exists for — sequence and reasoning — is something no folder can express.
   It copies one fact, each ticket's title, so the file reads as names rather
-  than numbers, and the rename script keeps that copy in step.
+  than numbers, and the rename script keeps that copy in step. Nor is the map:
+  it reads the folders again on every change and keeps nothing, so there is
+  nothing in it to go stale.
 - **No change log inside the ticket.** Just `updated`. Git already holds the
   full history.
 - **No opinion about git.** How tickets relate to commits is left to each
