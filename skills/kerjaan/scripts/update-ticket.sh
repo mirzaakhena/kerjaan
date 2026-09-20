@@ -227,19 +227,28 @@ if [ -f "$order" ] && [ "$current_status" = "todo" ] && [ "$dest_status" != "tod
     otmp="$(mktemp)"
     # Drops the ticket's bullet, then drops any group left with no bullets at
     # all — a lead-in sentence introducing nothing is worse than no group.
-    # A group starts at its bold lead-in and runs to the next one, so a lead-in
+    # A block runs from its bold opening line to the next one, so a lead-in
     # wrapped over two lines stays whole. Treating every non-bullet line as a
-    # new group would cut such a sentence in half and throw away the first
+    # new block would cut such a sentence in half and throw away the first
     # line, which is the one carrying the reasoning.
+    #
+    # Only a block that actually held a bullet is a group. Prose that merely
+    # starts in bold — a note at the head of the file, a paragraph between two
+    # groups — never had one, so emptiness says nothing about it and it is
+    # printed untouched. Without that distinction every such paragraph
+    # disappears the first time any ticket leaves `todo`, silently, which is
+    # the one failure this file cannot afford: what it carries is the
+    # reasoning, and nothing else records it.
     awk -v id="$id" '
       function flush(   i) {
-        if (started && kept) { for (i = 0; i < n; i++) print buf[i] }
-        n = 0; kept = 0
+        if (started && (kept || !had_bullet)) { for (i = 0; i < n; i++) print buf[i] }
+        n = 0; kept = 0; had_bullet = 0
       }
-      BEGIN { n = 0; kept = 0; started = 0 }
+      BEGIN { n = 0; kept = 0; had_bullet = 0; started = 0 }
       {
         if ($0 ~ /^\*\*/) { flush(); started = 1 }
         if ($0 ~ /^- /) {
+          had_bullet = 1
           if (index($0, "- " id " ") == 1) { next }
           kept = 1
         }

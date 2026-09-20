@@ -37,6 +37,9 @@ The format is four rules:
 - **The bold lead-in says why, in one sentence.** That sentence is the reason
   the file exists — it is the part that lives nowhere else on the board. It may
   wrap over several lines; the group runs from one bold lead-in to the next.
+  What makes a group is the bullets under it, not the bold: a paragraph that
+  starts in bold and introduces no ticket is ordinary prose, and the script
+  leaves it alone. Write the note at the head of the file however reads best.
 - **A bullet is exactly `- <id> <title>` and nothing else.** Reasoning belongs
   in the lead-in. Keeping the line to that shape is what lets the script edit
   it safely.
