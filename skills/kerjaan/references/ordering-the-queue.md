@@ -102,7 +102,7 @@ whether the previous thing is done.
 
 All three empty is a different thing entirely: nothing is in flight, nothing is
 waiting on a verdict, and the board is genuinely between batches. Then propose
-a batch from `backlog` that passes both questions in SKILL.md, with the order
+a batch from `backlog` that passes both questions under "Into `todo`" in SKILL.md, with the order
 and the reasons, and let the user cut it down:
 
 > The board is empty — nothing in `todo`, `in_progress` or `review`. From the

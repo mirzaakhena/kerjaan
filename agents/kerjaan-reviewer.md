@@ -76,8 +76,9 @@ looking at the right tree**, using the section below: on a board that works
 tickets in parallel, the change may not be in the repo you were dispatched
 into at all.
 
-**5. The checks this project can run.** Read them off the repo rather than
-guessing:
+**5. The checks this project can run.** If `.kerjaan/settings.md` has a
+`test_command`, that is the owner's own answer: run it first. Otherwise, or to
+find checks beyond it, read them off the repo rather than guessing:
 
 | If you find | Read the checks from |
 |---|---|

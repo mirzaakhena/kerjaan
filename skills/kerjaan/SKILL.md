@@ -5,16 +5,38 @@ description: Ticket tracker made of plain markdown files inside a repo, under a 
 
 # kerjaan
 
-A ticket tracker that is nothing but markdown files inside a repo. No
-database, and no board view stored anywhere — the one view there is, the map,
-is drawn live from the folders.
+A ticket tracker that is nothing but markdown files inside a repo. No database,
+and no board view stored anywhere.
 
 Three kinds of people read these tickets: the person who owns the work, the
-person or agent who executes it, and **non-technical readers who never write
-anything**. That third audience drives nearly every rule below. Such a reader
-opens a single file, carries no context about the system, and must immediately
-understand what is happening and what is being asked. A ticket that only makes
-sense to someone who already knows the codebase has failed.
+person or agent who executes it, and non-technical readers who never write
+anything. That third audience drives most rules below. Such a reader opens one
+file with no context about the system and must understand at once what is
+happening and what is being asked. A ticket that only makes sense to someone
+who already knows the codebase has failed.
+
+## Quick reference
+
+```bash
+K="${CLAUDE_PLUGIN_ROOT}/skills/kerjaan/scripts"      # always run from the repo root
+
+"$K/new-ticket.sh" backlog "Send notifications through Telegram"   # prints the new path
+"$K/update-ticket.sh" 260905160401 --status in_progress            # move
+"$K/update-ticket.sh" 260905160401 --title "A clearer title"       # rename
+"$K/update-ticket.sh" 260905160401                                 # after editing prose
+ls .kerjaan/*/"260905160401 "*.md                                  # find by ID; the folder is its status
+```
+
+The rules that are broken most often, each explained further down:
+
+1. **Work starts from a ticket** the user has seen — search first, create if none.
+2. **Move a ticket to `in_progress` before the first change to the repo.**
+3. **Every change to a ticket goes through `update-ticket.sh`**, never a bare `mv`.
+4. **Before `review`, tick `Done when` line by line** against what the work produced.
+5. **Once a ticket is in `review/`, stop touching its code.**
+6. **Never review your own work.** The reviewer decides and moves the file.
+7. **Never pass `--ack-unmerged` on your own.** That decision is the owner's.
+8. Never write a status summary, index or dashboard into `.kerjaan/`.
 
 ## The board
 
@@ -26,298 +48,60 @@ sense to someone who already knows the codebase has failed.
 ├── review/       done, not yet verified
 ├── done/         passed review
 ├── cancel/       abandoned
-└── order.md      the order to pick `todo` up in — optional, see below
+├── order.md      the order to pick `todo` up in — optional
+└── settings.md   language, test command, long-lived branches
 ```
 
-The folder is the **only** thing that determines status. There is no `status`
-field inside the file, precisely so two sources of truth can never disagree.
-Moving the file is the only way to change status.
+The folder is the only thing that determines status. There is no `status`
+field in the file, so two sources of truth can never disagree. Each folder
+holds a `.gitkeep` so empty folders survive in git.
 
-Each folder holds a `.gitkeep` so that empty folders survive in git.
+`update-ticket.sh` enforces one gate — see "Into `in_progress`" — and no
+sequence otherwise. The other gates in "The life of a ticket" are yours to keep.
 
-### `in_progress` is not optional
+### Settings
 
-Move a ticket to `in_progress` **before the first change to the repo**, even
-when you fully intend to finish it in one sitting. Especially then.
+`.kerjaan/settings.md` holds what the board cannot guess: the language ticket
+prose is written in, the command that runs the project's checks (the reviewer
+runs it first), and which branches live outside `HEAD` on purpose. When it is
+missing — `new-ticket.sh` says so — work out likely values from the repo
+(the language of existing tickets, `package.json`/`Makefile`/CI, the branch
+list), put them to the owner in one message, and write the file from
+`${CLAUDE_PLUGIN_ROOT}/skills/kerjaan/SETTINGS.md`. Ask once; after that the
+file is the answer.
 
-The temptation to skip it is strong and always sounds reasonable: the ticket
-would live there for a few minutes, nobody would read it in that window, and
-moving it twice feels like ceremony. That reasoning has one flaw — **the board
-does not exist for whoever is doing the work.** It exists for the person who
-opens the repo and wants to know what is in flight without reading a
-conversation log or a diff.
+### Starting a session
 
-That person is failed in two ways when the step is skipped, and the second is
-far more expensive than the first.
-
-The small failure is accuracy: even when the work finishes cleanly, nobody could
-have told at any point that it had started.
-
-The large failure is recovery. Work stops half-done more often than anyone plans
-for — a session ends, a laptop hangs, a connection drops, attention moves. What
-is left behind is a board saying `todo` and a working tree that already
-disagrees. The question then is not "is this board accurate", it is **"where was
-I?"** — and that answer exists nowhere. `git status` shows which files changed,
-not which ticket they belonged to. The conversation that would have explained it
-is gone with the session. Reconstructing it means reading a diff and guessing at
-intent, which is exactly the work the board was supposed to make unnecessary.
-
-Beware the rationalisation that makes this feel safe: *"I will start and finish
-in one breath, so the ticket would only sit in `in_progress` for a moment."*
-That reasoning assumes the breath completes. It plans for the case where the
-step was unnecessary and ignores the case where it was the only thing that would
-have helped.
-
-The cost of the rule is one command. The cost of skipping it is not knowing
-where you were.
-
-## What belongs in `todo`
-
-`todo` answers a question no other folder can: **what should somebody pick up
-next?** It is the queue for one working session — the batch meant to be
-finished before the board goes quiet again. That also makes it the folder most
-likely to rot, because nothing
-breaks when a ticket is filed there too early. It simply sits, looking ready,
-until someone picks it up and finds out it was not.
-
-Two separate questions decide it, and mixing them is exactly what turns `todo`
-into a second backlog.
-
-### Is it ready?
-
-Mechanical, not a matter of taste. All four must hold:
-
-- **`blocked_by` is empty, or every ID in it is in `done/`.** One glob settles
-  it: `ls .kerjaan/*/"260905160401 "*.md` shows the blocker's status without
-  opening it.
-- **`Done when` can be checked by a non-technical person.** "The refactor is
-  complete" is not a criterion, it is a feeling. Promoting a ticket written
-  that way hands the job of finishing the ticket to whoever executes it, at the
-  moment they are least able to ask the person who wanted it.
-- **No decision is still waiting on the user.** A ticket carrying an open
-  question is not ready, however clear the rest of it reads.
-- **`type` and `priority` are filled in.** `assign_to` may still be empty;
-  who picks a ticket up is often settled by somebody picking it up.
-
-### Should it be next?
-
-A judgement, and the user's to make. A ticket earns its place when at least one
-of these is true:
-
-- it holds up other tickets, so every day it waits costs more than a day
-- it is groundwork the rest of the work stands on
-- it is small enough to finish quickly, and the board reads better without it
-- it belongs with something just finished or in flight, so the context is still
-  warm
-
-### Size is a reason to split, not a reason to wait
-
-Never defer a ticket for being big. Groundwork almost always is, and a board
-that defers by size fills with small wins while the one heavy thing everything
-else waits on stays in `backlog`.
-
-A ticket too big to start is usually a ticket whose `Request` holds several
-outcomes at once. Split it by outcome and each piece passes on its own. Size
-justifies waiting only when the ticket genuinely cannot be split **and** none
-of the four reasons above pushes it.
-
-When a ticket is split, the original keeps its ID and becomes the first piece.
-Criteria that moved elsewhere are struck through with a pointer to the ticket
-that took them, exactly as a voided criterion is struck, and each new ticket
-carries `related: [<the original ID>]`. Nothing is deleted and no ticket is
-retired, so a reference followed months later still lands somewhere.
-
-### When the user asks for a move you would not have made
-
-Run the checks, name in one line the single thing that failed, then do as they
-say:
-
-> This one is still `blocked_by` 260907135503, which is sitting in `todo`
-> itself — move it anyway?
-
-Neither a silent refusal nor silent compliance. The check puts the fact in
-front of them; the decision stays theirs.
-
-### Clear the whole queue before starting any of it
-
-**No ticket leaves `todo` for `in_progress` while any ticket in `todo` still
-has an open question.** Not just the one about to start — all of them.
-
-Before the first move, read every ticket in `todo` against "Is it ready?"
-above, and as the person about to execute it: is there a line you would have
-to guess at, a choice between two readings, a criterion you could not check?
-Collect every such question from every ticket and put them to the user
-**together**, in one message. Write each answer back into the ticket it
-belongs to — `Request`, `Done when`, or `## Notes` — then run `update-ticket.sh`
-on it. An answer that lives only in the conversation is gone when the session
-ends.
-
-Only when every ticket in `todo` reads as ready may work start: one ticket at
-a time, or several side by side where `order.md` groups them (see "Working two
-tickets at once").
-
-The reason is the shape of a session. Questions discovered one ticket at a
-time arrive in the middle of the work, each one stopping it until the user
-comes back — and the later tickets are exactly the ones nobody looked at while
-the user was still there. Asking everything up front costs the user one
-sitting, after which the queue can run to the end without waiting on anyone.
-
-A ticket that joins `todo` after the sweep is swept before the next move out
-of `todo`. If a question only surfaces mid-work, it belongs to the ticket in
-`in_progress`: ask it, and write the answer back the same way.
-
-## The order of the queue
-
-A folder has no order, and `blocked_by` covers only the hard case where one
-ticket cannot start until another finishes. When `todo` holds more than one
-ticket and the sequence matters, it is written in `.kerjaan/order.md`: groups
-of tickets that may run in any order, listed in the order the groups should be
-taken, each introduced by one bold sentence saying why. That sentence is the
-reason the file is allowed to exist — it lives nowhere else on the board.
-
-`update-ticket.sh` keeps the file in step by itself: a ticket leaving `todo`
-loses its line, and a rename rewrites its title there.
-
-**Read `${CLAUDE_PLUGIN_ROOT}/skills/kerjaan/references/ordering-the-queue.md` before writing or editing that file, and
-before refilling `todo` from the backlog.** It holds the format, the rule for
-when refilling is due, and the command that finds a file and a folder which
-have drifted apart.
-
-## Working two tickets at once
-
-One ticket at a time is the normal way to work, and most boards need nothing
-else. Two tickets in the same group in `order.md` have already been declared
-independent of each other, which is the licence to run them side by side in
-separate git worktrees, on branches whose names carry the ticket ID.
-
-One trap has to be named here rather than left to be discovered: `.kerjaan/`
-lives inside the repository, so a worktree checks out **a second board**, which
-starts disagreeing with the first immediately and says so to nobody. Both
-scripts refuse to run from a linked worktree for that reason.
-
-**Read `${CLAUDE_PLUGIN_ROOT}/skills/kerjaan/references/parallel-work.md` before creating a worktree.** It holds the
-three commands — including the one that keeps the board out of the worktree —
-and what `done` does and does not mean while a branch is still unmerged.
-
-## What is deliberately absent
-
-Do not create an index, a board README, a status summary, or any kind of
-dashboard inside `.kerjaan/`. This is a design decision, not an oversight: the
-moment a summary exists, it starts going stale and quietly lying. To answer a
-question like "what are we working on", read the folders directly:
+The first time you touch the board in a session, look for work somebody left:
 
 ```bash
-ls .kerjaan/in_progress/
-grep -l 'priority: high' .kerjaan/todo/*.md
+ls .kerjaan/in_progress/ .kerjaan/review/
 ```
 
-Answer in conversation. Do not write the answer to a file.
+Anything there that this session did not put there is either stuck or
+forgotten. Tell the user before starting anything new: for `in_progress`, what
+the ticket is and whether to resume it; for `review`, dispatch
+`kerjaan-reviewer` on it (see `references/review.md`, "Tickets stuck in
+`review/`"). A session that skips this starts new work on top of old, and the
+old stays stranded.
 
-`order.md` is the only file in `.kerjaan/` that is not a ticket, and it is not
-an exception to this rule so much as a demonstration of it: what it is for —
-the sequence and the reasoning behind it — no folder can express. It does copy
-one fact, the title, so that a reader sees names rather than numbers; that copy
-is why renaming a ticket goes through the script. Be aware of what this leaves
-uncovered: the check that compares that file against the folder looks at IDs
-alone, so a title edited by hand is the one drift nothing reports.
-
-## The map
-
-When the user asks to see the board, a map, a graph, or what depends on what —
-"show me the map", "tampilkan petanya", "which ticket should be next" when the
-board is too big to answer by reading — start the live map in the background
-and hand over the address it prints:
-
-```bash
-node "${CLAUDE_PLUGIN_ROOT}/skills/kerjaan/scripts/map.mjs" "$PWD" --open
-```
-
-It reads `.kerjaan/` on every change and writes nothing, so it is not the kind
-of summary the section above forbids. Its advice panel groups every open
-ticket under the done ticket it came from — the done ticket in its own
-`related` or `blocked_by` created closest before it — so the user can pick up
-what a piece of finished work left behind. That is a reading of the links, not
-a decision: the user still chooses. It relies on `related` pointing back to
-where a ticket came from, which is one more reason to fill it in when a ticket
-is born out of another.
-When the user pastes back the decisions it produced, apply them through the
-normal operations below — moving a ticket, writing `order.md`, adding a cancel
-reason — and apply the checks in "What belongs in `todo`" as if the user had
-asked in words, because they did.
-
-## Writing style
-
-Structure is always English: folder names, frontmatter keys, `type` values,
-`priority` values, `review` values, and the content headings. These never vary from ticket
-to ticket, so they stay fixed regardless of who is reading.
-
-Prose follows whatever language the ticket's readers actually speak. English is
-the default, but a team whose stakeholders read Indonesian should write
-`Background`, `Request`, and the checklist in Indonesian — the English headings
-above them stay exactly as they are. Pick one language per board and stay with
-it, so that nobody has to guess which tickets they can read.
-
-What matters far more than the language is the register: write so that someone
-outside the technical team understands it without asking follow-up questions.
-
-If you are unsure whether something counts as structure or content, ask: is
-this word identical in every ticket? If yes, it is structure.
-
-## File names
+## Ticket files
 
 ```
-<ticket_id> <title>.md
+<ticket_id> <title>.md          e.g.  260905160401 Send notifications through Telegram.md
 ```
 
-Example: `260905160401 Send notifications through Telegram.md`
-
-**The title lives only in the file name.** There is no `title:` key in the
-frontmatter and no H1 heading inside the file. One title, one place, so nothing
-can be left behind when it is updated.
-
-File names contain spaces, so **always quote them** in the shell.
-`mv .kerjaan/todo/260905160401 Send*.md` fails in a confusing way;
-`mv ".kerjaan/todo/260905160401 Send notifications through Telegram.md" ...`
-does not.
-
-### Ticket ID
-
-Format `yymmddhhmmxx` — year, month, day, hour, minute, then a 2-digit sequence
-number for that same minute. So `260905160401` is the first ticket created on
-2026-09-05 at 16:04.
-
-The ID is permanent. The title may change, the content may change, the status
-may change — the ID never does. That is why every cross-reference between
-tickets uses the ID rather than the file name.
-
-Do not compute the ID yourself. `scripts/new-ticket.sh` handles it, because it
-scans all six folders at once to find the correct sequence number — including
-tickets that have already moved on to `done/` — and locks the board while doing
-so, so two simultaneous creations cannot produce the same ID.
-
-### Identity lives only in the file name
-
-Just like the title, **the ID is never written inside the file**. There is no
-`id:` key. The principle in one sentence: a ticket never states its own
-identity in its contents — it only states the identity of other tickets.
-
-This is why `related` and `blocked_by` still hold IDs and do not violate the
-rule: both point at *other* tickets rather than repeating the ticket's own
-identity. And because `id:` is gone, changing a ticket's ID is far cheaper —
-only its own file name plus the references pointing at it need to change.
-
-The trade-off to be aware of: if a file name is damaged or lost, its ID is gone
-entirely, since no copy exists inside the file. Git history is the only safety
-net, so do not rename files outside the ways described here.
-
-### Finding a ticket by ID
-
-Because the ID is in the file name, a glob is enough — and the result also
-tells you the ticket's status without opening it:
-
-```bash
-ls .kerjaan/*/"260905160401 "*.md
-```
+- **The title lives only in the file name**: no `title:` key, no H1. One title,
+  one place, so nothing is left behind when it changes.
+- **The ID lives only in the file name** too: no `id:` key. A ticket states the
+  identity of other tickets (`related`, `blocked_by`), never its own. Git
+  history is the only copy, so never rename a ticket except through the script.
+- **The ID is `yymmddhhmmxx`** — creation minute plus a two-digit sequence, so
+  `260905160401` is the first ticket of 2026-09-05 16:04. It never changes,
+  which is why every cross-reference uses the ID. Do not compute it yourself:
+  `new-ticket.sh` scans all six folders under a lock to pick it.
+- **File names contain spaces: always quote them.**
+  `mv .kerjaan/todo/260905160401 Send*.md` fails confusingly.
 
 ## Anatomy of a ticket
 
@@ -325,7 +109,7 @@ ls .kerjaan/*/"260905160401 "*.md
 ---
 type: feature
 priority: high
-review: strict
+review:
 labels: [telegram-bot, backend]
 reporter: mirza
 assign_to: claude
@@ -345,196 +129,75 @@ blocked_by: []
 - [ ] ...
 
 ## Notes
-...
+(none yet)
 ```
-
-Bug tickets carry one extra heading, `## How to reproduce`, placed between
-`Background` and `Request`. See below.
 
 | Field | Value |
 |---|---|
-| `type` | `bug`, `feature`, or `task` |
+| `type` | `bug`, `feature`, or `task` — nothing else; anything neither a defect nor a new capability is a `task` |
 | `priority` | `high`, `medium`, or `low` |
-| `review` | `quick`, `normal`, or `strict`; empty means `quick` |
+| `review` | `quick`, `normal`, or `strict`; empty means `quick` — see "Moving to `review`" |
 | `labels` | list; may be `[]` |
 | `reporter` | who asked for this |
-| `assign_to` | who executes it; may be empty if undecided |
+| `assign_to` | who executes it; may be empty |
 | `created` | `YYYY-MM-DD HH:MM:SS`, never changes |
-| `updated` | `YYYY-MM-DD HH:MM:SS`, refreshed on every change |
-| `related` | IDs of tickets connected as peers; may be `[]` |
-| `blocked_by` | IDs of tickets that must finish first; may be `[]` |
+| `updated` | refreshed by the script on every change |
+| `related` | peer tickets ("connected to that"); may be `[]` |
+| `blocked_by` | tickets that must finish first; may be `[]` |
 
-Every field is always present. Unused ones are left empty (`[]` for lists)
-rather than deleted — a file shape that never varies lets a reader's eye learn
-where to look, and makes `grep` dependable.
-
-There are only three types. Anything that is neither a defect nor a new
-capability is a `task`. Resisting the urge to add more types is part of the
-design: every extra type forces the ticket's author to think about
-categorisation, when what actually matters is the content.
-
-`related` expresses a peer connection ("this is connected to that").
-`blocked_by` expresses a directed dependency ("this cannot start until that is
-finished"). They are separate because only the second one affects the order in
-which work gets done.
-
-### How deeply this ticket gets reviewed
-
-`review` tells the reviewer how hard to dig when this ticket reaches `review/`.
-
-| | What the reviewer does |
-|---|---|
-| `quick` *(default)* | Runs the project's checks once and reads the change against the criteria |
-| `normal` | Proves every criterion by running something, starts the app when a criterion is about what a user sees, and reads the tests for assertions that cannot fail |
-| `strict` | All of `normal`, in a clean copy of the repo, plus deliberately breaking the code to confirm the tests actually catch it |
-
-**Leave it empty unless the ticket needs more.** An empty `review:` means
-`quick`, which is what most tickets want: a wording fix, a renamed button, a
-config change. Depth is expensive — `strict` can install the project's
-dependencies from scratch and run tests again for every piece of code it breaks
-on purpose — and
-spending it on a ticket that did not need it teaches people to route around the
-board.
-
-Reach for `normal` when the criteria describe behaviour rather than content,
-and for `strict` when being wrong is expensive: money, authentication,
-permissions, data that cannot be recovered, anything a customer sees first.
-
-The level bounds effort, **not honesty**. A `quick` review still judges the
-`Done when` list line by line, still refuses to take `## Notes` as evidence,
-and still escalates on its own when something does not add up. What it will not
-do is go looking for trouble that nothing pointed at. Every review records the
-level it ran at in `## Notes`, so a reader can always tell how much a `done`
-actually cost.
-
-#### Do not narrate sabotage in `## Notes`
-
-Breaking an implementation on purpose to watch the tests go red is the
-reviewer's technique, at `strict`, and its value is entirely in being done by
-somebody with no stake. Do it yourself and the result has nowhere to go:
-`## Notes` is the claim under test, never evidence, so a reviewer can only
-record it as a report.
-
-If you do it anyway and find a test that cannot go red, **fix the test and
-commit it.** A test in the repo is something the reviewer runs. A sentence
-about one is not.
-
-#### Suggesting a level, and when not to
-
-**The level is the user's call. Raising it is yours to suggest.** You are the
-one who just read the code, so you know something they do not: whether this
-change sits somewhere that punishes a mistake. Say so in one line, before the
-ticket moves to `review/`, and name the reason rather than the level alone:
-
-> This touches the payment callback — want me to set `review: strict` so the
-> reviewer breaks the code on purpose and checks the tests actually catch it?
-
-Then do what they say. Offer it when the work landed on money, authentication,
-permissions, data that cannot be recovered, or anything a customer hits first —
-and equally when **you are the one who is unsure** your change is right. That
-last case is the most valuable and the easiest to skip.
-
-**When the user has asked for speed, stop offering.** "Ini cuma mock", "buat
-MVP dulu", "yang penting jalan", "jangan lama-lama" — all of these settle the
-question for the work that follows. Use `quick` and say nothing further about
-levels; they have weighed it and chosen.
-
-Do not ask twice about the same ticket — once declined, it is settled. And
-never raise the level on your own: a reviewer that silently costs ten minutes
-when the user expected one is a reviewer they will start working around.
-
-**A level cannot rescue a thin checklist.** The reviewer blocks on `Done when`
-and nothing else, so criteria that only describe the happy path stay unblocked
-at `strict` — it will simply verify that happy path very thoroughly and pass.
-If what actually worries you is an input nobody validated or an error nobody
-handled, the fix is a criterion saying so, not a higher level. Suggest the
-criterion first; suggest the level second.
+Every field is always present, empty rather than deleted, so the shape never
+varies and `grep` stays dependable. `related` vs `blocked_by`: only the second
+affects the order work gets done in. When a ticket is born out of another, put
+that one in `related` — the map and the reviewer's follow-ups rely on the trail.
 
 ### The headings
 
-Fixed order. Four headings appear in every ticket regardless of type, and bug
-tickets add a fifth between the first two. Nothing else varies — that
-uniformity is what makes a ticket readable at a glance.
+Fixed order, same in every ticket. Bug tickets add one, between the first two.
 
 **`## Background`** — the situation as it stands, for a reader who knows
-nothing. No file names, no function names, no unexplained abbreviations. If a
-technical term is unavoidable, explain it once where it first appears.
+nothing. No file names, no function names, no unexplained abbreviations; an
+unavoidable technical term is explained where it first appears.
 
-**`## How to reproduce`** — **bug tickets only.** A numbered list of steps
-anyone can follow to see the problem for themselves, ending with what actually
-happens. Omit the heading entirely on `feature` and `task` tickets rather than
-writing "not applicable" — an empty section teaches readers to skip sections,
-and that habit eventually costs them a section that mattered.
+**`## How to reproduce`** — bug tickets only, and omitted entirely elsewhere
+rather than written as "not applicable". Numbered steps from a cold start that
+anyone can follow, ending with what actually happens.
 
-Write the steps from a cold start: where to begin, what to do, what to look
-for. A reader who has never opened this system should be able to follow them.
+**`## Request`** — the outcome wanted, not the technical means. The means
+change during execution; the outcome does not.
 
-**`## Request`** — the outcome that is wanted, not the technical means of
-getting there. The means change during execution; the wanted outcome does not.
+**`## Done when`** — a `- [ ]` checklist a non-technical person could verify on
+their own. If a criterion can only be checked by reading code, the ticket is
+not finished being written. On a bug, point at the reproduction's outcome ("the
+steps above now produce three replies") rather than restating the steps.
 
-**`## Done when`** — a `- [ ]` checklist of criteria a **non-technical person
-could verify on their own**. This is the most honest test of a ticket's
-quality: if the criteria can only be checked by reading code, the ticket is not
-finished being written.
-
-On a bug ticket, do not restate the reproduction steps here. They are already
-written above; point at their outcome instead ("the steps above now produce
-three replies"). The two sections answer different questions — one shows the
-problem as it stands, the other states what proves it is gone — and repeating
-the steps in both means fixing them in both when the flow changes.
-
-**Criteria can go stale, and a stale one must be struck, not quietly obeyed or
-quietly ignored.** A ticket that sits for a while accumulates decisions made
-after it was written, and one of those decisions eventually contradicts a line
-in this list. When that happens, neither reflex is right: doing the work anyway
-implements something that was deliberately rejected, and skipping it silently
-leaves a reader unable to tell an abandoned criterion from a forgotten one.
-
-Strike the line through, and say in the same breath which decision voided it:
-
-```markdown
-- [x] ~~Supervisors can register new technicians of their own~~ — **voided by
-      [[260907135503]]**, which decided mentoring gets no screens at all
-```
-
-A struck criterion is a fact about the ticket's history, so it stays in the
-file. Deleting it would erase the evidence that somebody considered it and
-decided against it.
-
-**`## Notes`** — optional. Cross-references, decisions, findings. Write
+**`## Notes`** — always present. Cross-references, decisions, findings;
 `(none yet)` when empty.
 
-### Example: poor versus good
-
-Poor — only legible to someone who already knows the repo:
+Poor, legible only to someone who knows the repo:
 
 ```markdown
 ## Background
-`notifier.py` still uses a polling loop, causing a race condition in the
-webhook handler.
-
+`notifier.py` still uses a polling loop, causing a race condition in the webhook handler.
 ## Request
 Refactor to async using `asyncio.Queue`.
-
 ## Done when
 - [ ] `test_notifier.py` passes
 ```
 
-Good — any reader understands it, and the criteria can be checked without help:
+Good — any reader understands it and can check it without help:
 
 ```markdown
 ## Background
 The Telegram bot checks for new messages every few seconds. When two messages
-arrive at nearly the same moment, one of them is sometimes skipped and that
-person never gets a reply.
+arrive at nearly the same moment, one is sometimes skipped and that person
+never gets a reply.
 
 ## How to reproduce
 1. Open a chat with the bot
 2. Send three short messages within one second of each other
 3. Wait ten seconds
 
-Only two replies come back. The third message gets no answer at all, and
-nothing anywhere says it was dropped.
+Only two replies come back, and nothing says the third was dropped.
 
 ## Request
 Messages that arrive together must all still get a reply, with none lost.
@@ -544,316 +207,266 @@ Messages that arrive together must all still get a reply, with none lost.
 - [ ] Run for a full day with no reports of a missed message
 ```
 
-Notice that the good version names no file and no library. Technical detail is
-not forbidden — but technical decisions belong to whoever executes the work,
-not baked into the ticket as a constraint from the start.
+Technical detail is not forbidden; technical decisions belong to whoever
+executes the work, not baked into the ticket from the start.
 
-## Operations
+### Language
 
-### Creating a ticket
+Structure is always English: folder names, frontmatter keys and values, and
+the headings — anything identical in every ticket. Prose follows the language
+the ticket's readers speak, as `language` in `settings.md` records — one per
+board, so nobody has to guess which tickets they can read. Far more than
+the language, the register matters: write so someone outside the technical
+team understands without follow-up questions.
 
-**Search before creating.** The thing being asked for may already have a
-ticket, and two tickets for one outcome split its history in half — each one
-looking like the whole story. Pick two or three keywords from the request, in
-the board's language and in English, and search every folder:
+## The life of a ticket
+
+### Work starts from a ticket
+
+When the user asks for work on a repo that has a board — fix this, add that —
+and no ticket covers it, the ticket comes first: search, create it, and show
+the user its `Request` and `Done when` before touching any code. Those two
+sections are what the work will be judged against; a user who sees them first
+catches a misunderstanding for the price of a sentence, instead of after the
+work is built on it. Start once they agree, or once they correct it.
+
+The exception is the user saying so: "no ticket for this", "langsung saja".
+
+### Creating
+
+**Search first.** Two tickets for one outcome split its history in half. Pick
+two or three keywords, in the board's language and in English, and search
+titles and prose — the title is only in the file name, which `grep` misses:
 
 ```bash
 ls .kerjaan/*/ | grep -i -e 'telegram' -e 'notif'       # titles
 grep -ril -e 'telegram' -e 'notif' .kerjaan/*/          # prose
 ```
 
-Both, because the title lives only in the file name and `grep` reads only the
-contents — a ticket titled differently still turns up in its prose. Then, by
-where the match sits:
+Then, by where a match sits:
 
-- **`backlog`, `todo` or `in_progress`, covering the same outcome** — update
-  that ticket instead: widen its `Background`, `Request` or `Done when`, add to
-  `related` or `blocked_by`, rename it if the title no longer fits. Tell the
-  user which ticket absorbed the request, and why.
-- **Connected but a different outcome** — create the new ticket and link them
-  with `related`, or `blocked_by` when one really must finish first.
-- **`review` or `done`** — do not reopen or widen it; that ticket's claim has
-  already been made. Create a new ticket with `related: [<that ID>]`.
-- **`cancel`** — read the reason it was dropped and tell the user before
-  creating anything; the request may be one that was already decided against.
+- **`backlog`, `todo` or `in_progress`, same outcome** — update that ticket
+  instead (widen `Background`/`Request`/`Done when`, add links, rename if the
+  title no longer fits) and tell the user which ticket absorbed the request.
+- **Connected but a different outcome** — create a new one, linked with
+  `related`, or `blocked_by` when one really must finish first.
+- **`review` or `done`** — its claim has been made; do not widen it. Create a
+  new ticket with `related: [<that ID>]`.
+- **`cancel`** — read why it was dropped and tell the user before creating
+  anything; it may already have been decided against.
+- **Unclear whether it is the same outcome** — ask.
 
-When it is unclear whether a match is the same outcome, ask the user rather
-than guessing.
+Then run `new-ticket.sh` (it creates `.kerjaan/` if missing) and fill in the
+file it prints: every frontmatter field you can, and all prose sections. A bug
+also gets `## How to reproduce` after `Background` — the template leaves it out.
+If there is not enough to write `Background` and `Request` properly, ask
+first: a half-written ticket looks like the work has been recorded when it has
+not.
 
-```bash
-"${CLAUDE_PLUGIN_ROOT}/skills/kerjaan/scripts/new-ticket.sh" backlog "Send notifications through Telegram"
-```
+### Into `todo`
 
-Run it from the repo root. The script creates the `.kerjaan/` structure if it
-is missing, determines the ID, copies the template, then prints the path of the
-file it created.
+`todo` answers what somebody should pick up next. Nothing breaks when a ticket
+lands there too early, so it rots quietly unless two separate questions are
+kept separate.
 
-Then fill that file in: complete `type`, `priority`, `labels`, `reporter`,
-`assign_to`, and write the prose sections. A file straight out of the script is
-empty — leaving it that way is the same as not having created a ticket at all.
+**Is it ready?** Mechanical. All four must hold:
 
-The template holds the four common headings. If this is a bug, add
-`## How to reproduce` yourself, directly after `Background`. It is left out of
-the template on purpose: forgetting to add it to a bug ticket is obvious to the
-first person who tries to reproduce the problem, whereas forgetting to delete
-it from a feature ticket would quietly leave empty sections behind.
+- `blocked_by` is empty, or every ID in it is in `done/`. A blocker sitting in
+  `cancel/` does not count as finished: tell the user, and ask whether the
+  dependency is gone (drop it from `blocked_by`) or this ticket should be
+  cancelled too.
+- `Done when` can be checked by a non-technical person. "The refactor is
+  complete" is a feeling, not a criterion.
+- No decision is still waiting on the user.
+- `type` and `priority` are filled in (`assign_to` may stay empty).
 
-If there is not enough information to write `Background` and `Request`
-properly, ask the user first. A half-written ticket is worse than no ticket,
-because it looks like the work has been recorded.
+**Should it be next?** A judgement, and the user's. A ticket earns its place
+when it holds up other tickets, is groundwork the rest stands on, is small
+enough to clear quickly, or belongs with something just finished or in flight.
 
-### Changing a ticket
+**Size is a reason to split, not to wait.** A ticket too big to start usually
+holds several outcomes in its `Request`; split by outcome. The original keeps
+its ID and becomes the first piece; criteria that moved are struck through
+with a pointer to the ticket that took them, and each new ticket carries
+`related: [<original ID>]`.
 
-All three kinds of change go through the same script, always from the repo
-root:
+**When the user asks for a move you would not have made**, name in one line the
+single check that failed, then do as they say:
 
-```bash
-UPD="${CLAUDE_PLUGIN_ROOT}/skills/kerjaan/scripts/update-ticket.sh"
+> This one is still `blocked_by` 260907135503, which is sitting in `todo`
+> itself — move it anyway?
 
-"$UPD" 260905160401 --status in_progress             # move status
-"$UPD" 260905160401 --title "A clearer title"        # rename
-"$UPD" 260905160401                                  # after editing the prose
-```
+**The order of the queue.** When `todo` holds several tickets and sequence
+matters, it is written in `.kerjaan/order.md`. `update-ticket.sh` keeps that
+file in step (removes a ticket's line when it leaves `todo`, rewrites renamed
+titles). **Read `references/ordering-the-queue.md` before writing or editing
+`order.md`, and before refilling `todo` from `backlog`.**
 
-The first argument may be a 12-digit ID or a file path — use the path when you
-already have it, such as right after creating the ticket. The script prints the
-ticket's current path.
+### Into `in_progress`
 
-Why go through a script when `mv` alone would move the file: every change must
-refresh `updated`, and **forgetting to do so raises no error at all**. The file
-still looks perfect, and the damage only surfaces months later when somebody
-asks when this ticket was last touched and gets a lie for an answer. The script
-binds the two into a single action so that half an action becomes impossible.
+**Clear the whole queue first.** Before the first ticket leaves `todo`, read
+every ticket in `todo` as the person about to execute it: a line you would have
+to guess at, two possible readings, a criterion you could not check? Collect
+those questions from every ticket and ask them together, in one message. Write
+each answer back into its ticket (`Request`, `Done when`, or `## Notes`) and
+run `update-ticket.sh` on it — an answer left in the conversation is gone when
+the session ends. Asked this way the user gives one sitting and the queue can
+then run to the end; asked one ticket at a time, each question stalls the work
+after the user has left. A ticket joining `todo` later is swept before the next
+move out of `todo`; a question that surfaces mid-work is asked then and
+written back the same way.
 
-To change the content or a field, edit the file as ordinary markdown, then call
-the script with no options. Prose really is easier to edit directly — the only
-thing the script locks down is the timekeeping.
+**Then move the ticket to `in_progress` before the first change to the repo** —
+even when you fully expect to finish in one sitting. Especially then. The board
+is not for whoever is doing the work; it is for whoever opens the repo later
+and needs to know what is in flight. Work stops half-done more often than
+anyone plans: a session ends, a connection drops. What is left is a board
+saying `todo` and a working tree that disagrees, and `git status` shows which
+files changed but not which ticket they belonged to. The tempting thought — *"I
+will start and finish in one breath"* — plans only for the case where the step
+was unnecessary. The rule costs one command.
 
-Status moves are unrestricted: any folder to any other folder. `backlog`
-straight to `cancel` is fine. No sequence is enforced.
+**The script refuses the move while other work sits unmerged.** If any local
+branch holds commits outside `HEAD` — other than branches of tickets in
+`in_progress` or `review`, this ticket's own, and `long_lived_branches` in
+`settings.md` — `update-ticket.sh` prints them and changes nothing. That is how
+a ticket that passed review on a branch nobody merged gets noticed: at the
+moment somebody is deciding what happens next. Put the list to the owner and
+let them decide each branch: merge it, delete it, add it to
+`long_lived_branches`, or start anyway. Only on that last answer rerun with
+`--ack-unmerged`; the script writes the branches into the ticket's `## Notes`,
+so the decision outlives the conversation.
 
-**One move has a gate: entering `review`.** Before moving a ticket there, open
-its `Done when` list and tick the boxes one at a time. Not from memory — read
-each line and check it against what the work actually produced. Anything that
-cannot be ticked means the ticket is not ready for `review`, however finished
-the work felt.
+One ticket at a time is normal. Two tickets in the same `order.md` group are
+declared independent and may run side by side in separate git worktrees — but
+a worktree checks out a second copy of `.kerjaan/`, which silently disagrees
+with the first, and the scripts refuse to run there. **Read
+`references/parallel-work.md` before creating a worktree.**
 
-The failure this prevents is specific and easy to fall into: judging the work
-by **what you did** rather than by **what the ticket asked for**. Those two
-drift apart quietly. A criterion written weeks ago describes an outcome nobody
-was thinking about while writing the code, so it goes unmet without anyone
-noticing — and a ticket in `review` claims to be finished, which is a more
-expensive lie than one still sitting in `todo`.
+### Moving to `review`
 
-When a criterion turns out to be unmet, that is ordinary and cheap to handle:
-leave the ticket where it is, append a short note saying which line is
-outstanding and why, and finish it. When a criterion turns out to be **void**
-rather than unmet, strike it as described under `Done when` above.
+**Tick `Done when` first, one line at a time.** Not from memory: read each line
+and check it against what the work actually produced. The failure this
+prevents is judging the work by what you did rather than by what the ticket
+asked for — a criterion written weeks ago easily goes unmet unnoticed, and a
+ticket in `review` claiming to be finished is a more expensive lie than one in
+`todo`.
 
-**And once the ticket is in `review/`, its code stops being yours.** The move
-was the claim that the work is finished; carrying on with it afterwards — even
-to improve it, even to strengthen a test — makes that claim false in the
-quietest possible way. It also leaves the reviewer judging something that moves
-while it reads, which is the hazard it builds clean exports to escape. Here the
-person moving the files would be the one who asked for the review.
+- **Unmet** — the ticket is not ready. Leave it, note which line is
+  outstanding, finish it.
+- **Void** — a later decision contradicts it. Neither do it anyway nor skip it
+  silently; strike it and name what voided it. It stays in the file as history:
 
-If something genuinely remains, the ticket was not ready: move it back to
-`in_progress` and finish it there. Anything found after the handover is either
-the reviewer's finding, which comes back with evidence, or a follow-up. Neither
-is a quiet edit.
+  ```markdown
+  - [x] ~~Supervisors can register new technicians~~ — **voided by
+        [[260907135503]]**, which decided mentoring gets no screens at all
+  ```
 
-Renaming does not change the ID, and references from other tickets need no
-attention, because references use the ID.
+**Depth of review** comes from the `review` field. Leave it empty (`quick`)
+unless the ticket needs more; the level is the user's call, and suggesting a
+higher one is yours. **Read `references/review.md` before the move** whenever
+the work touched money, authentication, permissions, unrecoverable data or
+anything a customer hits first, or when you are unsure your change is right.
 
-### Review happens by itself
+**The move hands the ticket off.** A hook sees the move and tells the session
+to dispatch the `kerjaan-reviewer` subagent. Dispatch it, and do not wait for
+it — pick up the next ticket. The session that did the work dispatches the
+reviewer; it never performs the review itself. From this moment the ticket's
+code is not yours: an edit made now, even to strengthen a test, is one the
+reviewer judges without knowing it happened. If something genuinely remains,
+move the ticket back to `in_progress` and finish it there.
 
-`review` is the one status that does not sit still waiting for someone to
-notice it. The moment a ticket lands there, a reviewer is dispatched:
+### Out of `review`
 
-```
-update-ticket.sh <id> --status review
-        ↓
-scripts/on-ticket-review.sh   (a PostToolUse hook the plugin registers by
-        ↓                      itself, so it covers every repo)
-"dispatch subagent_type kerjaan-reviewer with this ticket ID"
-        ↓
-the reviewer moves the ticket to done/ or back to in_progress/, with a note
-```
+The reviewer decides and moves the ticket — to `done/`, or back to
+`in_progress/` with evidence. Whoever executed a ticket never marks their own
+work `done`. **Read `references/review.md` when a ticket comes back from
+review** — it covers fixing a returned ticket and when to stop and ask the
+owner instead.
 
-The hook fires only when both halves are true: the command really was a move to
-`review`, **and** the ticket file really is in `.kerjaan/review/` afterwards.
-Naming the words in an `echo`, or attempting a move that failed, leaves it
-silent — otherwise a reviewer would be summoned for work that never arrived.
+### When the user says "mark it done"
 
-It finds the board from the command's own output, not from where the session
-happens to be sitting. `update-ticket.sh` prints the ticket's absolute path, so
-a session rooted outside the repo — one driving the board from a folder one
-level up, or from somewhere else entirely — still gets its reviewer, and the
-reviewer is told which repo to open. Only when that output is discarded does
-the hook fall back to looking under the session's own directories.
+The user owns the board, so this is theirs to say, but "done" means passed
+review. Unless they explicitly want to skip review, tick `Done when` as above
+and move the ticket to `review`; tell them in one line that the reviewer will
+move it to `done`. If they do want to skip it — "langsung done saja", "no
+review needed" — move it to `done` and append to `## Notes`:
+`Moved to done by <owner> without review, <date>.` A `done` with no review
+behind it must say so.
 
-**The reviewer decides, and the reviewer moves the file.** Whoever executed the
-ticket does not get to mark their own work `done`; the last word on whether the
-`Done when` list is satisfied belongs to something that did not write the code
-and has no stake in it passing. It judges by running the checks itself rather
-than by believing what `## Notes` claims, and when a criterion fails it hands
-the ticket back with the evidence rather than quietly fixing the code — the
-gap belongs to whoever created it.
+### When the board goes quiet
 
-#### Follow-ups the reviewer finds
+When `todo`, `in_progress` and `review` are all empty, the batch is over — and
+the session that just worked through it knows the code better than any session
+after it will. Use that before the conversation ends, without waiting to be
+asked:
 
-A review turns up things the ticket never asked about. The reviewer does not
-create tickets for them — it cannot ask anybody anything, and a blocking
-finding may never be laundered into one — so it leaves a `### Suggested
-follow-up` block inside the reviewed ticket's `## Notes`, which outlives the
-session in a way its report does not.
+1. Offer the reviewers' suggested follow-ups (`references/review.md`).
+2. Read `backlog` with what you now know, and propose the next few candidates
+   for `todo`: which ones, in what order, and why — what the finished work made
+   possible, cheaper, or urgent. Follow `references/ordering-the-queue.md`.
 
-**Offer them once the batch has landed, not one review at a time.** When
-`in_progress` and `review` are both empty — every ticket that was being worked
-has passed into `done` — collect the `### Suggested follow-up` bullets from
-the tickets that reached `done` this session and put them to the user as **one
-multiple-choice question**, not as prose. Each suggestion is an option; the
-user picks any number of them, or none:
+Propose; do not move. Filling `todo` is deciding what happens next, and that is
+the owner's call even when the reasoning looks obvious.
 
-> The reviewers left three suggestions. Which ones should become tickets?
->
-> - [ ] **Export has no timeout** — from 260905160503
-> - [ ] **Import accepts an empty file** — from 260905160502
-> - [ ] **Settings page has no undo** — from 260905160401
+### Cancelling
 
-In Claude Code that is `AskUserQuestion` with `multiSelect: true`: the label
-is the bold lead of the bullet, the description is the rest of it plus the ID
-it came from. That tool takes at most four options per question and four
-questions per call, so more suggestions are split into several questions,
-grouped by the ticket they came from. Waiting for the whole batch means the
-user decides once, with every suggestion side by side, rather than being
-interrupted after each review — and a suggestion that repeats one from another
-ticket shows as a duplicate instead of becoming two tickets.
+Append the reason to `## Notes` before moving the ticket to `cancel/`. Anyone
+who later searches before creating reads that reason, and without it the same
+idea gets filed and dropped twice.
 
-For every suggestion the user picks, run "Search before creating" first — a
-follow-up is often something already on the board. Then create it in
-`backlog` unless the user says otherwise, with
-`related: [<id of the reviewed ticket>]` so the trail leads back to where the
-finding came from.
+### Editing and renaming
 
-Then record the answer next to each bullet in the reviewed ticket, and run
-`update-ticket.sh` on it:
+Edit prose and fields as ordinary markdown, then run `update-ticket.sh <id>`
+with no options. The script's job is `updated`: forgetting to refresh it raises
+no error and leaves a lie months later. Its first argument may be an ID or a
+path; it prints the ticket's current path. A rename keeps the ID, so other
+tickets' references need no attention.
 
-```markdown
-- **The export runs with no timeout.** ... — **ticketed as [[260925101201]]**
-- **Settings page has no undo.** ... — **declined by the owner, 2026-09-25**
-```
+### Committing
 
-This is what keeps a suggestion from being offered a second time next
-session, and what makes the declined ones an honest record: somebody saw it
-and decided against it, and that decision is worth keeping. A bullet with no
-such mark is one nobody has answered yet.
+The board lives in git so that code and status travel together. Commit when
+the user or the project's own rules call for it — kerjaan does not change who
+decides that — but when you commit work for a ticket, its files under
+`.kerjaan/` go in the same commit, and the message names the ticket ID. Code
+committed without the status move that goes with it leaves the history saying
+the work happened while the board says it had not started. A move with no code
+behind it — a verdict, a cancel, a new ticket — goes in the next commit, never
+left out.
 
-#### When a review sends the ticket back
+## Answering questions about the board
 
-**Fix the kind of mistake, not the instance named.** The reviewer groups what
-it found by kind, but it cannot promise it found every place. Before moving the
-ticket to `review` again, look for the same shape across everything this
-ticket touched and fix it there too. Patching only the line quoted is how one
-mistake turns into three rounds.
-
-The next review is narrower by itself: the reviewer reads its own earlier entry,
-checks what changed since through git, and does not re-prove what nothing has
-touched. Nothing needs passing along. **Do not write instructions for the
-reviewer into `## Notes`** — a request for a lighter look, written by whoever
-did the work, is exactly what an independent gate exists to ignore.
-
-**After the second return, ask before trying again.** The reviewer states the
-round. When a ticket comes back from its second review, do not fix and resubmit
-on your own; put the choice to the ticket's owner in one line:
-
-> This came back twice; what is left is that two permission tests cannot fail.
-> Fix and review a third time, or accept it as is and ticket the tests?
-
-If they accept, append to `## Notes` that the owner accepted the ticket over
-the named findings, create the follow-up ticket with `related: [<this ID>]`,
-and move this one to `done` yourself. That is the one time a ticket reaches
-`done` without a passing review, and the note is what keeps it honest.
-
-**How long it takes is set by the ticket's `review` field**, described under
-the frontmatter above. Empty means `quick`, so by default a review is one run
-of the project's checks plus a read of the change — minutes, not a coffee
-break. Set `review: normal` or `review: strict` before moving the ticket when
-it deserves more; the reviewer reads the field straight out of the file, so
-nothing else has to be passed along. If you only realise afterwards that a
-ticket needed a deeper look, edit the field and dispatch `kerjaan-reviewer`
-again by hand.
-
-Any session may dispatch the reviewer, with one exception that is the whole
-point: **not the session that did the work.** That session should hand the
-ticket off and move on to the next one rather than waiting; the review lands
-when it lands, and a failed review simply puts the ticket back in
-`in_progress`, which is where a board is supposed to put unfinished work.
-
-Reviewing without the hook is fine too — dispatch `kerjaan-reviewer` with a
-ticket ID whenever a ticket has been sitting in `review/`, for instance when it
-got there before the hook existed.
-
-### Why searching is not scripted
-
-Reading the board — `ls`, globs, `grep` — is deliberately left free. When a
-search command is wrong, the output is empty or obviously odd and that is
-immediately visible, so the mistake corrects itself on the next attempt. Only
-operations that fail silently are worth locking into a script. Use whatever
-approach best fits the question being answered.
-
-### When two tickets share an ID
-
-This should be impossible via the script, since the board is locked while the
-sequence number is determined. But files can arrive from outside the script:
-copy-paste, a git merge of two branches, or a manual rename.
-
-Detect it with:
+Read the folders directly and answer in conversation:
 
 ```bash
-for f in .kerjaan/*/*.md; do basename "$f" | cut -c1-12; done | sort | uniq -d
+ls .kerjaan/in_progress/ .kerjaan/review/
+grep -l 'priority: high' .kerjaan/todo/*.md
 ```
 
-If anything shows up, resolve it like this:
+Never write the answer to a file. An index, board README or status summary
+starts going stale the moment it exists. The two non-ticket files hold what no
+folder can: `order.md` the sequence and its reasons, `settings.md` the board's
+own configuration. Searching is
+deliberately unscripted: a wrong search looks wrong at once, so use whatever
+fits.
 
-1. Open both and compare `created`. The **older one keeps** the ID — a ticket
-   that has been around longer is more likely to be referenced by other tickets
-   or already mentioned in conversation.
-2. The younger one takes the next free sequence number within the same minute.
-   Renaming the file is enough. `created` does not change, because it records
-   when the ticket was actually born, not when its ID was tidied up.
-3. Check for inbound references to the old ID:
-
-   ```bash
-   grep -rl '260905160401' .kerjaan/
-   ```
-
-   While the ID is duplicated those references are ambiguous — there is no
-   mechanical way to tell which ticket was meant. Read the referring ticket's
-   context, decide which one it actually points at, and fix only those pointing
-   at the ticket you just renumbered.
-4. Refresh `updated` on the renumbered ticket and on every ticket whose
-   references changed. If the renumbered ticket sits in `todo`, its entry in
-   `order.md` carries the old ID too — the `grep` in step 3 finds it, since
-   that file lives under `.kerjaan/` like everything else.
-
-If that minute's sequence numbers are already exhausted up to `99`, shift into
-the next minute (`...160599` → `...160601`). An ID only needs to be unique and
-roughly ordered by creation time; it is not a timestamp that must be accurate
-to the second.
-
-### Writing `updated` by hand
-
-Normally unnecessary — `update-ticket.sh` takes care of it. The only time to
-write it yourself is while repairing a damaged file that the script refuses to
-touch.
-
-In that case take the real time; never guess it or copy it from elsewhere:
+**The map.** When the user asks to see the board, a map, a graph, what depends
+on what, or what should be next on a board too big to answer by reading
+("tampilkan petanya"), start it in the background and hand over the address it
+prints:
 
 ```bash
-date '+%Y-%m-%d %H:%M:%S'
+node "${CLAUDE_PLUGIN_ROOT}/skills/kerjaan/scripts/map.mjs" "$PWD" --open
 ```
 
-This field is the only trace of time the system has. Once it has been wrong,
-readers can no longer tell whether what they are reading is current — and there
-is no way to restore that trust except from git history.
+It reads `.kerjaan/` live and writes nothing. Its advice panel groups each open
+ticket under the done ticket it came from (via `related`/`blocked_by`) — a
+reading of links, not a decision. When the user pastes back decisions from it,
+apply them through the operations above, with the same checks as if they had
+asked in words.
+
+## Rare repairs
+
+**Read `references/repairs.md`** when two tickets share an ID (after a merge or
+a copy-paste), or when a damaged file makes `update-ticket.sh` refuse to run
+and `updated` must be written by hand.

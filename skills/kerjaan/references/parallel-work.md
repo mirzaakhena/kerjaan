@@ -79,7 +79,8 @@ turns silent. **When a ticket reaches `done` or `cancel`**, if any branch whose
 name carries that ID still holds commits that are not in `HEAD`, it warns that
 the board now claims finished work nobody merged. Note what this rests on: a
 project naming its branches `feature/export-screen` gets silence rather than a
-warning, and nothing announces that the safety net was never strung.
+warning here — the gate at `in_progress`, described below, is the net that
+does not depend on names.
 
 **And when a move empties the board** — nothing left in `todo`, `in_progress`
 or `review` — it lists any worktree still checked out. Nothing is in flight, so
@@ -94,7 +95,12 @@ is not a flaw to be papered over: merging is a decision about the main line,
 and the thing that just judged the work is deliberately the thing with no stake
 in it.
 
-Closing that window belongs to whoever picks up the verdict. Merge the branch,
-remove the worktree, delete the branch — then the ticket and the repository
-finally agree. The warning at `done` exists because that handover is easy to
-drop.
+Closing that window belongs to whoever picks up the verdict: merge the branch,
+remove the worktree, delete the branch. The warning at `done` exists because
+that handover is easy to drop — and since a warning in a reviewer's report is
+easy to drop too, the next ticket cannot start while the branch is still
+there. `update-ticket.sh` refuses the move to `in_progress` until the owner has
+merged it, deleted it, listed it in `long_lived_branches`, or chosen
+`--ack-unmerged`. That check does not rely on branch names: a branch of a
+ticket still in `in_progress` or `review` is left alone, and any other branch
+with work outside `HEAD` is named.

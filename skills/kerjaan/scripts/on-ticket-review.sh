@@ -91,8 +91,9 @@ fi
 # The reviewer may be dispatched from a session whose cwd is not the repo, so
 # tell it where the board is instead of leaving it to search.
 repo=$(dirname "$(dirname "$(dirname "$ticket")")")
+guide="$(cd "$(dirname "$0")/.." && pwd)/references/review.md"
 
-jq -n --arg id "$id" --arg repo "$repo" --arg ticket "$ticket" '{
+jq -n --arg id "$id" --arg repo "$repo" --arg ticket "$ticket" --arg guide "$guide" '{
   hookSpecificOutput: {
     hookEventName: "PostToolUse",
     additionalContext: (
@@ -107,7 +108,8 @@ jq -n --arg id "$id" --arg repo "$repo" --arg ticket "$ticket" '{
       "was the claim that it is finished, and an edit made now is one the " +
       "reviewer judges without knowing it happened. If something genuinely " +
       "remains, move the ticket back to in_progress instead of working on it " +
-      "where it is. Otherwise pick up a different ticket."
+      "where it is. Otherwise pick up a different ticket. When the " +
+      "verdict comes back, read \($guide) for what to do with it."
     )
   },
   systemMessage: ("Ticket \($id) entered review — dispatching a reviewer.")

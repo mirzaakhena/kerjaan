@@ -155,4 +155,13 @@ done
 
 sed -e "s/{{CREATED}}/$created/g" "$template" > "$dest"
 
+# A board without settings still works, but its language, its test command and
+# its long-lived branches are then guesses. Say so every time rather than once,
+# since nothing else will.
+if [ ! -f "$board/settings.md" ]; then
+  echo "Note: $board/settings.md does not exist yet. Ask the owner for the" >&2
+  echo "  board's language, test command and long-lived branches, then write it" >&2
+  echo "  from $(cd "$script_dir/.." && pwd)/SETTINGS.md." >&2
+fi
+
 printf '%s\n' "$dest"

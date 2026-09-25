@@ -32,8 +32,13 @@ there is no service to run, host, or pay for.
 ├── review/       done, not yet verified
 ├── done/         passed review
 ├── cancel/       abandoned
-└── order.md      the order to pick `todo` up in — optional
+├── order.md      the order to pick `todo` up in — optional
+└── settings.md   language, test command, long-lived branches
 ```
+
+`settings.md` is written once, the first time the board is used: Claude
+proposes values read off the repo and asks you to confirm them. The reviewer
+runs its `test_command` first.
 
 File name: `<ticket_id> <title>.md`, for example
 `260905160401 Send notifications through Telegram.md`.
@@ -140,6 +145,8 @@ $K/new-ticket.sh backlog "Send notifications through Telegram"
 $K/update-ticket.sh 260905160401 --status in_progress
 $K/update-ticket.sh 260905160401 --title "A clearer title"
 $K/update-ticket.sh 260905160401          # after editing the prose
+$K/update-ticket.sh 260905160401 --status in_progress --ack-unmerged
+                                          # start despite unmerged branches
 
 # read the board — free-form, no script involved
 ls .kerjaan/in_progress/
@@ -163,8 +170,16 @@ put to the user in one go and the answers written back into the tickets. Only
 then does work begin, one ticket at a time or side by side — so the session can
 run to the end without stopping to wait for anyone.
 
-Before a new ticket is created, the board is searched for one that already
-covers the same outcome; if it exists, that ticket is updated instead.
+Work starts from a ticket. Ask Claude to fix or build something and it
+searches the board first — if a ticket already covers the same outcome, that
+one is updated instead — or creates one, and shows you its `Request` and
+`Done when` before touching any code. A new session starts by looking in
+`in_progress/` and `review/` for work somebody left behind, and says so before
+starting anything new.
+
+When a batch is finished — `todo`, `in_progress` and `review` all empty — the
+session that just did the work reads the backlog and proposes what should come
+next, while it still knows the code. It proposes; you choose.
 
 A folder has no order, though, and `blocked_by` only covers the hard case where
 one ticket cannot start until another finishes. Softer sequencing lives in
@@ -247,6 +262,15 @@ or `cancel` while its branch still holds unmerged commits, and an idle board —
 `todo`, `in_progress` and `review` all empty — must have no worktrees left at
 all.
 
+A warning at `done` lands in the reviewer's report, where it is easily lost, so
+the next start is a gate instead: `update-ticket.sh` refuses to move a ticket
+into `in_progress` while any local branch holds commits outside `HEAD` —
+whatever it is named. Branches of tickets still in `in_progress` or `review`
+are left alone, and so are the `long_lived_branches` in `settings.md`. For
+anything else you decide: merge it, delete it, or start anyway with
+`--ack-unmerged`, which records the branches in the new ticket. Claude never
+passes that flag on its own.
+
 The reviewer checks for a worktree before reading any diff, because reviewing
 the main tree for work that lives on a branch would report "nothing changed"
 about a ticket that changed plenty.
@@ -271,6 +295,11 @@ Whoever executed the ticket does not get to mark their own work `done`. The
 last word belongs to something that did not write the code and has no stake in
 it passing — and it judges by running the checks rather than by believing what
 `## Notes` claims.
+
+Telling Claude "mark that as done" sends the ticket to `review` too, so the
+reviewer still has the last word. Say you want to skip review and it goes
+straight to `done` instead, with a note in the ticket saying no review stood
+behind it.
 
 The session that did the work hands the ticket off and moves on — and stops
 changing that ticket's code, because the move was the claim that it is

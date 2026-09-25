@@ -12,6 +12,8 @@
 #   update-ticket.sh <id|path>                       after editing the prose
 #   update-ticket.sh <id|path> --status <status>     move status
 #   update-ticket.sh <id|path> --title "<new title>" rename
+#   update-ticket.sh <id|path> --status in_progress --ack-unmerged
+#                                                    start despite unmerged branches
 
 set -euo pipefail
 
@@ -19,11 +21,13 @@ STATUSES=(backlog todo in_progress review done cancel)
 
 usage() {
   cat >&2 <<USAGE
-Usage: update-ticket.sh <id|path> [--status <status>] [--title "<new title>"]
+Usage: update-ticket.sh <id|path> [--status <status>] [--title "<new title>"] [--ack-unmerged]
 
-  <id|path>   12-digit ID, or the path to a ticket file
-  --status    move to one of: ${STATUSES[*]}
-  --title     rename (the file is renamed; the ID stays)
+  <id|path>        12-digit ID, or the path to a ticket file
+  --status         move to one of: ${STATUSES[*]}
+  --title          rename (the file is renamed; the ID stays)
+  --ack-unmerged   start the ticket although other branches hold unmerged
+                   work; the branches are recorded in the ticket's Notes
 
 With no options, only \`updated\` is refreshed — use that after editing prose.
 Run from the repo root. Prints the ticket's current path to stdout.
@@ -39,6 +43,7 @@ shift
 new_status=""
 new_title=""
 title_given=0
+ack_unmerged=0
 
 while [ "$#" -gt 0 ]; do
   case "$1" in
@@ -52,6 +57,10 @@ while [ "$#" -gt 0 ]; do
       new_title="$2"
       title_given=1
       shift 2
+      ;;
+    --ack-unmerged)
+      ack_unmerged=1
+      shift
       ;;
     *)
       echo "Unknown option: $1" >&2
@@ -116,7 +125,7 @@ else
     *)
       echo "ID $target is used by more than one ticket:" >&2
       printf '  %s\n' "${matches[@]}" >&2
-      echo "Resolve it first, following 'When two tickets share an ID' in SKILL.md." >&2
+      echo "Resolve it first, following references/repairs.md in the kerjaan skill." >&2
       exit 1
       ;;
   esac
@@ -179,6 +188,87 @@ if [ "$dest" != "$file" ] && [ -e "$dest" ]; then
   exit 1
 fi
 
+# --- unmerged work elsewhere blocks starting a ticket ----------------------
+# A ticket can reach `done` while its branch was never merged: the reviewer
+# that moves it there is forbidden to touch the repo, and a warning printed at
+# that moment lands in a subagent's report where nobody acts on it. The one
+# point in the cycle where somebody is deciding what happens next is the start
+# of the next ticket, so that is where the question is put — and refused
+# rather than warned, because a warning is exactly what already failed.
+#
+# The question is not "does this ticket's branch lag behind" but "does any work
+# sit outside the main line", so branch names are not trusted to carry an ID.
+# Excluded, because they are not left-over work:
+#   - branches already contained in HEAD
+#   - branches carrying this ticket's ID (a ticket returned from review)
+#   - branches carrying the ID of a ticket in in_progress/ or review/, which
+#     are in flight by definition
+#   - branches listed in long_lived_branches in .kerjaan/settings.md
+# A repo without git, or a move that is not a start, is left entirely alone.
+
+unmerged=()
+if [ "$dest_status" = "in_progress" ] && [ "$current_status" != "in_progress" ] \
+  && git rev-parse --git-dir > /dev/null 2>&1 \
+  && git rev-parse --verify -q HEAD > /dev/null 2>&1; then
+
+  in_flight_ids=("$id")
+  for st in in_progress review; do
+    for f in "$board/$st"/*.md; do
+      [ -e "$f" ] || continue
+      b="$(basename "$f")"
+      in_flight_ids+=("${b:0:12}")
+    done
+  done
+
+  long_lived=()
+  if [ -f "$board/settings.md" ]; then
+    while IFS= read -r pat; do
+      [ -n "$pat" ] && long_lived+=("$pat")
+    done < <(sed -n 's/^long_lived_branches:[[:space:]]*\[\(.*\)\][[:space:]]*$/\1/p' "$board/settings.md" \
+               | tr ',' '\n' | sed -e 's/^[[:space:]"'"'"']*//' -e 's/[[:space:]"'"'"']*$//')
+  fi
+
+  while IFS= read -r branch; do
+    [ -n "$branch" ] || continue
+    git merge-base --is-ancestor "refs/heads/$branch" HEAD 2> /dev/null && continue
+    skip=0
+    for fid in "${in_flight_ids[@]}"; do
+      case "$branch" in *"$fid"*) skip=1; break ;; esac
+    done
+    if [ "$skip" -eq 0 ] && [ "${#long_lived[@]}" -gt 0 ]; then
+      for pat in "${long_lived[@]}"; do
+        # Unquoted on purpose: the setting holds glob patterns like release/*.
+        # shellcheck disable=SC2254
+        case "$branch" in $pat) skip=1; break ;; esac
+      done
+    fi
+    [ "$skip" -eq 1 ] && continue
+    unmerged+=("$branch")
+  done < <(git for-each-ref --format='%(refname:short)' refs/heads)
+
+  if [ "${#unmerged[@]}" -gt 0 ] && [ "$ack_unmerged" -ne 1 ]; then
+    echo "REFUSED: $id was not moved to in_progress." >&2
+    echo "These branches hold commits that are not in HEAD:" >&2
+    for branch in "${unmerged[@]}"; do
+      line="    $branch — $(git log -1 --format='%s (%cr)' "refs/heads/$branch")"
+      bid="$(printf '%s' "$branch" | grep -oE '[0-9]{12}' | head -1 || true)"
+      if [ -n "$bid" ]; then
+        for f in "$board"/*/"$bid "*.md; do
+          [ -e "$f" ] || continue
+          line="$line — ticket $bid is in $(basename "$(dirname "$f")")/"
+        done
+      fi
+      echo "$line" >&2
+    done
+    echo "Before new work starts, the owner decides for each one: merge it, or" >&2
+    echo "delete it. A branch meant to live long -- develop, release/*, or main" >&2
+    echo "while HEAD is on another branch -- belongs in long_lived_branches in" >&2
+    echo ".kerjaan/settings.md. To start anyway, knowingly, rerun with" >&2
+    echo "--ack-unmerged; the branches are then recorded in this ticket." >&2
+    exit 1
+  fi
+fi
+
 # --- refresh `updated` -----------------------------------------------------
 # Only lines inside the first frontmatter block are touched, so an "updated:"
 # that happens to appear in the prose is left alone.
@@ -205,6 +295,19 @@ if ! awk -v now="$now" '
 fi
 
 cat "$tmp" > "$file"
+
+# An acknowledged start is written into the ticket, so the decision outlives
+# the terminal it was made in. Notes is always the last section.
+if [ "${#unmerged[@]}" -gt 0 ]; then
+  note="- $now: started while these branches held unmerged work, acknowledged with --ack-unmerged: ${unmerged[*]}"
+  if [ "$(awk 'NF { last = $0 } END { print last }' "$file")" = "(none yet)" ]; then
+    awk -v note="$note" '{ lines[NR] = $0; if (NF) lastnf = NR }
+      END { for (i = 1; i <= NR; i++) print (i == lastnf ? note : lines[i]) }' "$file" > "$tmp"
+    cat "$tmp" > "$file"
+  else
+    printf '%s\n' "$note" >> "$file"
+  fi
+fi
 
 # --- move or rename if needed ----------------------------------------------
 if [ "$dest" != "$file" ]; then
