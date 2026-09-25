@@ -21,7 +21,7 @@ sense to someone who already knows the codebase has failed.
 ```
 <repo root>/.kerjaan/
 ├── backlog/      ideas, not ready to act on
-├── todo/         ready to act on, not started
+├── todo/         the queue for one work session: ready, not started
 ├── in_progress/  being worked on
 ├── review/       done, not yet verified
 ├── done/         passed review
@@ -74,7 +74,9 @@ where you were.
 ## What belongs in `todo`
 
 `todo` answers a question no other folder can: **what should somebody pick up
-next?** That also makes it the folder most likely to rot, because nothing
+next?** It is the queue for one working session — the batch meant to be
+finished before the board goes quiet again. That also makes it the folder most
+likely to rot, because nothing
 breaks when a ticket is filed there too early. It simply sits, looking ready,
 until someone picks it up and finds out it was not.
 
@@ -135,6 +137,34 @@ say:
 
 Neither a silent refusal nor silent compliance. The check puts the fact in
 front of them; the decision stays theirs.
+
+### Clear the whole queue before starting any of it
+
+**No ticket leaves `todo` for `in_progress` while any ticket in `todo` still
+has an open question.** Not just the one about to start — all of them.
+
+Before the first move, read every ticket in `todo` against "Is it ready?"
+above, and as the person about to execute it: is there a line you would have
+to guess at, a choice between two readings, a criterion you could not check?
+Collect every such question from every ticket and put them to the user
+**together**, in one message. Write each answer back into the ticket it
+belongs to — `Request`, `Done when`, or `## Notes` — then run `update-ticket.sh`
+on it. An answer that lives only in the conversation is gone when the session
+ends.
+
+Only when every ticket in `todo` reads as ready may work start: one ticket at
+a time, or several side by side where `order.md` groups them (see "Working two
+tickets at once").
+
+The reason is the shape of a session. Questions discovered one ticket at a
+time arrive in the middle of the work, each one stopping it until the user
+comes back — and the later tickets are exactly the ones nobody looked at while
+the user was still there. Asking everything up front costs the user one
+sitting, after which the queue can run to the end without waiting on anyone.
+
+A ticket that joins `todo` after the sweep is swept before the next move out
+of `todo`. If a question only surfaces mid-work, it belongs to the ticket in
+`in_progress`: ask it, and write the answer back the same way.
 
 ## The order of the queue
 
@@ -522,6 +552,34 @@ not baked into the ticket as a constraint from the start.
 
 ### Creating a ticket
 
+**Search before creating.** The thing being asked for may already have a
+ticket, and two tickets for one outcome split its history in half — each one
+looking like the whole story. Pick two or three keywords from the request, in
+the board's language and in English, and search every folder:
+
+```bash
+ls .kerjaan/*/ | grep -i -e 'telegram' -e 'notif'       # titles
+grep -ril -e 'telegram' -e 'notif' .kerjaan/*/          # prose
+```
+
+Both, because the title lives only in the file name and `grep` reads only the
+contents — a ticket titled differently still turns up in its prose. Then, by
+where the match sits:
+
+- **`backlog`, `todo` or `in_progress`, covering the same outcome** — update
+  that ticket instead: widen its `Background`, `Request` or `Done when`, add to
+  `related` or `blocked_by`, rename it if the title no longer fits. Tell the
+  user which ticket absorbed the request, and why.
+- **Connected but a different outcome** — create the new ticket and link them
+  with `related`, or `blocked_by` when one really must finish first.
+- **`review` or `done`** — do not reopen or widen it; that ticket's claim has
+  already been made. Create a new ticket with `related: [<that ID>]`.
+- **`cancel`** — read the reason it was dropped and tell the user before
+  creating anything; the request may be one that was already decided against.
+
+When it is unclear whether a match is the same outcome, ask the user rather
+than guessing.
+
 ```bash
 "${CLAUDE_PLUGIN_ROOT}/skills/kerjaan/scripts/new-ticket.sh" backlog "Send notifications through Telegram"
 ```
@@ -650,16 +708,46 @@ finding may never be laundered into one — so it leaves a `### Suggested
 follow-up` block inside the reviewed ticket's `## Notes`, which outlives the
 session in a way its report does not.
 
-When a review comes back, read that block and offer:
+**Offer them once the batch has landed, not one review at a time.** When
+`in_progress` and `review` are both empty — every ticket that was being worked
+has passed into `done` — collect the `### Suggested follow-up` bullets from
+the tickets that reached `done` this session and put them to the user as **one
+multiple-choice question**, not as prose. Each suggestion is an option; the
+user picks any number of them, or none:
 
-> The reviewer noticed the export runs with no timeout, which is not what this
-> ticket was about. Want a ticket for it?
+> The reviewers left three suggestions. Which ones should become tickets?
+>
+> - [ ] **Export has no timeout** — from 260905160503
+> - [ ] **Import accepts an empty file** — from 260905160502
+> - [ ] **Settings page has no undo** — from 260905160401
 
-Create only what the user says yes to, and give each new ticket
+In Claude Code that is `AskUserQuestion` with `multiSelect: true`: the label
+is the bold lead of the bullet, the description is the rest of it plus the ID
+it came from. That tool takes at most four options per question and four
+questions per call, so more suggestions are split into several questions,
+grouped by the ticket they came from. Waiting for the whole batch means the
+user decides once, with every suggestion side by side, rather than being
+interrupted after each review — and a suggestion that repeats one from another
+ticket shows as a duplicate instead of becoming two tickets.
+
+For every suggestion the user picks, run "Search before creating" first — a
+follow-up is often something already on the board. Then create it in
+`backlog` unless the user says otherwise, with
 `related: [<id of the reviewed ticket>]` so the trail leads back to where the
-finding came from. What they decline stays written in the reviewed ticket's
-notes — that is the honest record: somebody saw it and decided against it, and
-that decision is worth keeping.
+finding came from.
+
+Then record the answer next to each bullet in the reviewed ticket, and run
+`update-ticket.sh` on it:
+
+```markdown
+- **The export runs with no timeout.** ... — **ticketed as [[260925101201]]**
+- **Settings page has no undo.** ... — **declined by the owner, 2026-09-25**
+```
+
+This is what keeps a suggestion from being offered a second time next
+session, and what makes the declined ones an honest record: somebody saw it
+and decided against it, and that decision is worth keeping. A bullet with no
+such mark is one nobody has answered yet.
 
 #### When a review sends the ticket back
 

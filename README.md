@@ -27,7 +27,7 @@ there is no service to run, host, or pay for.
 ```
 <repo root>/.kerjaan/
 ├── backlog/      ideas, not ready to act on
-├── todo/         ready to act on, not started
+├── todo/         the queue for one work session: ready, not started
 ├── in_progress/  being worked on
 ├── review/       done, not yet verified
 ├── done/         passed review
@@ -157,6 +157,15 @@ Size is treated as a reason to split a ticket, never as a reason to defer it,
 because groundwork is almost always big and a board that defers by size buries
 exactly the work everything else is waiting for.
 
+`todo` is the queue for one working session, and it is cleared as a whole
+before any of it starts: every open question across every ticket in `todo` is
+put to the user in one go and the answers written back into the tickets. Only
+then does work begin, one ticket at a time or side by side — so the session can
+run to the end without stopping to wait for anyone.
+
+Before a new ticket is created, the board is searched for one that already
+covers the same outcome; if it exists, that ticket is updated instead.
+
 A folder has no order, though, and `blocked_by` only covers the hard case where
 one ticket cannot start until another finishes. Softer sequencing lives in
 `.kerjaan/order.md`, which covers `todo/` and nothing else:
@@ -271,9 +280,13 @@ knowing it happened. A failed review simply puts the ticket back in
 
 The reviewer never files tickets of its own. Things it notices outside the
 ticket's criteria go into a `### Suggested follow-up` block in the reviewed
-ticket's notes, for a session with a user in front of it to offer — and an
-unmet criterion is never allowed to become one of those suggestions, because a
-reviewer that can move a failure into a new ticket is no longer a gate.
+ticket's notes. Once every ticket that was in flight has reached `done`, the
+session collects those suggestions and offers them to the user as a single
+multiple-choice question; the ones picked become tickets, and each answer —
+ticketed or declined — is marked next to its suggestion so it is never offered
+twice. An unmet criterion is never allowed to become one of those
+suggestions, because a reviewer that can move a failure into a new ticket is
+no longer a gate.
 
 ### How deep the review goes
 
