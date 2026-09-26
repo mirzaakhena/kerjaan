@@ -14,6 +14,13 @@ ticket yourself in `.kerjaan/review/`.
 You review **one ticket**: the one named in the prompt. Other tickets sitting
 in `review/` belong to someone else.
 
+The board's scripts live in the kerjaan skill's `scripts/` folder. The prompt
+normally names it; when it does not, find it once and keep it as `$K`:
+
+```bash
+K=$(dirname "$(find ~/.claude/plugins ~/.claude/skills -path '*kerjaan/scripts/test-run.sh' 2>/dev/null | head -1)")
+```
+
 ## How thorough to be
 
 The ticket's frontmatter may carry a `review:` field holding `quick`, `normal`,
@@ -28,7 +35,7 @@ this field existed keeps working, and reviews faster than it used to.
 | | `quick` | `normal` | `strict` |
 |---|---|---|---|
 | Judge line by line against `Done when` | yes | yes | yes |
-| Run the project's own checks | once | per criterion | per criterion |
+| Run the project's own checks | once, unless carried | per criterion | per criterion |
 | Start a dev/run process and probe it | no | when a criterion needs it | when a criterion needs it |
 | Read the tests for vacuous assertions | no | yes | yes |
 | Review in a clean export | no | only if the tree moves | always |
@@ -38,7 +45,8 @@ The level buys speed on the sections below. **It buys nothing anywhere else.**
 These hold at every level, `quick` included:
 
 - You judge against the `## Done when` list, one line at a time.
-- `## Notes` is never evidence. It is the claim under test.
+- `## Notes` is never evidence. It is the claim under test. A recorded test
+  run counts only once `test-run.sh --check` confirms it covered this content.
 - You never change the main git repo, and never fix the code yourself.
 - Blocking findings stay blocking; they are never softened into notes.
 - A missing test command is reported as such, never allowed to become a pass.
@@ -77,8 +85,10 @@ tickets in parallel, the change may not be in the repo you were dispatched
 into at all.
 
 **5. The checks this project can run.** If `.kerjaan/settings.md` has a
-`test_command`, that is the owner's own answer: run it first. Otherwise, or to
-find checks beyond it, read them off the repo rather than guessing:
+`test_command`, that is the owner's own answer: it comes first — but first ask
+whether the worker already ran it on exactly this content (next section).
+Otherwise, or to find checks beyond it, read them off the repo rather than
+guessing:
 
 | If you find | Read the checks from |
 |---|---|
@@ -94,6 +104,41 @@ find checks beyond it, read them off the repo rather than guessing:
 "This project exposes no test command I could find; the criteria below were
 judged by reading the code only." Never invent a command, and never let a
 missing command quietly become a pass.
+
+## Do not run again what the worker already ran
+
+The worker runs `test_command` through a script that records, in `## Notes`, a
+fingerprint of the exact content it ran on. When that content is the content
+under review, a second run adds nothing but a wait — and the owner has decided
+it is not repeated. Ask git, not the notes:
+
+```bash
+"$K/test-run.sh" --check <id> <commit or branch under review>
+```
+
+Leave out the revision to compare the working tree you are standing in. It
+writes nothing to the repository.
+
+- **SAME** — the latest recorded run exited 0 on exactly this content, with
+  only `.kerjaan/` differing. Do not run `test_command`. Count it as the one
+  full run your level asks for, and write in your review that it was carried
+  from the worker's run, with its time and fingerprint.
+- **DIFFERENT** or **NO EVIDENCE** — run `test_command` as usual. On
+  DIFFERENT, the files it lists are worth a look: they changed after the run
+  that was claimed to cover them.
+
+This is the one thing `## Notes` supplies that you may lean on, and only
+because the part that matters is not believed but checked: git computes
+the fingerprint of what you are reviewing, and it matches or it does not. What
+you take on trust is that the run exited 0 — the owner's decision, the same
+trust you would place in a CI badge.
+
+Two things SAME never covers. It says nothing about checks beyond
+`test_command`, which you still run when your level asks for them. And it
+never covers code you changed yourself: at `strict`, a sabotage is your own
+change, so it runs its guarding tests exactly as described below, and a
+sabotage that stays green still gets its full-suite run before it becomes a
+blocker.
 
 ## First, find the tree the work is actually in
 
@@ -172,8 +217,9 @@ git diff --stat <reviewed commit>..HEAD
 
 A later round covers exactly this, at the ticket's level:
 
-- **The project's checks, once, in full.** Cheap, and it is what catches a fix
-  that broke something the first round passed.
+- **The project's checks, once, in full** — or carried from the worker's run
+  when `test-run.sh --check` answers SAME for this round's content. It is what
+  catches a fix that broke something the first round passed.
 - **Every finding the last round sent back.** Each is re-proven the way it
   failed — a sabotage that stayed green is sabotaged again.
 - **The same kind of mistake, everywhere the ticket reaches** — see *One
@@ -206,7 +252,10 @@ impression that the code looks fine. Take the criteria one at a time.
 
 **Do not believe `## Notes`.** The claims in there are precisely what you are
 testing. "All tests pass" is a hypothesis until you have watched them pass —
-and that holds at every level, because running the suite once is cheap.
+and that holds at every level. The one exception is a recorded test run that
+`test-run.sh --check` answers SAME for (see *Do not run again what the worker
+already ran*): there, git has checked the claim that matters, and the run
+stands in for yours.
 
 **At `normal` and `strict`**, prove each criterion yourself by running
 something. Reading the diff tells you what was written; running the check tells
@@ -275,7 +324,8 @@ never touched in the first place.
 
 #### Keeping sabotage cheap
 
-**The full suite runs once, at the start. A sabotage runs only the tests that
+**The full suite runs once, at the start** — or not at all when it is carried
+from the worker's run. **A sabotage runs only the tests that
 guard its criterion** — the file, or the test names, you found while reading the
 tests — using the project's own runner. The question a sabotage asks is only
 "does this go red", and the answer does not need the whole suite; running it in
@@ -416,7 +466,7 @@ session acts on; the block in `## Notes` is what survives the session ending.
 
 ## The decision — you execute it
 
-Script: `~/.claude/skills/kerjaan/scripts/update-ticket.sh <id> --status <folder>`
+Script: `"$K/update-ticket.sh" <id> --status <folder>`
 
 **Whichever way it goes, say which level you reviewed at**, in the first line
 you append to `## Notes` — and say it plainly enough for a non-technical

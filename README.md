@@ -37,8 +37,9 @@ there is no service to run, host, or pay for.
 ```
 
 `settings.md` is written once, the first time the board is used: Claude
-proposes values read off the repo and asks you to confirm them. The reviewer
-runs its `test_command` first.
+proposes values read off the repo and asks you to confirm them. Its
+`test_command` is run once per handover, not twice: see "The checks run once"
+below.
 
 File name: `<ticket_id> <title>.md`, for example
 `260905160401 Send notifications through Telegram.md`.
@@ -147,6 +148,10 @@ $K/update-ticket.sh 260905160401 --title "A clearer title"
 $K/update-ticket.sh 260905160401          # after editing the prose
 $K/update-ticket.sh 260905160401 --status in_progress --ack-unmerged
                                           # start despite unmerged branches
+
+# run test_command and record what it ran on; then ask whether a version matches
+$K/test-run.sh 260905160401
+$K/test-run.sh --check 260905160401 HEAD  # SAME / DIFFERENT / NO EVIDENCE
 
 # read the board — free-form, no script involved
 ls .kerjaan/in_progress/
@@ -316,6 +321,30 @@ ticketed or declined — is marked next to its suggestion so it is never offered
 twice. An unmet criterion is never allowed to become one of those
 suggestions, because a reviewer that can move a failure into a new ticket is
 no longer a gate.
+
+### The checks run once
+
+Whoever did the work runs the project's `test_command` before handing the
+ticket over, through `test-run.sh`. The script appends one line to the
+ticket's notes: when it ran, whether it passed, and a fingerprint of exactly
+the content it ran on — every file git would see, new files included, with
+`.kerjaan/` left out so moving tickets never changes it.
+
+The reviewer does not take that line's word for anything that matters. It
+asks git for the fingerprint of the version it is reviewing, and
+`test-run.sh --check` answers:
+
+- **SAME** — the run passed on exactly this content. The suite is not run a
+  second time.
+- **DIFFERENT** — something changed after the run, even one line, and the
+  answer names the files. The reviewer runs the checks itself.
+- **NO EVIDENCE** — no run recorded, the run failed, the content changed while
+  it ran, or `test_command` has changed since. The reviewer runs the checks.
+
+Committing after the run does not break the match, because a commit does not
+change content. What is taken on trust is only that the run passed — the same
+trust a CI badge asks for. Code the reviewer changes itself, such as a
+deliberate break at `strict`, is always tested by the reviewer.
 
 ### How deep the review goes
 

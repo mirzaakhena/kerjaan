@@ -91,16 +91,19 @@ fi
 # The reviewer may be dispatched from a session whose cwd is not the repo, so
 # tell it where the board is instead of leaving it to search.
 repo=$(dirname "$(dirname "$(dirname "$ticket")")")
+scripts="$(cd "$(dirname "$0")" && pwd)"
 guide="$(cd "$(dirname "$0")/.." && pwd)/references/review.md"
 
-jq -n --arg id "$id" --arg repo "$repo" --arg ticket "$ticket" --arg guide "$guide" '{
+jq -n --arg id "$id" --arg repo "$repo" --arg ticket "$ticket" --arg guide "$guide" \
+  --arg scripts "$scripts" '{
   hookSpecificOutput: {
     hookEventName: "PostToolUse",
     additionalContext: (
       "Ticket \($id) has just landed in .kerjaan/review/, on the board in " +
       "\($repo) -- the file is \($ticket). Dispatch one subagent right now " +
       "with subagent_type \"kerjaan-reviewer\" and a prompt naming that " +
-      "repo and the ticket ID \($id). That reviewer decides, and " +
+      "repo, the ticket ID \($id), and the kerjaan scripts folder " +
+      "\($scripts). That reviewer decides, and " +
       "moves the ticket to done/ or back to in_progress/ itself. Do not " +
       "review this ticket yourself, and do not wait for the reviewer to " +
       "finish. Ticket \($id) is handed off now: stop changing the code it " +

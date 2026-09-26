@@ -58,8 +58,12 @@ field and dispatch `kerjaan-reviewer` again by hand.
 
 ### Your own checks are not evidence
 
-`## Notes` is the claim under test, never evidence, so anything you write there
-about testing your own work — including breaking the code yourself to watch the
+`## Notes` is the claim under test, never evidence. The one exception is the
+line `test-run.sh` writes: it carries a fingerprint of the content the checks
+ran on, the reviewer compares that with what it is reviewing through git, and
+a match with a passing run spares the second run. A run described in your own
+words spares nothing. Everything else you write about testing your own work —
+including breaking the code yourself to watch the
 tests fail — can only be recorded by the reviewer as a report. If doing so
 found a test that cannot fail, fix the test and commit it: a test in the repo
 is something the reviewer runs; a sentence about one is not.

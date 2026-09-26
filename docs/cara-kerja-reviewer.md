@@ -60,6 +60,31 @@ pemilik akun yang boleh menghapus" ia hapus. Lalu uji dijalankan:
 - **Uji kurang gigi di `normal`.** Kalau kodenya terbukti benar, uji yang lemah
   cukup jadi catatan dan saran tiket lanjutan. Di `strict` tetap menahan tiket.
 
+### Uji tidak dijalankan dua kali
+
+Pengerja menjalankan `test_command` sebelum menyerahkan tiket, lewat
+`test-run.sh <id>`. Skrip itu menambahkan satu baris ke `## Notes`: kapan uji
+dijalankan, lulus atau tidak, dan **sidik isi**, yaitu satu kode yang mewakili
+isi semua berkas yang diuji. Berkas baru yang belum didaftarkan ke git ikut
+dihitung. Folder `.kerjaan/` tidak ikut, jadi memindah atau menyunting tiket
+tidak mengubah sidiknya.
+
+Reviewer tidak percaya begitu saja. Ia menjalankan
+`test-run.sh --check <id> <commit>`, yang menghitung sidik versi yang sedang
+ditinjau lalu mencocokkannya:
+
+- **SAME**: isinya persis sama dan ujinya lulus. Reviewer tidak menjalankan
+  ulang seluruh uji.
+- **DIFFERENT**: ada yang berubah sesudah run, sekecil apa pun, dan berkasnya
+  disebut. Reviewer menjalankan uji sendiri.
+- **NO EVIDENCE**: tidak ada catatan run, run-nya gagal, isinya berubah saat
+  uji berjalan, atau `test_command` sudah diganti. Reviewer menjalankan uji
+  sendiri.
+
+Commit sesudah run tidak merusak kecocokan, karena commit tidak mengubah isi.
+Yang dipercaya hanya satu hal: bahwa run itu memang lulus. Kode yang diubah
+reviewer sendiri, seperti sabotase di `strict`, tetap ia uji sendiri.
+
 ---
 
 ## Bagian 2: Sabotase sebelum dan sesudah 1.2.1

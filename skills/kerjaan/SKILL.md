@@ -24,6 +24,7 @@ K="${CLAUDE_PLUGIN_ROOT}/skills/kerjaan/scripts"      # always run from the repo
 "$K/update-ticket.sh" 260905160401 --status in_progress            # move
 "$K/update-ticket.sh" 260905160401 --title "A clearer title"       # rename
 "$K/update-ticket.sh" 260905160401                                 # after editing prose
+"$K/test-run.sh" 260905160401                                      # run test_command, record it
 ls .kerjaan/*/"260905160401 "*.md                                  # find by ID; the folder is its status
 ```
 
@@ -361,6 +362,18 @@ ticket in `review` claiming to be finished is a more expensive lie than one in
   - [x] ~~Supervisors can register new technicians~~ — **voided by
         [[260907135503]]**, which decided mentoring gets no screens at all
   ```
+
+**Run the checks last, through `test-run.sh`.** When `settings.md` has a
+`test_command`, the final run before the move goes through
+`"$K/test-run.sh" <id>`, after the last change to the code. It runs the
+command and appends a line to `## Notes` with the exit code and a fingerprint
+of exactly the content it ran on, untracked files included and `.kerjaan/`
+left out. The reviewer checks that fingerprint against what it reviews and,
+when the two match and the run passed, does not run the suite a second time —
+so the handover waits for one run, not two. Committing after the run changes
+nothing; editing a line of code after it does, and costs the reviewer its own
+run. Do not touch the code while it runs: a run that saw its content change is
+recorded as proving nothing.
 
 **Depth of review** comes from the `review` field. Leave it empty (`quick`)
 unless the ticket needs more; the level is the user's call, and suggesting a
