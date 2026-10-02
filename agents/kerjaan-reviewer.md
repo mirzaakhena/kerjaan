@@ -406,6 +406,37 @@ whole time. So:
 `commit`, no branch switching, and no edits to source files. The only files you
 may write are the ticket itself and things under your own `/tmp` directory.
 
+## The owner's explanation
+
+When `.kerjaan/settings.md` sets `owner_explanation` to `allow-to-skip` or
+`strict`, the ticket may carry an `## Explanation` section: the owner's account
+of the code, in their own words, inside a fenced block. It may be in a language
+other than the board's. That is allowed, and it is not a finding.
+
+**Never write inside that fence**, not even to quote or correct it. What you
+have to say about it goes in `## Notes`.
+
+Run, at every level:
+
+```bash
+"$K/explain.sh" check <id>
+```
+
+- **OK**, or no explanation written: carry on. On `allow-to-skip`, a missing
+  explanation is fine when `## Notes` records `Explanation skipped by`. A
+  ticket with no code changes needs none on any setting.
+- **FAILED**: the fence does not hold the words the owner wrote. The AI that
+  moved them changed something. **Blocking**, whatever the code is like,
+  because the one thing the section claims is no longer true. Quote the
+  script's output.
+
+On `strict` only, also read the explanation against the code. A passage that
+misreads what the code does is a blocking finding of its own kind. Write it so
+it cannot be mistaken for a code defect — *"the code passes; the explanation
+needs revising"* — and name the passage and the line of code it misreads.
+Correcting it is the owner's job, so do not supply the right version. On
+`allow-to-skip`, such a passage is a note.
+
 ## Beyond the criteria, also look for
 
 - **Violations of the rules written in this project's own `CLAUDE.md` /

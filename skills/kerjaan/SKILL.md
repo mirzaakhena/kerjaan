@@ -25,6 +25,7 @@ K="${CLAUDE_PLUGIN_ROOT}/skills/kerjaan/scripts"      # always run from the repo
 "$K/update-ticket.sh" 260905160401 --title "A clearer title"       # rename
 "$K/update-ticket.sh" 260905160401                                 # after editing prose
 "$K/test-run.sh" 260905160401                                      # run test_command, record it
+"$K/explain.sh" changes 260905160401                               # files and lines the ticket wrote
 ls .kerjaan/*/"260905160401 "*.md                                  # find by ID; the folder is its status
 ```
 
@@ -50,21 +51,25 @@ The rules that are broken most often, each explained further down:
 ├── done/         passed review
 ├── cancel/       abandoned
 ├── order.md      the order to pick `todo` up in — optional
-└── settings.md   language, test command, long-lived branches
+└── settings.md   language, test command, long-lived branches, explanation
 ```
 
 The folder is the only thing that determines status. There is no `status`
 field in the file, so two sources of truth can never disagree. Each folder
 holds a `.gitkeep` so empty folders survive in git.
 
-`update-ticket.sh` enforces one gate — see "Into `in_progress`" — and no
-sequence otherwise. The other gates in "The life of a ticket" are yours to keep.
+`update-ticket.sh` enforces a few gates: starting while other work sits
+unmerged (see "Into `in_progress`"), reaching `review` from anywhere but
+`in_progress`, and reaching it without the owner's explanation when the board
+asks for one. It enforces no other sequence. The rest of "The life of a ticket"
+is yours to keep.
 
 ### Settings
 
 `.kerjaan/settings.md` holds what the board cannot guess: the language ticket
 prose is written in, the command that runs the project's checks (the reviewer
-runs it first), and which branches live outside `HEAD` on purpose. When it is
+runs it first), which branches live outside `HEAD` on purpose, and whether the
+owner explains each ticket's code before review. When it is
 missing — `new-ticket.sh` says so — work out likely values from the repo
 (the language of existing tickets, `package.json`/`Makefile`/CI, the branch
 list), put them to the owner in one message, and write the file from
@@ -81,7 +86,9 @@ ls .kerjaan/in_progress/ .kerjaan/review/
 
 Anything there that this session did not put there is either stuck or
 forgotten. Tell the user before starting anything new: for `in_progress`, what
-the ticket is and whether to resume it; for `review`, dispatch
+the ticket is and whether to resume it, or that it is waiting for their
+explanation when it still holds `(waiting for the owner's explanation)`; for
+`review`, dispatch
 `kerjaan-reviewer` on it (see `references/review.md`, "Tickets stuck in
 `review/`"). A session that skips this starts new work on top of old, and the
 old stays stranded.
@@ -171,6 +178,11 @@ their own. If a criterion can only be checked by reading code, the ticket is
 not finished being written. On a bug, point at the reproduction's outcome ("the
 steps above now produce three replies") rather than restating the steps.
 
+**`## Explanation`** — only on a board that asks the owner to explain the code
+(`owner_explanation`), between `Done when` and `Notes`. The owner's own words,
+inside a fenced block that the AI never writes in. See
+`references/explanation.md`.
+
 **`## Notes`** — always present. Cross-references, decisions, findings;
 `(none yet)` when empty.
 
@@ -216,7 +228,8 @@ executes the work, not baked into the ticket from the start.
 Structure is always English: folder names, frontmatter keys and values, and
 the headings — anything identical in every ticket. Prose follows the language
 the ticket's readers speak, as `language` in `settings.md` records — one per
-board, so nobody has to guess which tickets they can read. Far more than
+board, so nobody has to guess which tickets they can read. The one exception
+is the owner's explanation, written in whatever language the owner chooses. Far more than
 the language, the register matters: write so someone outside the technical
 team understands without follow-up questions.
 
@@ -344,6 +357,21 @@ a worktree checks out a second copy of `.kerjaan/`, which silently disagrees
 with the first, and the scripts refuse to run there. **Read
 `references/parallel-work.md` before creating a worktree.**
 
+### Tickets whose work is a decision
+
+Some tickets have no code: their work is putting questions to the owner and
+writing the answers down. The rules hold all the same, and are easier to slip
+on, because the asking feels like preparation rather than work:
+
+- **Into `in_progress` before the first answer is written into the ticket.**
+  Drafting in conversation is not yet work; writing it into the repo is.
+- **`todo` → `review` is never right.** `update-ticket.sh` refuses any move into
+  `review` that does not come from `in_progress`.
+- **Give it a criterion for where the decision ends up**: the README, a
+  `CLAUDE.md`, whatever every session reads. "The first version's deadline is
+  written in the README" is checkable; a decision left only in a ticket in
+  `done/` is history no new session will look for.
+
 ### Moving to `review`
 
 **Tick `Done when` first, one line at a time.** Not from memory: read each line
@@ -374,6 +402,13 @@ so the handover waits for one run, not two. Committing after the run changes
 nothing; editing a line of code after it does, and costs the reviewer its own
 run. Do not touch the code while it runs: a run that saw its content change is
 recorded as proving nothing.
+
+**Then the owner's explanation**, when `owner_explanation` in `settings.md` is
+`allow-to-skip` or `strict`: commit the work, show the owner
+`explain.sh changes <id>`, and have them explain it in their own words.
+**Read `references/explanation.md` before asking** — the order of commits
+and what you may do with their text are exact, and `update-ticket.sh` checks
+both.
 
 **Depth of review** comes from the `review` field. Leave it empty (`quick`)
 unless the ticket needs more; the level is the user's call, and suggesting a
@@ -440,7 +475,8 @@ tickets' references need no attention.
 
 The board lives in git so that code and status travel together. Commit when
 the user or the project's own rules call for it — kerjaan does not change who
-decides that — but when you commit work for a ticket, its files under
+decides that, except that turning `owner_explanation` on is consent to the
+commits its steps need — but when you commit work for a ticket, its files under
 `.kerjaan/` go in the same commit, and the message names the ticket ID. Code
 committed without the status move that goes with it leaves the history saying
 the work happened while the board says it had not started. A move with no code

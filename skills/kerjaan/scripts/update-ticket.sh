@@ -14,6 +14,9 @@
 #   update-ticket.sh <id|path> --title "<new title>" rename
 #   update-ticket.sh <id|path> --status in_progress --ack-unmerged
 #                                                    start despite unmerged branches
+#
+# A move to review is accepted only from in_progress, and only once the
+# owner's explanation is in place when settings.md asks for one (explain.sh).
 
 set -euo pipefail
 
@@ -266,6 +269,31 @@ if [ "$dest_status" = "in_progress" ] && [ "$current_status" != "in_progress" ] 
     echo ".kerjaan/settings.md. To start anyway, knowingly, rerun with" >&2
     echo "--ack-unmerged; the branches are then recorded in this ticket." >&2
     exit 1
+  fi
+fi
+
+# --- the way into review ---------------------------------------------------
+# Review judges work, and work happens in in_progress. A ticket arriving from
+# anywhere else skipped the step that tells the board something is in flight,
+# which is easy to do on a ticket whose work is a conversation rather than
+# code: the answers get written down, and the ticket still says todo. Refused,
+# not warned, for the same reason as the unmerged-branch gate above.
+#
+# Then the owner's explanation, when the board asks for one: explain.sh reads
+# owner_explanation from settings.md and decides.
+
+if [ "$dest_status" = "review" ] && [ "$current_status" != "review" ]; then
+  if [ "$current_status" != "in_progress" ]; then
+    echo "REFUSED: $id was not moved to review." >&2
+    echo "It is in $current_status/, and only a ticket in in_progress/ goes to review." >&2
+    echo "Work on a ticket happens in in_progress, including a ticket whose work is" >&2
+    echo "settling decisions with the owner. Move it to in_progress first, and say" >&2
+    echo "in its Notes that the move came late if work was already done." >&2
+    exit 1
+  fi
+  if git rev-parse --git-dir > /dev/null 2>&1; then
+    here="$(cd "$(dirname "$0")" && pwd)"
+    "$here/explain.sh" gate "$id" || exit 1
   fi
 fi
 
