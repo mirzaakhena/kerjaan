@@ -6,7 +6,7 @@ labels: [viewer]
 reporter: mirza
 assign_to: claude
 created: 2026-10-06 12:15:31
-updated: 2026-10-06 13:24:33
+updated: 2026-10-06 13:28:53
 related: [261006110801]
 blocked_by: []
 ---
@@ -81,6 +81,7 @@ Viewer hanya membaca; tidak ada yang bisa mengubah tiket dari sana.
 - 2026-10-06 12:15:31 todo
 - 2026-10-06 12:23:12 in_progress
 - 2026-10-06 13:24:33 review
+- 2026-10-06 13:28:53 done
 
 ## Notes
 - Keputusan Mirza, 6 Oktober 2026: proyek ditemukan dengan memindai satu
@@ -198,3 +199,29 @@ Viewer hanya membaca; tidak ada yang bisa mengubah tiket dari sana.
   tidak diketahui.
 - 2026-10-06 13:20:41: test run — `node --test` exited 0 after 0m5s, on content fingerprint 6fd5c152d44187a9b2b89c14e1083cea56c7c77a (the same before and after the run; .kerjaan/ left out).
 - 2026-10-06 13:20:51: test run — `node --test` exited 0 after 0m4s, on content fingerprint 46c3c17d5e6ec953d96f15d99a48651cbf5e3bda (the same before and after the run; .kerjaan/ left out).
+- Ditinjau pada tingkat normal, putaran 1, pada commit 1eabddf, 6 Oktober 2026: uji proyek tidak dijalankan ulang karena run pengerja mencakup isi yang sama persis; setiap butir Done when dibuktikan dengan menjalankan server dan memeriksanya langsung (curl dan peramban headless), dan ujinya dibaca untuk mencari penegasan yang kosong.
+  - Uji: `test-run.sh --check 261006121501` (pohon kerja) → SAME dengan run 2026-10-06 13:20:51, sidik 46c3c17d5e6ec953d96f15d99a48651cbf5e3bda, `node --test` keluar 0. Dibawa dari run pengerja, tidak diulang. (Terhadap commit 1eabddf jawabannya DIFFERENT hanya karena `.claude/settings.local.json` dan `CATATAN-BERIKUTNYA.md` yang tidak di-commit; bukan kode viewer.) Tidak ada cabang terpisah untuk tiket ini; pekerjaannya di `main`.
+  - Butir 1 (perintah): `node viewer/server.mjs --scan ~/Workspace --port 0` mencetak `kerjaan viewer: http://127.0.0.1:65414/` dan "6 proyek: …".
+  - Butir 2 (halaman depan): `/api/proyek` memuat tepat enam folder yang punya `.kerjaan/` di ~/Workspace (dicocokkan dengan `ls -d ~/Workspace/*/.kerjaan`), masing-masing dengan jumlah per status; folder tanpa `.kerjaan/` di papan uji tidak muncul.
+  - Butir 3 (proyek baru): papan sementara, `mkdir p2/.kerjaan` sesudah server menyala → `p2` muncul di `/api/proyek` tanpa restart.
+  - Butir 4 (kartu = isi folder): `/nukitu-mockup/api/papan` dibandingkan dengan isi keenam folder di disk: 297 dan 297, sama persis.
+  - Butir 5, 6, 7, 8, 9 (dibuka di Chromium headless, papan sementara): kartu memuat judul, ID, tipe, prioritas, label; todo urut sesuai order.md (`…003, …001`, lalu `…002`); saringan kata (`kedua`), label, tipe, prioritas masing-masing menyisakan kartu yang benar dan alamat ikut berubah; saat dibuka cancel tersembunyi, chip-nya tetap "cancel 1"; menampilkan cancel dan menyembunyikan backlog bertahan sesudah muat ulang; "urut order.md" membuka `/p1/urutan` dengan kedua ID sebagai tautan; tiket yang dibuka menampilkan judul bagian, 2 kotak centang (1 tercentang), daftar, blok kode (`## bukan judul` tetap teks), dan tautan ke tiket lain berpindah ke tiket itu tanpa muat ulang dokumen (penanda di `window` bertahan).
+  - Butir 10 (berubah langsung): di halaman yang sama, menambah baris ke tiket yang sedang terbuka, memindah satu tiket ke review, dan menambah tiket baru dari terminal → laci, kolom review, dan kolom backlog ikut berubah tanpa muat ulang. Lewat curl, aliran `/p1/events` mengirim 3 `event: change` untuk tambah, ubah, pindah.
+  - Butir 11 (peta): `/nukitu-mockup/map/` sama byte demi byte dengan halaman `map.mjs` yang dijalankan sendiri; `/map/data` sama dengan `/data`-nya (297 tiket, `readAt` diabaikan). `/data` dari `map.mjs` versi sebelum commit ini (460a15e) juga sama dengan versi sekarang, jadi peta yang dijalankan sendiri tidak berubah.
+  - Butir 12 (404): `/tidak-ada/` → 404, "Proyek "tidak-ada" tidak ada." dan tautan "← Kembali ke daftar proyek".
+  - Butir 13 (alamat buatan): delapan alamat dengan `..`, `%2F`, `%2e%2e`, dan `.kerjaan/` langsung (curl `--path-as-is`) → semuanya 404 halaman "tidak ada"; tidak ada isi berkas yang keluar.
+  - Butir 14 (hanya komputer ini): `lsof` menunjukkan server mendengar di `127.0.0.1` saja; dari alamat LAN 10.123.255.92 ke porta yang sama curl gagal tersambung (kode 7). POST ditolak 405.
+  - Butir 15 (lebar/sempit, terang/gelap): 1440 px gelap di nukitu-mockup (salinan papannya) tanpa gulir halaman (1440×900 = ukuran jendela), latar gelap; 390 px gelap tanpa gulir mendatar dengan pemilih keenam status; 390 px terang dengan laci tiket terbuka, terbaca, tanpa gulir mendatar. Tangkapan layar dilihat sendiri.
+  - Butir 16 (README): bagian "The viewer" memuat perintahnya, `--port`, dan cara menjalankan uji.
+  - Uji dibaca: penegasannya memeriksa isi, bukan sekadar "tidak gagal". Tidak ada temuan yang menghambat.
+  - Catatan (tidak menghambat):
+    - Uji "peta yang dijalankan sendiri tetap berfungsi" membandingkan `map.mjs` dengan `mapData()` — keduanya kode baru, jadi ia tidak membandingkan dengan peta sebelum perubahan. Perbandingan dengan versi lama dilakukan di tinjauan ini (lihat butir 11).
+    - Uji jangkauan LAN tidak memeriksa apa pun di mesin tanpa alamat IPv4 non-loopback (perulangannya kosong). Di mesin ini ada.
+    - Halaman memuat font dari fonts.googleapis.com, jadi viewer lokal ini menghubungi internet tiap dibuka; tanpa internet ia jatuh ke font sistem.
+    - Server tidak memeriksa header `Host`. Ia hanya mendengar di 127.0.0.1, tetapi sebuah situs jahat yang dibuka di peramban yang sama secara teori bisa membaca isi tiket lewat DNS rebinding. Ini di luar butir "tidak bisa dibuka dari perangkat lain", yang terpenuhi.
+    - Laci order.md yang tertutup sendiri (dicatat pengerja sebagai "belum terjelaskan") tidak terulang di tinjauan ini.
+
+### Suggested follow-up
+
+- **Viewer tidak menolak permintaan dengan header `Host` asing.** Server hanya mendengar di 127.0.0.1, tetapi halaman web lain yang dibuka di peramban yang sama bisa memakai DNS rebinding untuk membaca papan dan isi tiket semua proyek. Layak jadi tiket: server menjawab hanya bila `Host` adalah `127.0.0.1:<porta>` atau `localhost:<porta>`, dan ada uji yang memanggilnya dengan `Host` lain lalu menerima penolakan.
+- **Font viewer diambil dari Google Fonts.** Alat yang hanya membaca papan lokal menghubungi server pihak ketiga setiap kali dibuka. Layak jadi tiket bila Mirza ingin viewer sepenuhnya luring: memakai font sistem atau menyertakan berkas fontnya.
