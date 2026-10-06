@@ -11,7 +11,7 @@
 # the list is read from git, and the move is checked word for word.
 #
 # Where things live in a ticket. The explanation has its own section, between
-# `## Done when` and `## Notes`, and the owner's words sit inside the first
+# `## Done when` and `## History`, and the owner's words sit inside the first
 # fenced block (three or more backticks) under its heading:
 #
 #   ## Explanation

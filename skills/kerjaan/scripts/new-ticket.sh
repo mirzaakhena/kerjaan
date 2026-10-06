@@ -153,7 +153,7 @@ for existing in "$board"/*/"$id "*.md; do
   exit 1
 done
 
-sed -e "s/{{CREATED}}/$created/g" "$template" > "$dest"
+sed -e "s/{{CREATED}}/$created/g" -e "s/{{STATUS}}/$status/g" "$template" > "$dest"
 
 # A board without settings still works, but its language, its test command and
 # its long-lived branches are then guesses. Say so every time rather than once,

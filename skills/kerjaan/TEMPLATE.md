@@ -18,5 +18,8 @@ blocked_by: []
 ## Done when
 - [ ]
 
+## History
+- {{CREATED}} {{STATUS}}
+
 ## Notes
 (none yet)

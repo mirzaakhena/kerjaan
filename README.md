@@ -83,11 +83,15 @@ Messages that arrive together must all still get a reply, with none lost.
 - [ ] The steps above produce three replies rather than two
 - [ ] Run for a full day with no reports of a missed message
 
+## History
+- 2026-09-05 16:04:01 todo
+- 2026-09-06 14:02:10 in_progress
+
 ## Notes
 (none yet)
 ```
 
-Four headings appear in every ticket. `## How to reproduce` is the one
+Five headings appear in every ticket. `## How to reproduce` is the one
 exception: bug tickets carry it, and `feature` and `task` tickets leave it out
 entirely rather than filling it with "not applicable" — an empty section
 teaches readers to skip sections.

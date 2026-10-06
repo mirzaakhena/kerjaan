@@ -136,6 +136,9 @@ blocked_by: []
 ## Done when
 - [ ] ...
 
+## History
+- 2026-09-05 16:04:01 todo
+
 ## Notes
 (none yet)
 ```
@@ -179,9 +182,20 @@ not finished being written. On a bug, point at the reproduction's outcome ("the
 steps above now produce three replies") rather than restating the steps.
 
 **`## Explanation`** — only on a board that asks the owner to explain the code
-(`owner_explanation`), between `Done when` and `Notes`. The owner's own words,
+(`owner_explanation`), after `Done when` and before `History`. The owner's own words,
 inside a fenced block that the AI never writes in. See
 `references/explanation.md`.
+
+**`## History`** — always present, written only by the scripts: one line per
+status the ticket has entered, `- <time> <status>`. `new-ticket.sh` writes the
+first line with the time of `created`; every move through `update-ticket.sh`
+adds one with the time of the new `updated`. A rename or a refresh adds none.
+The folder says where a ticket is, and only this says when it got there — git
+cannot, because a move is committed whenever somebody next commits. A ticket
+from before History existed gets the section on its next move, holding that
+move alone; the time before is unknown and is not filled in. History sits just
+before Notes so that Notes stays last, and anything appended to the end of the
+file lands in Notes.
 
 **`## Notes`** — always present. Cross-references, decisions, findings;
 `(none yet)` when empty.

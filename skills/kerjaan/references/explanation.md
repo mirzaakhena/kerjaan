@@ -25,7 +25,7 @@ them without asking each time.
 
 ## The section
 
-The explanation has its own section, between `## Done when` and `## Notes`.
+The explanation has its own section, after `## Done when` and before `## History`.
 The owner's words sit inside a fenced block, exactly as written:
 
 ````markdown

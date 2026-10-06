@@ -302,7 +302,7 @@ fi
 # that happens to appear in the prose is left alone.
 now="$(date '+%Y-%m-%d %H:%M:%S')"
 tmp="$(mktemp)"
-trap 'rm -f "$tmp"' EXIT
+trap 'rm -f "$tmp" "$tmp.history"' EXIT
 
 if ! awk -v now="$now" '
   BEGIN { fence = 0; done = 0 }
@@ -320,6 +320,56 @@ if ! awk -v now="$now" '
   echo "No 'updated:' line found in the frontmatter of $file" >&2
   echo "This file does not follow the ticket format. Check its contents." >&2
   exit 1
+fi
+
+# --- record the move in ## History -----------------------------------------
+# The folder says where a ticket is, never when it got there, and git cannot
+# answer either: a move is committed whenever somebody next commits, often in
+# the same commit as the code, so the time git shows for "started" is really
+# the time the work was saved. The ticket records it itself, with the same
+# timestamp as `updated`, and only on a real move — a rename or a refresh is
+# not one, and a refused move has already exited above.
+#
+# History sits just before Notes, so Notes stays the last section and every
+# writer that appends to the end of the file keeps landing in Notes. A ticket
+# from before History existed gets the section on its next move, holding that
+# move alone: what came before is unknown and is not made up.
+#
+# Headings inside fenced blocks are prose, not sections, so they are skipped.
+# The file itself is written once, below, so a ticket this cannot place a
+# line in is refused with nothing changed — not even `updated`.
+
+if [ "$dest_status" != "$current_status" ]; then
+  if ! awk -v line="- $now $dest_status" '
+    BEGIN { fm = 0; body = 0; infence = 0; inhist = 0; hist = 0; lasthist = 0; notes = 0 }
+    { lines[NR] = $0 }
+    !body { if ($0 == "---" && ++fm == 2) body = 1; next }
+    /^```/ { infence = !infence }
+    infence { if (inhist) lasthist = NR; next }
+    /^## / {
+      inhist = 0
+      if (!hist && $0 ~ /^## History[ \t]*$/) { hist = NR; lasthist = NR; inhist = 1 }
+      else if ($0 ~ /^## Notes[ \t]*$/) { notes = NR }
+      next
+    }
+    inhist && NF { lasthist = NR }
+    END {
+      if (hist) { at = lasthist; text = line }
+      else if (notes) { at = notes - 1; text = "## History\n" line "\n" }
+      else { exit 3 }
+      for (i = 1; i <= NR; i++) {
+        print lines[i]
+        if (i == at) print text
+      }
+    }
+  ' "$tmp" > "$tmp.history"; then
+    echo "REFUSED: $id was not changed." >&2
+    echo "Its file has neither a '## History' nor a '## Notes' heading, so the" >&2
+    echo "move has nowhere to be recorded: $file" >&2
+    echo "This file does not follow the ticket format. Check its contents." >&2
+    exit 1
+  fi
+  cat "$tmp.history" > "$tmp"
 fi
 
 cat "$tmp" > "$file"

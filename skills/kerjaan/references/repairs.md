@@ -44,6 +44,11 @@ Take the real time, never a guess or a copy:
 date '+%Y-%m-%d %H:%M:%S'
 ```
 
-`updated` is the board's only trace of time. Once it has been wrong, readers
+If the repair moves the ticket to another folder, add the same time as a line
+at the end of `## History` too, `- <time> <status>`, creating that section just
+before `## Notes` if the ticket has none. A move missing from History reads
+later as a ticket that never went there.
+
+`updated` and `## History` are the board's only traces of time. Once either has been wrong, readers
 cannot tell whether anything they read is current, and only git history can
 restore that.
