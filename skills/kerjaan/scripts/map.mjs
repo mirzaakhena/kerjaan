@@ -12,8 +12,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { mapData, watchBoard } from './board.mjs';
 
-const STATUSES = ['backlog', 'todo', 'in_progress', 'review', 'done', 'cancel'];
 const here = path.dirname(fileURLToPath(import.meta.url));
 
 const args = process.argv.slice(2);
@@ -50,74 +50,9 @@ if (!board) {
   process.exit(1);
 }
 
-const list = (s) => (s || '').match(/[\w-]+/g) || [];
-
-function readTicket(status, file) {
-  const text = fs.readFileSync(path.join(board, status, file), 'utf8');
-  const match = text.match(/^---\n([\s\S]*?)\n---\n?([\s\S]*)$/);
-  if (!match) return null;
-  const meta = {};
-  for (const line of match[1].split('\n')) {
-    const i = line.indexOf(':');
-    if (i > 0) meta[line.slice(0, i).trim()] = line.slice(i + 1).trim();
-  }
-  const body = match[2].trim();
-  const boxes = body.match(/^- \[[ xX]\]/gm) || [];
-  const base = file.replace(/\.md$/, '');
-  return {
-    id: base.slice(0, 12),
-    title: base.slice(13) || base,
-    status,
-    type: meta.type || '',
-    priority: meta.priority || '',
-    labels: list(meta.labels),
-    created: meta.created || '',
-    updated: meta.updated || meta.created || '',
-    related: list(meta.related),
-    blockedBy: list(meta.blocked_by),
-    checks: [boxes.filter((b) => b !== '- [ ]').length, boxes.length],
-    body,
-  };
-}
-
-function readBoard() {
-  const tickets = [];
-  for (const status of STATUSES) {
-    const folder = path.join(board, status);
-    if (!fs.existsSync(folder)) continue;
-    for (const file of fs.readdirSync(folder).sort()) {
-      if (!file.endsWith('.md')) continue;
-      try {
-        const ticket = readTicket(status, file);
-        if (ticket) tickets.push(ticket);
-      } catch {
-        // A file caught mid-move or mid-write; the next change event rereads it.
-      }
-    }
-  }
-  // order.md only ranks todo; the ids appear in the order they should be picked.
-  let order = [];
-  const orderFile = path.join(board, 'order.md');
-  if (fs.existsSync(orderFile)) {
-    order = [...new Set(fs.readFileSync(orderFile, 'utf8').match(/\b\d{12}\b/g) || [])];
-  }
-  return {
-    repo: path.basename(path.dirname(board)),
-    board,
-    readAt: new Date().toISOString(),
-    order,
-    tickets,
-  };
-}
-
 const clients = new Set();
-let pending = null;
-fs.watch(board, { recursive: true }, () => {
-  // A move is an unlink plus a create; wait for the burst to settle.
-  clearTimeout(pending);
-  pending = setTimeout(() => {
-    for (const res of clients) res.write('event: change\ndata: {}\n\n');
-  }, 150);
+watchBoard(board, () => {
+  for (const res of clients) res.write('event: change\ndata: {}\n\n');
 });
 
 const server = http.createServer((req, res) => {
@@ -127,7 +62,7 @@ const server = http.createServer((req, res) => {
     res.end(fs.readFileSync(path.join(here, 'map.html')));
   } else if (url.pathname === '/data') {
     res.writeHead(200, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' });
-    res.end(JSON.stringify(readBoard()));
+    res.end(JSON.stringify(mapData(board)));
   } else if (url.pathname === '/events') {
     res.writeHead(200, {
       'content-type': 'text/event-stream',

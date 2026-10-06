@@ -1,6 +1,6 @@
 ---
 language: Bahasa Indonesia
-test_command:
+test_command: node --test
 long_lived_branches: []
 owner_explanation: off
 explanation_translation: false

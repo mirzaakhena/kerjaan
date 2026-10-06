@@ -257,6 +257,35 @@ note saying what changed. A slider replays the board being written, ticket by
 ticket. It needs Node 18 or newer and nothing else, listens on `127.0.0.1`
 only, and dies with its process.
 
+## The viewer
+
+The map shows one board. The viewer shows every board you have, from one
+server:
+
+```bash
+node viewer/server.mjs --scan ~/Workspace --open
+```
+
+Every folder directly under `~/Workspace` that holds a `.kerjaan/` is a
+project, at `http://127.0.0.1:4321/<folder name>/`. The front page lists them
+with how many tickets each holds per status; a board created later appears
+without a restart.
+
+A project opens as a kanban: one column per status, `todo` in the order
+`order.md` gives, the other columns most recently touched first. Cards can be
+filtered by type, priority, label and words in the title, and the filter lives
+in the address, so a filtered view can be bookmarked. A card opens the ticket
+itself, rendered, with every ticket it names one click away; each ticket has
+its own address (`/<project>/tiket/<id>`). The page follows the board as it
+changes, the ticket you are reading included. Any column can be hidden and
+shown again, still showing how many tickets it holds; `cancel` starts hidden,
+and the browser remembers the choice. `todo`'s header opens `order.md` itself,
+reasons and all. The map is the project's second tab.
+
+Like the map it only reads, needs Node 18 or newer and nothing else, and
+listens on `127.0.0.1` only. `--port` picks another port (`0` for any free
+one). Its tests run with `node --test` from the repo root.
+
 ## Two tickets at once
 
 Tickets sharing a group in `order.md` have already been declared independent,

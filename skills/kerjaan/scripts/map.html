@@ -675,7 +675,7 @@ function hash(s) { let h = 0; for (const c of s) h = (h * 31 + c.charCodeAt(0)) 
 async function load() {
   let payload;
   try {
-    const res = await fetch('/data', { cache: 'no-store' });
+    const res = await fetch('data', { cache: 'no-store' });
     payload = await res.json();
   } catch {
     return;
@@ -748,7 +748,7 @@ function toast(t, what) {
 // live connection
 function connect() {
   const live = $('#live');
-  const es = new EventSource('/events');
+  const es = new EventSource('events');
   es.onopen = () => { live.className = 'live on'; live.lastChild.textContent = 'live'; if (!firstLoad) load(); };
   es.onerror = () => { live.className = 'live off'; live.lastChild.textContent = 'server stopped — run map.mjs again'; };
   es.addEventListener('change', load);
