@@ -6,7 +6,7 @@ labels: [update-ticket, format-tiket]
 reporter: mirza
 assign_to: claude
 created: 2026-10-06 11:08:24
-updated: 2026-10-06 11:27:37
+updated: 2026-10-06 11:28:28
 related: []
 blocked_by: []
 ---
@@ -62,6 +62,9 @@ riwayat mulai mencatat sejak perpindahan berikutnya.
       galat
 - [x] Bentuk baris dan letak bagiannya dijelaskan di SKILL.md (anatomi tiket),
       TEMPLATE.md, dan README
+
+## History
+- 2026-10-06 11:28:28 review
 
 ## Notes
 - Bentuk baris: `- 2026-10-06 10:38:02 in_progress` (waktu, lalu status
