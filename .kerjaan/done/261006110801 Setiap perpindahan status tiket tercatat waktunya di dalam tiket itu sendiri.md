@@ -6,7 +6,7 @@ labels: [update-ticket, format-tiket]
 reporter: mirza
 assign_to: claude
 created: 2026-10-06 11:08:24
-updated: 2026-10-06 11:28:28
+updated: 2026-10-06 11:30:24
 related: []
 blocked_by: []
 ---
@@ -65,6 +65,7 @@ riwayat mulai mencatat sejak perpindahan berikutnya.
 
 ## History
 - 2026-10-06 11:28:28 review
+- 2026-10-06 11:30:24 done
 
 ## Notes
 - Bentuk baris: `- 2026-10-06 10:38:02 in_progress` (waktu, lalu status
@@ -126,3 +127,55 @@ riwayat mulai mencatat sejak perpindahan berikutnya.
 - Tidak diuji: `shellcheck` (tidak terpasang). Sintaks diperiksa `bash -n`.
 - Perubahan ini baru sampai ke papan lain (mis. nukitu-mockup) sesudah
   dirilis; plugin yang terpasang masih 1.7.0 dari cache.
+
+### Review, 6 Oktober 2026
+
+- Ditinjau pada level normal, putaran 1, pada commit a4872e6: setiap butir
+  Done when dibuktikan dengan menjalankan skrip versi repo
+  (`skills/kerjaan/scripts/`) di papan git sementara, bukan hanya dengan
+  membaca kodenya. Tidak naik ke level yang lebih tinggi.
+- Repo ini tidak punya `test_command` dan tidak punya `CLAUDE.md`/`AGENTS.md`;
+  tidak ada aturan proyek tertulis yang diterapkan. Tidak ada cabang khusus
+  tiket ini; pekerjaannya ada di `main` (commit a4872e6), pohon kerja bersih
+  untuk `skills/`.
+- Yang dijalankan peninjau:
+  - `uji-history.sh skills/kerjaan/scripts` → 9 lulus, 0 gagal (butir 1–6).
+  - `uji-explain-map.sh skills/kerjaan/scripts` → 6 lulus, 0 gagal (butir 7–8,
+    papan `owner_explanation: strict`, `explain.sh check`, gate ke review,
+    bolak-balik review, `/data` dari `map.mjs`).
+  - Pembanding: `uji-history.sh` terhadap skrip 1.7.0 yang terpasang → 6
+    gagal, 3 lulus. Jadi uji-uji itu memang membedakan ada dan tidaknya
+    perubahan ini. Tiga yang tetap lulus (4, 5b, 6a) memang memeriksa hal
+    yang sudah benar sebelumnya (perpindahan ditolak, blok kode tidak
+    tersentuh, catatan `test-run.sh` di bawah Notes).
+  - Isi kedua skrip uji dibaca: penegasannya membandingkan baris History
+    dengan `created`/`updated` yang sebenarnya, menghitung baris, dan
+    memeriksa urutan judul. Tidak ada yang kosong makna.
+  - Uji tambahan peninjau: tiket lama tanpa baris kosong sebelum `## Notes`
+    (History disisipkan dengan benar), tiket dengan History yang diikuti dua
+    baris kosong (baris baru jatuh tepat di bawah baris terakhir).
+- Per butir: 1 lulus (uji 1); 2 lulus (uji 2, 6b, 7b); 3 lulus (uji 3:
+  ganti judul, segarkan, pindah ke status yang sama); 4 lulus (uji 4, berkas
+  identik sesudah todo → review ditolak; di kode, baris History ditulis
+  sesudah semua gerbang); 5 lulus (uji 5, 5c); 6 lulus untuk `test-run.sh` dan
+  `--ack-unmerged` (uji 6a, 6b); 7 lulus (uji 7a–7e); 8 lulus (uji 8);
+  9 lulus (dibaca: SKILL.md anatomi + paragraf `## History`, TEMPLATE.md,
+  README contoh tiket dan "Five headings", ditambah `references/explanation.md`,
+  `references/repairs.md`, komentar `explain.sh`).
+- Dinilai dengan membaca saja: bagian butir 6 tentang reviewer. Reviewer
+  menambah ke akhir berkas, dan karena History selalu disisipkan sebelum
+  Notes, tambahan itu tetap jatuh di Notes. Review ini sendiri ditulis
+  dengan cara itu.
+- Catatan, tidak menghalangi:
+  - Blok kode hanya dikenali bila diawali tiga backtick di kolom pertama.
+    Blok bertanda `~~~` yang berisi baris `## History` di tiket tanpa
+    History membuat baris perpindahan jatuh di dalam bagian lain, bukan di
+    bagian History baru (dicoba: baris masuk ke bawah blok `~~~` di
+    Background). Konvensinya sama dengan `explain.sh` (backtick saja), dan
+    kasusnya jarang.
+  - Pada tiket lama yang tidak punya baris kosong sebelum `## Notes`, judul
+    `## History` menempel langsung di bawah baris sebelumnya. Markdown tetap
+    membacanya sebagai judul.
+  - Tiket ini dipindah ke done dengan `update-ticket.sh` versi repo (yang
+    sedang ditinjau), bukan 1.7.0 dari cache, supaya History tiket ini
+    mencatat perpindahannya.
