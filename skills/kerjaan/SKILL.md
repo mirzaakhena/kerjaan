@@ -365,6 +365,15 @@ let them decide each branch: merge it, delete it, add it to
 `--ack-unmerged`; the script writes the branches into the ticket's `## Notes`,
 so the decision outlives the conversation.
 
+**Which ticket to take is already decided.** `order.md` is that decision: you
+proposed it and the owner accepted or rearranged it when `todo` was filled.
+Take the first ticket in it — or any ticket in its first group — and start,
+without asking which one. With no `order.md`, take any ticket in `todo` whose
+`blocked_by` is clear. Asking again only reopens a choice the owner already
+made, and stalls the queue on someone who may have left. Ask only when the
+order no longer fits what the board now shows — the top ticket turned out to
+depend on one further down, say — and then name that one problem.
+
 One ticket at a time is normal. Two tickets in the same `order.md` group are
 declared independent and may run side by side in separate git worktrees — but
 a worktree checks out a second copy of `.kerjaan/`, which silently disagrees
@@ -468,8 +477,10 @@ asked:
    for `todo`: which ones, in what order, and why — what the finished work made
    possible, cheaper, or urgent. Follow `references/ordering-the-queue.md`.
 
-Propose; do not move. Filling `todo` is deciding what happens next, and that is
-the owner's call even when the reasoning looks obvious.
+Propose; do not move. Filling `todo` from `backlog` is deciding what the next
+batch is, and that is the owner's call even when the reasoning looks obvious.
+Taking the next ticket out of a `todo` that is already ordered is not: that
+choice was made when the batch went in (see "Into `in_progress`").
 
 ### Cancelling
 

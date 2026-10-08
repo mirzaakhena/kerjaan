@@ -110,5 +110,12 @@ and the reasons, and let the user cut it down:
 > settings file it adds, then 260905160502 and 260905160503 in either order.
 > Move those three?
 
-Propose; do not move. Filling `todo` is deciding what happens next, and that
-stays the user's call even when the reasoning looks obvious.
+Propose; do not move. Filling `todo` from `backlog` is deciding what the next
+batch is, and that stays the user's call even when the reasoning looks obvious.
+Once the user has accepted the batch and its order, `order.md` is their
+decision: picking up the next ticket from it needs no further asking.
+
+The same holds whenever `todo` already has an `order.md`: the first ticket in
+it, or any ticket in its first group, is the next one to start. The file
+exists so that question is answered once, when the batch is set, rather than
+every time a ticket is finished.

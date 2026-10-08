@@ -212,7 +212,9 @@ one ticket cannot start until another finishes. Softer sequencing lives in
 Order is position on the page; tickets sharing a group can run side by side;
 the bold sentence carries the reasoning, which is the part that exists nowhere
 else. `update-ticket.sh` keeps the file honest — a ticket leaving `todo` loses
-its line, and a group loses its lead-in once its last ticket is gone.
+its line, and a group loses its lead-in once its last ticket is gone. Once
+the file is set, it is your choice already made: a session takes the next
+ticket from the top of it without asking you again.
 
 The file is optional. Write it the first time ordering actually matters, and
 refill `todo` from `backlog` only when `todo`, `in_progress` and `review` are
