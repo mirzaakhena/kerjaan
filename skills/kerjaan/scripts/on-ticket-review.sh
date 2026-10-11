@@ -7,7 +7,9 @@
 # When the command that just ran moved a ticket into the review folder, this
 # hook injects an instruction into the session so a reviewer is dispatched
 # immediately. A rule written in a CLAUDE.md is advice and can be missed; this
-# hook is what makes the dispatch actually automatic.
+# hook is what makes the dispatch actually automatic. For a ticket that has
+# been reviewed before, it tells the foreman to resume that reviewer instead,
+# and to dispatch a new one only when that one cannot be resumed.
 #
 # Two conditions must both hold before it fires:
 #   1. the command text moves a ticket to `review`
@@ -117,6 +119,56 @@ fi
 repo=$(dirname "$(dirname "$(dirname "$ticket")")")
 scripts="$(cd "$(dirname "$0")" && pwd)"
 foreman="$(cd "$(dirname "$0")/.." && pwd)/references/foreman.md"
+
+# First round or a later one. A ticket that comes back to review after being
+# sent back has a reviewer already, and the foreman should resume that one:
+# it still holds its first round and narrows the next by itself. Two signals,
+# because either alone misses cases:
+#   - `## History` lists `review` more than once. update-ticket.sh writes
+#     those lines in English whatever the board's language, so this holds on
+#     every board -- but only for tickets whose History reaches back that far.
+#   - `## Notes` holds a block that opens with "Reviewed at level", the
+#     reviewer's own opening line. It covers a ticket from before History
+#     existed, on a board written in English; on other boards the reviewer
+#     writes it in the board's language, which is why it is not the only test.
+# Lines inside fenced blocks are prose, not records, so they are skipped.
+reviews=$(awk '
+  /^```/ { infence = !infence; next }
+  infence { next }
+  /^## / { inhist = ($0 ~ /^## History[ \t]*$/); next }
+  inhist && $0 ~ /^- [0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9] [0-9][0-9]:[0-9][0-9]:[0-9][0-9] review[ \t]*$/ { n++ }
+  END { print n + 0 }
+' "$ticket" 2>/dev/null || printf '0')
+
+if [ "${reviews:-0}" -ge 2 ] || grep -q 'Reviewed at level' "$ticket" 2>/dev/null; then
+  jq -n --arg id "$id" --arg repo "$repo" --arg ticket "$ticket" --arg foreman "$foreman" \
+    --arg scripts "$scripts" '{
+    hookSpecificOutput: {
+      hookEventName: "PostToolUse",
+      additionalContext: (
+        "Ticket \($id) is back in .kerjaan/review/, on the board in \($repo) " +
+        "-- the file is \($ticket). It has been reviewed before, so this is a " +
+        "later round. Resume the reviewer of the round before with " +
+        "SendMessage to its agent ID, saying the fix is in and at which " +
+        "commit: it still holds its first round and narrows this one by " +
+        "itself. Only if that reviewer cannot be resumed -- no agent ID on " +
+        "record, or SendMessage refuses it -- dispatch a new subagent with " +
+        "subagent_type \"kerjaan-reviewer\" and a prompt naming that repo, " +
+        "the ticket ID \($id), and the kerjaan scripts folder \($scripts); it " +
+        "narrows itself from the earlier review in ## Notes. Either " +
+        "way the reviewer decides, and moves the ticket to done/ or back to " +
+        "in_progress/ itself. Do not review this ticket yourself. Ticket " +
+        "\($id) is handed off now: nobody changes the code it covers, even to " +
+        "improve it, even to strengthen a test. If something genuinely " +
+        "remains, move the ticket back to in_progress instead. When the " +
+        "verdict comes back, read \($foreman) for what to do with it -- a " +
+        "second return stops the chain."
+      )
+    },
+    systemMessage: ("Ticket \($id) re-entered review — resuming its reviewer.")
+  }'
+  exit 0
+fi
 
 jq -n --arg id "$id" --arg repo "$repo" --arg ticket "$ticket" --arg foreman "$foreman" \
   --arg scripts "$scripts" '{

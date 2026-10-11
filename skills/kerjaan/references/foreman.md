@@ -108,8 +108,8 @@ working.
 
 | Report | What the foreman does |
 |---|---|
-| `REVIEW` | The ticket is in `review/`. Dispatch `kerjaan-reviewer` as the hook says, and record its agent ID next to the worker's. |
-| `WAITING — explanation` | Hold the owner's explanation as `references/explanation.md` describes, then move the ticket to `review` and dispatch the reviewer. |
+| `REVIEW` | The ticket is in `review/`. In the first round, dispatch `kerjaan-reviewer` and record its agent ID next to the worker's; in a later round, resume that reviewer (step 5). No hook message reaches you here: the worker made the move, so the hook spoke to the worker. |
+| `WAITING — explanation` | Hold the owner's explanation as `references/explanation.md` describes, then move the ticket to `review` yourself. That move is yours, so the hook speaks to you: it says to dispatch a reviewer in the first round, and to resume the earlier one in a later round. |
 | `STOPPED — decision` | Stop the chain (see "When the chain stops"). |
 | anything else | Read why. If the ticket is groundwork for others, stop the chain. Otherwise note it, leave the ticket in `in_progress` with its Notes, and go on. |
 
@@ -129,10 +129,13 @@ tickets that run side by side in worktrees overlap (`references/parallel-work.md
   its agent ID: name the ticket, say the reviewer sent it back, and give the
   findings in a few lines. The worker still holds the ticket and the code, so
   it fixes without reading either again from the top. When it reports `REVIEW`,
-  the hook asks for a reviewer again: resume the **same reviewer** with
-  `SendMessage` instead of dispatching a new one, saying the fix is in and at
-  which commit. It still holds its first round and narrows the second by
-  itself.
+  resume the **same reviewer** with `SendMessage` instead of dispatching a new
+  one, saying the fix is in and at which commit. It still holds its first round
+  and narrows the second by itself. The worker's report is your only cue here;
+  the worker made the move, so no hook message reaches you. When you make the
+  move yourself instead (after an owner's explanation), the hook sees the
+  earlier review in the ticket and tells you the same thing: resume, and
+  dispatch a new reviewer only if that one cannot be resumed.
 - **Sent back a second time** — stop the chain (see below).
 
 **When a worker or reviewer cannot be resumed** — the foreman's session was

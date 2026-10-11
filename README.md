@@ -402,7 +402,9 @@ it moves the ticket to done/, or back to in_progress/ with the evidence
 Only the foreman dispatches reviewers, because only the foreman counts the
 rounds, carries a verdict's lesson to the next worker, and knows which worker
 to resume. The hook tells the two apart by whether the move was made inside a
-subagent.
+subagent. When the foreman makes the move itself for a ticket that has been
+reviewed before, the hook tells it to resume that reviewer rather than
+dispatch a new one.
 
 Whoever executed the ticket does not get to mark their own work `done`. The
 last word belongs to something that did not write the code and has no stake in
