@@ -6,7 +6,7 @@ labels: [skill, agen]
 reporter: mirza
 assign_to: claude
 created: 2026-10-11 06:42:23
-updated: 2026-10-11 07:28:57
+updated: 2026-10-11 07:32:42
 related: []
 blocked_by: []
 ---
@@ -189,5 +189,5 @@ tetap ringan sampai rantai selesai.
 
 ### Suggested follow-up
 
-- **Rantai mandor belum pernah dijalankan dari plugin yang memuat perubahan ini.** Yang sudah diuji baru hook-nya. Pemanggilan `kerjaan:kerjaan-worker`, kelanjutan lewat `SendMessage`, dan ringkasan akhir belum pernah berjalan sungguhan. Layak dijadikan tiket: sesudah rilis berikutnya terpasang, jalankan rantai kecil berisi dua tiket (satu sengaja dibuat ditolak sekali), lalu catat apakah pengerja dan peninjau yang sama benar-benar dilanjutkan dan ringkasannya lengkap.
-- **Kalimat "the hook asks for a reviewer again" di `foreman.md` kurang tepat**, begitu pula pesan hook mandor yang selalu berbunyi "Dispatch" di putaran kedua. Layak dirapikan supaya mandor tidak mengutus peninjau baru padahal seharusnya melanjutkan peninjau lama.
+- **Rantai mandor belum pernah dijalankan dari plugin yang memuat perubahan ini.** Yang sudah diuji baru hook-nya. Pemanggilan `kerjaan:kerjaan-worker`, kelanjutan lewat `SendMessage`, dan ringkasan akhir belum pernah berjalan sungguhan. Layak dijadikan tiket: sesudah rilis berikutnya terpasang, jalankan rantai kecil berisi dua tiket (satu sengaja dibuat ditolak sekali), lalu catat apakah pengerja dan peninjau yang sama benar-benar dilanjutkan dan ringkasannya lengkap. — **dijadikan tiket [[261011073201]]**
+- **Kalimat "the hook asks for a reviewer again" di `foreman.md` kurang tepat**, begitu pula pesan hook mandor yang selalu berbunyi "Dispatch" di putaran kedua. Layak dirapikan supaya mandor tidak mengutus peninjau baru padahal seharusnya melanjutkan peninjau lama. — **dijadikan tiket [[261011073202]]**
