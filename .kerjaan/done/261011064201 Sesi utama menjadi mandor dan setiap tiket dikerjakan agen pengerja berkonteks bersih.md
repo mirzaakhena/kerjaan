@@ -6,7 +6,7 @@ labels: [skill, agen]
 reporter: mirza
 assign_to: claude
 created: 2026-10-11 06:42:23
-updated: 2026-10-11 07:27:23
+updated: 2026-10-11 07:28:57
 related: []
 blocked_by: []
 ---
@@ -101,6 +101,8 @@ tetap ringan sampai rantai selesai.
 ## History
 - 2026-10-11 06:42:23 backlog
 - 2026-10-11 07:20:34 in_progress
+- 2026-10-11 07:27:35 review
+- 2026-10-11 07:28:57 done
 
 ## Notes
 - Sumber: sesi nukitu-mockup 10–11 Okt 2026. Prompt pengerja dan peninjau
@@ -165,3 +167,27 @@ tetap ringan sampai rantai selesai.
   - Uji hook dibuktikan bisa merah: cabang `agent_id` sengaja dimatikan, dan
     dua uji pengerja menjadi merah. Sesudah itu skrip dipulihkan dari salinan.
 - 2026-10-11 07:27:12: test run — `node --test` exited 0 after 0m4s, on content fingerprint 24ea4e27766924603e132af9cab7ae1b57a59a8f (the same before and after the run; .kerjaan/ left out).
+- 2026-10-11, review oleh kerjaan-reviewer. Ditinjau di level normal, putaran 1, pada commit 45363b3: uji proyek tidak dijalankan ulang karena hasil run pengerja dibawa (lihat di bawah). Hook dijalankan sendiri oleh peninjau dari dua sisi, dan setiap butir `Done when` dibaca terhadap diff. **Lolos.**
+  - Uji (`node --test`): dibawa dari run pengerja 2026-10-11 07:27:12, fingerprint 24ea4e27766924603e132af9cab7ae1b57a59a8f. `test-run.sh --check 261011064201` pada pohon kerja menjawab SAME. Terhadap commit 45363b3 jawabannya DIFFERENT, dan satu-satunya bedanya adalah `CATATAN-BERIKUTNYA.md`: berkas catatan yang belum dilacak git, ada di pohon kerja tetapi tidak di commit. Berkas itu tidak memengaruhi `node --test`.
+  - `explain.sh check`: penjelasan tidak dipakai (`owner_explanation: off`), jadi tidak ada yang diperiksa.
+  - Butir 3, yang diuji dengan menjalankan hook: peninjau menjalankan `on-ticket-review.sh` dengan masukan hook buatan sendiri. Tanpa `agent_id` (sisi mandor), keluarannya "Dispatch one subagent right now with subagent_type \"kerjaan-reviewer\"…" dan menunjuk `foreman.md`. Dengan `agent_id` dan `agent_type: kerjaan:kerjaan-worker` (sisi pengerja), keluarannya "…Do not dispatch a reviewer… Finish now with your report." tanpa systemMessage. Keduanya keluar dengan kode 0. Dokumentasi hook Claude Code (code.claude.com/docs/en/hooks) membenarkan bahwa `agent_id` hanya ada kalau hook berjalan di dalam subagent atau in-process teammate. Uji di `uji/on-ticket-review.test.mjs` tidak kosong: setiap uji memeriksa isi teks untuk sisi yang diuji, dan uji pengerja juga memastikan perintah "Dispatch one subagent" tidak muncul.
+  - Butir 1: `agents/kerjaan-worker.md` ada di samping `kerjaan-reviewer.md` dan tidak diberi alat `Agent`. Langkah 1–10 di dalamnya memuat semua langkah tetap yang diminta. Prompt di `foreman.md` hanya berisi jalur tiket, skrip, worktree, jawaban pemilik, dan bekal.
+  - Butir 2: SKILL.md aturan 2 dan bagian "Who does the work" berlaku juga untuk satu tiket.
+  - Butir 4: `foreman.md` ("Act on the verdict", "When a worker or reviewer cannot be resumed"), `review.md`, dan bagian resume di `kerjaan-reviewer.md` memuat langkah `SendMessage` ke pengerja yang sama dan peninjau yang sama, cara kembali ke Notes kalau mereka tidak bisa dilanjutkan, dan kewajiban menyebutnya di ringkasan.
+  - Butir 5: `foreman.md` "When the chain stops" memuat tiga keadaan berhenti. Langkah 2 di definisi pengerja melarang menebak, dan pertanyaan yang tidak menahan kerja tetap dicatat.
+  - Butir 6: `foreman.md` "Starting the chain" langkah 2. Pengerja menangani butir yang ditunda lewat langkah 6. Peninjau mendapat aturan bahwa butir "awaiting" yang ditunda tidak menjadi alasan menolak.
+  - Butir 7: `foreman.md` bagian "Carry-forward", ditambah baris `Carry-forward:` di laporan pengerja.
+  - Butir 8: `foreman.md` bagian "The summary".
+  - Butir 9: `parallel-work.md`, `review.md`, `explanation.md`, `ordering-the-queue.md`, `docs/cara-kerja-reviewer.md`, dan SKILL.md sudah diselaraskan. Pencarian frasa lama ("do not wait", "pick up the next", "session that did the work") tidak menemukan sisa yang bertentangan.
+  - Butir 10: README punya bagian baru "One session, many tickets", dan bagian "Review happens by itself" sudah diperbarui.
+  - Catatan yang tidak menahan tiket:
+    - `foreman.md` menulis "When it reports `REVIEW`, the hook asks for a reviewer again". Itu kurang tepat. Saat pengerja memindah tiket, hook berjalan di dalam pengerja dan menyuruhnya melapor. Mandor bertindak atas laporan itu, bukan atas hook.
+    - Pesan hook untuk mandor selalu berbunyi "Dispatch one subagent right now", juga di putaran kedua, padahal di putaran itu `foreman.md` meminta peninjau lama dilanjutkan. Mandor hanya menerima pesan ini kalau ia sendiri yang memindah tiket (jalur penjelasan pemilik), jadi dampaknya kecil.
+    - In-process teammate juga membawa `agent_id`, jadi oleh hook ia dianggap pengerja. Ini sesuai dengan keputusan "subagent jenis apa pun dianggap pengerja".
+    - Perpindahan tiket ke `review` belum di-commit. Ini sesuai aturan Committing: putusan masuk di commit berikutnya.
+  - Dinilai dengan membaca saja: butir 1, 2, dan 4–10 berupa dokumentasi dan definisi agen. Rantai mandor sungguhan belum pernah dijalankan karena plugin yang terpasang masih 1.8.1, seperti yang sudah dicatat pengerja.
+
+### Suggested follow-up
+
+- **Rantai mandor belum pernah dijalankan dari plugin yang memuat perubahan ini.** Yang sudah diuji baru hook-nya. Pemanggilan `kerjaan:kerjaan-worker`, kelanjutan lewat `SendMessage`, dan ringkasan akhir belum pernah berjalan sungguhan. Layak dijadikan tiket: sesudah rilis berikutnya terpasang, jalankan rantai kecil berisi dua tiket (satu sengaja dibuat ditolak sekali), lalu catat apakah pengerja dan peninjau yang sama benar-benar dilanjutkan dan ringkasannya lengkap.
+- **Kalimat "the hook asks for a reviewer again" di `foreman.md` kurang tepat**, begitu pula pesan hook mandor yang selalu berbunyi "Dispatch" di putaran kedua. Layak dirapikan supaya mandor tidak mengutus peninjau baru padahal seharusnya melanjutkan peninjau lama.
