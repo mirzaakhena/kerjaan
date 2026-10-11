@@ -88,13 +88,37 @@ fi
 
 [ -n "$ticket" ] || exit 0
 
+# Who made the move. Only the foreman -- the main session -- dispatches
+# reviewers: it counts the rounds, carries what a verdict teaches to the next
+# worker, and resumes the same worker when a ticket comes back. A move made
+# inside a subagent carries `agent_id` in the hook input; that is a worker
+# handing its ticket over, and what it needs to hear is to stop and report,
+# not to summon a reviewer of its own.
+agent_id=$(printf '%s' "$payload" | jq -r '.agent_id // ""' 2>/dev/null || printf '')
+
+if [ -n "$agent_id" ]; then
+  jq -n --arg id "$id" '{
+    hookSpecificOutput: {
+      hookEventName: "PostToolUse",
+      additionalContext: (
+        "Ticket \($id) is now in .kerjaan/review/. You are working inside a " +
+        "subagent, so the reviewer is not yours to dispatch: the session that " +
+        "sent you dispatches it once your report arrives. Do not dispatch a " +
+        "reviewer, do not review the ticket yourself, and stop changing the " +
+        "code it covers. Finish now with your report."
+      )
+    }
+  }'
+  exit 0
+fi
+
 # The reviewer may be dispatched from a session whose cwd is not the repo, so
 # tell it where the board is instead of leaving it to search.
 repo=$(dirname "$(dirname "$(dirname "$ticket")")")
 scripts="$(cd "$(dirname "$0")" && pwd)"
-guide="$(cd "$(dirname "$0")/.." && pwd)/references/review.md"
+foreman="$(cd "$(dirname "$0")/.." && pwd)/references/foreman.md"
 
-jq -n --arg id "$id" --arg repo "$repo" --arg ticket "$ticket" --arg guide "$guide" \
+jq -n --arg id "$id" --arg repo "$repo" --arg ticket "$ticket" --arg foreman "$foreman" \
   --arg scripts "$scripts" '{
   hookSpecificOutput: {
     hookEventName: "PostToolUse",
@@ -105,14 +129,13 @@ jq -n --arg id "$id" --arg repo "$repo" --arg ticket "$ticket" --arg guide "$gui
       "repo, the ticket ID \($id), and the kerjaan scripts folder " +
       "\($scripts). That reviewer decides, and " +
       "moves the ticket to done/ or back to in_progress/ itself. Do not " +
-      "review this ticket yourself, and do not wait for the reviewer to " +
-      "finish. Ticket \($id) is handed off now: stop changing the code it " +
-      "covers, even to improve it, even to strengthen a test. Moving it here " +
-      "was the claim that it is finished, and an edit made now is one the " +
-      "reviewer judges without knowing it happened. If something genuinely " +
-      "remains, move the ticket back to in_progress instead of working on it " +
-      "where it is. Otherwise pick up a different ticket. When the " +
-      "verdict comes back, read \($guide) for what to do with it."
+      "review this ticket yourself. Ticket \($id) is handed off now: nobody " +
+      "changes the code it covers, even to improve it, even to strengthen a " +
+      "test. Moving it here was the claim that it is finished, and an edit " +
+      "made now is one the reviewer judges without knowing it happened. If " +
+      "something genuinely remains, move the ticket back to in_progress " +
+      "instead. When the verdict comes back, read \($foreman) for what to do " +
+      "with it and with the rest of the chain."
     )
   },
   systemMessage: ("Ticket \($id) entered review — dispatching a reviewer.")

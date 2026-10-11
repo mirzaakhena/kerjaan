@@ -6,7 +6,7 @@ labels: [skill, agen]
 reporter: mirza
 assign_to: claude
 created: 2026-10-11 06:42:23
-updated: 2026-10-11 06:47:39
+updated: 2026-10-11 07:27:23
 related: []
 blocked_by: []
 ---
@@ -56,17 +56,17 @@ bersih. Pengguna tidak perlu membuka sesi baru per tiket, dan sesi utama
 tetap ringan sampai rantai selesai.
 
 ## Done when
-- [ ] Ada agen pengerja khusus di `agents/`, berdampingan dengan
+- [x] Ada agen pengerja khusus di `agents/`, berdampingan dengan
       `kerjaan-reviewer`. Mandor cukup mengirim jalur tiket dan bekal dari
       tiket-tiket sebelumnya. Langkah tetapnya (baca aturan proyek dan tiket,
       kerjakan, ukur, buktikan uji bisa merah, commit, pindah ke `review`,
       lapor ringkas) ada di definisi agennya, tidak ditulis ulang per tiket.
-- [ ] SKILL.md menjelaskan sesi utama sebagai mandor dalam setiap kasus,
+- [x] SKILL.md menjelaskan sesi utama sebagai mandor dalam setiap kasus,
       juga untuk satu tiket: sesi utama tidak menyunting kode tiket sendiri.
-- [ ] Hanya mandor yang memanggil peninjau. Pengerja yang memindah tiket ke
+- [x] Hanya mandor yang memanggil peninjau. Pengerja yang memindah tiket ke
       `review` tidak disuruh hook memanggil peninjau. Bisa diuji dengan
       menjalankan hook dari konteks pengerja dan dari konteks mandor.
-- [ ] Tiket yang ditolak peninjau dikembalikan ke pengerja yang sama dengan
+- [x] Tiket yang ditolak peninjau dikembalikan ke pengerja yang sama dengan
       melanjutkannya dari transkripnya (mis. `SendMessage` ke agen itu),
       bukan dengan mengutus pengerja baru dan bukan dengan pengerja yang
       menunggu. Pengerja langsung memperbaiki tanpa membaca ulang tiket atau
@@ -75,31 +75,32 @@ tetap ringan sampai rantai selesai.
       berganti dan pengerja lama tidak bisa dilanjutkan, pengerja baru
       bekerja dari Notes tiket, dan ringkasan rantai menyebut bahwa itu
       terjadi.
-- [ ] Rantai berhenti sendiri dan melapor kepada pengguna dalam tiga keadaan:
+- [x] Rantai berhenti sendiri dan melapor kepada pengguna dalam tiga keadaan:
       ada keputusan milik pengguna (pengerja menulis pertanyaan, pilihan,
       dan rekomendasinya di tiket, tanpa menebak), peninjau menolak tiket
       yang sama dua kali, atau tiket yang menjadi landasan tiket lain tidak
       lolos. Pertanyaan yang tidak menahan pekerjaan tidak menghentikan
       rantai, tetapi tetap tercatat di tiket.
-- [ ] Di awal rantai, mandor menanyakan butir yang hanya bisa diperiksa
+- [x] Di awal rantai, mandor menanyakan butir yang hanya bisa diperiksa
       manusia: ditunda atau menahan rantai. Kalau ditunda, butir itu ditulis
       sebagai skenario tangan, ditandai "menunggu <pengguna>" di tiket, dan
       peninjau tidak menolak tiket karenanya. Jawaban pengguna dicatat di
       tiket-tiket yang terkena.
-- [ ] Mandor meneruskan bekal dari tiket ke tiket: komponen yang sudah
+- [x] Mandor meneruskan bekal dari tiket ke tiket: komponen yang sudah
       dibangun, jebakan yang ditemukan, dan pola penolakan sebelumnya. Bekal
       itu sampai ke pengerja berikutnya tanpa pengerja harus membaca riwayat
       sesi mandor.
-- [ ] Di akhir rantai, atau saat rantai berhenti, pengguna mendapat satu
+- [x] Di akhir rantai, atau saat rantai berhenti, pengguna mendapat satu
       ringkasan: tiket mana yang lolos dan di putaran keberapa, mana yang
       berhenti dan kenapa, serta semua pertanyaan yang terkumpul.
-- [ ] `references/parallel-work.md` dan bagian lain yang mengandaikan sesi
+- [x] `references/parallel-work.md` dan bagian lain yang mengandaikan sesi
       mengerjakan tiketnya sendiri diselaraskan, tanpa saling bertentangan
       dengan SKILL.md.
-- [ ] README menjelaskan cara kerja ini kepada pengguna baru.
+- [x] README menjelaskan cara kerja ini kepada pengguna baru.
 
 ## History
 - 2026-10-11 06:42:23 backlog
+- 2026-10-11 07:20:34 in_progress
 
 ## Notes
 - Sumber: sesi nukitu-mockup 10–11 Okt 2026. Prompt pengerja dan peninjau
@@ -134,3 +135,33 @@ tetap ringan sampai rantai selesai.
   ~11 menit (termasuk `npm run uji` penuh ~6,5 menit). Keduanya tanpa
   membaca ulang tiket atau kode.
 - Batasan: pengerja hanya bisa dilanjutkan selama sesi mandor masih hidup.
+- Keputusan saat dikerjakan, 11 Okt 2026:
+  - Agen pengerja bernama `kerjaan-worker` (`agents/kerjaan-worker.md`), sejajar
+    dengan `kerjaan-reviewer`. Panduan mandor ada di
+    `skills/kerjaan/references/foreman.md`.
+  - Pengerja **tidak** memakai `SendMessage` untuk bertanya ke mandor di
+    tengah kerja. Pertanyaan lewat laporan akhir dan Notes tiket, seperti
+    malam itu. Alasannya: pengerja yang menunggu jawaban menahan tiketnya,
+    padahal pemilik mungkin sedang tidak ada. Keputusan yang tidak bisa
+    menunggu adalah alasan untuk berhenti, bukan untuk bertanya.
+  - Pengerja tidak diberi alat `Agent`. Menurut dokumentasi Claude Code,
+    subagent kini bisa mengutus subagent lain, jadi larangan memanggil
+    peninjau tidak cukup ditulis sebagai aturan.
+  - Hook membedakan pengerja dari mandor lewat `agent_id` di masukan hook,
+    yang hanya ada kalau langkah itu dijalankan di dalam subagent. Subagent
+    jenis apa pun dianggap pengerja.
+  - Mandor menunggu putusan peninjau sebelum mengutus pengerja berikutnya,
+    supaya pohon kerja diam saat ditinjau dan pelajaran dari penolakan
+    sempat masuk ke bekal.
+  - Commit: pengerja meng-commit kode bersama berkas tiketnya sendiri, dengan
+    pathspec per berkas. Ini menyelaraskan catatan "papan di-commit sendiri"
+    dengan aturan Committing di SKILL.md, yang meminta berkas tiket ikut di
+    commit kodenya.
+  - Yang tidak bisa diuji di sesi ini: plugin yang terpasang masih 1.8.1,
+    jadi `kerjaan:kerjaan-worker` belum terdaftar dan rantai mandor belum
+    dijalankan sungguhan. Yang diuji hanya hook: skripnya dijalankan dengan
+    masukan seperti dari pengerja dan dari mandor
+    (`uji/on-ticket-review.test.mjs`).
+  - Uji hook dibuktikan bisa merah: cabang `agent_id` sengaja dimatikan, dan
+    dua uji pengerja menjadi merah. Sesudah itu skrip dipulihkan dari salinan.
+- 2026-10-11 07:27:12: test run — `node --test` exited 0 after 0m4s, on content fingerprint 24ea4e27766924603e132af9cab7ae1b57a59a8f (the same before and after the run; .kerjaan/ left out).

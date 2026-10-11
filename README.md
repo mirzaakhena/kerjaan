@@ -120,17 +120,18 @@ settings file needs editing:
 ```
 kerjaan/
 ├── skills/kerjaan/     the board: how tickets are written and moved
-├── agents/             kerjaan-reviewer, the independent reviewer
-└── hooks/hooks.json    dispatches that reviewer when a ticket enters review
+├── agents/             kerjaan-worker, who executes one ticket,
+│                       and kerjaan-reviewer, the independent reviewer
+└── hooks/hooks.json    asks for that reviewer when a ticket enters review
 ```
 
 The plugin applies in every project. It does nothing at all in a repo that has
 no `.kerjaan/` folder, so installing it globally costs nothing.
 
 Installing the skill alone — `git clone` into `~/.claude/skills/` — still works
-and still writes perfectly good tickets. What it loses is the automatic review:
-the reviewer agent and the hook are the two pieces that only a plugin install
-can register.
+and still writes perfectly good tickets. What it loses is the worker, the
+automatic review and the hook: those are the pieces only a plugin install can
+register.
 
 ## Usage
 
@@ -166,6 +167,65 @@ ls .kerjaan/in_progress/
 grep -l 'priority: high' .kerjaan/todo/*.md
 ```
 
+## One session, many tickets
+
+Hand a session one ticket or a whole queue, and the session you talk to never
+writes the code itself. It acts as the **foreman**: it keeps the board, asks
+you what needs asking, and gives each ticket to a fresh `kerjaan-worker`
+subagent that starts with an empty context.
+
+```
+you hand over the tickets
+        ↓
+the foreman asks everything up front, in one message
+        ↓
+per ticket:  kerjaan-worker does it, commits, moves it to review, reports
+             the foreman dispatches kerjaan-reviewer and waits for the verdict
+             sent back → the same worker is resumed to fix it,
+                         and the same reviewer is resumed for round two
+        ↓
+one summary for you at the end
+```
+
+**Why.** A session that works tickets itself collects every file it read and
+every test it ran. By the second or third ticket its context is full, it gets
+compacted, and you end up opening a new session per ticket to start clean.
+Here, only short reports reach the foreman: every ticket starts clean, and
+the session stays light until the queue is finished. It also holds for a
+single ticket, so there is one way of working, not two.
+
+**What you are asked at the start.** The open questions in every ticket of the
+queue, together; and, for checks only a person can make — how it looks on a
+real phone, a day of real use — whether they are deferred or should hold the
+queue. Deferred ones become a hand scenario in the ticket, marked as awaiting
+you, and the reviewer does not reject the ticket over them.
+
+**What travels between tickets.** The worker's report ends with what the next
+ticket can reuse, the traps it hit, and anything a reviewer would catch. The
+foreman collects these, adds the reasons any ticket was sent back, and hands
+the whole list to the next worker. Workers never read each other's history;
+the lessons still arrive.
+
+**A rejected ticket goes back to the worker who did it**, resumed from its own
+transcript, so it fixes without reading the ticket and the code again. The
+next round goes to the same reviewer, resumed the same way. If the session was
+replaced and the old worker cannot be reached, a new one works from the
+ticket's notes, and the summary says so.
+
+**When it stops on its own.** A decision that is yours to make (the worker
+writes the question, the options and its recommendation into the ticket, and
+never guesses), the same ticket sent back twice, or a ticket the others build
+on failing. A question that does not hold the work up is written into its
+ticket and waits for the summary.
+
+**What you get at the end.** One summary: which tickets passed and in which
+round, which stopped and why, every question the workers left, and every
+check still waiting for a person.
+
+The rules the foreman follows are in
+`skills/kerjaan/references/foreman.md`; the worker's steps are in
+`agents/kerjaan-worker.md`.
+
 ## Choosing what is next
 
 `todo` means *ready*, and readiness is checked rather than assumed: nothing in
@@ -191,8 +251,8 @@ one is updated instead — or creates one, and shows you its `Request` and
 starting anything new.
 
 When a batch is finished — `todo`, `in_progress` and `review` all empty — the
-session that just did the work reads the backlog and proposes what should come
-next, while it still knows the code. It proposes; you choose.
+session that just ran the batch reads the backlog and proposes what should come
+next, while it still remembers the work. It proposes; you choose.
 
 A folder has no order, though, and `blocked_by` only covers the hard case where
 one ticket cannot start until another finishes. Softer sequencing lives in
@@ -322,18 +382,27 @@ about a ticket that changed plenty.
 ## Review happens by itself
 
 `review` is the one status that does not sit still waiting for someone to
-notice it. The moment a ticket lands there, a hook dispatches the
-`kerjaan-reviewer` agent:
+notice it. The moment a ticket lands there, the `kerjaan-reviewer` agent is
+dispatched:
 
 ```
-update-ticket.sh <id> --status review
+the worker runs update-ticket.sh <id> --status review
         ↓
 the PostToolUse hook fires — but only if the ticket really is in .kerjaan/review/
+        ↓
+inside the worker it says: stop and report; never dispatch a reviewer yourself
+        ↓
+the foreman reads the report and dispatches kerjaan-reviewer
         ↓
 kerjaan-reviewer runs the ticket's own "Done when" checks itself
         ↓
 it moves the ticket to done/, or back to in_progress/ with the evidence
 ```
+
+Only the foreman dispatches reviewers, because only the foreman counts the
+rounds, carries a verdict's lesson to the next worker, and knows which worker
+to resume. The hook tells the two apart by whether the move was made inside a
+subagent.
 
 Whoever executed the ticket does not get to mark their own work `done`. The
 last word belongs to something that did not write the code and has no stake in
@@ -345,8 +414,8 @@ reviewer still has the last word. Say you want to skip review and it goes
 straight to `done` instead, with a note in the ticket saying no review stood
 behind it.
 
-The session that did the work hands the ticket off and moves on — and stops
-changing that ticket's code, because the move was the claim that it is
+The worker hands the ticket off and ends — and nobody changes that ticket's
+code from then on, because the move was the claim that it is
 finished and an edit made afterwards is one the reviewer judges without
 knowing it happened. A failed review simply puts the ticket back in
 `in_progress`, which is where a board is supposed to put unfinished work.
@@ -354,7 +423,7 @@ knowing it happened. A failed review simply puts the ticket back in
 The reviewer never files tickets of its own. Things it notices outside the
 ticket's criteria go into a `### Suggested follow-up` block in the reviewed
 ticket's notes. Once every ticket that was in flight has reached `done`, the
-session collects those suggestions and offers them to the user as a single
+foreman collects those suggestions and offers them to the user as a single
 multiple-choice question; the ones picked become tickets, and each answer —
 ticketed or declined — is marked next to its suggestion so it is never offered
 twice. An unmet criterion is never allowed to become one of those
@@ -363,7 +432,7 @@ no longer a gate.
 
 ### The checks run once
 
-Whoever did the work runs the project's `test_command` before handing the
+The worker runs the project's `test_command` before handing the
 ticket over, through `test-run.sh`. The script appends one line to the
 ticket's notes: when it ran, whether it passed, and a fingerprint of exactly
 the content it ran on — every file git would see, new files included, with
@@ -392,7 +461,7 @@ reach review until its owner has written, in their own words and any language,
 what the AI built. The point is to keep the owner involved: they should know
 what code went into their repo.
 
-The AI commits the work, then shows the files and line ranges from
+The worker commits the work and stops there; the foreman then shows the files and line ranges from
 `explain.sh changes`, which reads them from git so nobody has to type them. The
 owner writes below the last line of the ticket. When something is misread,
 the AI answers with a clue, a file and a line to look at, rather than the
@@ -433,8 +502,8 @@ yours. Tell it you want speed, or that this is a mock or an MVP, and it stops
 offering and uses `quick`.
 
 A ticket that fails review should not bounce for long. The reviewer reports
-every instance of a mistake it found, not only the first; the session fixes the
-whole kind of mistake before resubmitting; a second review re-checks only what
+every instance of a mistake it found, not only the first; the same worker,
+resumed, fixes the whole kind of mistake before resubmitting; a second review re-checks only what
 failed and what changed since; and after two returns Claude asks you whether to
 try again or accept the ticket with a follow-up, instead of looping on its own.
 

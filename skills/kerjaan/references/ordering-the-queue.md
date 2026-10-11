@@ -17,7 +17,7 @@ That lives in one file, `.kerjaan/order.md`, covering `todo/` and nothing else.
 - 260905160401 Add the config loader
 
 **Then these two, in any order.** Neither touches the other's files, so two
-sessions can take one each.
+workers can take one each.
 
 - 260905160502 Import screen
 - 260905160503 Export screen

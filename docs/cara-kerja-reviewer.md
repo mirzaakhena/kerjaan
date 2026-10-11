@@ -14,8 +14,10 @@ Dokumen ini hanya penjelasannya.
 Reviewer adalah **pemeriksa dari luar**: ia tidak ikut mengerjakan dan tidak
 peduli pekerjaan itu lolos atau tidak.
 
-**Kapan ia bekerja.** Otomatis, begitu tiket dipindah ke `review`. Tidak perlu
-dipanggil.
+**Kapan ia bekerja.** Begitu pengerja memindah tiket ke `review` dan melapor,
+sesi utama (mandor) mengutusnya. Pengguna tidak perlu memanggilnya. Kalau
+tiket dikembalikan, putaran berikutnya diberikan kepada peninjau yang sama,
+yang dilanjutkan dari transkripnya.
 
 ### Langkah dasar, di semua level
 
@@ -189,8 +191,11 @@ kejujuran hasilnya. Yang berubah hanya berapa lama menunggu.
 Pernah dipertimbangkan: reviewer utama menyusun rencana sabotase lalu
 membagikannya ke beberapa subagent supaya berjalan paralel. Tidak dipilih karena:
 
-- **Subagent tidak bisa mengutus subagent lain** di Claude Code. Kalau sesi utama
-  yang mengutus, independensi hilang, karena sesi itulah yang mengerjakan kodenya.
+- Alasan pertama dulu: subagent tidak bisa mengutus subagent lain, dan sesi
+  utama tidak boleh mengutus karena sesi itulah yang mengerjakan kodenya.
+  Keduanya sudah tidak berlaku. Claude Code kini mengizinkan subagent
+  bersarang, dan sejak sesi utama menjadi mandor, ia tidak menulis kode tiket.
+  Dua alasan di bawah ini tetap berlaku, dan keduanya sudah cukup.
 - **Tiap subagent mulai dari nol.** Ia harus mengenal repo dan memasang
   dependensi sendiri, yang sering lebih mahal daripada sabotasenya.
 - **Tidak menambah cakupan.** Agen yang hanya menjalankan rencana tidak membawa

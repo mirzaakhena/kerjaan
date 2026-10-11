@@ -32,13 +32,16 @@ ls .kerjaan/*/"260905160401 "*.md                                  # find by ID;
 The rules that are broken most often, each explained further down:
 
 1. **Work starts from a ticket** the user has seen — search first, create if none.
-2. **Move a ticket to `in_progress` before the first change to the repo.**
-3. **Every change to a ticket goes through `update-ticket.sh`**, never a bare `mv`.
-4. **Before `review`, tick `Done when` line by line** against what the work produced.
-5. **Once a ticket is in `review/`, stop touching its code.**
-6. **Never review your own work.** The reviewer decides and moves the file.
-7. **Never pass `--ack-unmerged` on your own.** That decision is the owner's.
-8. Never write a status summary, index or dashboard into `.kerjaan/`.
+2. **The main session never writes a ticket's code.** It is the foreman: every
+   ticket, even a single small one, goes to a `kerjaan-worker` subagent.
+3. **Move a ticket to `in_progress` before the first change to the repo.**
+4. **Every change to a ticket goes through `update-ticket.sh`**, never a bare `mv`.
+5. **Before `review`, tick `Done when` line by line** against what the work produced.
+6. **Once a ticket is in `review/`, stop touching its code.**
+7. **Never review your own work.** The reviewer decides and moves the file;
+   only the foreman dispatches it.
+8. **Never pass `--ack-unmerged` on your own.** That decision is the owner's.
+9. Never write a status summary, index or dashboard into `.kerjaan/`.
 
 ## The board
 
@@ -86,7 +89,8 @@ ls .kerjaan/in_progress/ .kerjaan/review/
 
 Anything there that this session did not put there is either stuck or
 forgotten. Tell the user before starting anything new: for `in_progress`, what
-the ticket is and whether to resume it, or that it is waiting for their
+the ticket is and whether to resume it — resuming means a new worker that starts
+from the ticket's `## Notes` — or that it is waiting for their
 explanation when it still holds `(waiting for the owner's explanation)`; for
 `review`, dispatch
 `kerjaan-reviewer` on it (see `references/review.md`, "Tickets stuck in
@@ -249,6 +253,30 @@ team understands without follow-up questions.
 
 ## The life of a ticket
 
+### Who does the work
+
+The session the user talks to is the **foreman**. It keeps the board and talks
+to the owner; it never edits a ticket's code. Each ticket is executed by a
+`kerjaan-worker` subagent that starts from an empty context, reports briefly,
+and is resumed by the foreman if the reviewer sends the ticket back. Only the
+foreman dispatches reviewers.
+
+This holds for one ticket as much as for a whole queue. A session that works
+tickets itself fills its context with every file and test run it touched, and
+by the second or third ticket it is compacted; a foreman receives only
+reports, so the user hands over a queue once and every ticket still starts
+clean.
+
+**Read `references/foreman.md` before the first ticket goes to a worker** — it
+covers the questions asked at the start of a chain, the worker's prompt, what
+to do with each report and verdict, when the chain stops itself, and the
+summary at the end.
+
+The sections below describe a ticket's life whoever performs each step. Where
+a step is the worker's — doing the work, ticking `Done when`, running the
+checks, the move to `review` — its definition (`agents/kerjaan-worker.md`)
+carries it; the foreman reads them here to know what a report claims.
+
 ### Work starts from a ticket
 
 When the user asks for work on a repo that has a board — fix this, add that —
@@ -341,8 +369,13 @@ run `update-ticket.sh` on it — an answer left in the conversation is gone when
 the session ends. Asked this way the user gives one sitting and the queue can
 then run to the end; asked one ticket at a time, each question stalls the work
 after the user has left. A ticket joining `todo` later is swept before the next
-move out of `todo`; a question that surfaces mid-work is asked then and
-written back the same way.
+move out of `todo`; a question that surfaces mid-work is written into the
+ticket by the worker, and the foreman puts it to the owner.
+
+The same message carries two more questions a chain needs settled up front
+(`references/foreman.md`, "Starting the chain"): whether checks only a person
+can make are deferred or hold the chain, and any review level worth raising
+for a ticket that lands somewhere unforgiving.
 
 **Then move the ticket to `in_progress` before the first change to the repo** —
 even when you fully expect to finish in one sitting. Especially then. The board
@@ -352,7 +385,8 @@ anyone plans: a session ends, a connection drops. What is left is a board
 saying `todo` and a working tree that disagrees, and `git status` shows which
 files changed but not which ticket they belonged to. The tempting thought — *"I
 will start and finish in one breath"* — plans only for the case where the step
-was unnecessary. The rule costs one command.
+was unnecessary. The rule costs one command. The foreman makes this move
+itself, before it dispatches the worker.
 
 **The script refuses the move while other work sits unmerged.** If any local
 branch holds commits outside `HEAD` — other than branches of tickets in
@@ -377,7 +411,8 @@ depend on one further down, say — and then name that one problem.
 One ticket at a time is normal. Two tickets in the same `order.md` group are
 declared independent and may run side by side in separate git worktrees — but
 a worktree checks out a second copy of `.kerjaan/`, which silently disagrees
-with the first, and the scripts refuse to run there. **Read
+with the first, and the scripts refuse to run there. The foreman creates the
+worktrees and gives each worker its own. **Read
 `references/parallel-work.md` before creating a worktree.**
 
 ### Tickets whose work is a decision
@@ -414,6 +449,16 @@ ticket in `review` claiming to be finished is a more expensive lie than one in
         [[260907135503]]**, which decided mentoring gets no screens at all
   ```
 
+- **Awaiting a person** — a check only a person can make, which the owner
+  deferred at the start of the chain. Leave the box open, mark the line as
+  awaiting that owner, and write a hand scenario in `## Notes`: numbered steps
+  anyone can follow, ending in what they should see. The reviewer does not
+  reject the ticket for it; the chain's summary lists it.
+
+  ```markdown
+  - [ ] It reads well on a small phone — **awaiting mirza**: hand scenario in Notes
+  ```
+
 **Run the checks last, through `test-run.sh`.** When `settings.md` has a
 `test_command`, the final run before the move goes through
 `"$K/test-run.sh" <id>`, after the last change to the code. It runs the
@@ -427,33 +472,42 @@ run. Do not touch the code while it runs: a run that saw its content change is
 recorded as proving nothing.
 
 **Then the owner's explanation**, when `owner_explanation` in `settings.md` is
-`allow-to-skip` or `strict`: commit the work, show the owner
-`explain.sh changes <id>`, and have them explain it in their own words.
+`allow-to-skip` or `strict`. A worker cannot reach the owner, so it commits the
+work with the placeholder and reports `WAITING — explanation`; the foreman
+takes over from there. It shows the owner
+`explain.sh changes <id>` and has them explain it in their own words.
 **Read `references/explanation.md` before asking** — the order of commits
 and what you may do with their text are exact, and `update-ticket.sh` checks
 both.
 
 **Depth of review** comes from the `review` field. Leave it empty (`quick`)
 unless the ticket needs more; the level is the user's call, and suggesting a
-higher one is yours. **Read `references/review.md` before the move** whenever
-the work touched money, authentication, permissions, unrecoverable data or
-anything a customer hits first, or when you are unsure your change is right.
+higher one is the foreman's, when it clears the queue. **Read
+`references/review.md`** whenever a ticket in the chain lands on money,
+authentication, permissions, unrecoverable data or anything a customer hits
+first.
 
-**The move hands the ticket off.** A hook sees the move and tells the session
-to dispatch the `kerjaan-reviewer` subagent. Dispatch it, and do not wait for
-it — pick up the next ticket. The session that did the work dispatches the
-reviewer; it never performs the review itself. From this moment the ticket's
-code is not yours: an edit made now, even to strengthen a test, is one the
-reviewer judges without knowing it happened. If something genuinely remains,
-move the ticket back to `in_progress` and finish it there.
+**The move hands the ticket off.** The worker moves its ticket to `review`,
+and a hook sees the move. Inside the worker it says only to stop and report:
+a worker never dispatches a reviewer. When the worker's report reaches the
+foreman, the foreman dispatches `kerjaan-reviewer` — and when the foreman makes
+the move itself, after the owner's explanation, the hook tells it to do the
+same. The foreman waits for the verdict before the next worker starts. Nobody
+performs the review but the reviewer. From this moment the ticket's code is
+untouchable: an edit made now, even to strengthen a test, is one the reviewer
+judges without knowing it happened. If something genuinely remains, move the
+ticket back to `in_progress` and finish it there.
 
 ### Out of `review`
 
 The reviewer decides and moves the ticket — to `done/`, or back to
 `in_progress/` with evidence. Whoever executed a ticket never marks their own
-work `done`. **Read `references/review.md` when a ticket comes back from
-review** — it covers fixing a returned ticket and when to stop and ask the
-owner instead.
+work `done`. A returned ticket goes back to **the same worker**, resumed from
+its transcript so it fixes without reading everything again, and the second
+round goes to the same reviewer the same way. **Read `references/foreman.md`
+and `references/review.md` when a ticket comes back from review** — they cover
+resuming, fixing a returned ticket, and when to stop and ask the owner
+instead.
 
 ### When the user says "mark it done"
 
@@ -468,9 +522,9 @@ behind it must say so.
 ### When the board goes quiet
 
 When `todo`, `in_progress` and `review` are all empty, the batch is over — and
-the session that just worked through it knows the code better than any session
-after it will. Use that before the conversation ends, without waiting to be
-asked:
+the foreman that just ran it, holding every report, verdict and carry-forward,
+knows the work better than any session after it will. Use that before the
+conversation ends, without waiting to be asked:
 
 1. Offer the reviewers' suggested follow-ups (`references/review.md`).
 2. Read `backlog` with what you now know, and propose the next few candidates
@@ -501,8 +555,10 @@ tickets' references need no attention.
 The board lives in git so that code and status travel together. Commit when
 the user or the project's own rules call for it — kerjaan does not change who
 decides that, except that turning `owner_explanation` on is consent to the
-commits its steps need — but when you commit work for a ticket, its files under
-`.kerjaan/` go in the same commit, and the message names the ticket ID. Code
+commits its steps need, and handing tickets to workers is consent to the
+commits each worker makes for its own ticket — but when you commit work for a
+ticket, its files under `.kerjaan/` go in the same commit, and the message
+names the ticket ID. Code
 committed without the status move that goes with it leaves the history saying
 the work happened while the board says it had not started. A move with no code
 behind it — a verdict, a cancel, a new ticket — goes in the next commit, never

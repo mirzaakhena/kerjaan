@@ -6,8 +6,7 @@ Read this before moving a ticket to `review` on a board whose `settings.md` sets
 Before the reviewer sees the work, the owner writes down, in their own words,
 what the AI built. This is the owner's share of the review. They stay involved,
 they know what code is in their repo, and where their understanding and the
-code part ways, it shows up while the session that wrote the code is still
-there to point at it.
+code part ways, it shows up while the work is still fresh enough to point at.
 
 | `owner_explanation` | What happens |
 |---|---|
@@ -49,6 +48,11 @@ whatever language they think in, even on a board that keeps everything else in
 English. Every other rule about ticket prose stays as it is.
 
 ## The steps
+
+Step 1 is the worker's: it ends its part there and reports
+`WAITING — explanation`, since it cannot reach the owner. Steps 2 to 6 are the
+foreman's, which reads the ticket's code as far as a clue needs and still
+never edits it.
 
 They come after `Done when` is ticked and the last `test-run.sh`. The
 fingerprint leaves `.kerjaan/` out, so nothing below costs a second test run.
@@ -131,9 +135,8 @@ leave the explanation untranslated.
 
 ## Who checks what
 
-The check before `review` is done by the session that did the work. That is
-not approving your own work, because what gets judged is the owner's
-understanding, not your code.
+The check before `review` is done by the foreman. That is not approving the
+work, because what gets judged is the owner's understanding, not the code.
 
 The reviewer runs `explain.sh check`. A fence that does not hold the owner's
 words is a blocking finding. On `strict` it also reads the explanation against

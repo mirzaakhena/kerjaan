@@ -6,8 +6,17 @@ anything here.
 
 Two tickets sitting in the same group in `order.md` have already been declared
 independent of each other, and that declaration is the licence to run them side
-by side — in separate git worktrees, so neither session sees the other's
+by side — in separate git worktrees, so neither worker sees the other's
 half-finished files.
+
+Side by side means two `kerjaan-worker` subagents running at once, each sent
+to its own worktree by the foreman. The foreman creates the worktrees, moves
+both tickets to `in_progress`, dispatches both workers with a `Worktree:` line
+in their prompts, and handles each report and verdict as it arrives
+(`references/foreman.md`). A worker writes code only in its worktree and runs
+board commands from the main tree. Use the steps below rather than the Agent
+tool's own worktree option: that one does not keep `.kerjaan/` out of the
+checkout.
 
 **The group is the claim; the worktree is only the mechanism.** If two tickets
 would touch the same files, the answer is not a worktree, it is that they never
@@ -31,7 +40,8 @@ git sparse-checkout set --no-cone '/*' '!/.kerjaan/'
   easiest to skip and most expensive to omit; the next section is about it.
 
 While the work happens in that worktree, **every board command still runs from
-the main tree** — the scripts refuse to run anywhere else.
+the main tree** — the scripts refuse to run anywhere else. The worker is told
+both paths in its prompt.
 
 ## The board has one home
 
@@ -95,7 +105,8 @@ is not a flaw to be papered over: merging is a decision about the main line,
 and the thing that just judged the work is deliberately the thing with no stake
 in it.
 
-Closing that window belongs to whoever picks up the verdict: merge the branch,
+Closing that window belongs to the foreman, which picks up the verdict and
+has the owner at hand when merging is theirs to approve: merge the branch,
 remove the worktree, delete the branch. The warning at `done` exists because
 that handover is easy to drop — and since a warning in a reviewer's report is
 easy to drop too, the next ticket cannot start while the branch is still

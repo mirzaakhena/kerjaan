@@ -70,6 +70,13 @@ is something the reviewer runs; a sentence about one is not.
 
 ## When a review sends the ticket back
 
+The foreman resumes **the worker that did the ticket**, with `SendMessage` to
+its agent ID, and hands it the findings; once it reports, the foreman resumes
+**the reviewer of the round before** the same way. Neither starts over, which
+is what makes a second round cheap. Only when one of them can no longer be
+resumed does a fresh agent take its place, working from `## Notes`
+(`references/foreman.md`, "One ticket, start to finish").
+
 **Fix the kind of mistake, not the instance named.** The reviewer groups what
 it found by kind, but cannot promise it found every place. Before moving the
 ticket to `review` again, look for the same shape across everything the ticket
@@ -82,14 +89,15 @@ look from whoever did the work is exactly what an independent gate exists to
 ignore.
 
 **After the second return, ask before trying again.** The reviewer states the
-round. Put the choice to the ticket's owner in one line:
+round, and the foreman counts it: a second return stops the chain. Put the choice to the ticket's owner in one line:
 
 > This came back twice; what is left is that two permission tests cannot fail.
 > Fix and review a third time, or accept it as is and ticket the tests?
 
 If they accept: append to `## Notes` that the owner accepted the ticket over
 the named findings, create the follow-up ticket with `related: [<this ID>]`,
-and move this one to `done` yourself.
+and move this one to `done` yourself. If they want a third round, resume the
+same worker as before.
 
 ## Follow-ups the reviewer suggests
 
@@ -131,4 +139,4 @@ is one nobody has answered yet.
 
 The hook only covers moves made while this plugin is installed. A ticket
 sitting in `review/` with no reviewer on it — moved there by hand, or before
-the hook existed — is reviewed by dispatching `kerjaan-reviewer` with its ID.
+the hook existed — is reviewed by the foreman dispatching `kerjaan-reviewer` with its ID.
