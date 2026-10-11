@@ -6,7 +6,7 @@ labels: [skill, agen]
 reporter: mirza
 assign_to: claude
 created: 2026-10-11 07:32:18
-updated: 2026-10-11 08:24:50
+updated: 2026-10-11 08:26:16
 related: [261011064201]
 blocked_by: []
 ---
@@ -42,6 +42,8 @@ seperti yang tertulis, bukan hanya di atas kertas.
 - 2026-10-11 07:32:18 backlog
 - 2026-10-11 07:56:49 todo
 - 2026-10-11 08:18:16 in_progress
+- 2026-10-11 08:24:54 review
+- 2026-10-11 08:26:16 done
 
 ## Notes
 - Keputusan mirza, 11 Okt 2026: rantai uji dijalankan di repo git terpisah
@@ -91,3 +93,62 @@ seperti yang tertulis, bukan hanya di atas kertas.
     putaran kedua di sisi mandor (hanya muncul kalau mandor sendiri yang
     memindah tiket ke review, yaitu lewat penjelasan pemilik).
 - 2026-10-11 08:24:50: test run — `node --test` exited 0 after 0m4s, on content fingerprint 7e6471954d979a3fc20d776e056e3a23e92ad6db (the same before and after the run; .kerjaan/ left out).
+
+### Review 2026-10-11 — LOLOS, pindah ke done
+
+Ditinjau di level quick, putaran 1, pada commit 94bfb41: tiket ini tidak
+mengubah kode repo kerjaan, jadi yang diperiksa adalah klaim di Notes,
+dicocokkan dengan bukti yang disebutnya. Tidak ada `CLAUDE.md`/`AGENTS.md`
+di repo ini. Tidak ada cabang khusus tiket ini.
+
+Perintah yang dijalankan:
+- `test-run.sh --check 261011073201` (pohon kerja): **SAME** — `node --test`
+  lulus (exit 0) pada 2026-10-11 08:24:50, fingerprint
+  7e6471954d979a3fc20d776e056e3a23e92ad6db. Dibawa dari run pengerja, tidak
+  dijalankan ulang.
+- `explain.sh check 261011073201`: belum ada penjelasan; `owner_explanation`
+  di papan ini `off`.
+- Repo uji (hanya dibaca): `git log`, isi `.kerjaan/`, Notes dan History
+  kedua tiket, `node --test` (7 lulus, 0 gagal).
+- Transkrip mandor dan keempat subagent, berkas `.meta.json`, dan log
+  `rantai.jsonl`, dibaca dengan `jq`/`grep`.
+- `ls ~/.claude/plugins/cache/kerjaan/kerjaan/`.
+
+Per butir:
+1. Rilis terpasang, dua tiket dari satu sesi: **terpenuhi.** Folder 1.9.0
+   ada di cache plugin, dan pesan `init` di `rantai.jsonl` memuat kerjaan
+   versi 1.9.0. Satu sesi (41e84b6a…) memuat empat subagent: dua
+   `kerjaan:kerjaan-worker` dan dua `kerjaan:kerjaan-reviewer` (menurut
+   `.meta.json`). Kedua tiket ada di `done/` repo uji.
+2. Satu tiket ditolak sekali, putaran 2 oleh pengerja dan peninjau yang sama:
+   **terpenuhi.** History 261011081802: review → in_progress → review → done.
+   Notes-nya memuat blok tinjauan putaran 1 (DITOLAK, commit 2f0657f) dan
+   putaran 2 (LOLOS, commit 2e86517). Transkrip mandor memuat tepat dua
+   `SendMessage`: ke `a1549aef23bdbe858` (pengerja 802) dan ke
+   `a7515f92af6c50e8e` (peninjau 802). Transkrip kedua agen itu memuat pesan
+   putaran 2 dari mandor, dan tidak ada `Agent` kelima. Catatan: Notes tiket
+   802 sendiri tidak menyebut ID agen. Menurut `references/foreman.md`, ID agen
+   memang dicatat di log mandor, bukan di `.kerjaan/`. Butir ini dinilai dari
+   Notes tiket ini bersama bukti transkrip yang disebutnya.
+3. Ringkasan akhir: **terpenuhi.** Hasil akhir di `rantai.jsonl` memuat tabel
+   tiket dengan ID pengerja dan peninjau, putaran lolos (801 putaran 1, 802
+   putaran 2), penolakan beserta alasannya, jawaban pemilik, commit, dan
+   bagian "Yang masih terbuka: tidak ada" (tidak ada pertanyaan).
+4. Hal yang tidak berjalan seperti tertulis dicatat: **terpenuhi.** Notes
+   menyatakan tidak ada penyimpangan dan menyebut bagian yang tidak teruji.
+   Pemeriksaan di bawah tidak menemukan penyimpangan dari aturan.
+
+Klaim lain yang dicocokkan: tidak ada transkrip (mandor, subagent, log) yang
+memuat "Dispatch one subagent right now". "You are working inside a subagent"
+muncul di kedua transkrip pengerja (4 dan 2 kali). Tidak ada subagent yang
+memanggil `Agent` atau `SendMessage`. Urutan panggilan mandor: pengerja 801,
+peninjau 801, pengerja 802, peninjau 802, lalu kedua `SendMessage`.
+
+Catatan (tidak memblokir):
+- Klaim "Pengerja putaran 2 tidak membaca ulang tiket ... Langkah pertamanya
+  memeriksa status git, lalu langsung menyunting `hitung.mjs`" kurang tepat.
+  Perintah pertama sesudah dilanjutkan memang menjalankan `git status`, tetapi
+  dalam perintah yang sama ia juga mencetak tiket dari `## Done when` sampai
+  akhir, termasuk blok tinjauan. Ia tidak membaca kode atau Background lagi,
+  jadi intinya (tidak mulai dari awal) tetap benar, dan sesuai dengan
+  `foreman.md`.
