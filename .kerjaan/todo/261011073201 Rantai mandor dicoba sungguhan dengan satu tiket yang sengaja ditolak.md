@@ -6,7 +6,7 @@ labels: [skill, agen]
 reporter: mirza
 assign_to: claude
 created: 2026-10-11 07:32:18
-updated: 2026-10-11 07:32:42
+updated: 2026-10-11 07:57:24
 related: [261011064201]
 blocked_by: []
 ---
@@ -39,9 +39,16 @@ seperti yang tertulis, bukan hanya di atas kertas.
       ini, beserta tiket perbaikannya.
 
 ## History
+- 2026-10-11 07:56:49 todo
 
 ## History
 - 2026-10-11 07:32:18 backlog
 
 ## Notes
-(none yet)
+- Keputusan mirza, 11 Okt 2026: rantai uji dijalankan di repo git terpisah
+  (mis. `~/Workspace/kerjaan-uji-rantai`) dengan papan dan dua tiket mainan
+  sendiri, supaya papan kerjaan tidak kotor oleh tiket uji. Hasilnya dicatat
+  di tiket ini.
+- Keputusan mirza, 11 Okt 2026: rilis 1.9.0 dibuat dan di-push oleh Claude
+  sesudah 261011073202 lolos. Tiket ini menunggu rilis itu terpasang.
+- Tidak ada butir yang hanya bisa diperiksa manusia.
