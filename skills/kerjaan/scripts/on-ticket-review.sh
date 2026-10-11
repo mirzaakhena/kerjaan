@@ -131,16 +131,29 @@ foreman="$(cd "$(dirname "$0")/.." && pwd)/references/foreman.md"
 #     reviewer's own opening line. It covers a ticket from before History
 #     existed, on a board written in English; on other boards the reviewer
 #     writes it in the board's language, which is why it is not the only test.
+#     Only a line in `## Notes` that starts with the phrase counts, bare or as
+#     a top-level bullet (`- `, `* `, `+ `, optionally in bold). The phrase
+#     quoted anywhere else -- Background, mid-sentence in a worker's note, a
+#     wrapped continuation line, a `>` quote -- is someone talking about a
+#     review, not a review, and a first round must stay a first round.
 # Lines inside fenced blocks are prose, not records, so they are skipped.
-reviews=$(awk '
+# The awk prints two numbers: History `review` lines, then reviewer openings.
+counts=$(awk '
   /^```/ { infence = !infence; next }
   infence { next }
-  /^## / { inhist = ($0 ~ /^## History[ \t]*$/); next }
+  /^## / {
+    inhist = ($0 ~ /^## History[ \t]*$/)
+    innotes = ($0 ~ /^## Notes[ \t]*$/)
+    next
+  }
   inhist && $0 ~ /^- [0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9] [0-9][0-9]:[0-9][0-9]:[0-9][0-9] review[ \t]*$/ { n++ }
-  END { print n + 0 }
-' "$ticket" 2>/dev/null || printf '0')
+  innotes && $0 ~ /^([-*+][ \t]+)?(\*\*)?Reviewed at level/ { r++ }
+  END { print n + 0, r + 0 }
+' "$ticket" 2>/dev/null || printf '0 0')
+reviews=${counts% *}
+openings=${counts#* }
 
-if [ "${reviews:-0}" -ge 2 ] || grep -q 'Reviewed at level' "$ticket" 2>/dev/null; then
+if [ "${reviews:-0}" -ge 2 ] || [ "${openings:-0}" -ge 1 ]; then
   jq -n --arg id "$id" --arg repo "$repo" --arg ticket "$ticket" --arg foreman "$foreman" \
     --arg scripts "$scripts" '{
     hookSpecificOutput: {

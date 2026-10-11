@@ -84,6 +84,91 @@ const firstRoundWithLookalikes = `
 \`\`\`
 `;
 
+// First-round tickets that only talk about the reviewer's opening line. The
+// phrase counts as a review only at the start of a line in ## Notes, outside
+// fenced blocks; each place a person might quote it is its own case.
+const onlyOneReview = `
+## History
+- 2026-10-11 07:10:00 in_progress
+- 2026-10-11 07:40:00 review
+`;
+const quotesThatAreNotReviews = {
+  'in Background': `
+## Background
+Hook mencari teks "Reviewed at level" di catatan tinjauan.
+Reviewed at level quick, round 1 -- contoh baris pembuka peninjau.
+${onlyOneReview}
+## Notes
+- Catatan pengerja.
+`,
+  'mid-sentence in a worker note': `
+${onlyOneReview}
+## Notes
+- Catatan pengerja: peninjau membuka bloknya dengan "Reviewed at level", jadi
+  hook mencarinya.
+`,
+  'on a wrapped continuation line of a worker note': `
+${onlyOneReview}
+## Notes
+- Catatan pengerja: baris pembuka peninjau berbunyi
+  Reviewed at level quick, round 1, at commit a1b2c3d.
+`,
+  'in a > quote in Notes': `
+${onlyOneReview}
+## Notes
+- Catatan pengerja, mengutip tiket lain:
+> Reviewed at level quick, round 1, at commit a1b2c3d: sent back.
+`,
+  'inside a fenced block in Notes': `
+${onlyOneReview}
+## Notes
+- Contoh blok peninjau:
+\`\`\`
+- Reviewed at level quick, round 1, at commit a1b2c3d: sent back.
+\`\`\`
+`,
+  // Indented, so the line-start rule rejects it whether or not the fence is seen.
+  'inside an indented fenced block in Notes': `
+${onlyOneReview}
+## Notes
+- Contoh blok peninjau:
+  \`\`\`markdown
+  Reviewed at level quick, round 1, at commit a1b2c3d: sent back.
+  \`\`\`
+`,
+  // The shape of the real false positive, ticket 261011073202: a worker note
+  // quoting the phrase at the start of a wrapped line, and an earlier review
+  // written in the board's language, which is not a second round by itself.
+  'as in ticket 261011073202': `
+${onlyOneReview}
+## Notes
+- Catatan pengerja, 11 Okt 2026:
+  - Sinyal putaran. Hook menganggap tiket sudah pernah ditinjau bila
+    \`## History\` memuat \`review\` lebih dari sekali, atau \`## Notes\` memuat
+    "Reviewed at level". Sinyal kedua saja tidak cukup.
+  - Catatan 1 (tidak memblokir): sinyal Notes memakai \`grep -q 'Reviewed at
+    level'\` atas seluruh berkas.
+`,
+  'outside Notes, in a section after it': `
+${onlyOneReview}
+## Notes
+- Catatan pengerja.
+
+## Lampiran
+- Reviewed at level quick, round 1, at commit a1b2c3d: sent back.
+`,
+};
+
+// A reviewer's opening line in Notes, in each shape a reviewer writes it, on a
+// ticket whose History shows only the latest move.
+const reviewerOpenings = {
+  'as a bullet': `- Reviewed at level quick, round 1, at commit a1b2c3d: sent back.`,
+  'as a * bullet': `* Reviewed at level quick, round 1, at commit a1b2c3d: sent back.`,
+  'as a + bullet': `+ Reviewed at level quick, round 1, at commit a1b2c3d: sent back.`,
+  'in bold': `- **Reviewed at level normal, round 1, at commit a1b2c3d.** Sent back.`,
+  'bare under a ### Review heading': `### Review 2026-10-11 — sent back\n\nReviewed at level quick, round 1, at commit a1b2c3d: sent back.`,
+};
+
 function run(payload) {
   const r = spawnSync('bash', [hook], { input: JSON.stringify(payload), encoding: 'utf8', env: { ...process.env, CLAUDE_PROJECT_DIR: '' } });
   assert.equal(r.status, 0, r.stderr);
@@ -192,3 +277,27 @@ test('the foreman guide sends a second round to the same reviewer, with no phant
   const row = guide.split('\n').find((l) => l.startsWith('| `REVIEW` |'));
   assert.doesNotMatch(row, /as the hook says/);
 });
+
+for (const [where, body] of Object.entries(quotesThatAreNotReviews)) {
+  test(`round one that quotes "Reviewed at level" ${where}: dispatch a reviewer, not resume`, () => {
+    const { root, ticket } = board(body);
+    const out = run(moveToReview(root, ticket));
+    const text = out.hookSpecificOutput.additionalContext;
+    assert.match(text, /Dispatch one subagent right now/);
+    assert.doesNotMatch(text, /Resume the reviewer|later round/);
+    assert.match(out.systemMessage, /dispatching a reviewer/);
+  });
+}
+
+for (const [shape, line] of Object.entries(reviewerOpenings)) {
+  test(`a later round told by the reviewer's opening line ${shape} in Notes: resume`, () => {
+    const body = `\n## History\n- 2026-10-11 08:20:00 review\n\n## Notes\n- Catatan pengerja.\n\n${line}\n`;
+    const { root, ticket } = board(body);
+    const out = run(moveToReview(root, ticket));
+    const text = out.hookSpecificOutput.additionalContext;
+    assert.match(text, /later round/);
+    assert.match(text, /Resume the reviewer of the round before with SendMessage/);
+    assert.doesNotMatch(text, /Dispatch one subagent right now/);
+    assert.match(out.systemMessage, /resuming its reviewer/);
+  });
+}
