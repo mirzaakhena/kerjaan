@@ -44,8 +44,6 @@ const state = {
 
 document.title = `${project} — kerjaan`;
 $('name').textContent = project;
-$('tab-kanban').href = base;
-$('tab-map').href = `${base}map/`;
 
 const idFromPath = () =>
   location.pathname.match(/\/tiket\/(\d{12})$/)?.[1] || (location.pathname.endsWith(`/${ORDER}`) ? ORDER : null);

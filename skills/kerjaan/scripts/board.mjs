@@ -1,5 +1,4 @@
-// Reads a .kerjaan/ board into plain data. Shared by map.mjs and the viewer,
-// so both see one board the same way.
+// Reads a .kerjaan/ board into plain data for the viewer.
 //
 // Read-only, no dependencies beyond Node 18+.
 
@@ -12,7 +11,7 @@ const list = (s) => (s || '').match(/[\w-]+/g) || [];
 
 // A file without frontmatter is still a file in a status folder. It comes back
 // marked `broken` rather than being dropped, so a reader that shows the folders
-// as they are can show it too; the map leaves it out, as it always has.
+// as they are can show it too.
 export function readTicket(board, status, file) {
   const text = fs.readFileSync(path.join(board, status, file), 'utf8');
   const base = file.replace(/\.md$/, '');
@@ -75,20 +74,6 @@ export function readBoard(board) {
     hasOrder: order !== null,
     order: order || [],
     tickets,
-  };
-}
-
-// The exact shape map.html has always been served.
-export function mapData(board) {
-  const data = readBoard(board);
-  return {
-    repo: data.repo,
-    board: data.board,
-    readAt: data.readAt,
-    order: data.order,
-    tickets: data.tickets
-      .filter((t) => !t.broken)
-      .map(({ file, broken, meta, review, ...t }) => t),
   };
 }
 

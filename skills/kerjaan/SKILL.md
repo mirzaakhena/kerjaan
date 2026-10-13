@@ -163,7 +163,7 @@ blocked_by: []
 Every field is always present, empty rather than deleted, so the shape never
 varies and `grep` stays dependable. `related` vs `blocked_by`: only the second
 affects the order work gets done in. When a ticket is born out of another, put
-that one in `related` — the map and the reviewer's follow-ups rely on the trail.
+that one in `related` — the reviewer's follow-ups rely on the trail.
 
 ### The headings
 
@@ -580,20 +580,18 @@ own configuration. Searching is
 deliberately unscripted: a wrong search looks wrong at once, so use whatever
 fits.
 
-**The map.** When the user asks to see the board, a map, a graph, what depends
-on what, or what should be next on a board too big to answer by reading
-("tampilkan petanya"), start it in the background and hand over the address it
-prints:
+**The viewer.** When the user asks to see the board, run the viewer, or show
+what is in flight in a browser ("tampilkan papannya", "jalankan viewer"),
+start it in the background and hand over the address it prints:
 
 ```bash
-node "${CLAUDE_PLUGIN_ROOT}/skills/kerjaan/scripts/map.mjs" "$PWD" --open
+node "${CLAUDE_PLUGIN_ROOT}/viewer/server.mjs" --scan "$(dirname "$PWD")" --project "$(basename "$PWD")" --open
 ```
 
-It reads `.kerjaan/` live and writes nothing. Its advice panel groups each open
-ticket under the done ticket it came from (via `related`/`blocked_by`) — a
-reading of links, not a decision. When the user pastes back decisions from it,
-apply them through the operations above, with the same checks as if they had
-asked in words.
+It opens this repo's board as a kanban, one column per status, and follows
+`.kerjaan/` live; it writes nothing. If it says the port is already in use, a
+viewer is most likely running already: hand over
+`http://127.0.0.1:4321/<repo folder name>/` instead of starting another.
 
 ## Rare repairs
 

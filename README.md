@@ -281,48 +281,9 @@ refill `todo` from `backlog` only when `todo`, `in_progress` and `review` are
 all three empty — a ticket still in review can be handed straight back, so
 until then the board does not yet know what it finished.
 
-## The map
-
-When the board outgrows `ls`, draw it:
-
-```bash
-node skills/kerjaan/scripts/map.mjs /path/to/repo --open
-```
-
-Every ticket is a point. Top to bottom is the time it was created, and tickets
-written in the same minute sit side by side. Colour is the status, shape the
-type (circle feature, diamond bug, rounded square task), size the priority, and
-the ring around a point is how much of its `Done when` is ticked. Arrows run
-from a blocker to the ticket it holds up; soft curves are `related`. Zoom as
-far as you like: far out it is a constellation, close in every point carries its
-ID, then its title, then its type, priority and labels.
-
-It groups by status, type or label into lanes, or by nothing at all, so that
-related tickets drift together. Cancelled tickets start hidden, and so do
-*settled* done tickets — done, with every relation done or cancelled — since
-neither bears on what comes next.
-
-The side panel answers *what should come out of backlog next*, reading
-`related` as "came from". Every open ticket sits under its parent: the done
-ticket in its own `related` or `blocked_by` created closest before it. A family
-is what that finished work left behind, and the panel lists families either
-warmest first (the parent touched most recently, while the work is still
-fresh) or heaviest first (the most priority ready to start, plus what it
-frees). Inside a family, what can start comes before what is still blocked.
-Open a ticket, or a whole family, and press 1–4 to pick it up, hold, skip or
-cancel it; the map writes those decisions out as text to paste to Claude. The
-map itself never writes to the board.
-
-It is live: the server watches `.kerjaan/`, so a ticket moved by hand, by a
-script or by Claude glides to its new place while the page is open, with a
-note saying what changed. A slider replays the board being written, ticket by
-ticket. It needs Node 18 or newer and nothing else, listens on `127.0.0.1`
-only, and dies with its process.
-
 ## The viewer
 
-The map shows one board. The viewer shows every board you have, from one
-server:
+The viewer shows every board you have as a kanban, from one server:
 
 ```bash
 node viewer/server.mjs --scan ~/Workspace --open
@@ -332,6 +293,8 @@ Every folder directly under `~/Workspace` that holds a `.kerjaan/` is a
 project, at `http://127.0.0.1:4321/<folder name>/`. The front page lists them
 with how many tickets each holds per status; a board created later appears
 without a restart.
+`--project <folder name>` makes the address it prints and opens that
+project's kanban instead of the front page.
 
 A project opens as a kanban: one column per status, `todo` in the order
 `order.md` gives, the other columns most recently touched first. Cards can be
@@ -342,9 +305,9 @@ its own address (`/<project>/tiket/<id>`). The page follows the board as it
 changes, the ticket you are reading included. Any column can be hidden and
 shown again, still showing how many tickets it holds; `cancel` starts hidden,
 and the browser remembers the choice. `todo`'s header opens `order.md` itself,
-reasons and all. The map is the project's second tab.
+reasons and all.
 
-Like the map it only reads, needs Node 18 or newer and nothing else, and
+It only reads, needs Node 18 or newer and nothing else, and
 listens on `127.0.0.1` only. `--port` picks another port (`0` for any free
 one). Its tests run with `node --test` from the repo root.
 
@@ -558,9 +521,9 @@ to whoever is doing it, that is the signal to check who it was for.
   folders. The one non-ticket file, `order.md`, is not a counter-example: what
   it exists for — sequence and reasoning — is something no folder can express.
   It copies one fact, each ticket's title, so the file reads as names rather
-  than numbers, and the rename script keeps that copy in step. Nor is the map:
-  it reads the folders again on every change and keeps nothing, so there is
-  nothing in it to go stale.
+  than numbers, and the rename script keeps that copy in step. Nor is the
+  viewer: it reads the folders again on every change and keeps nothing, so
+  there is nothing in it to go stale.
 - **No change log inside the ticket.** Just `updated`. Git already holds the
   full history.
 - **No opinion about git.** How tickets relate to commits is left to each

@@ -2,7 +2,10 @@
 // Starts the viewer: every project with a .kerjaan/ board directly under the
 // scanned folder, each at http://127.0.0.1:<port>/<folder name>/.
 //
-//   node viewer/server.mjs --scan ~/Workspace [--port 4321] [--open]
+//   node viewer/server.mjs --scan ~/Workspace [--project <name>] [--port 4321] [--open]
+//
+// --project only picks the address printed and opened: that project's kanban
+// rather than the front page.
 //
 // Read-only: it never writes to any board. No dependencies beyond Node 18+.
 
@@ -20,7 +23,7 @@ const option = (name) => {
 
 const scan = option('--scan');
 if (!scan) {
-  console.error('Pakai: node viewer/server.mjs --scan <folder> [--port 4321] [--open]');
+  console.error('Pakai: node viewer/server.mjs --scan <folder> [--project <nama>] [--port 4321] [--open]');
   console.error('  <folder>  folder yang subfoldernya dipindai mencari .kerjaan/');
   process.exit(1);
 }
@@ -30,6 +33,7 @@ if (!fs.existsSync(root) || !fs.statSync(root).isDirectory()) {
   process.exit(1);
 }
 const port = Number(option('--port') ?? 4321);
+const project = option('--project');
 
 const server = createViewer({ root });
 server.on('error', (err) => {
@@ -43,7 +47,7 @@ server.on('error', (err) => {
 
 // Loopback only: ticket bodies are the repos' private notes.
 server.listen(port, '127.0.0.1', () => {
-  const address = `http://127.0.0.1:${server.address().port}/`;
+  const address = `http://127.0.0.1:${server.address().port}/${project ? `${encodeURIComponent(project)}/` : ''}`;
   console.log(`kerjaan viewer: ${address}`);
   const projects = findProjects(root);
   console.log(`memindai ${root} — ${projects.length} proyek: ${projects.map((p) => p.name).join(', ') || '(belum ada)'}`);

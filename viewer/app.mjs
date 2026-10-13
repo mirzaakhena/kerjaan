@@ -11,11 +11,10 @@ import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { STATUSES, readBoard, mapData, watchBoard } from '../skills/kerjaan/scripts/board.mjs';
+import { STATUSES, readBoard, watchBoard } from '../skills/kerjaan/scripts/board.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const web = path.join(here, 'web');
-const mapHtml = path.join(here, '..', 'skills', 'kerjaan', 'scripts', 'map.html');
 
 const ASSETS = {
   'gaya.css': 'text/css; charset=utf-8',
@@ -148,7 +147,7 @@ export function createViewer({ root }) {
 
     // Pages resolve their data relative to the project's own address, which
     // only works with the trailing slash.
-    if (rest.length === 0 || (rest.length === 1 && rest[0] === 'map')) {
+    if (rest.length === 0) {
       res.writeHead(301, { location: url.pathname + '/' });
       return res.end();
     }
@@ -166,11 +165,7 @@ export function createViewer({ root }) {
       if (ticket.length === 0) return send(res, 404, 'application/json; charset=utf-8', JSON.stringify({ error: 'tidak ada' }));
       return json(res, ticket);
     }
-    if (at === 'events' || at === 'map/events') return listen(project, req, res);
-    if (at === 'map/') {
-      return send(res, 200, 'text/html; charset=utf-8', fs.readFileSync(mapHtml));
-    }
-    if (at === 'map/data') return json(res, mapData(project.board));
+    if (at === 'events') return listen(project, req, res);
     return notFound(res, 'Halaman ini');
   });
 

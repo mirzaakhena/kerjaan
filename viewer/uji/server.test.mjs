@@ -6,7 +6,6 @@ import path from 'node:path';
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { ticket, makeBoard, tempRoot, startViewer, listenEvents } from './bantu.mjs';
-import { mapData } from '../../skills/kerjaan/scripts/board.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const ID = { a: '260101000001', b: '260101000002', c: '260101000003', d: '260101000004', rusak: '260101000005' };
@@ -90,7 +89,7 @@ test('alamat halaman proyek dan tiket', async () => {
     assert.equal(r.headers.get('location'), '/alpha/');
     assert.match(await (await v.get('/alpha/')).text(), /aset\/proyek\.js/);
     assert.match(await (await v.get(`/alpha/tiket/${ID.a}`)).text(), /aset\/proyek\.js/);
-    assert.equal((await v.get('/alpha/map')).headers.get('location'), '/alpha/map/');
+    assert.equal((await v.get('/alpha/map/')).status, 404);
   } finally { await v.close(); }
 });
 
@@ -172,22 +171,6 @@ test('perubahan di proyek lain tidak dikabarkan', async () => {
     await new Promise((r) => setTimeout(r, 300));
     fs.writeFileSync(path.join(root, 'beta', '.kerjaan', 'todo', '260101000009 Lain.md'), ticket());
     assert.equal((await waiting).ok, false);
-  } finally { await v.close(); }
-});
-
-test('tab Peta: map.html yang sama, data berbentuk sama dengan peta sendiri', async () => {
-  const root = setup();
-  const v = await startViewer(root);
-  try {
-    const html = await (await v.get('/alpha/map/')).text();
-    const original = fs.readFileSync(path.join(here, '..', '..', 'skills', 'kerjaan', 'scripts', 'map.html'), 'utf8');
-    assert.equal(html, original);
-    const data = await (await v.get('/alpha/map/data')).json();
-    const expected = mapData(path.join(root, 'alpha', '.kerjaan'));
-    delete data.readAt;
-    delete expected.readAt;
-    assert.deepEqual(data, expected);
-    assert.ok(!data.tickets.some((t) => t.id === ID.rusak), 'peta tetap melewatkan berkas tanpa frontmatter');
   } finally { await v.close(); }
 });
 
