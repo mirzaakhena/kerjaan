@@ -24,6 +24,8 @@ K="${CLAUDE_PLUGIN_ROOT}/skills/kerjaan/scripts"      # always run from the repo
 "$K/update-ticket.sh" 260905160401 --status in_progress            # move
 "$K/update-ticket.sh" 260905160401 --title "A clearer title"       # rename
 "$K/update-ticket.sh" 260905160401                                 # after editing prose
+"$K/update-ticket.sh" 260905160401 --accept-size                   # owner keeps a big ticket whole
+"$K/ticket-size.sh" 260905160401                                   # size check alone, changes nothing
 "$K/test-run.sh" 260905160401                                      # run test_command, record it
 "$K/explain.sh" changes 260905160401                               # files and lines the ticket wrote
 ls .kerjaan/*/"260905160401 "*.md                                  # find by ID; the folder is its status
@@ -40,7 +42,8 @@ The rules that are broken most often, each explained further down:
 6. **Once a ticket is in `review/`, stop touching its code.**
 7. **Never review your own work.** The reviewer decides and moves the file;
    only the foreman dispatches it.
-8. **Never pass `--ack-unmerged` on your own.** That decision is the owner's.
+8. **Never pass `--ack-unmerged` or `--accept-size` on your own.** Those
+   decisions are the owner's.
 9. Never write a status summary, index or dashboard into `.kerjaan/`.
 
 ## The board
@@ -71,8 +74,9 @@ is yours to keep.
 
 `.kerjaan/settings.md` holds what the board cannot guess: the language ticket
 prose is written in, the command that runs the project's checks (the reviewer
-runs it first), which branches live outside `HEAD` on purpose, and whether the
-owner explains each ticket's code before review. When it is
+runs it first), which branches live outside `HEAD` on purpose, whether the
+owner explains each ticket's code before review, and how many `Done when`
+items a ticket may hold before the scripts warn. When it is
 missing — `new-ticket.sh` says so — work out likely values from the repo
 (the language of existing tickets, `package.json`/`Makefile`/CI, the branch
 list), put them to the owner in one message, and write the file from
@@ -184,6 +188,8 @@ change during execution; the outcome does not.
 their own. If a criterion can only be checked by reading code, the ticket is
 not finished being written. On a bug, point at the reproduction's outcome ("the
 steps above now produce three replies") rather than restating the steps.
+About 6 to 8 items at most; more means the ticket should be split (see "How
+big a ticket is").
 
 **`## Explanation`** — only on a board that asks the owner to explain the code
 (`owner_explanation`), after `Done when` and before `History`. The owner's own words,
@@ -317,7 +323,73 @@ file it prints: every frontmatter field you can, and all prose sections. A bug
 also gets `## How to reproduce` after `Background` — the template leaves it out.
 If there is not enough to write `Background` and `Request` properly, ask
 first: a half-written ticket looks like the work has been recorded when it has
-not.
+not. Once it is filled in, run `update-ticket.sh <id>`: besides refreshing
+`updated`, that is what checks its size (next section).
+
+### How big a ticket is
+
+**About 6 to 8 items in `Done when` is the limit.** Past that, a ticket holds
+more than one round of work, and everyone pays for it:
+
+- **The review gets duller.** A reviewer facing twenty items at once checks
+  each of them less carefully, so mistakes slip through.
+- **The result shows up late.** The owner sees something after an hour or
+  more instead of a quarter of an hour, so a correction arrives late and drags
+  along parts that were already finished.
+- **The worker runs out of room.** One session reads and writes far more, and
+  is cut off in the middle more often.
+- **One failure holds back everything.** A single part that does not pass
+  keeps the whole ticket out of `done`, although the rest was good.
+
+Every item counts, including one only a person can check ("look at it on a
+phone"). Items struck through because they were voided or moved to another
+ticket do not.
+
+**Split by outcome, never by file or by technical layer.** Each piece must be
+something the owner can try on its own and see working. "The database part",
+"the screen part" and "the tests" are not pieces: none of them can be tried
+alone, and each waits for the others before anyone sees anything.
+
+Poor — one ticket for a whole screen, 20 items:
+
+```markdown
+260913091501 Move the Categories screen to the new app
+## Done when
+- [ ] The list shows every category with its icon and colour
+- [ ] Categories can be searched by name
+- [ ] A new category can be added ... (and 17 more: editing, deleting,
+      ordering, archived categories, empty state, errors, phone layout...)
+```
+
+Good — the same screen as four tickets, each one tried on its own:
+
+```markdown
+260913091501 Categories screen shows the list           (6 items: list, icons,
+                                                         empty state, search...)
+260913091502 A category can be added and edited          (7 items)
+260913091503 A category can be archived or deleted       (5 items)
+260913091504 Categories can be put in order by hand      (4 items)
+```
+
+Each new piece carries `related: [<the first piece's ID>]`, and `blocked_by`
+when it really cannot start before another (adding needs the list to exist).
+When an existing ticket is split, the original keeps its ID and becomes the
+first piece; criteria that moved are struck through with a pointer to the
+ticket that took them.
+
+**The scripts warn; they never refuse.** `update-ticket.sh` and
+`new-ticket.sh` count the items every time they touch a ticket in `backlog`,
+`todo` or `in_progress`, and when the count is over the limit they print a
+`WARNING` naming it. The ticket is saved as it is. `ticket-size.sh <id>` runs
+the same check alone, without changing anything. The limit is
+`done_when_limit` in `settings.md`; without it, 8.
+
+**The owner may keep a ticket whole.** Some work really is one piece. When the
+owner says so for a given ticket, run `update-ticket.sh <id> --accept-size`:
+it writes the decision into the ticket's `## Notes` (a line saying *size
+accepted by the owner*), and the warning is not repeated for that ticket.
+Like `--ack-unmerged`, never pass it on your own judgement — a warning you
+would rather not see is not the owner's decision.
 
 ### Into `todo`
 
@@ -335,16 +407,20 @@ kept separate.
   complete" is a feeling, not a criterion.
 - No decision is still waiting on the user.
 - `type` and `priority` are filled in (`assign_to` may stay empty).
+- Its size is within the limit, or the owner has accepted it
+  (`ticket-size.sh <id>` prints nothing). A ticket that is too big gets a
+  split offered to the owner — never a quiet move onwards.
 
 **Should it be next?** A judgement, and the user's. A ticket earns its place
 when it holds up other tickets, is groundwork the rest stands on, is small
 enough to clear quickly, or belongs with something just finished or in flight.
 
 **Size is a reason to split, not to wait.** A ticket too big to start usually
-holds several outcomes in its `Request`; split by outcome. The original keeps
-its ID and becomes the first piece; criteria that moved are struck through
-with a pointer to the ticket that took them, and each new ticket carries
-`related: [<original ID>]`.
+holds several outcomes in its `Request`; split by outcome, as "How big a
+ticket is" describes. When the size warning appears on a ticket you are about
+to move into `todo`, stop and offer the owner a split — name the count and
+sketch the pieces — and move it only once they have chosen: split it, or keep
+it whole with `--accept-size`.
 
 **When the user asks for a move you would not have made**, name in one line the
 single check that failed, then do as they say:
@@ -371,6 +447,12 @@ then run to the end; asked one ticket at a time, each question stalls the work
 after the user has left. A ticket joining `todo` later is swept before the next
 move out of `todo`; a question that surfaces mid-work is written into the
 ticket by the worker, and the foreman puts it to the owner.
+
+The sweep includes size: run `ticket-size.sh` on every ticket in the queue,
+and for each one it warns about, put a proposed split in that same message.
+Starting a ticket the warning names, without the owner's word, is what the
+check exists to prevent; the warning `update-ticket.sh` prints on the move to
+`in_progress` comes too late to act on.
 
 The same message carries two more questions a chain needs settled up front
 (`references/foreman.md`, "Starting the chain"): whether checks only a person

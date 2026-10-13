@@ -24,7 +24,7 @@ This holds for a single ticket too. One small fix is a chain of one.
   ticket into `in_progress`, answering questions about the board.
 - Everything that needs the owner: clearing questions before the chain starts,
   decisions a worker could not make, the owner's explanation, `--ack-unmerged`,
-  merging a worktree branch.
+  `--accept-size`, merging a worktree branch.
 - Tickets whose work is a decision and touches no code, since their work is
   the conversation with the owner (see SKILL.md, "Tickets whose work is a
   decision").
@@ -53,6 +53,12 @@ leave once the chain runs:
   at that ticket until the owner has checked it).
 - Unmerged branches the start gate will name, if any (`update-ticket.sh`
   prints them; ask before the first move, not when it refuses).
+- **Tickets that are too big.** Run `ticket-size.sh <id>` on every ticket in
+  the chain. For each one it warns about, give the count and a proposed split
+  by outcome (SKILL.md, "How big a ticket is"), and ask: split it, or keep it
+  whole. Never start such a ticket without that answer. Keeping it whole is
+  recorded with `update-ticket.sh <id> --accept-size`; a split is done before
+  the chain starts, and the new pieces join the chain in its order.
 
 Write each answer into every ticket it touches — `## Notes`, dated, in the
 board's language — and run `update-ticket.sh` on each. A deferred human check

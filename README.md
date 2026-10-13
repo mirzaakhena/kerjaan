@@ -153,6 +153,9 @@ $K/update-ticket.sh 260905160401 --title "A clearer title"
 $K/update-ticket.sh 260905160401          # after editing the prose
 $K/update-ticket.sh 260905160401 --status in_progress --ack-unmerged
                                           # start despite unmerged branches
+$K/update-ticket.sh 260905160401 --accept-size
+                                          # the owner keeps a big ticket whole
+$K/ticket-size.sh 260905160401            # is it too big? changes nothing
 
 # run test_command and record what it ran on; then ask whether a version matches
 $K/test-run.sh 260905160401
@@ -236,6 +239,16 @@ it is groundwork, or it is quick, or it sits next to work already in flight.
 Size is treated as a reason to split a ticket, never as a reason to defer it,
 because groundwork is almost always big and a board that defers by size buries
 exactly the work everything else is waiting for.
+
+How big is too big has a number: about 6 to 8 items in `Done when`. Past that
+the review gets duller, the result shows up an hour later instead of a quarter
+of an hour, the worker runs out of room more often, and one failing part holds
+back all the rest. Whenever a script saves a ticket over the limit it prints a
+warning with the count — the ticket is saved all the same — and the session
+offers you a split by outcome, pieces you can each try on their own, before
+the ticket goes to `todo` or starts. You can keep a ticket whole; that
+decision is written into its Notes and the warning stops for it. The limit is
+`done_when_limit` in `settings.md`, 8 when unset.
 
 `todo` is the queue for one working session, and it is cleared as a whole
 before any of it starts: every open question across every ticket in `todo` is

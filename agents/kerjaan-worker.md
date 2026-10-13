@@ -47,6 +47,10 @@ stop before building on a guess:
 A question that does not hold the work up — a naming preference, a follow-up
 idea — goes into `## Notes` the same way, and you carry on.
 
+A size warning from `update-ticket.sh` on your ticket is the foreman's to
+raise with the owner, not yours to act on: carry on, and mention it in your
+report.
+
 **3. Do the work.** Technical choices are yours; the outcome is the
 ticket's. When the prompt names a worktree, edit code only there, and run every
 board command (`update-ticket.sh`, `test-run.sh`) from the main tree.
@@ -138,7 +142,7 @@ at the end of `## Notes` — it is the evidence — and fix from there.
 ## Never
 
 - dispatch a reviewer, review your own work, or move a ticket to `done`
-- pass `--ack-unmerged`; that decision is the owner's
+- pass `--ack-unmerged` or `--accept-size`; those decisions are the owner's
 - touch another ticket's file, `order.md`, or `settings.md`
 - change the code of a ticket that is in `review`
 - `git push`, rewrite history, or switch the main tree's branch

@@ -14,9 +14,14 @@
 #   update-ticket.sh <id|path> --title "<new title>" rename
 #   update-ticket.sh <id|path> --status in_progress --ack-unmerged
 #                                                    start despite unmerged branches
+#   update-ticket.sh <id|path> --accept-size         the owner keeps a ticket whole
+#                                                    although it is over the size limit
 #
 # A move to review is accepted only from in_progress, and only once the
 # owner's explanation is in place when settings.md asks for one (explain.sh).
+#
+# Every run ends with ticket-size.sh, which warns -- never refuses -- when the
+# ticket's "Done when" list is longer than the board allows.
 
 set -euo pipefail
 
@@ -24,13 +29,16 @@ STATUSES=(backlog todo in_progress review done cancel)
 
 usage() {
   cat >&2 <<USAGE
-Usage: update-ticket.sh <id|path> [--status <status>] [--title "<new title>"] [--ack-unmerged]
+Usage: update-ticket.sh <id|path> [--status <status>] [--title "<new title>"] [--ack-unmerged] [--accept-size]
 
   <id|path>        12-digit ID, or the path to a ticket file
   --status         move to one of: ${STATUSES[*]}
   --title          rename (the file is renamed; the ID stays)
   --ack-unmerged   start the ticket although other branches hold unmerged
                    work; the branches are recorded in the ticket's Notes
+  --accept-size    the owner decided this ticket stays whole although its
+                   "Done when" list is over the board's limit; recorded in
+                   the ticket's Notes, and the size warning stops for it
 
 With no options, only \`updated\` is refreshed — use that after editing prose.
 Run from the repo root. Prints the ticket's current path to stdout.
@@ -47,6 +55,7 @@ new_status=""
 new_title=""
 title_given=0
 ack_unmerged=0
+accept_size=0
 
 while [ "$#" -gt 0 ]; do
   case "$1" in
@@ -63,6 +72,10 @@ while [ "$#" -gt 0 ]; do
       ;;
     --ack-unmerged)
       ack_unmerged=1
+      shift
+      ;;
+    --accept-size)
+      accept_size=1
       shift
       ;;
     *)
@@ -374,17 +387,27 @@ fi
 
 cat "$tmp" > "$file"
 
-# An acknowledged start is written into the ticket, so the decision outlives
-# the terminal it was made in. Notes is always the last section.
-if [ "${#unmerged[@]}" -gt 0 ]; then
-  note="- $now: started while these branches held unmerged work, acknowledged with --ack-unmerged: ${unmerged[*]}"
+# An acknowledged start, and an owner's decision to keep a big ticket whole,
+# are written into the ticket, so the decision outlives the terminal it was
+# made in. Notes is always the last section.
+append_note() {
   if [ "$(awk 'NF { last = $0 } END { print last }' "$file")" = "(none yet)" ]; then
-    awk -v note="$note" '{ lines[NR] = $0; if (NF) lastnf = NR }
+    awk -v note="$1" '{ lines[NR] = $0; if (NF) lastnf = NR }
       END { for (i = 1; i <= NR; i++) print (i == lastnf ? note : lines[i]) }' "$file" > "$tmp"
     cat "$tmp" > "$file"
   else
-    printf '%s\n' "$note" >> "$file"
+    printf '%s\n' "$1" >> "$file"
   fi
+}
+
+if [ "${#unmerged[@]}" -gt 0 ]; then
+  append_note "- $now: started while these branches held unmerged work, acknowledged with --ack-unmerged: ${unmerged[*]}"
+fi
+
+# The wording is fixed and English, like the line above: ticket-size.sh looks
+# for "size accepted by the owner" to stop warning about this ticket.
+if [ "$accept_size" -eq 1 ]; then
+  append_note "- $now: size accepted by the owner with --accept-size: this ticket stays whole although its \"Done when\" list is over the board's limit."
 fi
 
 # --- move or rename if needed ----------------------------------------------
@@ -516,5 +539,10 @@ if [ "$dest_status" != "$current_status" ] && git rev-parse --git-dir > /dev/nul
     fi
   fi
 fi
+
+# --- a ticket grown too big -------------------------------------------------
+# Last, so the warning is about the ticket exactly as it now stands, and so it
+# is the final thing on the screen rather than lost above other notes.
+"$(cd "$(dirname "$0")" && pwd)/ticket-size.sh" "$dest" || true
 
 printf '%s\n' "$dest"

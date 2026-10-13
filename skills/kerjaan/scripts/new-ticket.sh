@@ -164,4 +164,8 @@ if [ ! -f "$board/settings.md" ]; then
   echo "  from $(cd "$script_dir/.." && pwd)/SETTINGS.md." >&2
 fi
 
+# A skeleton never exceeds the limit, but a TEMPLATE.md a project has filled
+# in with its own standing criteria could; the check is cheap, so it runs.
+"$script_dir/ticket-size.sh" "$dest" || true
+
 printf '%s\n' "$dest"
