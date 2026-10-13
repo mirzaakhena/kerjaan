@@ -6,7 +6,7 @@ labels: []
 reporter: mirza
 assign_to: claude
 created: 2026-10-13 20:57:26
-updated: 2026-10-13 21:07:51
+updated: 2026-10-13 21:09:11
 related: []
 blocked_by: []
 ---
@@ -67,6 +67,7 @@ direview, dan dikoreksi dalam satu putaran singkat.
 - 2026-10-13 20:57:26 todo
 - 2026-10-13 21:00:30 in_progress
 - 2026-10-13 21:07:51 review
+- 2026-10-13 21:09:11 done
 
 ## Notes
 - Diminta mirza, 2026-10-13, dari sesi pencatat-keuangan. Di sana, tiket
@@ -129,3 +130,42 @@ direview, dan dikoreksi dalam satu putaran singkat.
   dikenal tetap keluar dengan kode 1 dan bantuan memuat `--accept-size`.
   Tiket ini sendiri (7 butir) tidak diperingatkan.
 - 2026-10-13 21:07:38: test run — `node --test` exited 0 after 0m5s, on content fingerprint 06ae7eab873bf2607fde73f2ec481dbbbcb08073 (the same before and after the run; .kerjaan/ left out).
+- Review, 2026-10-13. Ditinjau pada level normal, putaran 1, di commit
+  94fb287 (pekerjaan; daabf3d hanya memindahkan tiket): perubahan dibaca
+  terhadap tiap butir, uji dibaca untuk mencari pernyataan kosong, dan skrip
+  dijalankan sendiri di papan percobaan. Keputusan: lolos, pindah ke done.
+  - Uji proyek: `test-run.sh --check 261013205701` menjawab SAME. `node --test`
+    tidak dijalankan ulang; hasilnya dibawa dari jalannya pengerja
+    2026-10-13 21:07:38, exit 0, fingerprint
+    06ae7eab873bf2607fde73f2ec481dbbbcb08073.
+  - Butir 1 dan 2 (panduan): SKILL.md bagian "How big a ticket is" memuat
+    batas sekitar 6 sampai 8, empat alasan dalam bahasa awam, aturan memecah
+    per hasil (bukan per berkas atau lapisan), dan contoh layar Kategori
+    20 butir dipecah jadi empat tiket. Dinilai dengan membaca; isinya memang
+    dokumentasi.
+  - Butir 3 (peringatan): dicoba sendiri di papan sementara di luar repo.
+    Tiket 10 butir dengan baris lanjutan dan satu butir dicoret, dipindah ke
+    todo: muncul "WARNING: ... has 10 "Done when" items, over this board's
+    limit of 8", exit 0, tiket tetap pindah. Butir dicoret dan baris lanjutan
+    tidak ikut dihitung.
+  - Butir 4 (mandor): dinilai dengan membaca saja. foreman.md "Starting the
+    chain" dan SKILL.md ("Into todo", "Clear the whole queue first") meminta
+    `ticket-size.sh` dijalankan pada tiap tiket, pemecahan ditawarkan, dan
+    tiket tidak dimulai tanpa jawaban pemilik. Perilaku sesi tidak bisa diuji
+    dengan skrip.
+  - Butir 5 (pembebasan): `--accept-size` menulis "size accepted by the owner"
+    di Notes; pemindahan ke in_progress sesudahnya tanpa peringatan (dicoba
+    sendiri). Uji untuk ini juga ada dan isinya sungguhan.
+  - Butir 6 (batas per papan): `done_when_limit` dibaca dari frontmatter
+    settings.md, bawaan 8; terdokumentasi di SETTINGS.md. Dijaga uji batas 3,
+    batas 15, kunci kosong atau tidak ada, dan nilai tidak sah.
+  - Butir 7 (uji): `uji/ticket-size.test.mjs` membahas peringatan, tiket yang
+    dibebaskan, dan batas dari papan. Uji ini dibaca dan pernyataannya
+    sungguhan (jumlah, pesan, dan isi berkas diperiksa); tidak ada yang kosong.
+  - Catatan (tidak menahan): frasa penerimaan dihormati di mana pun dalam
+    butir Notes tingkat atas, jadi catatan biasa yang menyebut frasa itu,
+    misalnya reviewer yang menjelaskan cara kerjanya, ikut membungkam
+    peringatan. Di tiket ini frasa itu ada di sub-butir berindentasi, jadi
+    tidak terpicu. Titik lemah uji pembacaan frontmatter yang dicatat
+    pengerja dibenarkan; perilakunya sendiri benar.
+  - Cabang: tidak ada cabang atau worktree untuk tiket ini; pekerjaan ada di main.
