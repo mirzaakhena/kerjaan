@@ -6,7 +6,7 @@ labels: [sesi-a192c9e8, review, token]
 reporter: mirza
 assign_to: claude
 created: 2026-10-16 14:19:07
-updated: 2026-10-17 05:31:27
+updated: 2026-10-17 05:34:58
 related: [261016141911]
 blocked_by: [261016141904, 261016141906]
 ---
@@ -40,6 +40,7 @@ bagian yang tidak bisa terjadi lagi dihapus.
 - 2026-10-16 14:46:24 todo
 - 2026-10-17 05:19:41 e97c38bb-2b6f-487d-a8b0-2fdab5809ee3 in_progress
 - 2026-10-17 05:31:27 e97c38bb-2b6f-487d-a8b0-2fdab5809ee3 review
+- 2026-10-17 05:34:58 e97c38bb-2b6f-487d-a8b0-2fdab5809ee3 done
 
 ## Notes
 - Berasal dari penilaian independen atas skill kerjaan di sesi Claude Code
@@ -113,3 +114,21 @@ bagian yang tidak bisa terjadi lagi dihapus.
     diperlukan.
 
 - 2026-10-17 05:31:22: test run — `node --test --test-timeout=900000 --test-force-exit` exited 0 after 2m45s, on content fingerprint 9a2fde87ce113955158f324df47da4b2d55da6b3 (the same before and after the run; .kerjaan/ left out).
+- 2026-10-17: Reviewed at level normal, round 1, at commit e0159cf: passed.
+  Pada level normal, `test_command` dihitung sekali (di sini dibawa dari run pengerja), tiap kriteria dibuktikan dengan menjalankan sesuatu atau memeriksa hasil yang nyata, dan uji barunya dibaca untuk melihat apakah ada pernyataan yang tidak mungkin gagal. Satu kriteria (butir 5) tidak bisa saya jalankan ulang; lihat di bawah.
+  - Uji: `test-run.sh --check 261016141910 e0159cf` → SAME (run 2026-10-17 05:31:22, sidik 9a2fde87ce113955158f324df47da4b2d55da6b3, exit 0). Tidak dijalankan ulang. Tambahan: `test-run.sh --review 261016141910 -- node --test uji/aturan-peninjau.test.mjs` → 22 lulus, 0 gagal.
+  - Butir 1 (paling banyak sekitar 3.000 kata, angka tercatat) — terpenuhi. `wc -w agents/kerjaan-reviewer.md` → 2.989; versi sebelum e0159cf → 6.182. Angka itu sama dengan yang tercatat di Notes.
+  - Butir 2 (tabel level hanya di satu tempat) — terpenuhi. Tabel ada di definisi peninjau, "How thorough to be". `review.md`, README dan dokumen cara kerja hanya merujuk dengan satu kalimat; baris `review` di SKILL.md hanya keterangan kolom, bukan tabel. Uji baru memeriksa ini untuk setiap dokumen.
+  - Butir 3 (dokumen cara kerja hanya menjelaskan dan merujuk) — terpenuhi. Dibaca utuh: isinya alasan, tiap bagian merujuk nama bagian yang memang ada di definisi peninjau (diuji).
+  - Butir 4 (kasus usang dihapus) — terpenuhi. Kasus "merged" (`merge-base --is-ancestor`) hilang dari definisi peninjau, diganti satu kalimat. Lihat catatan pertama di bawah.
+  - Butir 5 (tiket uji yang sengaja cacat tetap ditolak) — terpenuhi, dinilai dari hasil yang tersimpan. Saya mencoba menjalankan ulang peninjau baru lewat `claude -p`, tetapi izin untuk menjalankan agen bersarang ditolak di sesi ini. Yang saya periksa: repo uji pengerja di scratchpad memuat commit `43515b7` yang memindah tiket `261017090001` ke `in_progress`, dengan kedua centang dilepas dan baris pembuka `Reviewed at level normal, round 1, at commit 7493319: sent back.`; prompt peninjau yang dipakai (`agents.json`) sama persis, huruf demi huruf, dengan isi `agents/kerjaan-reviewer.md` di e0159cf.
+  - Aturan yang dihapus, dibandingkan dengan isi sebelum e0159cf: semua bagian definisi lama masih punya padanan di definisi baru. "Your own checks are not evidence" di `review.md` tercakup oleh langkah 5 pengerja (`agents/kerjaan-worker.md`: uji yang tetap hijau diperbaiki dulu, catatannya hanya klaim) dan aturan peninjau bahwa Notes bukan bukti kecuali baris test-run lewat `--check`. Cara menghitung putaran (termasuk "the larger count holds") kini hanya di `review.md`, "Rounds".
+  - Tidak ada CLAUDE.md/AGENTS.md di repo ini.
+  - Catatan (tidak memblokir):
+    - Kalimat pengganti kasus "merged" menyatakan bahwa cabang yang ditemukan "belum masuk main". Skrip papan sendiri masih menangani cabang tiket yang sudah tergabung (`kerjaan_code_rev` di `lib.sh`; pesan "is merged, but its worktree is still checked out" di `update-ticket.sh`; `merge.sh land` membiarkan cabangnya bila worktree gagal dihapus). Cabang lama seperti itu bisa tersisa, misalnya bila tiket yang sudah done dibuka lagi, dan peninjau yang mengikuti kalimat baru lalu menjalankan `git diff HEAD...<commit>` akan melihat diff kosong.
+    - Untuk review setelah merge postponed, definisi lama meminta baris kedua menyebut bahwa level `quick` dipakai karena merge postponed. Kalimat baru lebih umum ("what that level meant here"). Bentuk baris pembukanya tetap memuat `after merge postponed`, jadi tidak ada informasi yang hilang dari catatan.
+    - Notes menyebut uji butir 5 lewat `--plugin-dir --agent`; berkas di scratchpad menunjukkan tinjauannya dijalankan dengan prompt dari `agents.json` (`--agents`). Isinya sama dengan definisi yang di-commit, jadi kesimpulannya tidak berubah.
+
+### Suggested follow-up
+
+- **Cabang tiket yang sudah tergabung masih bisa ada, tetapi peninjau kini menganggap setiap cabang belum tergabung.** Bila `merge.sh land` gagal menghapus worktree, cabangnya tetap ada, dan bila tiketnya kemudian dibuka lagi, peninjau akan membandingkan HEAD dengan commit yang sudah ada di HEAD, mendapat diff kosong, dan bisa menyimpulkan "tidak ada yang dikerjakan". Layak dibuat tiket: satu kalimat pengaman di "Find the tree the work is in", misalnya "bila `git log HEAD..<commit>` kosong, pekerjaannya sudah di HEAD; tinjau di tempat".
