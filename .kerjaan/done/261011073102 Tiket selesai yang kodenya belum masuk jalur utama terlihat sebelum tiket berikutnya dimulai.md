@@ -6,7 +6,7 @@ labels: []
 reporter: mirza
 assign_to: claude
 created: 2026-10-11 07:31:49
-updated: 2026-10-16 14:16:07
+updated: 2026-10-16 14:16:28
 related: [261006121504]
 blocked_by: []
 ---
@@ -71,3 +71,4 @@ masuk jalur utama, tanpa harus menunggu ada yang memulai tiket baru.
   - Uji dibaca: penegasannya membandingkan nilai nyata (daftar cabang per tiket, warna terhitung, posisi di dalam kartu), tidak ada yang kosong makna. Uji kesepakatan dengan gerbang mulai benar-benar menjalankan update-ticket.sh dan membandingkan daftar cabang yang ia sebut.
   - Penjelasan pemilik: `owner_explanation: off`; `explain.sh check` — belum ada penjelasan, tidak ada yang diperiksa.
   - Catatan (tidak menghalangi): (a) aturan "belum digabung" disalin ke `viewer/gabung.mjs`, tidak memanggil script; satu uji menjaga keduanya tetap sama untuk kasus-kasus dalam uji itu. Dua beda kecil di luar kasus itu: script mengambil 12 angka pertama dari nama cabang meski bagian dari deret angka yang lebih panjang, viewer hanya deret tepat 12 angka; viewer mengaitkan cabang ke setiap ID di namanya, script hanya ke yang pertama. (b) Tiket yang penggabungannya ditahan tetap ditandai — sesuai keputusan mandor di atas dan sesuai kriteria 1 (kodenya memang belum di main). (c) Selama halaman papan terbuka, server memanggil `git for-each-ref` sekali per 2 detik per proyek; ada penjaga agar panggilan tidak bertumpuk dan batas waktu 5 detik, jadi biayanya kecil. (d) Proyek dianggap repo hanya bila foldernya sendiri memuat `.git`; papan yang tidak di akar repo tidak akan pernah bertanda (diasumsikan dan ditulis di gabung.mjs).
+- 2026-10-16 14:16:28: landed on main as 38d541120600012d7e2a68c7a609a60cd3ad7b76, merging tiket-261011073102 at 1b77e64d7475cc8bc27aa1b6d7d933948945b323; tests carried from the run on this exact content, not run again.
