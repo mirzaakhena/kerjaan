@@ -6,7 +6,7 @@ labels: [paralel, pesan]
 reporter: mirza
 assign_to: claude
 created: 2026-10-16 12:24:01
-updated: 2026-10-16 13:04:46
+updated: 2026-10-16 13:06:41
 related: [261016101001, 261016095101]
 blocked_by: []
 ---
@@ -54,6 +54,7 @@ menjawabnya.
 - 2026-10-16 12:42:17 in_progress
 - 2026-10-16 13:04:15 review
 - 2026-10-16 13:04:46 in_progress
+- 2026-10-16 13:06:41 review
 
 ## Notes
 - 2026-10-16 Berasal dari catatan reviewer 261016101001 (pesan cabang) dan
@@ -80,3 +81,5 @@ menjawabnya.
 - 2026-10-16 13:04:07: test run — `node --test` exited 0 after 1m26s, on content fingerprint 128d0222ca5e9ba6c822bbb69bd441e60227e920 (the same before and after the run; .kerjaan/ left out). Waited 0m19s for the test lock first, held by another run (ticket 261016122402, slot 2, /Users/mirza/Workspace/kerjaan-urutan-gabung).
 - 2026-10-16 13:04:15: review covers branch tiket-261016122401 at f20331fbb2d2c532bdbb8fd40326f5b0c2eddff2, which holds main at bb6fa7181e52dd73ef2d0c08a73e0c62ba69f2c8 (code outside .kerjaan/); the latest test run passed on exactly this content.
 - 2026-10-16 Mandor mengembalikan tiket sebelum review: main bergerak setelah sync karena 261016122402 masuk main (b519b9f) dengan perubahan di queue.sh, uji/queue.test.mjs, ordering-the-queue.md dan kerjaan-planner.md. Ini bukan penolakan; worker menjalankan merge.sh sync lagi.
+- 2026-10-16 13:06:38: test run — `node --test` exited 0 after 1m38s, on content fingerprint b74c5bc7388d2b29ea8cc5855fb34aad05a8bc47 (the same before and after the run; .kerjaan/ left out).
+- 2026-10-16 13:06:41: review covers branch tiket-261016122401 at 57470c730979d9ebb2aa2c615c6d5ee14cc7f63c, which holds main at 3c509957390e7ef1b7bd4c3f405b1de07ff91e21 (code outside .kerjaan/); the latest test run passed on exactly this content.
