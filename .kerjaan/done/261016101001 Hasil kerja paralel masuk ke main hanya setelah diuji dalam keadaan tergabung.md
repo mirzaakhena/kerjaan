@@ -6,7 +6,7 @@ labels: [paralel, mandor, uji]
 reporter: mirza
 assign_to: claude
 created: 2026-10-16 10:10:01
-updated: 2026-10-16 11:21:19
+updated: 2026-10-16 11:24:37
 related: [261016095101, 261016101002]
 blocked_by: []
 ---
@@ -56,6 +56,7 @@ sudah tergabung dengan semua yang sudah ada di main.
 - 2026-10-16 10:24:38 todo
 - 2026-10-16 10:56:12 in_progress
 - 2026-10-16 11:21:19 review
+- 2026-10-16 11:24:37 done
 
 ## Notes
 - 2026-10-16 Keputusan pemilik dalam diskusi kerja paralel: penyesuaian ke
@@ -157,3 +158,20 @@ sudah tergabung dengan semua yang sudah ada di main.
   menghitung gabungan otomatis di klon sementara yang meminjam objek repo
   (`git clone --shared`), dan tidak mengubah apa pun di repo.
 - 2026-10-16 11:21:05: test run — `node --test` exited 0 after 1m10s, on content fingerprint 1ed6260656f8926e9b32ab1b262a167c45f29df4 (the same before and after the run; .kerjaan/ left out).
+- 2026-10-16 Review oleh reviewer independen. Direview pada level normal, putaran 1, pada commit 857c77a (kerja di c297d0e, langsung di main, tanpa worktree): uji proyek dijalankan sekali penuh pada salinan bersih, uji baru dibaca satu per satu untuk mencari pernyataan yang kosong, dan satu skenario dicoba sendiri di repo buangan.
+  - Uji tidak dibawa dari catatan pengerja: sidik jari run pengerja ikut memuat berkas `viewer/` milik sesi lain, jadi `node --test` dijalankan ulang pada ekspor bersih `git archive 857c77a` di /tmp/review-261016101001: 152 uji, 152 lulus, 0 gagal, 1m11s. Dijalankan langsung, bukan lewat `test-run.sh --review`, karena skrip reviewer yang terpasang (1.11.0) belum memilikinya.
+  - Uji `uji/merge.test.mjs` (17 uji) dibaca: setiap uji memeriksa hasil yang nyata (isi main lewat `git show`, posisi tiket di papan, isi `## Notes`, jumlah run uji yang dicatat di berkas luar, urutan mulai/akhir run). Tidak ada pernyataan yang lolos apa pun implementasinya.
+  - Skenario sendiri di repo buangan dengan skrip dari ekspor: tiket A mengganti nama fungsi, tiket B memakai nama lama di berkas baru; keduanya lolos uji sendiri-sendiri. `land A` → LANDED tanpa uji ulang; `land B` → SENT BACK (exit 3), main tidak berubah; `sync` di worktree B tergabung tanpa tabrakan teks, ujinya merah, dan pindah ke review ditolak dengan UNTESTED. Uji main tetap lulus.
+  - Butir 1 terpenuhi: uji "dua tiket yang mengubah baris yang sama ..." membawa dua tiket yang bertabrakan di kode.txt sampai keduanya ada di main, cek.sh lulus, tanpa `--ack-unmerged` dan tanpa catatan "held".
+  - Butir 2 terpenuhi: `update-ticket.sh` memanggil `merge.sh check --gate` saat pindah ke review; STALE, UNTESTED dan DIFFERENT masing-masing ditolak (uji "ke review hanya bila ..."), dan baris "review covers branch ... at <commit>, which holds main at <commit>" ditulis ke Notes.
+  - Butir 3 terpenuhi: `land` hanya memakai `test-run.sh --check`; jumlah run tidak bertambah saat land, juga bila main hanya berubah di `.kerjaan/` (diuji, dan terlihat di skenario sendiri).
+  - Butir 4 terpenuhi: diuji, dan dicoba sendiri seperti di atas. Selain itu, sebelum commit, isi hasil gabungan dibandingkan dengan isi yang diuji (uji git tiruan "main yang berubah di tengah penggabungan").
+  - Butir 5 terpenuhi. Mekanismenya diuji: `land` hanya menggabungkan commit yang tercatat saat masuk review, cabang yang berubah sesudahnya dikembalikan, dan `merge.sh resolution` menampilkan persis penyelesaian tabrakan (penanda tabrakan ikut tampil, perubahan bawaan main tidak). Bahwa reviewer memang memeriksa ulang bagian itu dinilai dengan membaca saja: `agents/kerjaan-reviewer.md` (bagian "A round after main moved") dan tabel langkah 6 di `references/foreman.md`.
+  - Butir 6 terpenuhi: `land` memegang kunci `merge` (lib.sh); uji "penggabungan menunggu kunci merge" dan "dua penggabungan yang dimulai bersamaan ..." (tepat satu merge commit, exit 0 dan 3).
+  - Butir 7 terpenuhi: HELD menulis "merge held for the owner — <alasan>" ke Notes dan ke keluaran; tiket tetap di done; tiket lain tetap bisa digabung dan dimulai; tiket yang `blocked_by` tiket itu ditolak. Diuji di "penggabungan yang gagal menahan hanya tiket itu ...".
+  - Butir 8 terpenuhi: `test-run.sh --review` menunggu kunci `tests` dan tidak mencatat apa pun ke tiket. Uji memastikan run pengerja dan run reviewer tidak tumpang tindih (urutan mulai/akhir). Bahwa reviewer memakainya dinilai dengan membaca `agents/kerjaan-reviewer.md` ("Every test run of yours takes its turn").
+  - Catatan (tidak menahan): (1) Saat `land` berhasil, `worktree.sh remove` mencetak "Branch ... is kept; merge or delete it", padahal tepat sesudahnya `land` menghapus cabang itu. Keluarannya membingungkan, tetapi hasilnya benar: di skenario sendiri cabang A terhapus. (2) Antara perbandingan isi dan `git commit` di `land` masih ada celah waktu yang sangat kecil bagi commit yang dibuat dengan tangan di main tree. Kunci tidak melindungi dari itu; perbandingan isi menutup hampir seluruh jendelanya. (3) Perubahan yang sudah di-stage oleh orang lain di main tree membuat `land` menahan tiket (isinya berbeda dari yang diuji). Arah ini aman, tetapi alasan yang ditulis tidak menyebut indeks sebagai penyebabnya.
+
+### Suggested follow-up
+
+- **Keluaran `land` yang berhasil saling bertentangan.** `worktree.sh remove` mengatakan cabang disimpan dan harus digabung atau dihapus, padahal `merge.sh land` langsung menghapusnya. Pemilik yang membaca keluaran itu bisa mengira masih ada pekerjaan yang tertinggal. Perlu tiket: saat dipanggil dari `land`, pesan cabang dari `worktree.sh` dihilangkan, atau diganti dengan keterangan bahwa cabang sudah dihapus.
