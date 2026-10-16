@@ -6,7 +6,7 @@ labels: [sesi-a192c9e8, skill, foreman]
 reporter: mirza
 assign_to: claude
 created: 2026-10-16 14:19:06
-updated: 2026-10-17 04:52:03
+updated: 2026-10-17 04:53:05
 related: [261016141909]
 blocked_by: []
 ---
@@ -49,6 +49,7 @@ untuk pekerjaan yang sangat kecil dinyatakan terang, beserta alasannya.
 - 2026-10-17 04:43:16 a192c9e8-0bb5-4bbf-8d56-9831b23e62ec done
 - 2026-10-17 04:44:08 a192c9e8-0bb5-4bbf-8d56-9831b23e62ec in_progress
 - 2026-10-17 04:52:03 a192c9e8-0bb5-4bbf-8d56-9831b23e62ec review
+- 2026-10-17 04:53:05 a192c9e8-0bb5-4bbf-8d56-9831b23e62ec done
 
 ## Notes
 - Berasal dari penilaian independen atas skill kerjaan di sesi Claude Code
@@ -163,3 +164,46 @@ untuk pekerjaan yang sangat kecil dinyatakan terang, beserta alasannya.
   punya satu pemeriksaan.
 - 2026-10-17 04:49:04: laporan pengerja, ronde 2 (klaim, bukan bukti). Jalur "langsung saja" disesuaikan dengan jawaban pemilik #3 (b): foreman.md "Work without a ticket" kini selalu mengutus reviewer, dengan bentuk prompt-nya (permintaan pemilik, blok `For the reviewer:` dari pengerja kata per kata, status commit); kerjaan-worker.md "When there is no ticket": karena tidak ada `## Notes`, pengerja menulis apa yang dikerjakannya di akhir laporannya sebagai blok `For the reviewer:` (permintaan, apa yang dikerjakan per bagian, berkas, commit atau tidak, uji dan kode keluarnya, yang tidak diverifikasi), commit tetap hanya atas izin pemilik; kerjaan-reviewer.md punya bagian baru "When there is no ticket" (menilai terhadap permintaan, membaca berkas dari blok, menjalankan test_command sekali, putusan hanya di laporan, tidak memindah atau meng-commit apa pun) dan rujukan dari pembukaannya; SKILL.md "Work starts from a ticket" menyebut reviewer selalu memeriksa. Dicari bentuk yang sama di semua dokumen: tidak ada tempat lain yang menyebut kerja tanpa tiket tanpa tinjauan; "no worker and no reviewer" yang tersisa hanya untuk pengecualian teks kecil (#2). Paragraf "What goes to kerjaan-planner instead" dikembalikan ke bawah "What stays with the foreman". uji/jalan-pintas.test.mjs ditulis ulang: tiap aturan diperiksa dengan kata kuncinya yang muncul bersama dalam satu paragraf atau satu butir daftar di dokumen mana pun, tanpa mematok kalimat atau judul bagian; satu pemeriksaan per aturan, dan aturan pertama kini mencakup reviewer. Dibuktikan bisa merah: kelima uji dijalankan terhadap dokumen sebelum tiket ini (0781de3) -> kelimanya merah; 'always' dihapus dari SKILL.md dan foreman.md -> uji 1 merah; bagian reviewer atau pengerja tanpa tiket dikembalikan ke versi lama -> uji 1 merah; perintah land dihapus dari jalur tiket yang diterima pemilik di review.md dan foreman.md -> uji 3 merah; langkah 'Resume the same worker with SendMessage' diganti -> uji 4 merah. Semua dipulihkan dari salinan.
 - 2026-10-17 04:51:57: test run — `node --test --test-timeout=900000 --test-force-exit` exited 0 after 2m49s, on content fingerprint a77c0dd4d76b172004140242e4c7f0da05bf235e (the same before and after the run; .kerjaan/ left out).
+- 2026-10-17: Reviewed at level quick, round 2, at commit 6e26457: passed.
+  Ronde 2, sempit: hanya yang berubah sejak e16c807 (`git diff e16c807 6e26457`:
+  kerjaan-reviewer.md, kerjaan-worker.md, SKILL.md, foreman.md,
+  uji/jalan-pintas.test.mjs) dan temuan ronde 1. Uji proyek dibawa dari run
+  pengerja: `test-run.sh --check 261016141908 6e26457` menjawab SAME (run
+  2026-10-17 04:51:57, `node --test --test-timeout=900000 --test-force-exit`,
+  exit 0, fingerprint a77c0dd4d76b172004140242e4c7f0da05bf235e). Tidak ada
+  sabotase (level quick).
+  - Temuan ronde 1, kelima tempat, semuanya diperbaiki: (1) foreman.md "Work
+    without a ticket" kini "A reviewer always follows", dengan bentuk prompt;
+    (2) kerjaan-worker.md "When there is no ticket" menulis blok
+    `For the reviewer:` di akhir laporan, commit tetap atas izin pemilik;
+    (3) kerjaan-reviewer.md punya rujukan di pembukaan dan bagian "When there
+    is no ticket" (dinilai terhadap permintaan, test_command dijalankan sekali,
+    putusan hanya di laporan, tidak memindah atau meng-commit apa pun);
+    (4) SKILL.md "Work starts from a ticket" menyebut reviewer selalu
+    memeriksa; (5) uji pertama di uji/jalan-pintas.test.mjs memeriksa reviewer.
+    `grep -rni "no reviewer\|unless the owner asks" skills agents` tidak lagi
+    menemukan jalur tanpa tinjauan selain pengecualian teks kecil (#2).
+  - Butir 1: terpenuhi, sesuai jawaban pemilik #1 (a) dan #3 (b).
+  - Butir 2-5: dibawa dari tinjauan ronde 1 (2026-10-17, commit e16c807).
+    Diff sejak itu hanya mengubah uji dokumen untuk butir-butir tersebut, bukan
+    aturan atau skrip yang dinilainya; satu-satunya perubahan pada butir 5
+    adalah kalimat "with no worker and no reviewer" di akhir "Work without a
+    ticket", yang sesuai dengan jawaban #2.
+  - Catatan ronde 1 tentang paragraf planner yang salah tempat: diperbaiki,
+    paragraf kembali di bawah "What stays with the foreman".
+  - Catatan ronde 1 tentang uji dokumen yang membekukan kata: ditangani.
+    uji/jalan-pintas.test.mjs kini memeriksa kata kunci tiap aturan dalam
+    satu paragraf atau butir daftar di dokumen mana pun, tanpa judul bagian,
+    jadi 261016141909 bisa menulis ulang dan memindahkan teksnya. Saran
+    tindak lanjut ronde 1 tetap berlaku untuk uji dokumen dari
+    261016141905/261016141907, yang tidak disentuh tiket ini.
+  - Catatan (tidak menahan): pemeriksaan kata kunci memang longgar. Misalnya
+    `[/without a ticket|skip the ticket/i, /reviewer/, /always/]` bisa terpenuhi
+    oleh paragraf lain yang kebetulan memuat ketiganya. Pengerja mencatat uji
+    ini bisa merah pada lima perubahan; ronde ini tidak menjalankan sabotase.
+  - Catatan (tidak menahan): foreman.md menyebut reviewer tanpa tiket
+    melaporkan `PASSED` atau `REJECTED`, sedangkan kerjaan-reviewer.md
+    membuka laporannya dengan `... : <passed | rejected>.` Maksudnya sama,
+    tetapi kata yang dicari mandor sebaiknya dibuat seragam.
+  - Dinilai hanya dengan membaca: butir 1 (aturan di dokumen; uji dokumen
+    hanya memastikan kata kuncinya ada).
