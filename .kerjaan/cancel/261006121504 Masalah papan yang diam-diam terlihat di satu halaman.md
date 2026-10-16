@@ -6,7 +6,7 @@ labels: [viewer]
 reporter: mirza
 assign_to: claude
 created: 2026-10-06 12:15:31
-updated: 2026-10-06 12:17:19
+updated: 2026-10-16 14:58:31
 related: [261006121501]
 blocked_by: [261006121501]
 ---
@@ -53,9 +53,11 @@ setiap proyek.
 
 ## History
 - 2026-10-06 12:15:31 backlog
+- 2026-10-16 14:58:31 cancel
 
 ## Notes
 - "Lama tanpa disentuh" perlu batas; usulan awal 3 hari dari `updated`.
   Perlu persetujuan Mirza.
 - blocked_by yang menunjuk tiket di done bukan masalah (syaratnya sudah
   terpenuhi), jadi tidak didaftar.
+- Dibatalkan oleh mirza, 2026-10-16, lewat tiket keputusan 261016141916: sebagian masalahnya sudah dijaga skrip (pemeriksaan antrean dan gerbang pemindah tiket), dan sisanya tidak perlu halaman sendiri.

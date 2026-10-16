@@ -6,7 +6,7 @@ labels: [sesi-a192c9e8, board]
 reporter: mirza
 assign_to: claude
 created: 2026-10-16 14:19:08
-updated: 2026-10-16 14:54:17
+updated: 2026-10-16 14:58:54
 related: [261006121502, 261006121503, 261006121504, 261006121505, 261016141911]
 blocked_by: []
 ---
@@ -28,14 +28,15 @@ Pemilik memutuskan nasib setiap tiket alat ukur proses, dan tiket yang tetap
 dipertahankan sesuai dengan kerjaan hari ini.
 
 ## Done when
-- [ ] Pemilik sudah memutuskan untuk 261006121502, 261006121503 dan 261006121505: dipertahankan, digabung, atau dibatalkan, dan keputusannya tercatat di tiket masing-masing
-- [ ] 261006121504 dipecah sesuai hasil, atau ukurannya diterima pemilik
-- [ ] Tidak ada tiket terbuka yang masih menyebut tampilan peta
-- [ ] Tiket yang dibatalkan memuat alasannya di Notes
+- [x] Pemilik sudah memutuskan untuk 261006121502, 261006121503 dan 261006121505: dipertahankan, digabung, atau dibatalkan, dan keputusannya tercatat di tiket masing-masing
+- [x] ~~261006121504 dipecah sesuai hasil, atau ukurannya diterima pemilik~~ — **dibatalkan oleh keputusan pemilik**: 261006121504 dibatalkan, bukan dipecah atau diterima utuh
+- [x] Tidak ada tiket terbuka yang masih menyebut tampilan peta
+- [x] Tiket yang dibatalkan memuat alasannya di Notes
 
 ## History
 - 2026-10-16 14:19:08 backlog
 - 2026-10-16 14:54:17 in_progress
+- 2026-10-16 14:58:54 review
 
 ## Notes
 - Berasal dari penilaian independen atas skill kerjaan di sesi Claude Code
@@ -46,3 +47,9 @@ dipertahankan sesuai dengan kerjaan hari ini.
   ditulis agar tetap cukup tanpa itu.
 - Ini tiket keputusan: pekerjaannya bertanya kepada pemilik dan menuliskan
   jawabannya.
+- Keputusan mirza, 2026-10-16: keempat tiket dibatalkan, yaitu 261006121502
+  (garis waktu), 261006121503 (bolak-balik review), 261006121505 (saran
+  tindak lanjut) dan 261006121504 (masalah papan). Alasan masing-masing
+  tercatat di Notes tiketnya di `cancel/`. Setelah itu tidak ada tiket terbuka
+  yang masih menyebut tampilan peta, kecuali tiket ini sendiri yang
+  menceritakan penghapusannya.

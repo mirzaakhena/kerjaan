@@ -6,7 +6,7 @@ labels: [viewer]
 reporter: mirza
 assign_to: claude
 created: 2026-10-06 12:15:31
-updated: 2026-10-06 12:17:19
+updated: 2026-10-16 14:58:30
 related: [261006121501, 261006121502]
 blocked_by: [261006121501]
 ---
@@ -50,8 +50,10 @@ kabur, atau uji yang tidak pernah bisa merah).
 
 ## History
 - 2026-10-06 12:15:31 backlog
+- 2026-10-16 14:58:30 cancel
 
 ## Notes
 - Kalimat keputusan di nukitu ditulis dengan beberapa bentuk, misalnya
   "**Keputusan: kembali ke `in_progress`.**" dan "- Keputusan: lolos, pindah
   ke done." Bentuk yang dikenali harus didaftar dan diuji pada papan nyata.
+- Dibatalkan oleh mirza, 2026-10-16, lewat tiket keputusan 261016141916: di repo ini belum pernah ada tiket bolak-balik di review, dan halaman analitik terpisah menambah kode viewer tanpa pemakaian nyata.
