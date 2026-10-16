@@ -6,7 +6,7 @@ labels: [sesi-a192c9e8, tests]
 reporter: mirza
 assign_to: claude
 created: 2026-10-16 14:19:08
-updated: 2026-10-16 14:21:58
+updated: 2026-10-16 14:46:21
 related: [261016141901, 261016141902, 261016141914]
 blocked_by: []
 ---
@@ -38,6 +38,7 @@ menjalankan suite tertulis dengan jelas.
 
 ## History
 - 2026-10-16 14:19:08 backlog
+- 2026-10-16 14:46:21 todo
 
 ## Notes
 - Berasal dari penilaian independen atas skill kerjaan di sesi Claude Code
@@ -46,3 +47,4 @@ menjalankan suite tertulis dengan jelas.
   `grep -l 'sesi-a192c9e8' .kerjaan/*/*.md`. Konteks lengkapnya bisa dibuka lagi
   dengan `claude --resume a192c9e8-0bb5-4bbf-8d56-9831b23e62ec` selama transkripnya masih ada; tiket ini
   ditulis agar tetap cukup tanpa itu.
+- 2026-10-16 14:36:46: files estimated to change: `README.md`, `uji/new-ticket.test.mjs`, `uji/test-run.test.mjs`, `uji/update-ticket.test.mjs`

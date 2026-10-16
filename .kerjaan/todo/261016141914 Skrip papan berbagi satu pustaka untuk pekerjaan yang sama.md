@@ -1,12 +1,12 @@
 ---
 type: task
 priority: low
-review:
+review: normal
 labels: [sesi-a192c9e8, scripts]
 reporter: mirza
 assign_to: claude
 created: 2026-10-16 14:19:07
-updated: 2026-10-16 14:21:58
+updated: 2026-10-16 14:46:24
 related: [261016141915]
 blocked_by: [261016141901, 261016141902]
 ---
@@ -45,6 +45,7 @@ dan pemeriksaan-pemeriksaan yang terlalu longgar menjadi tepat.
 
 ## History
 - 2026-10-16 14:19:07 backlog
+- 2026-10-16 14:46:24 todo
 
 ## Notes
 - Berasal dari penilaian independen atas skill kerjaan di sesi Claude Code
@@ -58,3 +59,4 @@ dan pemeriksaan-pemeriksaan yang terlalu longgar menjadi tepat.
   `test-run.sh:124`, `:139`, `:290`, `ticket-size.sh:46`, `:68`, `:98`.
   Kunci: `new-ticket.sh:84` vs `lib.sh`. Pagar: `update-ticket.sh:423`,
   `on-ticket-review.sh:142` vs `lib.sh:263`.
+- 2026-10-16 14:36:48: files estimated to change: `skills/kerjaan/references/repairs.md`, `skills/kerjaan/scripts/lib.sh`, `skills/kerjaan/scripts/merge.sh`, `skills/kerjaan/scripts/new-ticket.sh`, `skills/kerjaan/scripts/on-ticket-review.sh`, `skills/kerjaan/scripts/queue.sh`, `skills/kerjaan/scripts/test-run.sh`, `skills/kerjaan/scripts/ticket-size.sh`, `skills/kerjaan/scripts/update-ticket.sh`, `skills/kerjaan/scripts/worktree.sh`, `uji/repair.test.mjs`

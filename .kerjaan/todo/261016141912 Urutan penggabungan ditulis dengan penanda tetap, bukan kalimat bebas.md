@@ -1,12 +1,12 @@
 ---
 type: task
 priority: medium
-review:
+review: normal
 labels: [sesi-a192c9e8, queue, parallel]
 reporter: mirza
 assign_to: claude
 created: 2026-10-16 14:19:07
-updated: 2026-10-16 14:21:58
+updated: 2026-10-16 14:46:21
 related: [261016122402]
 blocked_by: []
 ---
@@ -32,9 +32,11 @@ apa pun bahasa papannya.
 - [ ] Grup yang memakai penanda itu dinyatakan siap, dan grup yang tidak memakainya dinyatakan belum siap beserta alasannya
 - [ ] Pencocokan kalimat bebas sudah dihapus
 - [ ] Uji yang ada untuk pemeriksaan urutan diperbarui dan lulus
+- [ ] Pengantar grup yang masih tersisa di order.md papan ini memakai penanda baru, dan pemeriksaan antrean menyatakannya siap
 
 ## History
 - 2026-10-16 14:19:07 backlog
+- 2026-10-16 14:46:21 todo
 
 ## Notes
 - Berasal dari penilaian independen atas skill kerjaan di sesi Claude Code
@@ -45,3 +47,6 @@ apa pun bahasa papannya.
   ditulis agar tetap cukup tanpa itu.
 - Lokasi: `queue.sh:299-323`, `:444-472`. Contoh bentuk penanda:
   `<!-- first: 261016141901 -->` per grup, atau urutan butir di dalam grup.
+- 2026-10-16 14:36:46: files estimated to change: `agents/kerjaan-planner.md`, `skills/kerjaan/SKILL.md`, `skills/kerjaan/references/ordering-the-queue.md`, `skills/kerjaan/references/parallel-work.md`, `skills/kerjaan/scripts/queue.sh`, `uji/queue.test.mjs`
+- 2026-10-16 14:38:11: answered question: Bentuk penanda: (a) baris tetap per grup, misalnya <!-- lands-first: ID -->, sama di semua bahasa; atau (b) tanpa penanda, butir pertama dalam grup selalu digabung lebih dulu? Saran: (a), karena butir 2 menuntut grup tanpa penanda ditolak, dan (b) tidak bisa membedakan urutan yang disengaja dari kebetulan. Tambahan: setelah tiket ini masuk main, pengantar grup yang tersisa di order.md batch ini memakai kalimat lama; boleh pengerja tiket ini mengubahnya ke penanda baru? Saran: boleh.
+  answer, 2026-10-16 14:45:50: (a) Satu baris tetap per grup, misalnya <!-- lands-first: ID -->; dan ya, pengerja tiket ini mengubah pengantar grup yang tersisa di order.md ke penanda baru.

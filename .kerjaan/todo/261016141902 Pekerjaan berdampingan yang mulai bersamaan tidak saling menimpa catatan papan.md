@@ -6,7 +6,7 @@ labels: [sesi-a192c9e8, scripts, parallel]
 reporter: mirza
 assign_to: claude
 created: 2026-10-16 14:19:06
-updated: 2026-10-16 14:21:56
+updated: 2026-10-16 14:46:20
 related: [261016141914, 261016141915]
 blocked_by: []
 ---
@@ -50,6 +50,7 @@ yang jelas.
 
 ## History
 - 2026-10-16 14:19:06 backlog
+- 2026-10-16 14:46:20 todo
 
 ## Notes
 - Berasal dari penilaian independen atas skill kerjaan di sesi Claude Code
@@ -62,3 +63,4 @@ yang jelas.
   ~530) tanpa kunci; `test-run.sh:290-297` juga. `lib.sh` sudah punya
   `kerjaan_lock_acquire` yang bekerja lintas worktree; kunci itu yang
   sebaiknya dipakai. Kunci di `lib.sh:90` tidak punya batas waktu.
+- 2026-10-16 14:36:45: files estimated to change: `skills/kerjaan/SETTINGS.md`, `skills/kerjaan/references/parallel-work.md`, `skills/kerjaan/scripts/lib.sh`, `skills/kerjaan/scripts/test-run.sh`, `skills/kerjaan/scripts/update-ticket.sh`, `uji/test-run.test.mjs`, `uji/update-ticket.test.mjs`

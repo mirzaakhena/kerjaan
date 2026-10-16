@@ -1,12 +1,12 @@
 ---
 type: task
 priority: medium
-review:
+review: normal
 labels: [sesi-a192c9e8, review, token]
 reporter: mirza
 assign_to: claude
 created: 2026-10-16 14:19:07
-updated: 2026-10-16 14:21:57
+updated: 2026-10-16 14:46:24
 related: [261016141911]
 blocked_by: [261016141904, 261016141906]
 ---
@@ -37,6 +37,7 @@ bagian yang tidak bisa terjadi lagi dihapus.
 
 ## History
 - 2026-10-16 14:19:07 backlog
+- 2026-10-16 14:46:24 todo
 
 ## Notes
 - Berasal dari penilaian independen atas skill kerjaan di sesi Claude Code
@@ -49,3 +50,6 @@ bagian yang tidak bisa terjadi lagi dihapus.
   `docs/cara-kerja-reviewer.md:38-42`. Kasus usang:
   `agents/kerjaan-reviewer.md:176-183`. "runs the checks once" di review.md
   sudah tidak tepat.
+- 2026-10-16 14:36:48: files estimated to change: `agents/kerjaan-reviewer.md`, `docs/cara-kerja-reviewer.md`, `skills/kerjaan/references/review.md`
+- 2026-10-16 14:38:09: answered question: Butir 5 (tiket uji yang sengaja ditolak tetap ditolak peninjau baru) butuh peninjau yang dimuat dari repo. Boleh pengerja mengujinya lewat claude -p --plugin-dir, dengan cadangan skenario tangan yang ditunda; atau langsung ditunda; atau menahan rantai? Saran: sama dengan 261016141909, uji lewat --plugin-dir, cadangannya ditunda.
+  answer, 2026-10-16 14:45:48: Sama dengan 261016141909: pengerja menguji lewat claude -p --plugin-dir; skenario tangan yang ditunda menjadi cadangannya.

@@ -6,7 +6,7 @@ labels: [sesi-a192c9e8, skill, foreman]
 reporter: mirza
 assign_to: claude
 created: 2026-10-16 14:19:06
-updated: 2026-10-16 14:21:57
+updated: 2026-10-16 14:46:23
 related: [261016141909]
 blocked_by: []
 ---
@@ -35,14 +35,15 @@ Setiap jalan pintas di atas punya satu jalur yang jelas, dan pengecualian
 untuk pekerjaan yang sangat kecil dinyatakan terang, beserta alasannya.
 
 ## Done when
-- [ ] Untuk "langsung saja", skill menyebut siapa yang menulis kodenya
+- [ ] Untuk "langsung saja", skill menyebut bahwa kodenya tetap ditulis pengerja yang diutus, walau tanpa tiket
 - [ ] "Tandai selesai" pada tiket di todo atau in_progress punya jalur yang tidak ditolak skrip dan tetap melewati rekaman uji
 - [ ] Tiket kerja berdampingan yang diterima pemilik ikut digabung ke main seperti tiket yang lolos
 - [ ] Ada langkah tertulis untuk melanjutkan pengerja setelah pemilik menjawab keputusan yang ditunggu
-- [ ] Skill menyatakan dengan tegas apakah perubahan sangat kecil boleh dikerjakan mandor sendiri, dan alasannya
+- [ ] Skill menyatakan dengan tegas bahwa mandor boleh mengerjakan sendiri perubahan sangat kecil bila pemilik memintanya langsung, terbatas pada teks atau dokumen tanpa logika (yang menyentuh skrip tetap ke pengerja), beserta alasannya
 
 ## History
 - 2026-10-16 14:19:06 backlog
+- 2026-10-16 14:46:23 todo
 
 ## Notes
 - Berasal dari penilaian independen atas skill kerjaan di sesi Claude Code
@@ -53,3 +54,8 @@ untuk pekerjaan yang sangat kecil dinyatakan terang, beserta alasannya.
   ditulis agar tetap cukup tanpa itu.
 - Lokasi: SKILL.md:46-48, :312, :650-658; `review.md:56-57`, `:100-102`;
   `foreman.md:192-194`.
+- 2026-10-16 14:36:47: files estimated to change: `agents/kerjaan-worker.md`, `skills/kerjaan/SKILL.md`, `skills/kerjaan/references/foreman.md`, `skills/kerjaan/references/review.md`, `skills/kerjaan/scripts/merge.sh`, `uji/merge.test.mjs`
+- 2026-10-16 14:38:09: answered question: Untuk "langsung saja, tanpa tiket": siapa yang menulis kodenya, (a) tetap pengerja yang diutus tanpa tiket, atau (b) mandor sendiri? Saran: (a), karena alasan konteks bersih mandor tetap berlaku walau tanpa tiket.
+  answer, 2026-10-16 14:45:47: (a) Pengerja, tetap diutus walau tanpa tiket.
+- 2026-10-16 14:38:09: answered question: Perubahan sangat kecil (salah ketik, satu kata): (a) tidak pernah dikerjakan mandor sendiri, atau (b) boleh dikerjakan mandor bila pemilik memintanya langsung, terbatas pada teks/dokumen tanpa logika, sedangkan apa pun yang menyentuh skrip tetap ke pengerja? Saran: (b), karena biaya pengerja dan peninjau jauh melebihi perubahannya.
+  answer, 2026-10-16 14:45:47: (b) Mandor boleh mengerjakannya sendiri bila pemilik memintanya langsung, terbatas pada teks atau dokumen tanpa logika; apa pun yang menyentuh skrip tetap ke pengerja.

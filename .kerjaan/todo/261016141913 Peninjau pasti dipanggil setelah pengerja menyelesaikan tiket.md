@@ -6,7 +6,7 @@ labels: [sesi-a192c9e8, hooks, review]
 reporter: mirza
 assign_to: claude
 created: 2026-10-16 14:19:07
-updated: 2026-10-16 14:21:58
+updated: 2026-10-16 14:46:23
 related: [261016141906]
 blocked_by: []
 ---
@@ -46,6 +46,7 @@ ingat sendiri.
 
 ## History
 - 2026-10-16 14:19:07 backlog
+- 2026-10-16 14:46:23 todo
 
 ## Notes
 - Berasal dari penilaian independen atas skill kerjaan di sesi Claude Code
@@ -57,3 +58,6 @@ ingat sendiri.
 - Saran teknis: hook `SubagentStop` yang memeriksa apakah tiket pengerja kini
   berada di `review/`. Lokasi: `on-ticket-review.sh:9-10`, `:44`, `:101-115`;
   `foreman.md:177`, `:203`.
+- 2026-10-16 14:36:47: files estimated to change: `README.md`, `hooks/hooks.json`, `skills/kerjaan/references/foreman.md`, `skills/kerjaan/scripts/on-ticket-review.sh`, `uji/on-ticket-review.test.mjs`
+- 2026-10-16 14:38:10: answered question: Butir 1 (mandor menerima pengingat) di sesi sungguhan baru aktif setelah plugin diperbarui. Cukup uji otomatis atas skrip hook, dengan cek di sesi sungguhan ditunda sebagai skenario tangan; atau menahan rantai? Saran: ditunda.
+  answer, 2026-10-16 14:45:50: Uji otomatis atas skrip hook diterima; cek di sesi sungguhan ditunda sebagai skenario tangan.

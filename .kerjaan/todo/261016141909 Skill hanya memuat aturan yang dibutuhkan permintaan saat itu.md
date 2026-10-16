@@ -6,7 +6,7 @@ labels: [sesi-a192c9e8, skill, token]
 reporter: mirza
 assign_to: claude
 created: 2026-10-16 14:19:07
-updated: 2026-10-16 14:21:57
+updated: 2026-10-16 14:46:25
 related: [261011073101, 261016141911]
 blocked_by: [261016141904, 261016141905, 261016141907, 261016141908]
 ---
@@ -37,9 +37,11 @@ punya satu tempat.
 - [ ] Panduan tidak lagi menyuruh menjalankan dengan tangan hal yang sudah dikerjakan skrip
 - [ ] Sesi baru yang diminta "catat ini ke backlog" membuat tiket yang benar tanpa membuka panduan mana pun
 - [ ] Sesi baru yang diminta mengerjakan todo tetap menemukan dan mengikuti panduan mandor
+- [ ] Total kata berkas utama, panduan dan definisi agen turun, bukan hanya berpindah tempat, dengan angka sebelum dan sesudah tercatat di Notes (keputusan pemilik di 261016141911)
 
 ## History
 - 2026-10-16 14:19:07 backlog
+- 2026-10-16 14:46:25 todo
 
 ## Notes
 - Berasal dari penilaian independen atas skill kerjaan di sesi Claude Code
@@ -57,3 +59,6 @@ punya satu tempat.
   variabelnya kosong, padahal ketiga agen punya.
 - Prosa yang mengerjakan tugas skrip: `ordering-the-queue.md:136-138` (diff
   manual) dan `parallel-work.md:60-64` (perintah git worktree mentah).
+- 2026-10-16 14:36:47: files estimated to change: `agents/kerjaan-planner.md`, `agents/kerjaan-reviewer.md`, `agents/kerjaan-worker.md`, `skills/kerjaan/SKILL.md`, `skills/kerjaan/references/`
+- 2026-10-16 14:38:09: answered question: Butir 5 dan 6 (perilaku sesi baru) hanya teruji dengan plugin dari repo, bukan plugin terpasang. Boleh pengerja mengujinya sendiri lewat claude -p --plugin-dir (memakai kuota), dengan cadangan skenario tangan yang ditunda bila tidak bisa; atau langsung ditunda; atau menahan rantai? Saran: pengerja menguji lewat --plugin-dir, cadangannya ditunda.
+  answer, 2026-10-16 14:45:48: Pengerja menguji lewat claude -p --plugin-dir; skenario tangan yang ditunda menjadi cadangannya.

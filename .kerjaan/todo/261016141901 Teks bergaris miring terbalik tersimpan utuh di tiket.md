@@ -6,7 +6,7 @@ labels: [sesi-a192c9e8, scripts]
 reporter: mirza
 assign_to: claude
 created: 2026-10-16 14:19:05
-updated: 2026-10-16 14:21:56
+updated: 2026-10-16 14:46:19
 related: [261016141914, 261016141915]
 blocked_by: []
 ---
@@ -46,6 +46,7 @@ aslinya, termasuk garis miring terbalik.
 
 ## History
 - 2026-10-16 14:19:05 backlog
+- 2026-10-16 14:46:19 todo
 
 ## Notes
 - Berasal dari penilaian independen atas skill kerjaan di sesi Claude Code
@@ -57,3 +58,4 @@ aslinya, termasuk garis miring terbalik.
 - Temuan teknis: `awk -v` menafsirkan escape. Terkena di `queue.sh:273`,
   `lib.sh:221`, `update-ticket.sh:458`, `test-run.sh:291`. Jalan keluar yang
   disarankan: kirim teks lewat `ENVIRON[...]` atau berkas, bukan `-v`.
+- 2026-10-16 14:36:44: files estimated to change: `skills/kerjaan/scripts/lib.sh`, `skills/kerjaan/scripts/queue.sh`, `skills/kerjaan/scripts/test-run.sh`, `skills/kerjaan/scripts/update-ticket.sh`, `uji/queue.test.mjs`, `uji/test-run.test.mjs`, `uji/update-ticket.test.mjs`

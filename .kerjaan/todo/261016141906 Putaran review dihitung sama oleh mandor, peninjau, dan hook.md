@@ -6,7 +6,7 @@ labels: [sesi-a192c9e8, review]
 reporter: mirza
 assign_to: claude
 created: 2026-10-16 14:19:06
-updated: 2026-10-16 14:21:56
+updated: 2026-10-16 14:46:22
 related: [261016141913, 261011083001]
 blocked_by: []
 ---
@@ -56,6 +56,7 @@ papannya.
 
 ## History
 - 2026-10-16 14:19:06 backlog
+- 2026-10-16 14:46:22 todo
 
 ## Notes
 - Berasal dari penilaian independen atas skill kerjaan di sesi Claude Code
@@ -68,3 +69,4 @@ papannya.
   `agents/kerjaan-reviewer.md:233-234`, `:293-297`, `:570-571`, `:596-597`;
   `on-ticket-review.sh:130-157`. Nama yang beredar untuk satu peristiwa:
   `SENT BACK`, "merge postponed", "re-integration round", "main moved".
+- 2026-10-16 14:36:46: files estimated to change: `agents/kerjaan-reviewer.md`, `agents/kerjaan-worker.md`, `docs/cara-kerja-reviewer.md`, `skills/kerjaan/references/foreman.md`, `skills/kerjaan/references/parallel-work.md`, `skills/kerjaan/references/review.md`, `skills/kerjaan/scripts/lib.sh`, `skills/kerjaan/scripts/merge.sh`, `skills/kerjaan/scripts/on-ticket-review.sh`, `uji/merge.test.mjs`, `uji/on-ticket-review.test.mjs`

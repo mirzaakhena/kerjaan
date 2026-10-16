@@ -6,7 +6,7 @@ labels: [sesi-a192c9e8, skill, queue]
 reporter: mirza
 assign_to: claude
 created: 2026-10-16 14:19:06
-updated: 2026-10-16 14:21:56
+updated: 2026-10-16 14:46:22
 related: [261016141909]
 blocked_by: []
 ---
@@ -41,9 +41,11 @@ bentuk.
 - [ ] Panduan menunjuk pemeriksaan antrean sebagai satu-satunya acuan syarat siap, bukan menyalin daftarnya
 - [ ] Pertanyaan yang muncul saat pengerjaan dicatat pengerja dengan nomor seperti pertanyaan penyusun antrean, dan terlihat oleh pemeriksaan antrean
 - [ ] Usulan level review untuk setiap tiket datang dari penyusun antrean dalam laporannya, lalu disampaikan mandor kepada pemilik
+- [ ] Tiket keputusan yang tidak mengubah berkas proyek apa pun (seperti 261016141916) bisa dinyatakan siap oleh pemeriksaan antrean, tanpa perkiraan berkas palsu
 
 ## History
 - 2026-10-16 14:19:06 backlog
+- 2026-10-16 14:46:22 todo
 
 ## Notes
 - Berasal dari penilaian independen atas skill kerjaan di sesi Claude Code
@@ -56,3 +58,5 @@ bentuk.
   :459-460; `agents/kerjaan-planner.md:54-57`; `ordering-the-queue.md:26-28`,
   `:56-57`; `agents/kerjaan-worker.md:43-45`; `foreman.md:73`, `:109-120`;
   `review.md:28-29`.
+- 2026-10-16 14:36:46: files estimated to change: `agents/kerjaan-planner.md`, `agents/kerjaan-worker.md`, `skills/kerjaan/SKILL.md`, `skills/kerjaan/references/foreman.md`, `skills/kerjaan/references/ordering-the-queue.md`, `skills/kerjaan/references/review.md`, `skills/kerjaan/scripts/queue.sh`, `uji/queue.test.mjs`
+- Keputusan pemilik, 2026-10-16: celah tiket keputusan (261016141916 tidak bisa diberi perkiraan berkas sehingga tidak pernah lolos pemeriksaan antrean) ditambahkan ke tiket ini sebagai butir Done when.

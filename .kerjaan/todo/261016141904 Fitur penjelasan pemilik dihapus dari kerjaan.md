@@ -6,7 +6,7 @@ labels: [sesi-a192c9e8, skill, explain]
 reporter: mirza
 assign_to: claude
 created: 2026-10-16 14:19:06
-updated: 2026-10-16 14:21:56
+updated: 2026-10-16 14:46:21
 related: [261011073103, 261016141909]
 blocked_by: []
 ---
@@ -38,6 +38,7 @@ yang tiketnya sudah memuat bagian penjelasan.
 
 ## History
 - 2026-10-16 14:19:06 backlog
+- 2026-10-16 14:46:21 todo
 
 ## Notes
 - Berasal dari penilaian independen atas skill kerjaan di sesi Claude Code
@@ -54,3 +55,4 @@ yang tiketnya sudah memuat bagian penjelasan.
   SETTINGS.md, `WAITING — explanation` di `agents/kerjaan-worker.md`,
   `(waiting for the owner's explanation)` di SKILL.md "Starting a session",
   dan pengecualian izin commit di bagian "Committing".
+- 2026-10-16 14:36:59: files estimated to change: `README.md`, `agents/kerjaan-reviewer.md`, `agents/kerjaan-worker.md`, `skills/kerjaan/SETTINGS.md`, `skills/kerjaan/SKILL.md`, `skills/kerjaan/references/explanation.md`, `skills/kerjaan/references/foreman.md`, `skills/kerjaan/scripts/explain.sh`, `skills/kerjaan/scripts/lib.sh`, `skills/kerjaan/scripts/update-ticket.sh`, `uji/merge.test.mjs`, `uji/queue.test.mjs`, `uji/ticket-size.test.mjs`, `uji/worktree.test.mjs`

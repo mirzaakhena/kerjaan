@@ -6,7 +6,7 @@ labels: [sesi-a192c9e8, skill, git]
 reporter: mirza
 assign_to: claude
 created: 2026-10-16 14:19:06
-updated: 2026-10-16 14:21:57
+updated: 2026-10-16 14:46:23
 related: [261016130801]
 blocked_by: []
 ---
@@ -42,7 +42,7 @@ Tidak ada perubahan papan yang tertinggal tanpa disimpan, baik saat kerja
 biasa maupun berdampingan, dan riwayat git satu tiket jauh lebih ringkas.
 
 ## Done when
-- [ ] Setelah putusan peninjau, baik lolos maupun dikembalikan, tidak ada perubahan papan yang tertinggal belum tersimpan
+- [ ] Setelah putusan peninjau, baik lolos maupun dikembalikan, tidak ada perubahan papan yang tertinggal belum tersimpan: peninjau meng-commit sendiri berkas tiketnya
 - [ ] Panduan pengerja menyebut di mana kode dan di mana berkas tiket di-commit saat kerja berdampingan
 - [ ] Aturan commit di skill tidak lagi menuntut sesuatu yang mustahil di kerja berdampingan
 - [ ] Satu tiket yang dikerjakan biasa, dari mulai sampai done, menghasilkan paling banyak tiga commit
@@ -50,6 +50,7 @@ biasa maupun berdampingan, dan riwayat git satu tiket jauh lebih ringkas.
 
 ## History
 - 2026-10-16 14:19:06 backlog
+- 2026-10-16 14:46:23 todo
 
 ## Notes
 - Berasal dari penilaian independen atas skill kerjaan di sesi Claude Code
@@ -62,3 +63,6 @@ biasa maupun berdampingan, dan riwayat git satu tiket jauh lebih ringkas.
   `agents/kerjaan-worker.md:108-112`; `foreman.md:192-195`, `:213`;
   `parallel-work.md:63`, `:100-103`; `explanation.md:60-62` (ikut hilang
   bersama 261016141904).
+- 2026-10-16 14:36:47: files estimated to change: `agents/kerjaan-reviewer.md`, `agents/kerjaan-worker.md`, `skills/kerjaan/SKILL.md`, `skills/kerjaan/references/foreman.md`, `skills/kerjaan/references/parallel-work.md`, `skills/kerjaan/scripts/merge.sh`, `uji/merge.test.mjs`
+- 2026-10-16 14:38:08: answered question: Siapa yang menyimpan (commit) putusan peninjau untuk tiket yang dikerjakan di main: (a) peninjau sendiri, khusus berkas tiketnya; (b) mandor tepat setelah setiap putusan; (c) skrip pemindah tiket otomatis? Saran: (a), karena peninjau yang terakhir menyentuh berkas itu, dan langkah yang bergantung pada mandor ingat adalah celah yang sama dengan 261016141913.
+  answer, 2026-10-16 14:45:46: (a) Peninjau meng-commit sendiri putusannya, hanya berkas tiketnya.

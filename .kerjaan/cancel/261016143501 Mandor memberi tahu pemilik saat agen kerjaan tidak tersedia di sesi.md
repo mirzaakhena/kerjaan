@@ -56,5 +56,3 @@ agen pengganti tanpa persetujuan pemilik.
   pengembangan: `claude --plugin-dir <repo>`.
 - 2026-10-16 14:36:45: files estimated to change: `README.md`, `skills/kerjaan/SKILL.md`, `skills/kerjaan/references/foreman.md`
 - Dibatalkan oleh mirza, 2026-10-16: tiket ini dibuat dari salah tangkap. Yang diminta pemilik adalah memakai agen khusus `kerjaan-planner`, yang namanya sudah benar dan akan tersedia setelah plugin diperbarui (261016141903). Aturan agar tidak diam-diam memakai agen pengganti cukup dicatat di memori sesi.
-- 2026-10-16 14:38:08: open question: Butir 5 (dicoba di sesi dengan plugin tanpa penyusun antrean) hanya bisa dicek di sesi sungguhan. Ditunda sebagai skenario tangan, atau menahan rantai? Saran: ditunda.
-- 2026-10-16 14:38:08: open question: Butir 4 (di repo kerjaan sendiri, mandor menyebut bila plugin terpasang lebih tua dari repo): aturan ini ditaruh di CLAUDE.md di akar repo ini (belum ada, khusus repo ini), atau di skill untuk semua repo? Saran: CLAUDE.md repo ini, karena hanya repo ini yang memegang sumber plugin; skill tetap ringkas.
