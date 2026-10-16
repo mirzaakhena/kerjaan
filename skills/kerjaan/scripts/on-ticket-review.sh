@@ -69,6 +69,17 @@ session=$(safe "$(field '.session_id // ""')")
 [ -n "$session" ] || session=nosession
 state_dir="${KERJAAN_HOOK_STATE:-${TMPDIR:-/tmp}/kerjaan-review-hook}/$session"
 
+# The shared pieces of the board scripts (lib.sh) are read only once the hook
+# is about to fire: every prompt and every Bash call runs this hook, and nearly
+# all of them leave above without needing them.
+lib_loaded=0
+load_lib() {
+  [ "$lib_loaded" -eq 1 ] && return 0
+  # shellcheck source=lib.sh
+  . "$(cd "$(dirname "$0")" && pwd)/lib.sh"
+  lib_loaded=1
+}
+
 # foreman_reminder <event> <id> <ticket> <lead> <lead_sys>
 # Prints one hook JSON object telling the foreman what to do with a ticket in
 # review: dispatch a reviewer, resume the earlier one, or resume it for the
@@ -112,14 +123,16 @@ foreman_reminder() {
   #     mid-sentence in a worker's note, a wrapped continuation line, a `>`
   #     quote -- is someone talking about a review, not a review, and a first
   #     round must stay a first round.
-  # Lines inside fenced blocks are prose, not records, so they are skipped.
+  # Lines inside fenced blocks are prose, not records, so they are skipped,
+  # whichever of the two fences opens them (KERJAAN_FENCE in lib.sh).
   # Rejections are the larger of the two counts, so a review from before the
   # line was fixed (written in the board's language) is still counted by
   # History, and a ticket from before History by its Notes. The awk prints:
   # History `review` lines, reviewer openings, rejections, and whether the
   # latest return was a merge postponed (1) or not (0).
-  counts=$(awk '
-    /^```/ { infence = !infence; next }
+  load_lib
+  counts=$(awk -v fence="$KERJAAN_FENCE" '
+    $0 ~ fence { infence = !infence; next }
     infence { next }
     /^## / {
       inhist = ($0 ~ /^## History[ \t]*$/)
@@ -350,14 +363,12 @@ $stdout
 STDOUT
 
 if [ -z "$ticket" ]; then
+  load_lib
   hook_cwd=$(field '.cwd // ""')
   for root in "${CLAUDE_PROJECT_DIR:-}" "$hook_cwd" "$PWD"; do
     [ -n "$root" ] || continue
-    for f in "$root/.kerjaan/review/$id "*.md; do
-      [ -f "$f" ] || continue
-      ticket="$f"
-      break 2
-    done
+    ticket="$(kerjaan_ticket_file "$root/.kerjaan" "$id" review 2>/dev/null || true)"
+    [ -z "$ticket" ] || break
   done
 fi
 

@@ -222,10 +222,33 @@ test('--accept-size appends after earlier notes rather than replacing them', () 
   assert.match(text, /- Catatan lama\.\n- .*size accepted by the owner/);
 });
 
-test('an acceptance written by hand in Notes counts too', () => {
-  const notes = '- Keputusan mirza, 2026-10-13: tiket ini tetap utuh (size accepted by the owner).';
-  const { root } = board({ doneWhen: items(12), notes });
-  assert.ok(!warned(run(update, root, id).err));
+// Only the sentence --accept-size writes, after its time stamp, is the owner's
+// decision. A line that merely mentions the phrase -- or denies it -- is not,
+// and the warning goes on. Each shape a person might write is its own case.
+const SENTENCE = 'size accepted by the owner with --accept-size: this ticket stays whole although its "Done when" list is over the board\'s limit.';
+
+test('the exact sentence --accept-size writes, written by hand with its time stamp, counts', () => {
+  for (const notes of [`- 2026-10-13 21:05:00: ${SENTENCE}`, `- Catatan lama.\n- 2026-10-13 21:05:00: ${SENTENCE}  `]) {
+    const { root } = board({ doneWhen: items(12), notes });
+    assert.ok(!warned(run(update, root, id).err), notes);
+  }
+});
+
+test('a line that only mentions the acceptance, or denies it, does not stop the warning', () => {
+  for (const notes of [
+    '- Keputusan mirza, 2026-10-13: tiket ini tetap utuh (size accepted by the owner).', // a paraphrase
+    '- size accepted by the owner',                                                      // the phrase alone
+    '- 2026-10-13 21:05:00: size accepted by the owner',                                 // cut short
+    '- 2026-10-13 21:05:00: size NOT accepted by the owner: pecah dulu.',                 // a denial
+    '- 2026-10-13 21:05:00: is the size accepted by the owner? Belum.',                  // a question
+    `- 2026-10-13 21:05:00: no, ${SENTENCE}`,                                            // a denial in front
+    `- 2026-10-13 21:05:00: ${SENTENCE} Dibatalkan: pemilik minta dipecah.`,             // withdrawn after
+    `- ${SENTENCE}`,                                                                     // no time stamp
+    `  - 2026-10-13 21:05:00: ${SENTENCE}`,                                              // a sub-bullet quoting it
+  ]) {
+    const { root } = board({ doneWhen: items(12), notes });
+    assert.match(run(update, root, id).err, /has 12 "Done when" items/, notes);
+  }
 });
 
 test('the acceptance phrase only counts at the start of a bullet in Notes', () => {

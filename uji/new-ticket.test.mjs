@@ -1,7 +1,9 @@
 // new-ticket.sh: the first ## History line of a new ticket names the Claude
 // Code session that created it, and only when there is one; IDs stay unique
-// when tickets are created at once, a minute holds at most 99, and a lock left
-// behind by a dead process does not block the board forever.
+// when tickets are created at once, a minute holds at most 99, and the lock it
+// chooses the ID under is the board lock every other script takes (lib.sh): a
+// lock left behind by a dead process does not block the board forever, and
+// one held by a live process is waited on, then given up on out loud.
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -16,14 +18,18 @@ const create = path.join(here, '..', 'skills', 'kerjaan', 'scripts', 'new-ticket
 const SESSION = '4dbcf082-290a-4f65-845c-ee75fd3b3e9c';
 const TIME = String.raw`\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}`;
 
-function board() {
+function board(settings = '') {
   const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'kerjaan-new-')));
   for (const s of ['backlog', 'todo', 'in_progress', 'review', 'done', 'cancel']) {
     fs.mkdirSync(path.join(root, '.kerjaan', s), { recursive: true });
   }
-  fs.writeFileSync(path.join(root, '.kerjaan', 'settings.md'), '---\nlanguage: English\n---\n');
+  fs.writeFileSync(path.join(root, '.kerjaan', 'settings.md'), `---\nlanguage: English\n${settings}---\n`);
   return root;
 }
+
+// Outside git the board lock lives in the board folder itself (lib.sh,
+// kerjaan_locks_dir); these boards are not git repositories.
+const boardLock = (root) => path.join(root, '.kerjaan', '.locks', 'board.lock');
 
 function create1(root, session, status = 'backlog') {
   const env = { ...process.env };
@@ -86,10 +92,10 @@ const allTickets = (root) => ['backlog', 'todo', 'in_progress', 'review', 'done'
   .flatMap((s) => fs.readdirSync(path.join(root, '.kerjaan', s)).filter((f) => f.endsWith('.md')));
 const placeholder = (root, status, name) => fs.writeFileSync(path.join(root, '.kerjaan', status, name), '');
 
-// new-ticket.sh waits about four seconds for its lock and then gives up out
-// loud; on a machine under heavy load some of the creations below can reach
-// that limit. Giving up that way is allowed. Anything else is not: another
-// failure, two tickets sharing an ID, or a gap in the numbering.
+// new-ticket.sh waits up to lock_timeout for the board lock and then gives up
+// out loud; on a machine under heavy load some of the creations below could
+// reach that limit. Giving up that way is allowed. Anything else is not:
+// another failure, two tickets sharing an ID, or a gap in the numbering.
 test('tickets created at the same moment each get their own ID, numbered on from 01', async () => {
   for (let round = 0; round < 3; round++) {
     const root = board();
@@ -99,7 +105,7 @@ test('tickets created at the same moment each get their own ID, numbered on from
     const made = runs.filter((r) => r.code === 0);
     for (const r of runs.filter((x) => x.code !== 0)) {
       assert.equal(r.code, 1, r.err);
-      assert.match(r.err, /^Could not lock /, r.err);
+      assert.match(r.err, /Gave up waiting for the board lock/, r.err);
       assert.equal(r.out, '');
     }
     assert.ok(made.length >= 2, `only ${made.length} of ${n} creations got through in round ${round}`);
@@ -107,7 +113,7 @@ test('tickets created at the same moment each get their own ID, numbered on from
     const want = Array.from({ length: made.length }, (_, i) => `${MINUTE}${String(i + 1).padStart(2, '0')}`);
     assert.deepEqual(ids, want, `round ${round}`);
     assert.equal(allTickets(root).length, made.length);
-    assert.equal(fs.existsSync(path.join(root, '.kerjaan', '.lock')), false, 'the lock is released');
+    assert.equal(fs.existsSync(boardLock(root)), false, 'the lock is released');
   }
 });
 
@@ -133,29 +139,57 @@ test('the 99th ticket of a minute is created; the 100th is refused, with nothing
   assert.equal(full.out, '');
   assert.match(full.err, new RegExp(`Minute ${MINUTE} already holds 99 tickets`));
   assert.deepEqual(allTickets(root).sort(), before);
-  assert.equal(fs.existsSync(path.join(root, '.kerjaan', '.lock')), false, 'the lock is released');
+  assert.equal(fs.existsSync(boardLock(root)), false, 'the lock is released');
 });
 
-test('a lock left behind by a process that died long ago is taken over', () => {
+// A process that has exited: its PID names nobody any more.
+function deadPid() {
+  return spawnSync('bash', ['-c', 'echo $$'], { encoding: 'utf8' }).stdout.trim();
+}
+
+test('a board lock left behind by a process that no longer runs is taken over', () => {
   const root = board();
-  const lock = path.join(root, '.kerjaan', '.lock');
-  fs.mkdirSync(lock);
-  const old = new Date(Date.now() - 5 * 60 * 1000);
-  fs.utimesSync(lock, old, old);
+  const lock = boardLock(root);
+  fs.mkdirSync(lock, { recursive: true });
+  fs.writeFileSync(path.join(lock, 'owner'), `${deadPid()}\tupdate-ticket.sh, killed\n`);
   const r = createPinned(root);
   assert.equal(r.code, 0, r.err);
   assert.equal(path.basename(r.out), `${MINUTE}01 Sebuah tiket.md`);
+  assert.match(r.err, /no longer runs; taking it over/);
   assert.equal(fs.existsSync(lock), false);
 });
 
-test('a lock that is still fresh is waited on, then refused: no ticket, and the lock is left to its holder', () => {
-  const root = board();
-  const lock = path.join(root, '.kerjaan', '.lock');
-  fs.mkdirSync(lock);
+test('a board lock held by a live process is waited on up to lock_timeout, then refused: no ticket, and the lock is left to its holder', () => {
+  const root = board('lock_timeout: 1\n');
+  const lock = boardLock(root);
+  fs.mkdirSync(lock, { recursive: true });
+  fs.writeFileSync(path.join(lock, 'owner'), `${process.pid}\tupdate-ticket.sh 261016120001, process ${process.pid}\n`);
   const r = createPinned(root);
   assert.equal(r.code, 1);
   assert.equal(r.out, '');
-  assert.match(r.err, /Could not lock/);
+  assert.match(r.err, /Waiting for the board lock, held by update-ticket\.sh 261016120001/);
+  assert.match(r.err, /Gave up waiting for the board lock after 1s/);
+  assert.match(r.err, /lock_timeout/);
   assert.deepEqual(allTickets(root), []);
-  assert.equal(fs.existsSync(lock), true);
+  assert.equal(fs.existsSync(path.join(lock, 'owner')), true);
+});
+
+// One design: in a git repository the lock is the one in git's common
+// directory that update-ticket.sh, queue.sh, merge.sh and test-run.sh take,
+// not a second one of new-ticket.sh's own.
+test('in a git repository, new-ticket.sh waits for the same board lock as update-ticket.sh', () => {
+  const root = board('lock_timeout: 1\n');
+  spawnSync('git', ['init', '-q'], { cwd: root });
+  const lock = path.join(root, '.git', 'kerjaan-locks', 'board.lock');
+  fs.mkdirSync(lock, { recursive: true });
+  fs.writeFileSync(path.join(lock, 'owner'), `${process.pid}\tupdate-ticket.sh, process ${process.pid}\n`);
+  const held = createPinned(root);
+  assert.equal(held.code, 1);
+  assert.match(held.err, /Gave up waiting for the board lock/);
+  assert.deepEqual(allTickets(root), []);
+  fs.rmSync(lock, { recursive: true });
+  const free = createPinned(root);
+  assert.equal(free.code, 0, free.err);
+  assert.equal(fs.existsSync(lock), false, 'the lock is released');
+  assert.equal(fs.existsSync(path.join(root, '.kerjaan', '.lock')), false, 'no lock of its own');
 });

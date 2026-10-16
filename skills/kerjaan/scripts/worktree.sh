@@ -70,26 +70,13 @@ if [ "$cmd" = "slot" ]; then
 fi
 
 # --- from the main tree only -------------------------------------------------
-# Same test as update-ticket.sh: a linked worktree has a `gitdir` file in its
-# private git directory, and the main repository never does.
-main_tree="$(git worktree list --porcelain | sed -n '1s/^worktree //p')"
-if [ -f "$(git rev-parse --git-dir)/gitdir" ]; then
-  echo "This is a linked git worktree. Worktrees are created and removed from" >&2
-  echo "the main tree, where the board lives:" >&2
-  echo "  $main_tree" >&2
-  exit 1
-fi
+# Worktrees are created and removed from the main tree, where the board lives.
+kerjaan_refuse_linked_worktree 1
+main_tree="$(kerjaan_main_tree)"
 cd "$main_tree"
 board="$main_tree/.kerjaan"
 [ -d "$board" ] || { echo "No .kerjaan/ in $main_tree" >&2; exit 2; }
 settings="$board/settings.md"
-
-is_id() {
-  case "$1" in
-    [0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]) return 0 ;;
-    *) return 1 ;;
-  esac
-}
 
 # Runs the setting named <key> inside <dir> for ticket <id>. Returns its status;
 # an empty setting succeeds without running anything.
@@ -120,12 +107,7 @@ case "$cmd" in
         *) usage ;;
       esac
     done
-    is_id "$id" || { echo "'$id' is not a 12-digit ticket ID." >&2; exit 2; }
-    found=0
-    for f in "$board"/*/"$id "*.md; do
-      [ -e "$f" ] && found=1
-    done
-    [ "$found" -eq 1 ] || { echo "No ticket with ID $id." >&2; exit 2; }
+    kerjaan_find_ticket "$board" "$id" > /dev/null || exit 2
     [ ! -e "$path" ] || { echo "$path already exists." >&2; exit 1; }
 
     # A ticket sent back from review may still have its branch: reuse it.
@@ -183,7 +165,7 @@ case "$cmd" in
     # then "branch refs/heads/<name>" or "detached"; the first is the main tree.
     while IFS=$'\t' read -r wpath wbranch; do
       [ "$wpath" = "$main_tree" ] && continue
-      if is_id "$target"; then
+      if kerjaan_is_id "$target"; then
         case "$wbranch" in *"$target"*) path="$wpath"; branch="$wbranch" ;; esac
       elif [ -e "$target" ] && [ "$(cd "$target" && pwd -P)" = "$wpath" ]; then
         path="$wpath"
@@ -196,7 +178,7 @@ case "$cmd" in
     [ -n "$path" ] || { echo "No linked worktree found for '$target'." >&2; exit 1; }
 
     id="$target"
-    is_id "$id" || id="$(printf '%s' "$branch" | grep -oE '[0-9]{12}' | head -1 || true)"
+    kerjaan_is_id "$id" || id="$(printf '%s' "$branch" | grep -oE '[0-9]{12}' | head -1 || true)"
 
     if [ -d "$path" ]; then
       # Checked before the teardown runs: data removed from a worktree that

@@ -20,13 +20,19 @@
 # through (`- [ ] ~~...~~`), which were voided or moved to another ticket.
 #
 # The limit is `done_when_limit` in .kerjaan/settings.md, 8 when unset.
-# A ticket whose `## Notes` holds a line starting with "- " that says
-# "size accepted by the owner" is never warned about again; that line is
-# written by `update-ticket.sh <id> --accept-size`, on the owner's word only.
+# A ticket whose `## Notes` holds the line `update-ticket.sh <id> --accept-size`
+# writes, on the owner's word only, is never warned about again. Only that
+# line counts, word for word after its time stamp (KERJAAN_SIZE_ACCEPTED in
+# lib.sh): a note that merely mentions an acceptance, or denies one, is not
+# the owner's decision.
 #
 # Prints nothing on stdout. Exit 0 whether or not it warned; 1 on bad usage.
 
 set -euo pipefail
+
+here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=lib.sh
+. "$here/lib.sh"
 
 DEFAULT_LIMIT=8
 
@@ -35,21 +41,7 @@ DEFAULT_LIMIT=8
 target="$1"
 board="$PWD/.kerjaan"
 
-if [ -f "$target" ]; then
-  file="$target"
-else
-  case "$target" in
-    [0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]) ;;
-    *) echo "'$target' is neither a 12-digit ID nor an existing file path." >&2; exit 1 ;;
-  esac
-  file=""
-  for f in "$board"/*/"$target "*.md; do
-    [ -e "$f" ] || continue
-    file="$f"
-    break
-  done
-  [ -n "$file" ] || { echo "No ticket with ID $target." >&2; exit 1; }
-fi
+file="$(kerjaan_ticket_arg "$board" "$target")" || exit 1
 
 base="$(basename "$file")"
 id="${base:0:12}"
@@ -64,30 +56,25 @@ esac
 # --- the board's limit -------------------------------------------------------
 limit="$DEFAULT_LIMIT"
 settings="$(cd "$(dirname "$file")/.." && pwd)/settings.md"
-if [ -f "$settings" ]; then
-  raw="$(awk '
-    $0 == "---" { if (++fm == 2) exit; next }
-    fm == 1 && /^done_when_limit:/ { sub(/^done_when_limit:[ \t]*/, ""); sub(/[ \t]+$/, ""); print; exit }
-  ' "$settings")"
-  if [ -n "$raw" ]; then
-    case "$raw" in
-      *[!0-9]*) bad=1 ;;
-      *) bad=0; [ "$((10#$raw))" -ge 1 ] || bad=1 ;;
-    esac
-    if [ "$bad" -eq 0 ]; then
-      limit="$((10#$raw))"
-    else
-      echo "Note: done_when_limit in $settings is '$raw', not a whole number of 1 or more;" >&2
-      echo "  the default of $DEFAULT_LIMIT is used instead." >&2
-    fi
+raw="$(kerjaan_setting "$settings" done_when_limit)"
+if [ -n "$raw" ]; then
+  case "$raw" in
+    *[!0-9]*) bad=1 ;;
+    *) bad=0; [ "$((10#$raw))" -ge 1 ] || bad=1 ;;
+  esac
+  if [ "$bad" -eq 0 ]; then
+    limit="$((10#$raw))"
+  else
+    echo "Note: done_when_limit in $settings is '$raw', not a whole number of 1 or more;" >&2
+    echo "  the default of $DEFAULT_LIMIT is used instead." >&2
   fi
 fi
 
 # --- count, and look for the owner's acceptance -----------------------------
-read -r count accepted < <(awk '
-  BEGIN { fm = 0; body = 0; infence = 0; sec = ""; n = 0; ok = 0 }
+read -r count accepted < <(KERJAAN_ACCEPTED="$KERJAAN_SIZE_ACCEPTED" awk -v fence="$KERJAAN_FENCE" '
+  BEGIN { fm = 0; body = 0; infence = 0; sec = ""; n = 0; ok = 0; want = ENVIRON["KERJAAN_ACCEPTED"] }
   !body { if ($0 == "---" && ++fm == 2) body = 1; next }
-  /^(```|~~~)/ { infence = !infence; next }
+  $0 ~ fence { infence = !infence; next }
   infence { next }
   /^## / { sec = $0; sub(/[ \t]+$/, "", sec); next }
   sec == "## Done when" && /^- \[[ xX]\]/ {
@@ -95,14 +82,16 @@ read -r count accepted < <(awk '
     n++
     next
   }
-  sec == "## Notes" && /^- / && tolower($0) ~ /size accepted by the owner/ { ok = 1 }
+  sec == "## Notes" && /^- [0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}: / {
+    line = substr($0, 24); sub(/[ \t\r]+$/, "", line)
+    if (line == want) ok = 1
+  }
   END { print n, ok }
 ' "$file")
 
 [ "$accepted" -eq 1 ] && exit 0
 [ "$count" -le "$limit" ] && exit 0
 
-here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cat >&2 <<WARN
 WARNING: $id has $count "Done when" items, over this board's limit of $limit.
   A ticket this big is reviewed less sharply, shows its result late, runs a

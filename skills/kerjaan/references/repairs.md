@@ -5,35 +5,31 @@ scripts. Neither case should happen in normal use.
 
 ## When two tickets share an ID
 
-`new-ticket.sh` locks the board while it picks a sequence number, so this
-cannot come from the script. It comes from outside: a copy-paste, a git merge
-of two branches, a manual rename. Detect it with:
+`new-ticket.sh` picks a sequence number under the board lock, so this cannot
+come from the script. It comes from outside: a copy-paste, a git merge of two
+branches, a manual rename. Every script that is given such an ID refuses and
+names the repair. Find every shared ID, and repair each one, with:
 
 ```bash
-for f in .kerjaan/*/*.md; do basename "$f" | cut -c1-12; done | sort | uniq -d
+"$K/repair.sh" duplicate-id                  # lists every shared ID; exit 1 if any
+"$K/repair.sh" duplicate-id 260905160401     # repairs that one
 ```
 
-Resolve each duplicate:
+The ticket with the earliest `created` keeps the ID, since it is the one more
+likely to be referred to already. Every other ticket carrying it takes the
+next free number of that minute (or of the first later minute with one left);
+its `created` stays, `updated` is refreshed, its Notes record the change, and
+its line in `order.md` follows it.
 
-1. Compare `created`. **The older one keeps the ID** — it is more likely to be
-   referenced already.
-2. The younger one takes the next free sequence number in the same minute.
-   Renaming the file is enough; `created` does not change, because it records
-   when the ticket was born, not when its ID was tidied up. If that minute is
-   exhausted up to `99`, move into the next minute (`...160599` →
-   `...160601`): an ID only needs to be unique and roughly ordered.
-3. Find inbound references to the old ID:
+When the two were created at the same second, or one has no readable
+`created`, nothing is changed: read both, decide which one moves, and name its
+file instead: `"$K/repair.sh" duplicate-id <path>`.
 
-   ```bash
-   grep -rl '260905160401' .kerjaan/
-   ```
-
-   While the ID was duplicated those references are ambiguous. Read each
-   referring ticket's context, decide which ticket it meant, and fix only the
-   ones pointing at the ticket you renumbered. `order.md` shows up here too if
-   the renumbered ticket is in `todo`.
-4. Run `update-ticket.sh` on the renumbered ticket and on every ticket whose
-   references changed.
+What the command cannot decide is listed at the end of its output: every other
+place still naming the old ID — a `blocked_by` or `related` in another ticket,
+a lands-first line, a branch. While the ID was shared those could mean either
+ticket. Read each one, change only those meant for the renumbered ticket, and
+run `update-ticket.sh` on every ticket you changed.
 
 ## Writing `updated` by hand
 

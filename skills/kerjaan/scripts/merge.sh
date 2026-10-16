@@ -78,23 +78,18 @@ case "$cmd:${1:-}" in
 esac
 [ "$#" -eq 0 ] || usage
 
-case "$id" in
-  [0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]) ;;
-  *) echo "'$id' is not a 12-digit ticket ID." >&2; exit 2 ;;
-esac
+kerjaan_is_id "$id" || { echo "'$id' is not a 12-digit ticket ID." >&2; exit 2; }
 
 git rev-parse --git-dir > /dev/null 2>&1 || { echo "Not inside a git repository." >&2; exit 2; }
-main_tree="$(git worktree list --porcelain | sed -n '1s/^worktree //p')"
+main_tree="$(kerjaan_main_tree)"
 board="$main_tree/.kerjaan"
 [ -d "$board" ] || { echo "No .kerjaan/ in $main_tree" >&2; exit 2; }
 settings="$board/settings.md"
 
 linked=0
-[ -f "$(git rev-parse --git-dir)/gitdir" ] && linked=1
+kerjaan_in_linked_worktree && linked=1
 
-ticket="$(kerjaan_ticket_file "$board" "$id")" \
-  || { echo "ID $id is used by more than one ticket; see references/repairs.md." >&2; exit 2; }
-[ -n "$ticket" ] || { echo "No ticket with ID $id." >&2; exit 2; }
+ticket="$(kerjaan_find_ticket "$board" "$id")" || exit 2
 branch="$(kerjaan_ticket_branch "$id")" \
   || { echo "More than one branch carries $id:" >&2; git for-each-ref --format='  %(refname:short)' refs/heads | grep -F "$id" >&2; exit 2; }
 
@@ -202,11 +197,8 @@ case "$cmd" in
 
   # ---------------------------------------------------------------------------
   land)
-    if [ "$linked" -eq 1 ]; then
-      echo "This is a linked git worktree. Tickets land from the main tree:" >&2
-      echo "  $main_tree" >&2
-      exit 1
-    fi
+    # Tickets land from the main tree.
+    kerjaan_refuse_linked_worktree 1
     cd "$main_tree"
     status="$(basename "$(dirname "$ticket")")"
     if [ "$status" != "done" ]; then

@@ -104,14 +104,11 @@ else
   [ "$#" -le 2 ] || usage
 fi
 
-case "$id" in
-  [0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]) ;;
-  *) echo "'$id' is not a 12-digit ticket ID." >&2; exit 2 ;;
-esac
-
 here="$(cd "$(dirname "$0")" && pwd)"
 # shellcheck source=lib.sh
 . "$here/lib.sh"
+
+kerjaan_is_id "$id" || { echo "'$id' is not a 12-digit ticket ID." >&2; exit 2; }
 
 git rev-parse --git-dir > /dev/null 2>&1 || { echo "Not inside a git repository." >&2; exit 2; }
 
@@ -120,28 +117,16 @@ git rev-parse --git-dir > /dev/null 2>&1 || { echo "Not inside a git repository.
 # worktree, listed first by git (see references/parallel-work.md).
 top="$(git rev-parse --show-toplevel)"
 cd "$top"
-main_tree="$(git worktree list --porcelain | sed -n '1s/^worktree //p')"
+main_tree="$(kerjaan_main_tree)"
 board="$main_tree/.kerjaan"
 [ -d "$board" ] || { echo "No .kerjaan/ in $main_tree" >&2; exit 2; }
 
-ticket=""
-for f in "$board"/*/"$id "*.md; do
-  [ -e "$f" ] || continue
-  [ -z "$ticket" ] || { echo "ID $id is used by more than one ticket; see references/repairs.md." >&2; exit 2; }
-  ticket="$f"
-done
-[ -n "$ticket" ] || { echo "No ticket with ID $id." >&2; exit 2; }
+ticket="$(kerjaan_find_ticket "$board" "$id")" || exit 2
 
 test_command="$(kerjaan_setting "$board/settings.md" test_command)"
 
 tmpdir="$(mktemp -d)"
 trap 'rm -rf "$tmpdir"' EXIT
-
-# Drops `.kerjaan` from the top level of a tree and prints the resulting tree.
-# The board always sits at the repository root, so one level is enough.
-without_board() {
-  git ls-tree "$1" | awk -F '\t' '$2 != ".kerjaan"' | git mktree
-}
 
 # Fingerprint of the working tree. A private index, seeded from the real one so
 # unchanged files are not rehashed, takes in every change git would see with
@@ -157,7 +142,7 @@ worktree_fingerprint() {
     echo "Could not read the working tree into a fingerprint." >&2
     exit 2
   fi
-  without_board "$(GIT_INDEX_FILE="$idx" git write-tree)"
+  kerjaan_tree_without_board "$(GIT_INDEX_FILE="$idx" git write-tree)"
 }
 
 # ---------------------------------------------------------------------------
@@ -195,7 +180,7 @@ if [ "$check" -eq 1 ]; then
 
   if [ -n "$rev" ]; then
     git rev-parse --verify -q "$rev^{tree}" > /dev/null || no_evidence "'$rev' is not a commit or branch here."
-    target="$(without_board "$rev^{tree}")"
+    target="$(kerjaan_tree_without_board "$rev^{tree}")"
     label="$rev ($(git rev-parse --short "$rev^{commit}" 2> /dev/null || echo tree))"
   else
     target="$(worktree_fingerprint check)"

@@ -48,12 +48,7 @@ git rev-parse --git-dir > /dev/null 2>&1 || {
   echo "Not inside a git repository: releases are read from git." >&2
   exit 2
 }
-if [ -f "$(git rev-parse --git-dir)/gitdir" ]; then
-  echo "This is a linked git worktree, and the board does not live here." >&2
-  echo "Run release.sh from the main tree:" >&2
-  echo "  $(git worktree list --porcelain | sed -n '1s/^worktree //p')" >&2
-  exit 2
-fi
+kerjaan_refuse_linked_worktree 2
 cd "$(git rev-parse --show-toplevel)"
 board="$PWD/.kerjaan"
 [ -d "$board" ] || { echo "No .kerjaan/ in $PWD" >&2; exit 2; }
@@ -117,7 +112,7 @@ for f in "$board"/done/*.md; do
   [ -e "$f" ] || continue
   name="$(basename "$f" .md)"
   id="${name%% *}"
-  case "$id" in [0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]) ;; *) continue ;; esac
+  kerjaan_is_id "$id" || continue
   printf '%s\n' "$released" | grep -qx "$id" && continue
   if [ -z "$(kerjaan_changed_files "$id" HEAD)" ]; then
     lines+=("$name (board only)")

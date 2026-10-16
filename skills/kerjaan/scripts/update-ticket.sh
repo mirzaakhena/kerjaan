@@ -27,14 +27,16 @@
 
 set -euo pipefail
 
-STATUSES=(backlog todo in_progress review done cancel)
+here="$(cd "$(dirname "$0")" && pwd)"
+# shellcheck source=lib.sh
+. "$here/lib.sh"
 
 usage() {
   cat >&2 <<USAGE
 Usage: update-ticket.sh <id|path> [--status <status>] [--title "<new title>"] [--ack-unmerged] [--accept-size]
 
   <id|path>        12-digit ID, or the path to a ticket file
-  --status         move to one of: ${STATUSES[*]}
+  --status         move to one of: ${KERJAAN_STATUSES[*]}
                    (--status=<status> works too, as does --title=<title>)
   --title          rename (the file is renamed; the ID stays)
   --ack-unmerged   start the ticket although other branches hold unmerged
@@ -98,36 +100,10 @@ while [ "$#" -gt 0 ]; do
   esac
 done
 
-# --- refuse to run from a linked git worktree ------------------------------
-# The board lives inside the repository, so every worktree checks out its own
-# copy of `.kerjaan/`. Treating that copy as a board forks the one guarantee
-# the format makes: a ticket has exactly one status, held by exactly one
-# folder. Nothing about that failure is loud — two boards simply start
-# disagreeing, and both look perfectly normal.
-#
-# A linked worktree is recognised by the marker git puts in its git dir: a
-# `gitdir` file, which the main repository's `.git` never has. Comparing the
-# output of `--git-dir` against `--git-common-dir` looks like the obvious test
-# and is wrong — from a subdirectory git answers one of them absolutely and the
-# other relatively, so an ordinary repo would be accused of being a worktree.
-
-if git rev-parse --git-dir > /dev/null 2>&1 \
-  && [ -f "$(git rev-parse --git-dir)/gitdir" ]; then
-  main_tree="$(git worktree list --porcelain | sed -n '1s/^worktree //p')"
-  echo "This is a linked git worktree, and the board does not live here." >&2
-  echo "Acting on the copy of .kerjaan/ in a worktree forks the board: one" >&2
-  echo "ticket ends up with two different statuses, and nothing reports it." >&2
-  echo "Run this from the main worktree instead:" >&2
-  echo "  $main_tree" >&2
-  exit 1
-fi
+kerjaan_refuse_linked_worktree 1
 
 board="$PWD/.kerjaan"
 [ -d "$board" ] || { echo "No .kerjaan/ in $PWD" >&2; exit 1; }
-
-here="$(cd "$(dirname "$0")" && pwd)"
-# shellcheck source=lib.sh
-. "$here/lib.sh"
 
 # --- one writer at a time ----------------------------------------------------
 # Everything below reads a ticket or order.md, changes it, and writes it back.
@@ -145,39 +121,7 @@ trap 'kerjaan_lock_release board' EXIT
 kerjaan_board_lock "$board" "$lock_who" 1
 
 # --- locate the ticket file ------------------------------------------------
-if [ -f "$target" ]; then
-  file="$target"
-else
-  case "$target" in
-    [0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]) ;;
-    *)
-      echo "'$target' is neither a 12-digit ID nor an existing file path." >&2
-      exit 1
-      ;;
-  esac
-
-  matches=()
-  for f in "$board"/*/"$target "*.md; do
-    [ -e "$f" ] || continue
-    matches+=("$f")
-  done
-
-  case "${#matches[@]}" in
-    0)
-      echo "No ticket with ID $target." >&2
-      exit 1
-      ;;
-    1)
-      file="${matches[0]}"
-      ;;
-    *)
-      echo "ID $target is used by more than one ticket:" >&2
-      printf '  %s\n' "${matches[@]}" >&2
-      echo "Resolve it first, following references/repairs.md in the kerjaan skill." >&2
-      exit 1
-      ;;
-  esac
-fi
+file="$(kerjaan_ticket_arg "$board" "$target")" || exit 1
 
 # A path given as an argument may be relative; normalise it to an absolute path
 # first so the comparison against the destination cannot wrongly report a clash.
@@ -195,11 +139,7 @@ id="$(basename "$file")"
 id="${id:0:12}"
 current_status="$(basename "$(dirname "$file")")"
 
-valid=0
-for s in "${STATUSES[@]}"; do
-  [ "$s" = "$current_status" ] && valid=1
-done
-if [ "$valid" -ne 1 ]; then
+if ! kerjaan_is_status "$current_status"; then
   echo "File does not sit directly inside one of the status folders: $file" >&2
   exit 1
 fi
@@ -207,11 +147,7 @@ fi
 # --- work out the destination ----------------------------------------------
 dest_status="$current_status"
 if [ -n "$new_status" ]; then
-  valid=0
-  for s in "${STATUSES[@]}"; do
-    [ "$s" = "$new_status" ] && valid=1
-  done
-  if [ "$valid" -ne 1 ]; then
+  if ! kerjaan_is_status "$new_status"; then
     echo "Invalid status: '$new_status'" >&2
     usage
   fi
@@ -221,7 +157,7 @@ fi
 stem="$(basename "$file" .md)"
 dest_title="${stem:13}"
 if [ "$title_given" -eq 1 ]; then
-  dest_title="$(printf '%s' "$new_title" | tr '\n/' '  ' | sed -e 's/  */ /g' -e 's/^ //' -e 's/ $//')"
+  dest_title="$(kerjaan_tidy_title "$new_title")"
   if [ -z "$dest_title" ]; then
     echo "Title is empty after tidying." >&2
     exit 1
@@ -292,8 +228,7 @@ if [ "$dest_status" = "in_progress" ] && [ "$current_status" != "in_progress" ] 
     [ -n "$bid" ] || continue
     bfile="$(kerjaan_ticket_file "$board" "$bid" 2> /dev/null || true)"
     [ "$(kerjaan_merge_state "$bfile")" = "held" ] && held_blockers+=("$bid")
-  done < <(awk '$0 == "---" { if (++fence == 2) exit; next }
-                fence == 1 && /^blocked_by:/ { print }' "$file" | grep -oE '[0-9]{12}' || true)
+  done < <(kerjaan_blockers "$file")
   if [ "${#held_blockers[@]}" -gt 0 ]; then
     echo "REFUSED: $id was not moved to in_progress." >&2
     echo "It is blocked_by ${held_blockers[*]}, whose merge into main is held for the" >&2
@@ -312,12 +247,9 @@ if [ "$dest_status" = "in_progress" ] && [ "$current_status" != "in_progress" ] 
   done
 
   long_lived=()
-  if [ -f "$board/settings.md" ]; then
-    while IFS= read -r pat; do
-      [ -n "$pat" ] && long_lived+=("$pat")
-    done < <(sed -n 's/^long_lived_branches:[[:space:]]*\[\(.*\)\][[:space:]]*$/\1/p' "$board/settings.md" \
-               | tr ',' '\n' | sed -e 's/^[[:space:]"'"'"']*//' -e 's/[[:space:]"'"'"']*$//')
-  fi
+  while IFS= read -r pat; do
+    [ -n "$pat" ] && long_lived+=("$pat")
+  done < <(kerjaan_setting_list "$board/settings.md" long_lived_branches)
 
   while IFS= read -r branch; do
     [ -n "$branch" ] || continue
@@ -352,10 +284,8 @@ if [ "$dest_status" = "in_progress" ] && [ "$current_status" != "in_progress" ] 
       line="    $branch — $(git log -1 --format='%s (%cr)' "refs/heads/$branch")"
       bid="$(printf '%s' "$branch" | grep -oE '[0-9]{12}' | head -1 || true)"
       if [ -n "$bid" ]; then
-        for f in "$board"/*/"$bid "*.md; do
-          [ -e "$f" ] || continue
-          line="$line — ticket $bid is in $(basename "$(dirname "$f")")/"
-        done
+        f="$(kerjaan_ticket_file "$board" "$bid" 2> /dev/null || true)"
+        [ -z "$f" ] || line="$line — ticket $bid is in $(basename "$(dirname "$f")")/"
       fi
       echo "$line" >&2
     done
@@ -444,11 +374,11 @@ fi
 # line in is refused with nothing changed — not even `updated`.
 
 if [ "$dest_status" != "$current_status" ]; then
-  if ! KERJAAN_LINE="$(kerjaan_history_line "$now" "$dest_status")" awk '
+  if ! KERJAAN_LINE="$(kerjaan_history_line "$now" "$dest_status")" awk -v fence="$KERJAAN_FENCE" '
     BEGIN { fm = 0; body = 0; infence = 0; inhist = 0; hist = 0; lasthist = 0; notes = 0; line = ENVIRON["KERJAAN_LINE"] }
     { lines[NR] = $0 }
     !body { if ($0 == "---" && ++fm == 2) body = 1; next }
-    /^```/ { infence = !infence }
+    $0 ~ fence { infence = !infence }
     infence { if (inhist) lasthist = NR; next }
     /^## / {
       inhist = 0
@@ -481,22 +411,18 @@ cat "$tmp" > "$file"
 # An acknowledged start, and an owner's decision to keep a big ticket whole,
 # are written into the ticket, so the decision outlives the terminal it was
 # made in. Notes is always the last section.
-append_note() {
-  kerjaan_append_note "$file" "$1"
-}
-
 if [ -n "${review_record:-}" ]; then
-  append_note "$review_record"
+  kerjaan_append_note "$file" "$review_record"
 fi
 
 if [ "${#unmerged[@]}" -gt 0 ]; then
-  append_note "- $now: started while these branches held unmerged work, acknowledged with --ack-unmerged: ${unmerged[*]}"
+  kerjaan_append_note "$file" "- $now: started while these branches held unmerged work, acknowledged with --ack-unmerged: ${unmerged[*]}"
 fi
 
-# The wording is fixed and English, like the line above: ticket-size.sh looks
-# for "size accepted by the owner" to stop warning about this ticket.
+# The wording is fixed and English, like the line above: ticket-size.sh stops
+# warning about this ticket on exactly this sentence (lib.sh).
 if [ "$accept_size" -eq 1 ]; then
-  append_note "- $now: size accepted by the owner with --accept-size: this ticket stays whole although its \"Done when\" list is over the board's limit."
+  kerjaan_append_note "$file" "- $now: $KERJAAN_SIZE_ACCEPTED"
 fi
 
 # --- move or rename if needed ----------------------------------------------
@@ -612,7 +538,7 @@ case "$dest_status" in
         if git merge-base --is-ancestor "refs/heads/$branch" HEAD 2> /dev/null; then
           if git worktree list --porcelain 2> /dev/null | grep -qx "branch refs/heads/$branch"; then
             echo "Note: $branch is merged, but its worktree is still checked out." >&2
-            echo "  $(dirname "$0")/worktree.sh remove $id && git branch -d $branch" >&2
+            echo "  $here/worktree.sh remove $id && git branch -d $branch" >&2
           fi
         else
           echo "WARNING: $branch holds commits that are not in HEAD, and the ticket" >&2
@@ -654,6 +580,6 @@ fi
 # --- a ticket grown too big -------------------------------------------------
 # Last, so the warning is about the ticket exactly as it now stands, and so it
 # is the final thing on the screen rather than lost above other notes.
-"$(cd "$(dirname "$0")" && pwd)/ticket-size.sh" "$dest" || true
+"$here/ticket-size.sh" "$dest" || true
 
 printf '%s\n' "$dest"

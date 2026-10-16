@@ -54,12 +54,7 @@ case "$cmd" in estimate|overlap|compare|ask|answer|check) ;; *) usage ;; esac
 in_git=0
 if git rev-parse --git-dir > /dev/null 2>&1; then
   in_git=1
-  if [ -f "$(git rev-parse --git-dir)/gitdir" ]; then
-    echo "This is a linked git worktree, and the board does not live here." >&2
-    echo "Run queue.sh from the main tree:" >&2
-    echo "  $(git worktree list --porcelain | sed -n '1s/^worktree //p')" >&2
-    exit 2
-  fi
+  kerjaan_refuse_linked_worktree 2
   cd "$(git rev-parse --show-toplevel)"
 fi
 board="$PWD/.kerjaan"
@@ -77,21 +72,9 @@ esac
 
 now() { date '+%Y-%m-%d %H:%M:%S'; }
 
-is_id() {
-  case "$1" in
-    [0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]) return 0 ;;
-    *) return 1 ;;
-  esac
-}
-
 # Prints the path of ticket <id>, or exits with the reason.
 ticket_of() {
-  local f rc=0
-  is_id "$1" || { echo "'$1' is not a 12-digit ticket ID." >&2; exit 2; }
-  f="$(kerjaan_ticket_file "$board" "$1")" || rc=$?
-  [ "$rc" -eq 0 ] || { echo "ID $1 is used by more than one ticket; see references/repairs.md." >&2; exit 2; }
-  [ -n "$f" ] || { echo "No ticket with ID $1." >&2; exit 2; }
-  printf '%s\n' "$f"
+  kerjaan_find_ticket "$board" "$1" || exit 2
 }
 
 status_of() { basename "$(dirname "$1")"; }
@@ -99,11 +82,6 @@ status_of() { basename "$(dirname "$1")"; }
 # Refreshes `updated` the way every change to a ticket must.
 refresh() {
   "$here/update-ticket.sh" "$1" > /dev/null
-}
-
-blockers_of() {
-  awk '$0 == "---" { if (++fence == 2) exit; next }
-       fence == 1 && /^blocked_by:/ { print }' "$1" | grep -oE '[0-9]{12}' || true
 }
 
 one_line() {
@@ -291,11 +269,11 @@ if [ "$cmd" = "answer" ]; then
   # The nth question line outside fences becomes answered, and the answer goes
   # right under it, after any lines that continue the question.
   # The answer goes through the environment, not -v, so backslashes survive.
-  KERJAAN_ANSWER="  answer, $(now): $a" awk -v n="$n" '
+  KERJAAN_ANSWER="  answer, $(now): $a" awk -v n="$n" -v fence="$KERJAAN_FENCE" '
     function flushans() { if (pending) { print ENVIRON["KERJAAN_ANSWER"]; pending = 0 } }
     !body { print; if ($0 == "---" && ++fm == 2) body = 1; next }
     pending && !/^[ \t]+[^ \t]/ { flushans() }
-    /^(```|~~~)/ { infence = !infence; print; next }
+    $0 ~ fence { infence = !infence; print; next }
     !infence && /^- [0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}: (open|answered) question: / {
       if (++k == n) { sub(/: open question: /, ": answered question: "); print; pending = 1; next }
     }
@@ -353,14 +331,6 @@ problem() { problems=$((problems + 1)); echo "  - $1"; }
 
 order="$board/order.md"
 
-# The value of frontmatter field <name> in ticket <file>, trimmed.
-field_of() {
-  awk -v k="$2" '$0 == "---" { if (++fence == 2) exit; next }
-    fence == 1 && index($0, k ":") == 1 {
-      v = substr($0, length(k) + 2); gsub(/^[ \t]+|[ \t]+$/, "", v); print v; exit
-    }' "$1"
-}
-
 while IFS= read -r id; do
   [ -n "$id" ] || continue
   f="$(ticket_of "$id")"
@@ -368,7 +338,7 @@ while IFS= read -r id; do
   before="$problems"
 
   for k in type priority; do
-    [ -n "$(field_of "$f" "$k")" ] || problem "\`$k\` is empty"
+    [ -n "$(kerjaan_field "$f" "$k")" ] || problem "\`$k\` is empty"
   done
 
   while IFS=$'\t' read -r k state q; do
@@ -406,7 +376,7 @@ while IFS= read -r id; do
           || problem "blocked_by $b, which is still in backlog and not part of this batch"
         ;;
     esac
-  done < <(blockers_of "$f")
+  done < <(kerjaan_blockers "$f")
 
   [ "$problems" -gt "$before" ] || echo "  ready"
 done < "$tmpdir/targets"
@@ -437,7 +407,7 @@ if [ "$whole" -eq 1 ] && [ -f "$order" ]; then
     for f in "$board/$st"/*.md; do
       [ -e "$f" ] || continue
       fid="$(basename "$f" | cut -c1-12)"
-      blockers_of "$f" | sed "s/^/$fid /" >> "$tmpdir/edges"
+      kerjaan_blockers "$f" | sed "s/^/$fid /" >> "$tmpdir/edges"
     done
   done
 

@@ -1,19 +1,34 @@
 # shellcheck shell=bash
 #
-# Shared pieces for the kerjaan scripts that deal with more than one working
-# copy of a repo at once, and with bringing their work back to main. Sourced,
-# never run:
+# The work every kerjaan board script does the same way, written once: each
+# piece below is the only place that does it, so the scripts cannot drift
+# apart (uji/pustaka-bersama.test.mjs holds them to that). Sourced, never run:
 #
 #   . "$(dirname "$0")/lib.sh"
 #
 # What lives here:
-#   kerjaan_setting <file> <key>       one value from settings.md's frontmatter
+#   KERJAAN_STATUSES                   the six status folders, in board order
+#   KERJAAN_FENCE                      the line that opens or closes a fenced block
+#   KERJAAN_SIZE_ACCEPTED              the sentence --accept-size writes
+#   kerjaan_is_id <word>               is it a 12-digit ticket ID
+#   kerjaan_is_status <word>           is it one of the six statuses
+#   kerjaan_tidy_title <title>         a title fit for a file name
+#   kerjaan_main_tree                  the main worktree, where the board lives
+#   kerjaan_in_linked_worktree         does this command run in a linked worktree
+#   kerjaan_refuse_linked_worktree <status>  exit when it does, saying why
+#   kerjaan_field <file> <key>         one value from a file's frontmatter
+#   kerjaan_setting <file> <key>       the same, read from settings.md
+#   kerjaan_setting_list <file> <key>  a [a, b] value, one item per line
+#   kerjaan_blockers <file>            the IDs in a ticket's blocked_by
 #   kerjaan_lock_acquire <name> <who>  wait for a named lock shared by every
 #   kerjaan_lock_release <name>        worktree of this repository, then hold it
 #   kerjaan_board_lock <board> <who>   the lock every write to the board takes
 #   kerjaan_lock_timeout <board> <key> <default>  how long a wait may last
 #   kerjaan_slot                       this worktree's slot number
-#   kerjaan_ticket_file <board> <id>   the ticket's path
+#   kerjaan_ticket_file <board> <id> [<status>]  the ticket's path
+#   kerjaan_find_ticket <board> <id>   the same, or the reason it has none
+#   kerjaan_ticket_arg <board> <id|path>  a ticket named on a command line
+#   kerjaan_next_id <board> <minute>   the next free ID in a minute
 #   kerjaan_ticket_branch <id>         the branch carrying the ticket's ID
 #   kerjaan_tree_without_board <tree>  a tree with .kerjaan/ left out
 #   kerjaan_append_note <file> <note>  a line at the end of ## Notes
@@ -31,15 +46,113 @@
 # would turn bookkeeping into commits, and nothing in /tmp, which two clones of
 # the same project would share by mistake.
 
+# --- words every script uses the same way ----------------------------------------
+
+KERJAAN_STATUSES=(backlog todo in_progress review done cancel)
+
+# A line starting with either of these opens a fenced block, and the next one
+# starting with either closes it. Lines inside are examples or quotes, never
+# records or headings, and every script skips them the same way. Used in awk
+# as `-v fence="$KERJAAN_FENCE"` and `$0 ~ fence`; it holds no backslash, so
+# -v hands it over unchanged.
+KERJAAN_FENCE='^(```|~~~)'
+
+# The sentence `update-ticket.sh --accept-size` writes after the time stamp,
+# and the only one that stops ticket-size.sh from warning: a line that merely
+# mentions an acceptance, or denies one, is not the owner's decision.
+KERJAAN_SIZE_ACCEPTED="size accepted by the owner with --accept-size: this ticket stays whole although its \"Done when\" list is over the board's limit."
+
+kerjaan_is_id() {
+  case "$1" in
+    [0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+kerjaan_is_status() {
+  local s
+  for s in "${KERJAAN_STATUSES[@]}"; do
+    [ "$s" = "$1" ] && return 0
+  done
+  return 1
+}
+
+# "/" and newlines break file names, so they become spaces. Runs of spaces are
+# collapsed so file names never contain gaps that make searching awkward.
+kerjaan_tidy_title() {
+  printf '%s' "$1" | tr '\n/' '  ' | sed -e 's/  */ /g' -e 's/^ //' -e 's/ $//'
+}
+
+# --- where the board lives --------------------------------------------------------
+# The board lives inside the repository, so every worktree checks out its own
+# copy of `.kerjaan/`. Treating that copy as a board forks the one guarantee
+# the format makes: a ticket has exactly one status, held by exactly one
+# folder. Nothing about that failure is loud — two boards simply start
+# disagreeing, and both look perfectly normal. Its one home is the main
+# worktree, which git always lists first.
+
+kerjaan_main_tree() {
+  git worktree list --porcelain | sed -n '1s/^worktree //p'
+}
+
+# A linked worktree is recognised by the marker git puts in its git dir: a
+# `gitdir` file, which the main repository's `.git` never has. Comparing the
+# output of `--git-dir` against `--git-common-dir` looks like the obvious test
+# and is wrong — from a subdirectory git answers one of them absolutely and the
+# other relatively, so an ordinary repo would be accused of being a worktree.
+# Outside git there is no worktree at all.
+kerjaan_in_linked_worktree() {
+  local gitdir
+  gitdir="$(git rev-parse --git-dir 2> /dev/null)" || return 1
+  [ -f "$gitdir/gitdir" ]
+}
+
+# Exits with <status> (default 1), saying where to run instead, when this
+# command runs in a linked worktree; returns quietly anywhere else.
+kerjaan_refuse_linked_worktree() {
+  kerjaan_in_linked_worktree || return 0
+  echo "This is a linked git worktree, and the board does not live here." >&2
+  echo "Acting on the copy of .kerjaan/ in a worktree forks the board: one" >&2
+  echo "ticket ends up with two different statuses, and nothing reports it." >&2
+  echo "Run $(basename "$0") from the main tree instead:" >&2
+  echo "  $(kerjaan_main_tree)" >&2
+  exit "${1:-1}"
+}
+
+# --- frontmatter --------------------------------------------------------------------
+
 # Prints the value of <key> from the first frontmatter block of <file>, with
 # surrounding quotes and trailing spaces removed. Prints nothing when the file
-# or the key is missing.
-kerjaan_setting() {
+# or the key is missing. A ticket's fields and the board's settings are read
+# alike.
+kerjaan_field() {
   [ -f "$1" ] || return 0
   awk -v key="$2" '
-    $0 == "---" { fence++; next }
+    $0 == "---" { if (++fence == 2) exit; next }
     fence == 1 && index($0, key ":") == 1 { sub(/^[^:]*:[[:space:]]*/, ""); print; exit }
-  ' "$1" | sed -e 's/[[:space:]]*$//' -e 's/^"\(.*\)"$/\1/' -e "s/^'\(.*\)'\$/\1/"
+  ' "$1" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' -e 's/^"\(.*\)"$/\1/' -e "s/^'\(.*\)'\$/\1/"
+}
+
+kerjaan_setting() {
+  kerjaan_field "$@"
+}
+
+# Prints the items of a list setting written `key: [a, "b", 'c/*']`, one per
+# line, each trimmed and unquoted. Prints nothing for an empty list, a missing
+# key, or a value that is not written as a list.
+kerjaan_setting_list() {
+  local v
+  v="$(kerjaan_field "$1" "$2")"
+  case "$v" in \[*\]) ;; *) return 0 ;; esac
+  v="${v#\[}"
+  v="${v%\]}"
+  printf '%s\n' "$v" | tr ',' '\n' \
+    | sed -e 's/^[[:space:]"'"'"']*//' -e 's/[[:space:]"'"'"']*$//' -e '/^$/d'
+}
+
+# Prints the ticket IDs in the blocked_by field of ticket <file>, one per line.
+kerjaan_blockers() {
+  kerjaan_field "$1" blocked_by | grep -oE '[0-9]{12}' || true
 }
 
 # --- locks -----------------------------------------------------------------
@@ -280,16 +393,84 @@ kerjaan_slot() {
 # Used by merge.sh, and by update-ticket.sh at the two gates that depend on
 # where a ticket's branch stands: the move to review and the start of a ticket.
 
-# Prints the path of the ticket with <id> on the board <board>, or nothing.
-# Returns 2 when the ID is used by more than one ticket.
-kerjaan_ticket_file() {
-  local board="$1" id="$2" f found=""
-  for f in "$board"/*/"$id "*.md; do
-    [ -e "$f" ] || continue
-    [ -z "$found" ] || return 2
-    found="$f"
+# Prints the path of every ticket carrying <id> on the board <board>, one per
+# line: normally one or none. With <status>, only that folder is searched.
+kerjaan_ticket_files() {
+  local board="$1" id="$2" st="${3:-*}" f
+  for f in "$board"/$st/"$id "*.md; do
+    [ -e "$f" ] && printf '%s\n' "$f"
   done
+  return 0
+}
+
+# Prints the path of the ticket with <id> on the board <board>, or nothing.
+# Returns 2 when the ID is used by more than one ticket, printing nothing:
+# taking the first of two would act on a ticket nobody chose. With <status>,
+# only that folder is searched.
+kerjaan_ticket_file() {
+  local found
+  found="$(kerjaan_ticket_files "$@")"
+  case "$found" in *$'\n'*) return 2 ;; esac
   [ -z "$found" ] || printf '%s\n' "$found"
+}
+
+# Prints the path of the ticket with <id> on <board>. When there is none, says
+# why on stderr and returns 1: <id> is no ticket ID, no ticket carries it, or
+# more than one does -- then each of them is listed with the command that
+# repairs it. The one lookup every script uses, so the same ID gets the same
+# answer from all of them.
+kerjaan_find_ticket() {
+  local board="$1" id="$2" f rc=0
+  if ! kerjaan_is_id "$id"; then
+    echo "'$id' is not a 12-digit ticket ID." >&2
+    return 1
+  fi
+  f="$(kerjaan_ticket_file "$board" "$id")" || rc=$?
+  if [ "$rc" -eq 2 ]; then
+    echo "ID $id is used by more than one ticket:" >&2
+    kerjaan_ticket_files "$board" "$id" | sed 's/^/  /' >&2
+    echo "Repair it first: $(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/repair.sh duplicate-id $id" >&2
+    echo "(references/repairs.md in the kerjaan skill says what it does)." >&2
+    return 1
+  fi
+  if [ -z "$f" ]; then
+    echo "No ticket with ID $id." >&2
+    return 1
+  fi
+  printf '%s\n' "$f"
+}
+
+# A ticket named on a command line, as an ID or as the path of its file:
+# prints the file, or says why there is none and returns 1.
+kerjaan_ticket_arg() {
+  if [ -f "$2" ]; then
+    printf '%s\n' "$2"
+  elif kerjaan_is_id "$2"; then
+    kerjaan_find_ticket "$1" "$2"
+  else
+    echo "'$2' is neither a 12-digit ID nor an existing file path." >&2
+    return 1
+  fi
+}
+
+# Prints the next free ID in <minute> (yymmddHHMM) on <board>: one more than
+# the highest sequence number any ticket of that minute holds, searched across
+# every status folder, so an ID is never reused after its ticket moved on.
+# Returns 1, printing nothing, when the minute already holds 99. Run it under
+# the board lock, and create the file before letting go of it, or two callers
+# get the same number.
+kerjaan_next_id() {
+  local board="$1" minute="$2" f seq max=0
+  for f in "$board"/*/"$minute"*.md; do
+    [ -e "$f" ] || continue
+    seq="$(basename "$f")"
+    seq="${seq:10:2}"
+    case "$seq" in
+      [0-9][0-9]) [ "$((10#$seq))" -le "$max" ] || max="$((10#$seq))" ;;
+    esac
+  done
+  [ "$max" -lt 99 ] || return 1
+  printf '%s%02d\n' "$minute" "$((max + 1))"
 }
 
 # Prints the local branch whose name carries <id> (the only link between a
@@ -386,9 +567,9 @@ kerjaan_merge_state() {
 
 # Prints the body lines of ticket <file> that sit outside fenced blocks.
 kerjaan_unfenced_lines() {
-  awk '
+  awk -v fence="$KERJAAN_FENCE" '
     !body { if ($0 == "---" && ++fm == 2) body = 1; next }
-    /^(```|~~~)/ { infence = !infence; next }
+    $0 ~ fence { infence = !infence; next }
     !infence { print }
   ' "$1"
 }
