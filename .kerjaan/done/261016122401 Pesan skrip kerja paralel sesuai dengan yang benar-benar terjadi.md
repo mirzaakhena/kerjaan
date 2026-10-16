@@ -6,7 +6,7 @@ labels: [paralel, pesan]
 reporter: mirza
 assign_to: claude
 created: 2026-10-16 12:24:01
-updated: 2026-10-16 13:06:41
+updated: 2026-10-16 13:07:44
 related: [261016101001, 261016095101]
 blocked_by: []
 ---
@@ -55,6 +55,7 @@ menjawabnya.
 - 2026-10-16 13:04:15 review
 - 2026-10-16 13:04:46 in_progress
 - 2026-10-16 13:06:41 review
+- 2026-10-16 13:07:44 done
 
 ## Notes
 - 2026-10-16 Berasal dari catatan reviewer 261016101001 (pesan cabang) dan
@@ -83,3 +84,16 @@ menjawabnya.
 - 2026-10-16 Mandor mengembalikan tiket sebelum review: main bergerak setelah sync karena 261016122402 masuk main (b519b9f) dengan perubahan di queue.sh, uji/queue.test.mjs, ordering-the-queue.md dan kerjaan-planner.md. Ini bukan penolakan; worker menjalankan merge.sh sync lagi.
 - 2026-10-16 13:06:38: test run — `node --test` exited 0 after 1m38s, on content fingerprint b74c5bc7388d2b29ea8cc5855fb34aad05a8bc47 (the same before and after the run; .kerjaan/ left out).
 - 2026-10-16 13:06:41: review covers branch tiket-261016122401 at 57470c730979d9ebb2aa2c615c6d5ee14cc7f63c, which holds main at 3c509957390e7ef1b7bd4c3f405b1de07ff91e21 (code outside .kerjaan/); the latest test run passed on exactly this content.
+- 2026-10-16 Reviewed at level quick, round 1, at commit 57470c7 (cabang tiket-261016122401, belum digabung ke main, di worktree /Users/mirza/Workspace/kerjaan-pesan-paralel): pemeriksaan proyek tidak dijalankan ulang, dan perubahannya dibaca terhadap tiap kriteria. Pengembalian sebelumnya hanya sinkronisasi oleh mandor, bukan penolakan, jadi ini putaran review pertama.
+  - Uji: `test-run.sh --check 261016122401 tiket-261016122401` menjawab SAME. Run `node --test` pekerja pada 2026-10-16 13:06:38 (fingerprint b74c5bc7388d2b29ea8cc5855fb34aad05a8bc47) keluar 0 pada isi yang persis sama; run itu dipakai sebagai satu-satunya run, tidak diulang.
+  - Diff dibaca: `git diff main...tiket-261016122401` (lib.sh, merge.sh, queue.sh, update-ticket.sh, worktree.sh, tiga berkas uji).
+  - Kriteria 1 (nomor pertanyaan di pesan penolakan = nomor untuk menjawab): terpenuhi. Gerbang todo di update-ticket.sh kini memakai `kerjaan_questions`, fungsi yang sama dengan yang dipakai `queue.sh answer` untuk menomori, dan menyaring yang masih terbuka tanpa menomori ulang. Penggantian baris di `queue.sh answer` juga menghitung pertanyaan terbuka dan terjawab, jadi ketiganya selaras. Uji baru di uji/queue.test.mjs menjawab nomor 1, memeriksa pesan menyebut 2 dan 3 (bukan 1), lalu menjawab dengan nomor itu sampai pemindahan berhasil.
+  - Kriteria 2 (setelah land, cabang dinyatakan dihapus, tak ada kata "kept"): terpenuhi. merge.sh land memanggil `worktree.sh remove` dengan `KERJAAN_BRANCH_DELETED_NEXT=1` dan baru mencetak "Branch … is merged into main and deleted." bila `git branch -d` berhasil; bila gagal, peringatan lama tetap muncul. Uji di uji/merge.test.mjs memeriksa cabang hilang, tidak ada "kept", dan pesan baru muncul.
+  - Kriteria 3 (hapus worktree langsung tetap menyebut cabang disimpan): terpenuhi. Tanpa variabel itu pesan lama tidak berubah; uji/worktree.test.mjs kini memeriksa pesannya untuk kedua tiket.
+  - Tidak ada CLAUDE.md atau AGENTS.md di repo, jadi tidak ada aturan proyek tertulis yang diperiksa.
+  - Catatan: contoh pesan salah saat 261016122402 digabung hari ini berasal dari merge.sh versi main sebelum perbaikan ini, jadi itulah bug yang diperbaiki tiket ini, bukan tanda perbaikannya gagal.
+  - Catatan: dengan level quick, uji yang dibuat pekerja tidak dirusak ulang oleh reviewer; daftar "uji merah" di atas adalah klaim pekerja yang tidak diperiksa.
+
+### Suggested follow-up
+
+- **`merge.sh land` meninggalkan baris "landed on main" di tiket tanpa commit di main.** Saat 261016122402 digabung hari ini, baris itu tertinggal sebagai perubahan yang belum di-commit di salinan utama, lalu di-commit terpisah (2a5760c). Pembaca papan atau sesi berikutnya bisa menemukan salinan utama "kotor" setelah penggabungan yang tampak selesai. Layak jadi tiket: land sebaiknya meng-commit catatannya sendiri, atau menyatakan dengan jelas bahwa commit itu masih perlu dibuat.
