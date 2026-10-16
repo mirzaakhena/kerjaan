@@ -26,13 +26,9 @@ included, is listed under the same table. Every review records its level in
 ### Suggesting a level
 
 The level is the owner's call. Suggesting one is the planner's
-(`agents/kerjaan-planner.md`), because it is the agent that reads the code a
-ticket will touch and knows whether it sits somewhere that punishes a
-mistake. Its report names a level for every ticket it proposes, with the
-reason rather than the level alone; the foreman, which never reads the code,
-puts those suggestions to the owner in the same message as the planner's
-questions, adds none of its own, and the planner writes the owner's choice
-into `review:`:
+(`agents/kerjaan-planner.md`, step 7), because it reads the code a ticket will
+touch; the foreman relays it (`references/foreman.md`, "Filling the queue"),
+and the planner writes the owner's choice into `review:`:
 
 > 260905160502 touches the payment callback — the planner suggests `review:
 > strict`, so the reviewer breaks the code on purpose and checks the tests
@@ -91,23 +87,9 @@ the fixed line, a ticket from before History — the larger count holds.
 
 ## When a review sends the ticket back
 
-The foreman resumes **the worker that did the ticket**, with `SendMessage` to
-its agent ID, and hands it the findings; once it reports, the foreman resumes
-**the reviewer of the round before** the same way. Neither starts over, which
-is what makes a second round cheap. Only when one of them can no longer be
-resumed does a fresh agent take its place, working from `## Notes`
-(`references/foreman.md`, "One ticket, start to finish").
-
-**Fix the kind of mistake, not the instance named.** The reviewer groups what
-it found by kind, but cannot promise it found every place. Before moving the
-ticket to `review` again, look for the same shape across everything the ticket
-touched. Patching only the quoted line is how one mistake becomes three rounds.
-
-The next review narrows itself: the reviewer reads its earlier entry, checks
-what changed through git, and does not re-prove untouched ground. **Do not
-write instructions for the reviewer into `## Notes`** — a request for a lighter
-look from whoever did the work is exactly what an independent gate exists to
-ignore.
+The same worker fixes it and the same reviewer judges the fix, both resumed
+(`references/foreman.md`, "One ticket, start to finish", step 5); how the
+worker fixes is in its definition.
 
 **After the second rejection, ask before trying again.** Only rejections
 count ("Rounds", above): a merge postponed has no findings against it, and the
@@ -120,13 +102,10 @@ second one stops the chain. Put the choice to the ticket's owner in one line:
 
 If they accept: append to `## Notes` that the owner accepted the ticket over
 the named findings, create the follow-up ticket with `related: [<this ID>]`,
-and move this one to `done` yourself. From there it is a passed ticket: when it
-was worked in a worktree, land it with `"$K/merge.sh" land <id>` as for any
-ticket its reviewer passed (`references/foreman.md`, step 5). The owner
-accepted the findings, not a branch left beside main. Should `land` answer
-`MERGE POSTPONED`, the review after it reads only the resolution, as always,
-and does not reopen what the owner accepted. If they want a third round,
-resume the same worker as before.
+and move this one to `done` yourself; from there it is landed like any passed
+ticket (`references/foreman.md`, step 5). A review after a merge postponed
+then reads only the resolution and does not reopen what the owner accepted.
+If they want a third round, resume the same worker as before.
 
 ## Follow-ups the reviewer suggests
 
@@ -163,9 +142,3 @@ bullet in the reviewed ticket and run `update-ticket.sh` on it:
 
 That mark keeps a suggestion from being offered twice. A bullet without one
 is one nobody has answered yet.
-
-## Tickets stuck in `review/`
-
-The hook only covers moves made while this plugin is installed. A ticket
-sitting in `review/` with no reviewer on it — moved there by hand, or before
-the hook existed — is reviewed by the foreman dispatching `kerjaan-reviewer` with its ID.

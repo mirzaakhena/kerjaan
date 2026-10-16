@@ -14,35 +14,17 @@ to its own worktree by the foreman. The foreman creates the worktrees, moves
 both tickets to `in_progress`, dispatches both workers with a `Worktree:` line
 in their prompts, and handles each report and verdict as it arrives
 (`references/foreman.md`). A worker writes code only in its worktree and runs
-board commands from the main tree. Use the steps below rather than the Agent
-tool's own worktree option: that one does not keep `.kerjaan/` out of the
-checkout.
+board commands from the main tree.
 
-**The group is the claim; the worktree is only the mechanism.** The claim
-rests on two different questions (`references/ordering-the-queue.md`, "What
-may share a group"), and only one of them keeps tickets apart:
-
-- **One waits for the other's result** — it builds on what the other makes.
-  Then they never run together, whatever a worktree could isolate: the second
-  would be built on a guess about work that does not exist yet. If that turns
-  out mid-work, the answer is not a worktree, it is that they never belonged
-  in one group; the second waits.
-- **They only change the same files.** Then they may run together. Two
-  branches editing one file conflict when they meet, and resolving that is
-  ordinary work, done by the ticket that lands second when it brings main in
-  ("Back into main"). The lead-in has already named both tickets, the shared
-  files and which lands first, and the group's `<!-- lands-first: ... -->`
-  line holds that order, so the conflict is expected rather than found.
-  The foreman passes that to each worker (`Shares files with:` in its
-  prompt), and the one landing second knows from the start whose change it
-  will merge.
-
-Which files each ticket will change comes from its estimate, recorded by the
-planner; `"$K/queue.sh" overlap` shows which pairs share files and which files.
-The order in the lead-in is the plan, not a lock: landing still happens the
-moment a ticket passes review. If the ticket named second passes first, it
-lands first, and the other brings it in at its own sync — the same merge, the
-other way round.
+**The group is the claim; the worktree is only the mechanism.** Which tickets
+may share a group is `references/ordering-the-queue.md`, "What may share a
+group". Two that share files conflict when they meet, and the one that lands
+second resolves it when it brings main in ("Back into main"); the foreman
+tells each worker which (`Shares files with:` in its prompt). The lands-first
+order is the plan, not a lock: if the ticket named second passes first, it
+lands first, and the other brings it in at its own sync. If it turns out
+mid-work that one waits for the other's result, they never belonged in one
+group: the second waits.
 
 ```bash
 "$K/worktree.sh" add 260905160401 ../<repo>-<topic>      # from the main tree
@@ -53,16 +35,11 @@ other way round.
 `land` merges the branch into main and removes the worktree and the branch
 itself; `"$K/worktree.sh" remove <id>` is for a worktree given up on.
 
-`add` does what the three git commands below do, and then gives the worktree
-a slot and runs the board's `worktree_setup` in it (see "Tests take turns" and
-"Setup and teardown" below). Use the script rather than the commands, so the
-setup cannot be skipped; the commands are here so the result is understood:
-
-```bash
-git worktree add -b tiket-260905160401 ../<repo>-<topic>
-cd ../<repo>-<topic>
-git sparse-checkout set --no-cone '/*' '!/.kerjaan/'
-```
+`add` creates the worktree on a new branch, keeps `.kerjaan/` out of its
+checkout, gives it a slot and runs the board's `worktree_setup` in it ("Tests
+take turns", "Setup and teardown"). Always create worktrees through it — not
+with `git worktree add`, nor the Agent tool's own worktree option — so none of
+that is skipped:
 
 - **The branch name contains the ticket ID**, and that is the entire link
   between git and the board. The prefix is free — `tiket-`, `kerjaan/`,
@@ -73,8 +50,7 @@ git sparse-checkout set --no-cone '/*' '!/.kerjaan/'
 - **The worktree sits beside the repo, never inside it.** A `.worktrees/`
   folder within the repository makes every test runner, linter and type checker
   walk a second complete copy of the project.
-- **The third line keeps `.kerjaan/` out of that checkout.** It is the one
-  easiest to skip and most expensive to omit; the next section is about it.
+- **`.kerjaan/` is not in that checkout** — the next section says why.
 
 While the work happens in that worktree, **every board command still runs from
 the main tree** — the scripts refuse to run anywhere else. The one exception is
@@ -83,12 +59,9 @@ board in the main tree by itself: run it from the worktree. `merge.sh sync`,
 which brings main into the ticket's branch, runs there too. The worker is told
 both paths in its prompt.
 
-The same split holds for commits. The worker commits its code on its branch,
-in the worktree; its ticket's file is committed in the main tree, right after
-the move to review, in a commit holding that file alone. The reviewer commits
-its verdict there too, and `merge.sh land` its own notes. No commit on the
-branch carries the board, and none on main carries the ticket's code until it
-lands (SKILL.md, "Committing").
+Commits split the same way (`references/foreman.md`, "Commits"): no commit on
+the branch carries the board, and none on main carries the ticket's code until
+it lands.
 
 ## The board has one home
 
@@ -105,7 +78,7 @@ branch was cut. One ticket, two statuses, and nothing anywhere reports it.
 The fork is not caused by version control. It is caused by a second working
 copy, and that is what gets removed:
 
-- **The sparse-checkout line takes `.kerjaan/` out of the worktree's checkout.**
+- **A sparse checkout takes `.kerjaan/` out of the worktree's checkout.**
   Not out of git — out of *that tree*. The files stay tracked, the history
   stays whole, merges from the branch touch nothing under `.kerjaan/`, and
   there is no second board on disk to read or to edit.
@@ -116,10 +89,10 @@ The two are not redundant. The scripts stop a worktree from *writing* to the
 wrong board; the sparse checkout stops anyone from *reading* one. A stale board
 that is merely read is still believed.
 
-A caveat worth checking on your own git: the pattern uses non-cone mode, which
-newer versions treat as deprecated even while it keeps working. A project
-already using sparse-checkout for something else must merge this pattern into
-what it has rather than overwrite it.
+A caveat worth checking on your own git: `worktree.sh` sets the pattern
+`'/*' '!/.kerjaan/'` in non-cone mode, which newer versions treat as deprecated
+even while it keeps working. A project already using sparse-checkout for
+something else must merge this pattern into what it has.
 
 ## Tests take turns
 
@@ -240,19 +213,13 @@ removed before the second is tested.
 
 A rule saying "remember every worktree you create" is the weakest kind of rule,
 because breaking it raises no error — and the session that would do the
-remembering is the one that ends. Git already holds the list:
-
-```bash
-git worktree list --porcelain | sed -n 's|^branch refs/heads/||p'
-```
-
-So `update-ticket.sh` does the noticing, at the two moments where forgetting
-turns silent. **When a ticket reaches `done` or `cancel`**, if any branch whose
-name carries that ID still holds commits that are not in `HEAD`, it warns that
-the board now claims finished work nobody merged. Note what this rests on: a
-project naming its branches `feature/export-screen` gets silence rather than a
-warning here — the gate at `in_progress`, described below, is the net that
-does not depend on names.
+remembering is the one that ends. Git already holds the list, so
+`update-ticket.sh` does the noticing, at the two moments where forgetting
+turns silent. **When a ticket reaches `done` or `cancel`**, if a branch whose
+name carries that ID still holds commits outside `HEAD`, it warns that the
+board now claims finished work nobody merged. A branch named without the ID
+gets silence here; the start gate ("Branches nobody merged") does not depend
+on names.
 
 **And when a move empties the board** — nothing left in `todo`, `in_progress`
 or `review` — it lists any worktree still checked out. Nothing is in flight, so
@@ -329,25 +296,14 @@ that stops `land` — git refuses because of uncommitted changes in the main
 tree, a hook fails, the main tree is on no branch, the test record no longer
 vouches for the branch — answers `HELD` (exit 1), writes `merge held for the
 owner — <reason>` into the ticket's `## Notes`, and leaves the ticket in
-`done/`. The foreman tells the owner at once, with the ticket and the reason.
-Everything else carries on: the start gate below does not wait for a held
-branch, and other tickets keep landing. A ticket that lists the held one in
-`blocked_by` is refused at its start, since what it builds on is not on main.
-When the owner has cleared the cause, `land` is simply run again.
+`done/`. What the foreman does then is `references/foreman.md`, step 6:
+everything else carries on but the tickets that build on it.
 
 ## Branches nobody merged
 
-`land` closes the gap between `done` and merged within moments. A branch can
-still be left behind — a ticket finished before this existed, a worktree made
-by hand, a `land` nobody ran — and that is what the checks here are for.
-
-Closing it belongs to the foreman: `land` it. The warning at `done` exists
-because that step is easy to drop — and since a warning in a reviewer's
-report is easy to drop too, the next ticket cannot start while the branch is
-still there. `update-ticket.sh` refuses the move to `in_progress` until the
-branch is merged, deleted, listed in `long_lived_branches`, or the owner has
-chosen `--ack-unmerged`. That check does not rely on branch names: a branch
-of a ticket still in `in_progress` or `review` is left alone, a branch whose
-merge is held for the owner is named but not waited for, and any other branch
-with work outside `HEAD` is named. It applies to starting a ticket; a ticket
-coming back from `review` or `done` is not new work.
+A branch can still be left behind — a ticket finished before `land` existed,
+a worktree made by hand, a `land` nobody ran. Closing it is the foreman's:
+`land` it. The warning at `done` is easy to drop, so the start gate is the
+net: `update-ticket.sh` refuses the next move to `in_progress` while such a
+branch holds work outside `HEAD`, whatever it is named (`references/foreman.md`,
+"One ticket, start to finish", step 1).

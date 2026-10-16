@@ -128,88 +128,37 @@ named with the files it shares.
 `update-ticket.sh` keeps the line in step: a ticket leaving `todo` comes off
 it, the others keep their order, and a line left naming nobody goes.
 
-## Why this is not the index that is banned in SKILL.md
+## Why this is not a banned index
 
-A summary restates what the folders already say, so it has no way to be right —
-only to be a copy that was true once. What `order.md` is for is the opposite
-case: the sequence, the parallelism and the reasoning behind them exist nowhere
-else. Delete a status summary and nothing is lost; delete this and the thinking
-is gone.
-
-It still carries the risk of any second list, and the risk is handled rather
-than hoped away:
+A status summary restates what the folders already say, so it can only be a
+copy that was true once. `order.md` holds what exists nowhere else: the
+sequence, the parallelism and the reasons. Its risk as a second list is
+handled rather than hoped away:
 
 - **It names IDs, and an ID never changes.** An entry naming a ticket that has
-  left `todo/` is not a subtle lie, it is a mismatch one command finds.
+  left `todo/` is a mismatch one command finds.
 - **The moves that would break it are bound into the script.**
-  `update-ticket.sh` removes a ticket's line when it leaves `todo` — taking the
-  group's lead-in with it once the last ticket in that group is gone — and
-  rewrites the title on the line when a ticket is renamed. Both are
-  half-actions that raise no error when forgotten, which is the test for what
-  gets scripted.
-- **What is left over is visible rather than silent.** A ticket promoted *into*
-  `todo` needs a place in the file that only a human judgement can choose, so
-  the script says so on stderr instead of guessing.
-
-One fact really is copied: each ticket's title, so the file reads as names
-rather than numbers. That copy is why renaming goes through the script. Know
-what it leaves uncovered — the check below compares IDs, so a title edited by
-hand is the one drift nothing reports.
-
-```bash
-diff <(for f in .kerjaan/todo/*.md; do [ -e "$f" ] && basename "$f" | cut -c1-12; done | sort) \
-     <(sed -n 's/^- \([0-9]\{12\}\) .*/\1/p' .kerjaan/order.md | sort)
-```
-
-Silence means they agree. A line on the left is a ticket in `todo/` the order
-never mentions; a line on the right is an entry whose ticket has moved on.
-`"$K/queue.sh" check` reports both, along with the grouping rules above.
+  `update-ticket.sh` removes a ticket's line when it leaves `todo` — with the
+  group's lead-in once its last ticket is gone — and rewrites the title when a
+  ticket is renamed. A ticket promoted *into* `todo` needs a place only a
+  human can choose, so the script says so on stderr instead of guessing.
+- **What is left over is visible.** `"$K/queue.sh" check` names a ticket in
+  `todo/` the file never mentions and an entry whose ticket has moved on. A
+  title edited by hand, outside the script, is the one drift nothing reports.
 
 ## Starting it, and refilling it
 
 Write the file the first time ordering actually matters — two or three tickets
 in `todo` and a real question about which comes first — and not before. Until
-it exists the script leaves it alone completely.
+it exists the script leaves it alone.
 
-**Refill when `todo`, `in_progress` and `review` are all three empty** — not
-when `todo` alone runs dry. One command says so, and silence is the answer you
-are looking for:
+**Refill when `todo`, `in_progress` and `review` are all three empty**, not
+when `todo` alone runs dry: a ticket in `review/` can still come straight back,
+and choosing what comes next before it is settled is choosing blind.
 
-```bash
-ls .kerjaan/todo/*.md .kerjaan/in_progress/*.md .kerjaan/review/*.md 2>/dev/null
-```
-
-`todo` emptying only means the last ticket was picked up, which is the opposite
-of a quiet moment. And a ticket sitting in `review/` is not finished at all —
-review is the one status that can hand work straight back to `in_progress`.
-Refilling while one is pending means choosing what comes next without knowing
-whether the previous thing is done.
-
-All three empty is a different thing entirely: nothing is in flight, nothing is
-waiting on a verdict, and the board is genuinely between batches. The same
-holds whenever the owner asks what can be worked on.
-
-**The planner does the refilling** (`agents/kerjaan-planner.md`), dispatched
-by the foreman (`references/foreman.md`, "Filling the queue"). It proposes a
-batch from `backlog` that is worth doing next and that `"$K/queue.sh" check`
-will call ready once its questions are answered — `check` is the one
-definition of ready, and this guide keeps no list of its own — with the order,
-the groups and the reasons, the questions still open in each ticket, and a
-review level for each; the foreman puts all of it to the owner in one message:
-
-> From the backlog: 260905160401 first, since the other two read the settings
-> file it adds; then 260905160502 and 260905160503 side by side — both change
-> the menu file, and 260905160502 lands first. One question on 260905160503:
-> may an export overwrite a file of the same name? Move those three?
-
-Nothing moves before the owner approves. Filling `todo` from `backlog` is
-deciding what the next batch is, and that stays the owner's call even when the
-reasoning looks obvious. Once they have approved the batch and answered its
-questions, the planner writes the answers into the tickets, moves them into
-`todo` and writes this file, and `order.md` is the owner's decision: picking
-up the next ticket from it needs no further asking.
-
-The same holds whenever `todo` already has an `order.md`: the first ticket in
-it, or any ticket in its first group, is the next one to start. The file
-exists so that question is answered once, when the batch is set, rather than
-every time a ticket is finished.
+The planner does the refilling (`references/foreman.md`, "Filling the queue").
+It proposes a batch that `"$K/queue.sh" check` will call ready once its
+questions are answered — `check` is the one
+definition of ready, and this guide keeps no list of its own — and, once the
+owner approved it, writes this file. From then on the file is the owner's
+decision about what comes next.

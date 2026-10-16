@@ -75,13 +75,10 @@ whether it is **deferred** — a hand scenario, and the work goes on — or
 question cannot enter `todo`: `update-ticket.sh` refuses the move.
 
 **4. Split what is too big.** Run `"$K/ticket-size.sh" <id>` on each
-candidate. For each one it warns about, split by outcome, as SKILL.md, "How
-big a ticket is" describes: the original keeps its ID and becomes the first
-piece, every new piece is created with `new-ticket.sh` in `backlog` with
-`related` to the first and `blocked_by` where it really cannot start before
-another, and criteria that moved are struck through with a pointer to the
-ticket that took them. Run `update-ticket.sh` on each. Then judge the pieces
-like any other candidate.
+candidate. Each one it warns about, split by outcome as SKILL.md, "How big a
+ticket is" describes, creating the new pieces with `new-ticket.sh` in
+`backlog` and running `update-ticket.sh` on each. Then judge the pieces like
+any other candidate.
 
 **5. Estimate what each ticket will change.** Read the code until you can name
 the files each candidate will change or create — as files where you can, as a
@@ -103,22 +100,12 @@ second list is the one that costs: it is the clash nobody planned for.
 
 **6. Work out the order.** `"$K/queue.sh" overlap` lists every pair of tickets
 — backlog, todo, in flight — whose estimates share files, with the files.
-Then, for every pair in your proposal:
-
-- **One waits for the other's result** — it builds on what the other makes,
-  whether or not `blocked_by` says so yet (if it does not, add it): they
-  **never** share a group. The one waited for goes in an earlier group.
-- **They only change the same files** — they **may** share a group. The group's
-  lead-in then names both IDs, the files they share, and which lands first:
-  usually the one whose change to those files the other is built around, or
-  the smaller one. Which lands first also goes on the group's
-  `<!-- lands-first: <id>, <id> -->` line, the only place `check` reads it. The other's worker knows from the start that it will merge
-  that change in.
-- **Neither** — they may share a group, and the lead-in says they are
-  independent.
-
-A candidate that shares files with a ticket already in flight is fine; say so
-in the report, so the foreman tells that worker.
+Group every pair in your proposal by `references/ordering-the-queue.md`, "What
+may share a group": one that waits for the other's result never shares its
+group (add the `blocked_by` if it is missing); two that only share files may,
+with a lead-in and a lands-first line saying which lands first. A candidate
+that shares files with a ticket already in flight is fine; say so in the
+report, so the foreman tells that worker.
 
 **7. Suggest a review level for each ticket.** You read the code it will
 touch; the foreman never does. For each candidate, name the level from
@@ -151,14 +138,9 @@ approved: write it into the ticket, and report the change and the new
 question instead of moving anything. The foreman takes it back to the owner.
 
 **3. Move the approved tickets** with `"$K/update-ticket.sh" <id> --status
-todo`, and write `order.md` as `references/ordering-the-queue.md` describes,
-keeping any ticket already in `todo` in its place unless the owner moved it.
-Each lead-in says why in one sentence, and, for two tickets in one group that
-share files, names both, the files, and which lands first. Under the lead-in
-of such a group goes one line with the IDs in the order they land,
-`<!-- lands-first: <id>, <id> -->`, the same on a board in any language: it is
-what `check` reads, never the prose ("Saying which lands first" in that
-reference).
+todo`, and write `order.md` as `references/ordering-the-queue.md` describes —
+lead-ins and lands-first lines included — keeping any ticket already in `todo`
+in its place unless the owner moved it.
 
 **4. Check it.** `"$K/queue.sh" check` judges `todo` and `order.md` together,
 by the one definition of ready. Fix everything it names until it prints

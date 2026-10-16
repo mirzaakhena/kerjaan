@@ -283,15 +283,23 @@ test('kerja berdampingan: kode di cabang, berkas tiket di main tree, putusan ter
   assert.equal(git(r.root, 'show', 'main:kode.txt'), 'dua\n');
 });
 
-test('docs: SKILL.md gives the three commits, who makes each, and the same command the agents run', () => {
+// The command and the moves with no code behind them are in SKILL.md, which
+// every session reads; how one ticket's work splits into commits is in the
+// foreman's guide, which SKILL.md points at (261016141909).
+test('docs: the foreman guide gives the three commits and who makes each, SKILL.md the same command the agents run', () => {
   const skill = doc('skills', 'kerjaan', 'SKILL.md');
   const section = skill.split('### Committing')[1].split('\n## ')[0];
-  assert.match(section, /\*\*One ticket worked in the main tree is at most three commits\*\*/);
-  assert.match(section, /1\. \*\*Start\*\* — the foreman/);
-  assert.match(section, /2\. \*\*Work\*\* — the worker, after its move to `review`/);
-  assert.match(section, /3\. \*\*Verdict\*\* — the reviewer/);
+  assert.match(section.replace(/\s+/g, ' '), /`references\/foreman\.md`, "Commits"/);
+  const foremanGuide = doc('skills', 'kerjaan', 'references', 'foreman.md');
+  const commits = foremanGuide.split('\n## Commits\n')[1].split('\n## ')[0];
+  assert.match(commits, /\*\*One ticket worked in the main tree is at most three commits\*\*/);
+  assert.match(commits, /1\. \*\*Start\*\* — the foreman/);
+  assert.match(commits, /2\. \*\*Work\*\* — the worker, after its move to `review`/);
+  assert.match(commits, /3\. \*\*Verdict\*\* — the reviewer/);
+  // Written once: SKILL.md does not repeat the list.
+  assert.doesNotMatch(skill, /at most three commits\*\*/);
   // Side by side asks nothing impossible: no commit of code and ticket together.
-  const side = section.split('**Side by side**')[1].split('\n\n')[0].replace(/\s+/g, ' ');
+  const side = commits.split('**Side by side**')[1].split('\n\n')[0].replace(/\s+/g, ' ');
   assert.match(side, /code and ticket cannot share a commit/);
   assert.match(side, /commits its code on its branch/);
   assert.match(side, /its ticket's file in the main tree/);
