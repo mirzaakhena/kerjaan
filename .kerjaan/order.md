@@ -2,7 +2,6 @@ Batch penilaian skill (sesi a192c9e8). 261016141916 tidak ada di sini: tiket kep
 
 **Aturan antrean dan review.** Ketiganya tidak saling menunggu hasil; 261016141912 dan 261016141905 berbagi queue.sh, uji/queue.test.mjs, ordering-the-queue.md, kerjaan-planner.md dan SKILL.md, 261016141905 dan 261016141906 berbagi foreman.md, review.md dan kerjaan-worker.md, 261016141912 dan 261016141906 berbagi parallel-work.md, jadi 261016141912 digabung lebih dulu, lalu 261016141905 digabung sebelum 261016141906.
 
-- 261016141912 Urutan penggabungan ditulis dengan penanda tetap, bukan kalimat bebas
 - 261016141905 Syarat tiket siap dikerjakan hanya punya satu definisi
 - 261016141906 Putaran review dihitung sama oleh mandor, peninjau, dan hook
 
