@@ -6,7 +6,7 @@ labels: [viewer]
 reporter: mirza
 assign_to: claude
 created: 2026-10-16 12:54:01
-updated: 2026-10-16 13:20:30
+updated: 2026-10-16 13:20:49
 related: [261016105301]
 blocked_by: []
 ---
@@ -151,3 +151,4 @@ begitu juga pintasan papan ketik untuk berpindah proyek.
     daftar ikut hilang; jalan ke beranda tetap ada lewat "kerjaan" di
     kepala halaman. Proyek ini tidak punya `CLAUDE.md`/`AGENTS.md`.
   - Keputusan: semua kriteria terpenuhi, pindah ke done.
+- 2026-10-16 13:20:49: landed on main as f88075a0e52caf8bfd595df63894ed5a7e2f4f2d, merging tiket-261016125401 at ca9db6ff2210f0e60f216d62aa958c51d1dc9004; tests carried from the run on this exact content, not run again.
