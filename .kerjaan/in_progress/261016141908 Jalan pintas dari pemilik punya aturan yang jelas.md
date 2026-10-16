@@ -6,7 +6,7 @@ labels: [sesi-a192c9e8, skill, foreman]
 reporter: mirza
 assign_to: claude
 created: 2026-10-16 14:19:06
-updated: 2026-10-17 04:43:16
+updated: 2026-10-17 04:44:08
 related: [261016141909]
 blocked_by: []
 ---
@@ -35,7 +35,7 @@ Setiap jalan pintas di atas punya satu jalur yang jelas, dan pengecualian
 untuk pekerjaan yang sangat kecil dinyatakan terang, beserta alasannya.
 
 ## Done when
-- [x] Untuk "langsung saja", skill menyebut bahwa kodenya tetap ditulis pengerja yang diutus, walau tanpa tiket
+- [ ] Untuk "langsung saja", skill menyebut bahwa kodenya tetap ditulis pengerja yang diutus, walau tanpa tiket
 - [x] "Tandai selesai" pada tiket di todo atau in_progress punya jalur yang tidak ditolak skrip dan tetap melewati rekaman uji
 - [x] Tiket kerja berdampingan yang diterima pemilik ikut digabung ke main seperti tiket yang lolos
 - [x] Ada langkah tertulis untuk melanjutkan pengerja setelah pemilik menjawab keputusan yang ditunggu
@@ -47,6 +47,7 @@ untuk pekerjaan yang sangat kecil dinyatakan terang, beserta alasannya.
 - 2026-10-17 04:30:52 a192c9e8-0bb5-4bbf-8d56-9831b23e62ec in_progress
 - 2026-10-17 04:41:52 a192c9e8-0bb5-4bbf-8d56-9831b23e62ec review
 - 2026-10-17 04:43:16 a192c9e8-0bb5-4bbf-8d56-9831b23e62ec done
+- 2026-10-17 04:44:08 a192c9e8-0bb5-4bbf-8d56-9831b23e62ec in_progress
 
 ## Notes
 - Berasal dari penilaian independen atas skill kerjaan di sesi Claude Code
@@ -66,7 +67,12 @@ untuk pekerjaan yang sangat kecil dinyatakan terang, beserta alasannya.
 - 2026-10-17 04:39:11: answered question: Tidak menahan pekerjaan. Untuk kerja tanpa tiket ("langsung saja") saya menulis: tidak ada peninjau kecuali pemilik memintanya, dan pengerja hanya meng-commit bila prompt bilang pemilik mau di-commit (foreman.md "Work without a ticket"). Pilihan: (a) seperti itu; (b) selalu ada peninjau ringan (quick) walau tanpa tiket; (c) selalu commit. Saran: (a), karena peninjau menilai terhadap Done when sebuah tiket dan tanpa tiket tidak ada yang bisa dinilai, dan izin commit dalam skill hanya diberikan lewat tiket di rantai.
   answer, 2026-10-17 04:43:13: (b) Selalu ada reviewer: pekerjaan tanpa tiket tetap diperiksa reviewer terhadap permintaan pemilik yang ditulis worker; commit tetap atas izin pemilik.
 - 2026-10-17 04:41:46: test run — `node --test --test-timeout=900000 --test-force-exit` exited 0 after 2m31s, on content fingerprint 3ee7c8cac9247fc79e1a11575bc89b823829b874 (the same before and after the run; .kerjaan/ left out).
-- 2026-10-17: Reviewed at level quick, round 1, at commit e16c807: passed.
+- 2026-10-17: Reviewed at level quick, round 1, at commit e16c807: sent back.
+  Koreksi atas putusan lulus yang tercatat sesaat sebelumnya (commit b76b2e8):
+  jawaban pemilik untuk pertanyaan #3 (2026-10-17 04:43:13, di atas) tiba
+  saat tinjauan berlangsung dan membalik jalur "langsung saja" yang ditulis
+  tiket ini. Rincian tinjauan di bawah tetap berlaku; yang berubah hanya
+  butir 1, lihat "Temuan yang menahan" di akhir tinjauan ini.
   Level `quick` karena kolom `review:` kosong: uji proyek dihitung sekali dan
   perubahan dibaca terhadap tiap butir Done when; tidak ada server dijalankan
   dan tidak ada sabotase. Tidak dinaikkan ke tingkat lain.
@@ -115,6 +121,31 @@ untuk pekerjaan yang sangat kecil dinyatakan terang, beserta alasannya.
     dokumen skill ini sendiri di repo ini.
   - Pertanyaan terbuka #3 dari pengerja (peninjau/commit untuk kerja tanpa
     tiket) tetap untuk pemilik; tidak menahan tiket ini.
+  - **Temuan yang menahan — jalur tanpa tiket bertentangan dengan keputusan
+    pemilik #3 (b).** Pemilik memutuskan: pekerjaan tanpa tiket *selalu*
+    diperiksa reviewer, terhadap permintaan pemilik dan tulisan pengerja
+    tentang apa yang dikerjakannya; commit tetap atas izin pemilik. Dokumen
+    yang dibuat tiket ini menulis kebalikannya, sehingga butir 1 (jalur
+    "langsung saja") dibuka lagi. Semua tempat yang perlu disesuaikan:
+    1. `skills/kerjaan/references/foreman.md` baris 75, "Work without a
+       ticket": "No reviewer follows unless the owner asks for one." Harus
+       menjadi: reviewer selalu diutus setelah laporan pengerja, beserta
+       bentuk prompt-nya.
+    2. `agents/kerjaan-worker.md`, "When there is no ticket": tidak menyebut
+       bahwa pengerja menuliskan apa yang dikerjakannya untuk reviewer (dan di
+       mana, karena tidak ada `## Notes`), juga tidak bahwa laporannya
+       diteruskan ke reviewer.
+    3. `agents/kerjaan-reviewer.md`: tidak punya jalur sama sekali untuk
+       meninjau pekerjaan tanpa tiket (apa yang dinilai, di mana hasilnya
+       ditulis, dan bahwa tidak ada tiket yang dipindah). Tanpa ini reviewer
+       yang diutus akan mencari tiket 12 digit dan tidak menemukannya.
+    4. `skills/kerjaan/SKILL.md`, "Work starts from a ticket": sebaiknya ikut
+       menyebut bahwa reviewer tetap memeriksa, agar satu-satunya rujukan
+       singkat tidak menyiratkan "tanpa tiket = tanpa tinjauan".
+    5. `uji/jalan-pintas.test.mjs`, uji pertama: tambahkan pemeriksaan bahwa
+       jalur tanpa tiket menyebut reviewer, agar keputusan #3 ikut terjaga.
+    Pengecualian teks kecil (butir 5, "no worker and no reviewer") tidak
+    terkena: keputusan #2 pemilik secara khusus membebaskannya.
 
 ### Suggested follow-up
 
