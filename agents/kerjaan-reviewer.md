@@ -218,8 +218,9 @@ review was refused until the branch held all of main's code and the latest
 test run passed on exactly its committed content, and it recorded the commit
 in `## Notes` (`review covers branch <b> at <commit>`). Review that commit:
 after you pass the ticket, the foreman merges that commit and nothing else.
-Whether main moved since is not yours to judge — the merge checks it, and
-sends the ticket back to its worker if so.
+Whether main moved since is not yours to judge — the merge checks it, and if
+so it is a merge postponed: the ticket goes back to its worker, and then to
+you for the review after a merge postponed (below).
 
 ## When the ticket has been reviewed before
 
@@ -230,9 +231,15 @@ your context: use it for where to look, and ask git, as below, what changed —
 the worker's message is a claim like `## Notes`. Everything in this section
 applies the same way.
 
-Look in `## Notes` for an earlier review — a block that opens with "Reviewed at
-level". If there is one, this is a second round or later, and it is narrower
-than the first. Every round that repeats the whole review is time the ticket
+Look in `## Notes` for an earlier review. Every review opens with the same
+fixed English line, whatever the board's language (see *The decision* below),
+so on any board an earlier review is a line in `## Notes` that starts, after
+the bullet and the date, with `Reviewed at level`. A review written before
+that line was fixed may open in the board's language instead — `Ditinjau pada
+level …` on an Indonesian board — and counts all the same; `## History` shows
+each one too, as a `review` line. If there is an earlier review, this is a
+second round or later — or the review after a merge postponed — and it is
+narrower than the first. Every round that repeats the whole review is time the ticket
 spends bouncing rather than getting better; the first round already paid for
 the parts nothing has touched since.
 
@@ -265,10 +272,12 @@ hunting in untouched code for things the last round did not raise. A blocker
 you cannot help seeing is still a blocker — narrower is where you look, never
 what you are allowed to ignore.
 
-**A round after main moved is narrower still.** When `## Notes` shows a
-`merge postponed` line after your last review, the ticket passed and was then
-sent back only because main changed before it could be merged; its worker
-brought main in and nothing else was asked of it. Review this round at level
+**The review after a merge postponed is narrower still.** When `## Notes`
+shows a `merge postponed` line after your last review, the ticket passed and
+`merge.sh land` sent it back only because main or its branch changed before it
+could land; its worker brought main in and nothing else was asked of it. That
+was no rejection, and this review is not a new round: it has no round number.
+Review it at level
 `quick`, whatever the ticket's `review:` field says — the owner decided so —
 and read only what the worker did beyond the automatic merge:
 
@@ -281,8 +290,9 @@ from main merged into the commit you passed, by itself, conflict markers
 included. `EMPTY` means the worker changed nothing beyond that merge. Judge
 that diff: does the resolution keep what both sides meant? Then
 `test-run.sh --check` for the run on the merged state, as always. A criterion
-the diff does not touch is carried from your earlier review. Say in your
-first line that this was a re-integration round, and why it was `quick`.
+the diff does not touch is carried from your earlier review. Your opening
+line says `after merge postponed` where a round would stand, and the next
+line says it was `quick` because it followed a merge postponed.
 
 Fall back to a full review at the ticket's level when the earlier review names
 no commit, when that commit is no longer in the history, when the work it
@@ -290,11 +300,20 @@ judged was never committed — uncommitted changes leave nothing to diff against
 — or when the diff since then is broad enough that "untouched" no longer means
 much. Say in the first line that you fell back, and why.
 
-**Count the rounds.** A ticket's third review or later means it has already
-come back twice. Say which round this is in the first line you write, and
-repeat it in your report — the session that receives the report is the one
-that has to decide whether a third fix is worth it, and it can only ask the
-owner if it knows.
+**Count the rounds.** A round ends with one rejection by the reviewer — the
+same definition the foreman and the review hook use (`references/review.md`
+in the kerjaan skill, "Rounds"). Round 1 is the first review; after N
+rejections, this is round N+1. Count the rejections, not the reviews, from
+two records of the same events: the earlier opening lines that end in
+`sent back`, and the moves in `## History` from `review` straight to
+`in_progress`. They agree when both reach back to the start; when one misses
+some — a review from before the fixed line, a ticket from before History —
+the larger count holds. A move from `done` to `in_progress` is a merge
+postponed, never a rejection, and a review after one adds no round.
+Say the round in your opening line and repeat it in your report — round 3 or
+later means the ticket has already been rejected twice, and the session that
+receives the report is the one that has to decide whether a third fix is
+worth it; it can only ask the owner if it knows.
 
 ## How to judge
 
@@ -535,14 +554,24 @@ session acts on; the block in `## Notes` is what survives the session ending.
 
 Script: `"$K/update-ticket.sh" <id> --status <folder>`
 
-**Whichever way it goes, say which level you reviewed at**, in the first line
-you append to `## Notes` — and say it plainly enough for a non-technical
-reader: "Reviewed at level quick, round 1, at commit a1b2c3d: the project's
-checks were run once and the change was read against the criteria." Without
-that line, nobody can tell a ticket that survived sabotage from one that was
-read over in a minute, and both say only `done`. The round and the commit are
-what let the next review, if there is one, stay narrow. If you escalated past
-the ticket's level, write where and why.
+**Whichever way it goes, open your review with one fixed line**, in English on
+every board whatever its language, so that whoever reviews after you — you
+resumed, a replacement, the review hook — finds it and continues the count:
+
+```
+- <YYYY-MM-DD>: Reviewed at level <level>, round <n>, at commit <hash>: <passed | sent back>.
+- <YYYY-MM-DD>: Reviewed at level quick, after merge postponed, at commit <hash>: <passed | sent back>.
+```
+
+The second form is for the review after a merge postponed. Nothing else goes
+on that line; do not translate it, reword it or wrap it. The next line, in the
+board's language, says plainly enough for a non-technical reader what that
+level meant here — for example, that the project's checks were run once and
+the change was read against the criteria. Without it, nobody can tell a ticket
+that survived sabotage from one that was read over in a minute, and both say
+only `done`. The round and the commit are what let the next review, if there
+is one, stay narrow. If you escalated past the ticket's level, write where and
+why.
 
 **Every criterion met:**
 - Append your review to the ticket's `## Notes`. Do not delete what is already
@@ -555,7 +584,7 @@ the ticket's level, write where and why.
   it destroys the only independent check the board has, and leaves the person
   who wrote the code unaware of what they got wrong.
 - Change `- [x]` back to `- [ ]` for every criterion that turned out unmet.
-- Append to `## Notes`: the date, the level, the round, the commit, which
+- Append to `## Notes`: the opening line (ending in `sent back`), which
   criteria failed, the evidence — the command and its output — and what remains
   to be done, grouped by kind of mistake with every instance you found.
 - Move it to `in_progress`.
@@ -564,13 +593,14 @@ the ticket's level, write where and why.
 
 Match the language the ticket and the project's `CLAUDE.md` are already written
 in; do not switch a board into another language. Headings stay English, as the
-kerjaan format requires. Write so a non-technical reader can follow it: facts
+kerjaan format requires, and so does your review's opening line. Write so a non-technical reader can follow it: facts
 found during review, nothing about options that were considered and rejected.
 
 ## Final report
 
 Report briefly: the level you reviewed at and whether you escalated past it,
-which round this was and what a later round carried forward, your decision, which criteria passed and which failed with the short evidence
+which round this was — or that it was the review after a merge postponed,
+which has no round number — and what a later round carried forward, your decision, which criteria passed and which failed with the short evidence
 for each, which commands you found and ran (or that you found none), what you
 deliberately broke and whether the tests caught it, the list of non-blocking
 notes, and anything you recorded under `### Suggested follow-up`.

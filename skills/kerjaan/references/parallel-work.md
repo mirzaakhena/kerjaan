@@ -301,20 +301,21 @@ land leaves for a person: when the ticket's file itself already had
 uncommitted changes, the note is written but not committed, and the output
 says `NOTE NOT COMMITTED`.
 
-**3. When main moved, the ticket goes back — not the owner's problem.** Main
-moves under every ticket but the first to land. `land` then answers `SENT
-BACK` (exit 3), records why in `## Notes`, and moves the ticket to
-`in_progress` itself. Its worker brings main in (step 1) and moves it to
-review again. The reviewer then looks again, briefly — level `quick`,
-whatever the ticket's own level — at only what the worker did beyond the
-automatic merge: `"$K/merge.sh" resolution <id>` prints exactly that, the
-conflict resolution and any fix the tests demanded, and says `EMPTY` when
-there was nothing. A merge that is clean in git but breaks the tests is caught
+**3. A merge postponed: the ticket goes back — not the owner's problem.** Main
+moves under every ticket but the first to land. `land` then answers `MERGE
+POSTPONED` (exit 3), records why in `## Notes` (`merge postponed — ...`), and
+moves the ticket to `in_progress` itself. Its worker brings main in (step 1)
+and moves it to review again. The review after a merge postponed is brief —
+level `quick`, whatever the ticket's own level — and reads only what the
+worker did beyond the automatic merge: `"$K/merge.sh" resolution <id>` prints
+exactly that, the conflict resolution and any fix the tests demanded, and
+says `EMPTY` when there was nothing. A merge that is clean in git but breaks the tests is caught
 here too: the worker's test run after `sync` goes red, and the move to review
 is refused until it is fixed.
 
-A return of this kind is not a rejection. It does not count toward the two
-returns that stop the chain (`references/foreman.md`).
+A merge postponed is not a rejection. The review after it gets no round
+number and does not count toward the two rejections that stop the chain
+(`references/review.md`, "Rounds").
 
 **When a merge fails, only that ticket waits for the owner.** Anything else
 that stops `land` — git refuses because of uncommitted changes in the main

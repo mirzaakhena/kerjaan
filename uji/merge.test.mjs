@@ -209,7 +209,7 @@ test('dua tiket yang mengubah baris yang sama berakhir di main dengan uji lulus,
   const before = head(r);
   const second = run(mergeSh, r.root, ['land', B]);
   assert.equal(second.code, 3, second.out + second.err);
-  assert.match(second.out, /SENT BACK: ticket 261016300002/);
+  assert.match(second.out, /MERGE POSTPONED: ticket 261016300002/);
   assert.equal(head(r), before, 'main changed although the second ticket was sent back');
   assert.equal(where(r, B), 'in_progress');
   assert.match(notes(r, B), /merge postponed — main changed since tiket-261016300002 last took it in \(kode\.txt pakai\.txt\)/);

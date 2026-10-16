@@ -172,7 +172,7 @@ $K/test-run.sh --check 260905160401 HEAD  # SAME / DIFFERENT / NO EVIDENCE
 $K/worktree.sh add 260905160401 ../repo-topic
 $K/merge.sh sync 260905160401             # in the worktree: merge main in, before review
 $K/merge.sh land 260905160401             # passed review: into main, one at a time
-$K/merge.sh resolution 260905160401       # what a re-review reads after main moved
+$K/merge.sh resolution 260905160401       # what the review after a merge postponed reads
 $K/worktree.sh remove 260905160401        # a worktree given up on
 $K/test-run.sh --review 260905160401      # the reviewer's run, queued with the rest
 
@@ -240,7 +240,7 @@ ticket's notes, and the summary says so.
 
 **When it stops on its own.** A decision that is yours to make (the worker
 records the question, the options and its recommendation in the ticket,
-numbered the same way as the planner's questions, and never guesses), the same ticket sent back twice, or a ticket the others build
+numbered the same way as the planner's questions, and never guesses), the same ticket rejected twice by its reviewer, or a ticket the others build
 on failing. A question that does not hold the work up is written into its
 ticket and waits for the summary.
 
@@ -459,7 +459,10 @@ rounds, carries a verdict's lesson to the next worker, and knows which worker
 to resume. The hook tells the two apart by whether the move was made inside a
 subagent. When the foreman makes the move itself for a ticket that has been
 reviewed before, the hook tells it to resume that reviewer rather than
-dispatch a new one.
+dispatch a new one, and says which round this is. A round ends with one
+rejection by the reviewer; a merge postponed — `merge.sh land` sending a
+passed ticket back because main moved first — is no rejection, and the
+review after it has no round number.
 
 Whoever executed the ticket does not get to mark their own work `done`. The
 last word belongs to something that did not write the code and has no stake in

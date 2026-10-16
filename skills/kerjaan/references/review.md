@@ -73,6 +73,39 @@ tests fail — can only be recorded by the reviewer as a report. If doing so
 found a test that cannot fail, fix the test and commit it: a test in the repo
 is something the reviewer runs; a sentence about one is not.
 
+## Rounds
+
+One definition, used by the foreman, the reviewer and the review hook alike:
+**a round ends with one rejection by the reviewer.** Round 1 is the first
+review; round 2 is the review after the first rejection; round N is the
+review after N-1 rejections. The rejections are what is counted, and the
+second one stops the chain.
+
+A **merge postponed** is the other way a ticket comes back to `in_progress`:
+it passed review, and `merge.sh land` sent it back because main or its branch
+changed before it could land (`references/parallel-work.md`, "Back into
+main"). That is its one name, everywhere. It is no rejection and has no
+findings; the review that follows it is **the review after a merge
+postponed**, which has no round number, is always level `quick`, and reads
+only `merge.sh resolution <id>`. A ticket passed in round 1 and reviewed again
+after a merge postponed has still had no rejection; if that review sends it
+back, that is a rejection like any other.
+
+**Every review opens with one fixed line**, in English whatever the board's
+language, so whoever comes later — a replacement reviewer, the hook — finds
+every earlier review on any board:
+
+```
+- <YYYY-MM-DD>: Reviewed at level <level>, round <n>, at commit <hash>: <passed | sent back>.
+- <YYYY-MM-DD>: Reviewed at level quick, after merge postponed, at commit <hash>: <passed | sent back>.
+```
+
+The line stands alone; the rest of the review follows it in the board's
+language. Counting the lines that end in `sent back` gives the rejections.
+Reviews written before this line was fixed may open in the board's language;
+for those, `## History` tells the same: a move into `in_progress` straight
+from `review` is a rejection, one from `done` is a merge postponed.
+
 ## When a review sends the ticket back
 
 The foreman resumes **the worker that did the ticket**, with `SendMessage` to
@@ -93,13 +126,13 @@ write instructions for the reviewer into `## Notes`** — a request for a lighte
 look from whoever did the work is exactly what an independent gate exists to
 ignore.
 
-**After the second return, ask before trying again.** Only the reviewer's
-returns count: a ticket `merge.sh land` sent back because main moved has no
-findings against it, and its next review is a short one of the conflict
-resolution alone (`references/parallel-work.md`, "Back into main"). The
-reviewer states the round, and the foreman counts it: a second return stops the chain. Put the choice to the ticket's owner in one line:
+**After the second rejection, ask before trying again.** Only rejections
+count ("Rounds", above): a merge postponed has no findings against it, and the
+review after it is a short one of the conflict resolution alone. The reviewer
+states the round in its opening line, and the foreman counts the rejections: a
+second one stops the chain. Put the choice to the ticket's owner in one line:
 
-> This came back twice; what is left is that two permission tests cannot fail.
+> The reviewer sent this back twice; what is left is that two permission tests cannot fail.
 > Fix and review a third time, or accept it as is and ticket the tests?
 
 If they accept: append to `## Notes` that the owner accepted the ticket over

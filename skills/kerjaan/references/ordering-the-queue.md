@@ -61,7 +61,7 @@ they are not the same question:
   waiting for it, and `queue.sh check` reads it that way.
 - **Do they only change the same files?** Then they **may** share a group. A
   clash in a shared file is ordinary: the ticket that lands second brings the
-  first one's change in and resolves it, as every branch does when main moved
+  first one's change in and resolves it, as every branch does after a merge postponed
   (`parallel-work.md`, "Back into main"). What makes it ordinary rather than a
   surprise is that it is known in advance, so the lead-in says it: **both IDs,
   the files they share, and which lands first** — the last of those also on

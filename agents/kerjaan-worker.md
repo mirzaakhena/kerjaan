@@ -149,11 +149,11 @@ at the end of `## Notes` — it is the evidence — and fix from there.
   a lighter look. The reviewer is independent, and a request like that is what
   it exists to ignore.
 
-## When you are resumed because main moved
+## When you are resumed after a merge postponed
 
-`merge.sh land` sent the ticket back because main's code changed after your
+`merge.sh land` answered `MERGE POSTPONED`: main's code changed after your
 branch was tested, and the ticket is in `in_progress` again. This is not a
-rejection; there are no findings. Bring main in (`merge.sh sync <id>`),
+rejection and starts no new round; there are no findings. Bring main in (`merge.sh sync <id>`),
 resolve, then steps 5 to 10 for what you changed: run `test-run.sh` last,
 commit, move to `review`, report. The reviewer will read only what you did
 beyond the automatic merge, so keep it to what the merge needs.

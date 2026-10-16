@@ -9,7 +9,8 @@
 # immediately. A rule written in a CLAUDE.md is advice and can be missed; this
 # hook is what makes the dispatch actually automatic. For a ticket that has
 # been reviewed before, it tells the foreman to resume that reviewer instead,
-# and to dispatch a new one only when that one cannot be resumed.
+# and to dispatch a new one only when that one cannot be resumed -- and which
+# round this is, or that it is the review after a merge postponed.
 #
 # Two conditions must both hold before it fires:
 #   1. the command text moves a ticket to `review`
@@ -120,27 +121,42 @@ repo=$(dirname "$(dirname "$(dirname "$ticket")")")
 scripts="$(cd "$(dirname "$0")" && pwd)"
 foreman="$(cd "$(dirname "$0")/.." && pwd)/references/foreman.md"
 
-# First round or a later one. A ticket that comes back to review after being
-# sent back has a reviewer already, and the foreman should resume that one:
-# it still holds its first round and narrows the next by itself. Two signals,
-# because either alone misses cases:
-#   - `## History` lists `review` more than once. update-ticket.sh writes
-#     those lines in English whatever the board's language, so this holds on
-#     every board -- but only for tickets whose History reaches back that far.
-#     A line may name the Claude Code session between the time and the status
-#     (`- <time> <session-id> review`) or not (`- <time> review`, older lines
-#     and moves made outside Claude Code); both count.
-#   - `## Notes` holds a block that opens with "Reviewed at level", the
-#     reviewer's own opening line. It covers a ticket from before History
-#     existed, on a board written in English; on other boards the reviewer
-#     writes it in the board's language, which is why it is not the only test.
-#     Only a line in `## Notes` that starts with the phrase counts, bare or as
-#     a top-level bullet (`- `, `* `, `+ `, optionally in bold). The phrase
-#     quoted anywhere else -- Background, mid-sentence in a worker's note, a
-#     wrapped continuation line, a `>` quote -- is someone talking about a
-#     review, not a review, and a first round must stay a first round.
+# First round, a later round, or the review after a merge postponed. The
+# definition is the one the foreman and the reviewer use (references/review.md,
+# "Rounds"): a round ends with one rejection by the reviewer, so round N is the
+# review that follows N-1 rejections. A merge postponed -- `merge.sh land`
+# sending a passed ticket back because main or the branch changed -- is no
+# rejection: the review after it has no round number and counts toward
+# nothing.
+#
+# A ticket that has been reviewed before has a reviewer already, and the
+# foreman should resume that one. Two sources, because either alone misses
+# cases:
+#   - `## History`. update-ticket.sh writes it in English whatever the board's
+#     language, status always the last word: `- <time> review`, or
+#     `- <time> <session-id> review` inside a Claude Code session. More than
+#     one `review` line means reviewed before. A move into `in_progress`
+#     straight from `review` is a rejection; from `done` it is a merge
+#     postponed. Only for tickets whose History reaches back that far.
+#   - `## Notes`. The reviewer opens every review with one fixed English line
+#     whatever the board's language:
+#       `- <date>: Reviewed at level <level>, round <n>, at commit <c>: sent back.`
+#     (`after merge postponed` in place of `round <n>` for the review after a
+#     merge postponed; `passed` in place of `sent back`). Each such line is a
+#     review, and one that ends in `sent back` a rejection. `merge.sh land`
+#     writes `- <time>: merge postponed — ...` when it sends a ticket back.
+#     Only a line in `## Notes` that starts with the phrase counts -- bare, as
+#     a top-level bullet (`- `, `* `, `+ `), optionally in bold, optionally
+#     after the date. The phrase quoted anywhere else -- Background,
+#     mid-sentence in a worker's note, a wrapped continuation line, a `>`
+#     quote -- is someone talking about a review, not a review, and a first
+#     round must stay a first round.
 # Lines inside fenced blocks are prose, not records, so they are skipped.
-# The awk prints two numbers: History `review` lines, then reviewer openings.
+# Rejections are the larger of the two counts, so a review from before the
+# line was fixed (written in the board's language) is still counted by
+# History, and a ticket from before History by its Notes. The awk prints:
+# History `review` lines, reviewer openings, rejections, and whether the
+# latest return was a merge postponed (1) or not (0).
 counts=$(awk '
   /^```/ { infence = !infence; next }
   infence { next }
@@ -149,22 +165,80 @@ counts=$(awk '
     innotes = ($0 ~ /^## Notes[ \t]*$/)
     next
   }
-  inhist && $0 ~ /^- [0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9] [0-9][0-9]:[0-9][0-9]:[0-9][0-9] ([A-Za-z0-9-]+ )?review[ \t]*$/ { n++ }
-  innotes && $0 ~ /^([-*+][ \t]+)?(\*\*)?Reviewed at level/ { r++ }
-  END { print n + 0, r + 0 }
-' "$ticket" 2>/dev/null || printf '0 0')
-reviews=${counts% *}
-openings=${counts#* }
+  inhist && $0 ~ /^- [0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9] [0-9][0-9]:[0-9][0-9]:[0-9][0-9] ([A-Za-z0-9-]+ )?[a-z_]+[ \t]*$/ {
+    st = $NF
+    if (st == "review") n++
+    if (st == "in_progress" && prev == "review") { hrej++; hlast = "rejection" }
+    if (st == "in_progress" && prev == "done") hlast = "postponed"
+    prev = st
+    next
+  }
+  innotes && $0 ~ /^([-*+][ \t]+)?(\*\*)?([0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]( [0-9:]+)?:?[ \t]+)?(\*\*)?Reviewed at level/ {
+    r++
+    nlast = "review"
+    if (tolower($0) ~ /sent back\.?(\*\*)?[ \t]*$/) nrej++
+    next
+  }
+  innotes && $0 ~ /^- [0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9] [0-9:]+: merge postponed / { nlast = "postponed" }
+  END {
+    rej = (hrej > nrej) ? hrej : nrej
+    post = (hlast == "postponed" || (hlast == "" && nlast == "postponed")) ? 1 : 0
+    print n + 0, r + 0, rej + 0, post
+  }
+' "$ticket" 2>/dev/null || printf '0 0 0 0')
+read -r reviews openings rejections postponed <<EOF_COUNTS
+$counts
+EOF_COUNTS
+reviews=${reviews:-0}; openings=${openings:-0}
+rejections=${rejections:-0}; postponed=${postponed:-0}
 
-if [ "${reviews:-0}" -ge 2 ] || [ "${openings:-0}" -ge 1 ]; then
+if [ "$postponed" = 1 ]; then
   jq -n --arg id "$id" --arg repo "$repo" --arg ticket "$ticket" --arg foreman "$foreman" \
-    --arg scripts "$scripts" '{
+    --arg scripts "$scripts" --arg rej "$rejections" '{
+    hookSpecificOutput: {
+      hookEventName: "PostToolUse",
+      additionalContext: (
+        "Ticket \($id) is back in .kerjaan/review/ after a merge postponed, " +
+        "on the board in \($repo) -- the file is \($ticket). It had passed " +
+        "review, merge.sh land sent it back because main or its branch " +
+        "changed first, and its worker brought main in. This is the review " +
+        "after a merge postponed: not a round, no round number, and not a " +
+        "rejection -- its reviewer has sent it back \($rej) time(s), and that " +
+        "count is unchanged. Resume the reviewer that passed it with " +
+        "SendMessage to its agent ID, saying this is the review after a " +
+        "merge postponed: level quick, reading only " +
+        "\"\($scripts)/merge.sh\" resolution \($id). Only if that reviewer " +
+        "cannot be resumed -- no agent ID on record, or SendMessage refuses " +
+        "it -- dispatch a new subagent with subagent_type " +
+        "\"kerjaan-reviewer\" and a prompt naming that repo, the ticket ID " +
+        "\($id), and the kerjaan scripts folder \($scripts); it finds the " +
+        "merge postponed line in ## Notes and narrows itself. Either way the " +
+        "reviewer decides, and moves the ticket to done/ or back to " +
+        "in_progress/ itself. Do not review this ticket yourself. Ticket " +
+        "\($id) is handed off now: nobody changes the code it covers. When " +
+        "the verdict comes back, read \($foreman) for what to do with it; a " +
+        "pass is landed again with merge.sh land."
+      )
+    },
+    systemMessage: ("Ticket \($id) re-entered review after a merge postponed — resuming its reviewer.")
+  }'
+  exit 0
+fi
+
+if [ "$reviews" -ge 2 ] || [ "$openings" -ge 1 ] || [ "$rejections" -ge 1 ]; then
+  if [ "$rejections" -ge 1 ]; then
+    round="round $((rejections + 1)), after $rejections rejection(s) by its reviewer"
+  else
+    round="its reviewer states the round"
+  fi
+  jq -n --arg id "$id" --arg repo "$repo" --arg ticket "$ticket" --arg foreman "$foreman" \
+    --arg scripts "$scripts" --arg round "$round" '{
     hookSpecificOutput: {
       hookEventName: "PostToolUse",
       additionalContext: (
         "Ticket \($id) is back in .kerjaan/review/, on the board in \($repo) " +
         "-- the file is \($ticket). It has been reviewed before, so this is a " +
-        "later round. Resume the reviewer of the round before with " +
+        "later round (\($round)). Resume the reviewer of the round before with " +
         "SendMessage to its agent ID, saying the fix is in and at which " +
         "commit: it still holds its first round and narrows this one by " +
         "itself. Only if that reviewer cannot be resumed -- no agent ID on " +
@@ -178,7 +252,8 @@ if [ "${reviews:-0}" -ge 2 ] || [ "${openings:-0}" -ge 1 ]; then
         "improve it, even to strengthen a test. If something genuinely " +
         "remains, move the ticket back to in_progress instead. When the " +
         "verdict comes back, read \($foreman) for what to do with it -- a " +
-        "second return stops the chain."
+        "second rejection by the reviewer stops the chain; a merge postponed " +
+        "is never one."
       )
     },
     systemMessage: ("Ticket \($id) re-entered review — resuming its reviewer.")

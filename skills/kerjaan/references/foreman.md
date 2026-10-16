@@ -35,7 +35,9 @@ This holds for a single ticket too. One small fix is a chain of one.
 - Tickets whose work is a decision and touches no code, since their work is
   the conversation with the owner (see SKILL.md, "Tickets whose work is a
   decision").
-- Dispatching reviewers, and counting their rounds.
+- Dispatching reviewers, and counting their rejections. A round ends with
+  one rejection by the reviewer; a merge postponed is no rejection and gets no
+  round number (`references/review.md`, "Rounds").
 
 The foreman never edits a ticket's code, not even a line it can see is wrong
 in a report. It sends the line back to the worker.
@@ -178,7 +180,7 @@ working.
 
 | Report | What the foreman does |
 |---|---|
-| `REVIEW` | The ticket is in `review/`. In the first round, dispatch `kerjaan-reviewer` and record its agent ID next to the worker's; in a later round, resume that reviewer (step 5). No hook message reaches you here: the worker made the move, so the hook spoke to the worker. |
+| `REVIEW` | The ticket is in `review/`. In the first round, dispatch `kerjaan-reviewer` and record its agent ID next to the worker's; in a later round, or after a merge postponed, resume that reviewer (steps 5 and 6). No hook message reaches you here: the worker made the move, so the hook spoke to the worker. |
 | `STOPPED — decision` | Stop the chain (see "When the chain stops"). The question is numbered in the ticket; `"$K/queue.sh" check <id>` shows it. |
 | anything else | Read why. If the ticket is groundwork for others, stop the chain. Otherwise note it, leave the ticket in `in_progress` with its Notes, and go on. |
 
@@ -207,14 +209,14 @@ tickets that run side by side in worktrees overlap (`references/parallel-work.md
   move yourself instead, the hook sees the
   earlier review in the ticket and tells you the same thing: resume, and
   dispatch a new reviewer only if that one cannot be resumed.
-- **Sent back a second time** — stop the chain (see below).
+- **Sent back a second time** — the second rejection: stop the chain (see below).
 
 **6. Act on the landing** (worktree tickets only).
 
 | `land` says | What the foreman does |
 |---|---|
 | `LANDED` | The ticket is on main, its worktree and branch are gone. Land has already committed its own note in the ticket (`Note committed: …`), so there is nothing of it to commit by hand. Only when it says `NOTE NOT COMMITTED` — the ticket's file had uncommitted changes before land ran — commit that file once those changes are settled. |
-| `SENT BACK` | Main moved since the branch was tested, or the branch changed after review. The ticket is back in `in_progress`. Resume the **same worker**: main moved, bring it in with `merge.sh sync <id>`, resolve any conflict, test, commit, move to review. When it reports `REVIEW`, resume the **same reviewer**, saying this is a re-integration round: level `quick`, reading only `merge.sh resolution <id>`. Then land again. This is not a rejection and does not count toward the second return. |
+| `MERGE POSTPONED` | A merge postponed: main changed since the branch was tested, or the branch changed after review. The ticket is back in `in_progress`. Resume the **same worker**: bring main in with `merge.sh sync <id>`, resolve any conflict, test, commit, move to review. When it reports `REVIEW`, resume the **same reviewer**, saying this is the review after a merge postponed: level `quick`, reading only `merge.sh resolution <id>`. Then land again. A merge postponed is not a rejection: it gets no round number and does not count toward the second rejection. |
 | `HELD` | Tell the owner now, in one line: the ticket and the reason the output gives (it is in the ticket's `## Notes` too). Do not retry, and do not work around it. Only this ticket waits: carry on with the chain, except tickets whose `blocked_by` names it. When the owner has cleared the cause, run `land` again. |
 
 **When a worker or reviewer cannot be resumed** — the foreman's session was
@@ -251,7 +253,7 @@ The chain stops itself, and reports to the user, in three cases:
    `queue.sh ask`. Put it to the owner with its number; record the answer with
    `"$K/queue.sh" answer <id> <n> "<answer>"`, then resume that worker. Or a
    human check is holding the chain.
-2. **The reviewer sent the same ticket back twice.** Put the choice to the
+2. **The reviewer rejected the same ticket twice.** Put the choice to the
    owner as `references/review.md` describes: fix and review a third time, or
    accept it with a follow-up ticket.
 3. **A ticket others stand on did not pass.** Groundwork failing, for any
@@ -268,7 +270,8 @@ in its ticket; collect it for the summary.
 When the chain ends — every ticket passed, or it stopped — give the user one
 summary, from the log:
 
-- **Passed**: each ticket, and the round it passed in.
+- **Passed**: each ticket, and the round it passed in (a review after a merge
+  postponed adds no round).
 - **Stopped or left open**: each ticket and why — the decision it is waiting
   on, the findings that sent it back twice, the groundwork that failed.
 - **Questions**: every one the workers recorded and nobody answered yet,

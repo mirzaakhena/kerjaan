@@ -34,7 +34,8 @@
 #                             what merging main brought in by itself
 #
 # Exit status: 0 done or ready; 1 held for the owner, or refused; 2 usage;
-# 3 main moved (land: the ticket is back in in_progress); 4 not tested.
+# 3 main moved (land: a merge postponed, the ticket is back in in_progress);
+# 4 not tested.
 
 set -euo pipefail
 
@@ -56,11 +57,13 @@ Usage: merge.sh sync <id>
               otherwise. --gate prints the record update-ticket.sh keeps.
   land        run from the main tree, for a ticket in done/: merge its branch
               into main, one merge at a time, then remove its worktree and
-              branch. STALE sends the ticket back to in_progress; HELD keeps
+              branch. MERGE POSTPONED sends the ticket back to in_progress
+              (no rejection, no new round); HELD keeps
               it for the owner, with the reason in its Notes. Each note it
               writes in the ticket is committed at once, on its own.
   resolution  the diff between merging main into the commit reviewed last
-              time and the branch now: the part a re-review has to read.
+              time and the branch now: the part the review after a merge
+              postponed has to read.
 USAGE
   exit 2
 }
@@ -273,8 +276,9 @@ case "$cmd" in
       echo "Only this ticket waits; tickets that do not depend on it carry on."
       exit 1
     }
-    # Main moved, or the branch changed after its review: the ticket goes back
-    # to its worker, and through review again, without the owner.
+    # A merge postponed: main moved, or the branch changed after its review. The
+    # ticket goes back to its worker, and through review again, without the
+    # owner. No rejection: the review after it has no round number.
     postpone() {
       kerjaan_board_lock "$board" "merge.sh land $id sending it back"
       kerjaan_append_note "$ticket" "- $(now): merge postponed — $1; back to in_progress to be brought up to date with $main, tested and reviewed again."
@@ -283,9 +287,9 @@ case "$cmd" in
       fi
       kerjaan_lock_release board
       save_note "Board: $id back to in_progress, merge postponed"
-      echo "SENT BACK: ticket $id was not merged into $main, and is in in_progress again."
+      echo "MERGE POSTPONED: ticket $id was not merged into $main, and is in in_progress again."
       echo "Reason: $1."
-      echo "Its worker brings $main in (merge.sh sync $id), tests, commits and moves it to review."
+      echo "Its worker brings $main in (merge.sh sync $id), tests, commits and moves it to review; the review after a merge postponed is level quick, gets no round number, and is no rejection."
       exit 3
     }
 

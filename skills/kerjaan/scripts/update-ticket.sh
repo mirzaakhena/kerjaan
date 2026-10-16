@@ -246,8 +246,8 @@ fi
 #     and only that ticket waits — every ticket that does not depend on it
 #     carries on. One that does depend on it, through blocked_by, is refused.
 # A repo without git, or a move that is not a start, is left entirely alone. A
-# ticket coming back from review or done — sent back by its reviewer, or by
-# merge.sh land because main moved — is not new work, so it is not a start.
+# ticket coming back from review or done — rejected by its reviewer, or a
+# merge postponed by merge.sh land — is not new work, so it is not a start.
 
 # --- the way into todo -------------------------------------------------------
 # `todo` means ready to be worked without asking anything more. A question the

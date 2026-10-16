@@ -16,7 +16,7 @@ peduli pekerjaan itu lolos atau tidak.
 
 **Kapan ia bekerja.** Begitu pengerja memindah tiket ke `review` dan melapor,
 sesi utama (mandor) mengutusnya. Pengguna tidak perlu memanggilnya. Kalau
-tiket dikembalikan, putaran berikutnya diberikan kepada peninjau yang sama,
+tiket ditolak, putaran berikutnya diberikan kepada peninjau yang sama,
 yang dilanjutkan dari transkripnya.
 
 ### Langkah dasar, di semua level
@@ -57,8 +57,17 @@ pemilik akun yang boleh menghapus" ia hapus. Lalu uji dijalankan:
   semuanya sekaligus.
 - **Putaran kedua dan seterusnya lebih sempit.** Yang diperiksa hanya temuan yang
   dulu gagal, kode yang berubah sejak tinjauan terakhir, dan kesalahan sejenis.
-- **Batas putaran.** Sesudah dua kali dikembalikan, sesi bertanya dulu kepada
-  pemilik tiket sebelum mencoba lagi.
+- **Batas putaran.** Satu putaran berakhir dengan satu penolakan oleh
+  peninjau. Sesudah dua kali ditolak, sesi bertanya dulu kepada pemilik tiket
+  sebelum mencoba lagi. Tiket yang sudah lolos lalu dikembalikan `merge.sh
+  land` karena main atau cabangnya berubah lebih dulu disebut `merge
+  postponed`. Itu bukan penolakan: review sesudahnya tidak diberi nomor
+  putaran dan tidak ikut dihitung.
+- **Baris pembuka tetap.** Setiap review dibuka dengan satu baris berbahasa
+  Inggris yang sama di papan berbahasa apa pun, misalnya
+  `- 2026-10-17: Reviewed at level quick, round 1, at commit a1b2c3d: passed.`
+  Sisanya ditulis dalam bahasa papan. Dengan begitu peninjau pengganti selalu
+  menemukan review sebelumnya dan melanjutkan hitungannya.
 - **Uji kurang gigi di `normal`.** Kalau kodenya terbukti benar, uji yang lemah
   cukup jadi catatan dan saran tiket lanjutan. Di `strict` tetap menahan tiket.
 

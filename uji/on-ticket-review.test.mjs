@@ -167,6 +167,9 @@ const reviewerOpenings = {
   'as a + bullet': `+ Reviewed at level quick, round 1, at commit a1b2c3d: sent back.`,
   'in bold': `- **Reviewed at level normal, round 1, at commit a1b2c3d.** Sent back.`,
   'bare under a ### Review heading': `### Review 2026-10-11 — sent back\n\nReviewed at level quick, round 1, at commit a1b2c3d: sent back.`,
+  'after the date (the fixed line)': `- 2026-10-11: Reviewed at level quick, round 1, at commit a1b2c3d: sent back.`,
+  'after the date and time': `- 2026-10-11 07:45: Reviewed at level quick, round 1, at commit a1b2c3d: sent back.`,
+  'the fixed line, then the review in Indonesian': `- 2026-10-11: Reviewed at level quick, round 1, at commit a1b2c3d: sent back.\n  Uji proyek dijalankan sekali; kriteria 2 belum terpenuhi.`,
 };
 
 function run(payload) {
@@ -296,6 +299,7 @@ for (const [shape, line] of Object.entries(reviewerOpenings)) {
     const out = run(moveToReview(root, ticket));
     const text = out.hookSpecificOutput.additionalContext;
     assert.match(text, /later round/);
+    assert.match(text, /round 2, after 1 rejection/);
     assert.match(text, /Resume the reviewer of the round before with SendMessage/);
     assert.doesNotMatch(text, /Dispatch one subagent right now/);
     assert.match(out.systemMessage, /resuming its reviewer/);
@@ -351,4 +355,130 @@ test('a review line with more than one word before the status is not counted', (
   const { root, ticket } = board(body);
   const out = run(moveToReview(root, ticket));
   assert.match(out.hookSpecificOutput.additionalContext, /Dispatch one subagent right now/);
+});
+
+// --- one definition of a round ----------------------------------------------------------
+// A round ends with one rejection by the reviewer. A merge postponed (merge.sh
+// land sending a passed ticket back) is no rejection: the review after it has
+// no round number. The hook counts the same way the guides say.
+
+const H = (...st) => st.map((x, i) => `- 2026-10-11 0${Math.floor(i / 6) + 7}:${String((i % 6) * 10).padStart(2, '0')}:00 ${x}`).join('\n');
+const hookText = (body) => {
+  const { root, ticket } = board(body);
+  const out = run(moveToReview(root, ticket));
+  return { text: out.hookSpecificOutput.additionalContext, sys: out.systemMessage };
+};
+
+test('the issue\'s case: one rejection, then a merge postponed — the review after it has no number, and the count stays at one', () => {
+  const { text, sys } = hookText(`\n## History\n${H('todo', 'in_progress', 'review', 'in_progress', 'review', 'done', 'in_progress', 'review')}\n\n## Notes\n- 2026-10-11: Reviewed at level quick, round 1, at commit a1b2c3d: sent back.\n- 2026-10-11: Reviewed at level quick, round 2, at commit b2c3d4e: passed.\n- 2026-10-11 09:00:00: merge postponed — main changed since tiket-x last took it in (a.txt); back to in_progress to be brought up to date with main, tested and reviewed again.\n`);
+  assert.match(text, /after a merge postponed/);
+  assert.match(text, /not a round, no round number, and not a rejection/);
+  assert.match(text, /sent it back 1 time\(s\)/);
+  assert.match(text, /merge\.sh" resolution 261011070001/);
+  assert.match(text, /level quick/);
+  assert.match(text, /Only if that reviewer cannot be resumed/);
+  assert.doesNotMatch(text, /round 3|later round|Dispatch one subagent right now/);
+  assert.match(sys, /after a merge postponed — resuming its reviewer/);
+});
+
+test('a merge postponed right after round 1 passed: no rejection at all', () => {
+  const { text } = hookText(`\n## History\n${H('in_progress', 'review', 'done', 'in_progress', 'review')}\n\n## Notes\n- x\n`);
+  assert.match(text, /after a merge postponed/);
+  assert.match(text, /sent it back 0 time\(s\)/);
+});
+
+test('a merge postponed told by Notes alone, on a ticket whose History is too short', () => {
+  const { text } = hookText(`\n## History\n- 2026-10-11 08:20:00 review\n\n## Notes\n- 2026-10-11: Reviewed at level quick, round 1, at commit a1b2c3d: passed.\n- 2026-10-11 08:00:00: merge postponed — main changed while the merge was being prepared (a.txt); back to in_progress.\n`);
+  assert.match(text, /after a merge postponed/);
+});
+
+test('a merge postponed, then a rejection in the review after it: the rejection counts and the next is a numbered round', () => {
+  const { text } = hookText(`\n## History\n${H('in_progress', 'review', 'done', 'in_progress', 'review', 'in_progress', 'review')}\n\n## Notes\n- x\n`);
+  assert.doesNotMatch(text, /after a merge postponed/);
+  assert.match(text, /later round \(round 2, after 1 rejection/);
+});
+
+test('a merge postponed line in Notes before a later review does not make it the review after one', () => {
+  const { text } = hookText(`\n## History\n- 2026-10-11 08:20:00 review\n\n## Notes\n- 2026-10-11 08:00:00: merge postponed — x; back to in_progress.\n- 2026-10-11: Reviewed at level quick, after merge postponed, at commit a1b2c3d: sent back.\n`);
+  assert.doesNotMatch(text, /after a merge postponed,/);
+  assert.match(text, /round 2, after 1 rejection/);
+});
+
+// Each count, from each record, so a rule over many cases is tested per case.
+const roundsByHistory = [
+  [['in_progress', 'review', 'in_progress', 'review'], 2],
+  [['in_progress', 'review', 'in_progress', 'review', 'in_progress', 'review'], 3],
+  [['in_progress', 'review', 'in_progress', 'review', 'done', 'in_progress', 'review', 'in_progress', 'review'], 3],
+];
+for (const [moves, round] of roundsByHistory) {
+  test(`History ${moves.join(' > ')}: round ${round}`, () => {
+    const { text } = hookText(`\n## History\n${H(...moves)}\n\n## Notes\n- Ditinjau pada level quick: ditolak.\n`);
+    assert.match(text, new RegExp(`later round \\(round ${round}, after ${round - 1} rejection`));
+  });
+}
+
+test('Notes alone, on an Indonesian board: two fixed lines sent back make round 3, a passed one adds nothing', () => {
+  const lines = [
+    '- 2026-10-11: Reviewed at level normal, round 1, at commit a1b2c3d: sent back.',
+    '  Kriteria 2 gagal: uji izin tetap hijau saat pengecekan dihapus.',
+    '- 2026-10-12: Reviewed at level normal, round 2, at commit b2c3d4e: sent back.',
+    '  Kriteria 3 gagal.',
+  ];
+  let { text } = hookText(`\n## History\n- 2026-10-12 08:20:00 review\n\n## Notes\n${lines.join('\n')}\n`);
+  assert.match(text, /round 3, after 2 rejection/);
+  ({ text } = hookText(`\n## History\n- 2026-10-12 08:20:00 review\n\n## Notes\n${lines.slice(0, 2).join('\n')}\n- 2026-10-12: Reviewed at level quick, after merge postponed, at commit b2c3d4e: passed.\n`));
+  assert.match(text, /round 2, after 1 rejection/);
+});
+
+test('History and Notes on the same events are not added together', () => {
+  const { text } = hookText(`\n## History\n${H('in_progress', 'review', 'in_progress', 'review')}\n\n## Notes\n- 2026-10-11: Reviewed at level quick, round 1, at commit a1b2c3d: sent back.\n`);
+  assert.match(text, /round 2, after 1 rejection/);
+});
+
+// --- the same definition, and one name, in every document ---------------------------------
+const repoDoc = (...p) => fs.readFileSync(path.join(here, '..', ...p), 'utf8');
+const flat = (t) => t.replace(/\s+/g, ' ');
+const docs = {
+  'foreman.md': repoDoc('skills', 'kerjaan', 'references', 'foreman.md'),
+  'review.md': repoDoc('skills', 'kerjaan', 'references', 'review.md'),
+  'parallel-work.md': repoDoc('skills', 'kerjaan', 'references', 'parallel-work.md'),
+  'ordering-the-queue.md': repoDoc('skills', 'kerjaan', 'references', 'ordering-the-queue.md'),
+  'SKILL.md': repoDoc('skills', 'kerjaan', 'SKILL.md'),
+  'kerjaan-reviewer.md': repoDoc('agents', 'kerjaan-reviewer.md'),
+  'kerjaan-worker.md': repoDoc('agents', 'kerjaan-worker.md'),
+  'README.md': repoDoc('README.md'),
+  'merge.sh': repoDoc('skills', 'kerjaan', 'scripts', 'merge.sh'),
+  'on-ticket-review.sh': repoDoc('skills', 'kerjaan', 'scripts', 'on-ticket-review.sh'),
+};
+
+test('docs: the foreman guide, the review guide and the reviewer define a round the same way', () => {
+  for (const name of ['foreman.md', 'review.md', 'kerjaan-reviewer.md']) {
+    assert.match(flat(docs[name]), /a round ends with one rejection by the reviewer/i, name);
+    assert.match(flat(docs[name]), /merge postponed/, name);
+    assert.match(flat(docs[name]), /(is no|is not a|never a) rejection/, name);
+  }
+  assert.match(flat(docs['on-ticket-review.sh']), /a round ends with one rejection by the reviewer/i);
+});
+
+test('docs: the review guide and the reviewer give the same fixed opening line, in English, for both kinds of review', () => {
+  const fixed = [
+    '- <YYYY-MM-DD>: Reviewed at level <level>, round <n>, at commit <hash>: <passed | sent back>.',
+    '- <YYYY-MM-DD>: Reviewed at level quick, after merge postponed, at commit <hash>: <passed | sent back>.',
+  ];
+  for (const name of ['review.md', 'kerjaan-reviewer.md']) {
+    for (const line of fixed) assert.ok(docs[name].includes(`\n${line}\n`), `${name} lacks: ${line}`);
+  }
+  assert.match(flat(docs['kerjaan-reviewer.md']), /in English on every board whatever its language/);
+  assert.match(flat(docs['kerjaan-reviewer.md']), /do not translate it/);
+});
+
+test('docs: the event merge.sh land reports has one name, merge postponed, and no other', () => {
+  for (const [name, text] of Object.entries(docs)) {
+    for (const old of [/SENT BACK/, /re-integration/i, /reintegration/i, /re-review/i, /resumed because main moved/, /round after main moved/]) {
+      assert.doesNotMatch(text, old, `${name} still says ${old}`);
+    }
+  }
+  assert.match(docs['merge.sh'], /echo "MERGE POSTPONED: ticket/);
+  assert.match(docs['foreman.md'], /\n\| `MERGE POSTPONED` \| A merge postponed/);
+  assert.match(docs['kerjaan-worker.md'], /## When you are resumed after a merge postponed/);
 });
