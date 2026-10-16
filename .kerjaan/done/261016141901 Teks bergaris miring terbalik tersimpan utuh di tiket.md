@@ -6,7 +6,7 @@ labels: [sesi-a192c9e8, scripts]
 reporter: mirza
 assign_to: claude
 created: 2026-10-16 14:19:05
-updated: 2026-10-16 15:01:35
+updated: 2026-10-16 15:04:04
 related: [261016141914, 261016141915]
 blocked_by: []
 ---
@@ -49,6 +49,7 @@ aslinya, termasuk garis miring terbalik.
 - 2026-10-16 14:46:19 todo
 - 2026-10-16 14:54:16 in_progress
 - 2026-10-16 15:01:35 review
+- 2026-10-16 15:04:04 done
 
 ## Notes
 - Berasal dari penilaian independen atas skill kerjaan di sesi Claude Code
@@ -79,3 +80,12 @@ aslinya, termasuk garis miring terbalik.
   update-ticket.sh judul dikembalikan ke `-v t=`: merah di "--title:
   backslashes". Setiap berkas dipulihkan dari salinannya.
 - 2026-10-16 15:01:24: test run — `node --test` exited 0 after 2m59s, on content fingerprint 35caac0dbd57ac10b5e9733f820f44375a36536b (the same before and after the run; .kerjaan/ left out).
+- 2026-10-16: Ditinjau pada level normal, putaran 1, pada commit 484186b: setiap butir dibuktikan dengan menjalankan sesuatu, dan uji yang baru dibaca untuk memastikan isinya benar-benar memeriksa.
+  - Uji penuh (`node --test`) tidak dijalankan ulang: `test-run.sh --check 261016141901` menjawab SAME untuk catatan uji 2026-10-16 15:01:24, sidik 35caac0dbd57ac10b5e9733f820f44375a36536b, keluar 0.
+  - `explain.sh check`: belum ada penjelasan; `owner_explanation: off`, jadi memang tidak diperlukan.
+  - Butir 1: langkah di "How to reproduce" diulang di papan percobaan di luar repo. Jawaban yang tersimpan berbunyi persis `pakai pola \d+ di C:\temp`, tanpa tab (diperiksa dengan `cat -v -t`).
+  - Butir 2: di papan yang sama, pertanyaan `Pola \d+ di C:\temp?` menjadi catatan pertama (menggantikan "(none yet)") dan tersimpan utuh.
+  - Butir 3: `test_command` di papan percobaan diisi `true \d+ C:\temp`. `test-run.sh` mencatatnya utuh, dan `test-run.sh --check` menjawab SAME.
+  - Butir 4: `node --test uji/queue.test.mjs uji/test-run.test.mjs uji/update-ticket.test.mjs` menghasilkan 41 lulus, 0 gagal. Uji-uji yang baru membandingkan teks persis dengan `assert.equal`, tidak ada yang kosong. Uji test-run mencakup Notes kosong dan Notes berisi, lalu memeriksa bahwa `--check` menjawab SAME.
+  - Sisa `awk -v` di skrip (lib.sh, queue.sh, update-ticket.sh, explain.sh) diperiksa satu per satu: semuanya hanya membawa ID, nomor, kunci tetap, waktu atau path, bukan teks yang ditulis orang.
+  - Catatan: proyek ini tidak punya CLAUDE.md atau AGENTS.md. Pekerjaan langsung di main, tanpa cabang terpisah.
