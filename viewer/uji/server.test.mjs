@@ -193,7 +193,8 @@ test('perintah: menyala, mencetak alamat 127.0.0.1, dan menolak tanpa --scan', a
   const root = setup();
   const cli = runCli(['--scan', root, '--port', '0']);
   try {
-    for (let i = 0; i < 50 && !cli.out().includes('kerjaan viewer:'); i++) await new Promise((r) => setTimeout(r, 100));
+    // The address and the scan arrive as two lines, possibly in two chunks.
+    for (let i = 0; i < 50 && !/kerjaan viewer:[^]*proyek:/.test(cli.out()); i++) await new Promise((r) => setTimeout(r, 100));
     const address = cli.out().match(/kerjaan viewer: (http:\/\/127\.0\.0\.1:\d+\/)/)?.[1];
     assert.ok(address, cli.out() + cli.err());
     assert.match(cli.out(), /2 proyek: alpha, beta/);

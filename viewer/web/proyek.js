@@ -5,7 +5,7 @@ import { pills } from './pil.js';
 import { drawerHead, drawerFacts, drawerAgent, agentHeadHtml, agentBodyHtml } from './laci.js';
 import { agentLine, AGENT_STATUSES } from './agen.js';
 import { ARCHIVED_KEY, loadArchived } from './arsip.js';
-import { switchList, keyTarget } from './pindah.js';
+import { switchList } from './pindah.js';
 
 // The page lives at /<project>/, /<project>/tiket/<id> and /<project>/urutan
 // (order.md); everything it asks the server for is under /<project>/.
@@ -323,10 +323,7 @@ $('drawer').addEventListener('click', (e) => {
 });
 $('backdrop').addEventListener('click', () => close());
 document.addEventListener('keydown', (e) => {
-  if (e.key !== 'Escape') return;
-  // The project list sits above the drawer, so it is the one Escape closes.
-  if (!$('pindah-menu').hidden) closeSwitcher({ focus: true });
-  else if (state.openId) close();
+  if (e.key === 'Escape' && state.openId) close();
 });
 window.addEventListener('popstate', () => {
   state.filter = readFilter(location.search);
@@ -394,26 +391,37 @@ async function agentsMoved(data) {
 
 // ---------- switching project ----------
 
-// The other projects, from the top bar's list or straight from the keyboard:
-// 1 to 9, then a, b, c… The list leaves out what this browser has archived.
+// Every active project is a button in the top bar, the open one marked, so
+// another board is one click away. Projects this browser has archived are left
+// out. Buttons that do not fit on one line scroll sideways.
 const switcher = { projects: null };
-const switchItems = () => (switcher.projects ? switchList(switcher.projects, loadArchived(), project) : []);
 const projectHref = (name) => `/${encodeURIComponent(name)}/`;
 
 function drawSwitcher() {
-  const menu = $('pindah-menu');
-  if (!switcher.projects) {
-    menu.innerHTML = '<p class="kosong">Daftar proyek tidak bisa dibaca sekarang.</p>';
-    return;
-  }
-  const items = switchItems();
-  const list = items.length === 0
-    ? '<p class="kosong">Belum ada proyek aktif.</p>'
-    : `<ul>${items.map((p) => `<li><a href="${projectHref(p.name)}"${p.current ? ' aria-current="page"' : ''}>`
-      + `<kbd${p.key ? '' : ' class="none"'}>${p.key || ''}</kbd><span class="n">${esc(p.name)}</span>`
-      + `${p.current ? '<span class="ini">dibuka</span>' : ''}</a></li>`).join('')}</ul>`;
-  menu.innerHTML = `${list}<div class="kaki"><span>Tekan tandanya untuk pindah langsung</span><a href="/">Semua proyek</a></div>`;
+  const nav = $('proyek-tombol');
+  // Until the list is read, or when it cannot be, the bar shows no buttons;
+  // the page itself is unaffected.
+  const items = switcher.projects ? switchList(switcher.projects, loadArchived(), project) : [];
+  nav.hidden = items.length === 0;
+  nav.innerHTML = items.map((p) => `<a href="${projectHref(p.name)}"${p.current ? ' aria-current="page"' : ''}>${esc(p.name)}</a>`).join('');
+  showCurrent();
 }
+
+// The open project's button is brought into view when the row has scrolled.
+// Asked again once the fonts arrive, since they change every button's width.
+function showCurrent() {
+  const nav = $('proyek-tombol');
+  const here = nav.querySelector('[aria-current="page"]');
+  if (!here || nav.scrollWidth <= nav.clientWidth) return;
+  const left = here.offsetLeft; // the nav is the buttons' offset parent
+  if (left < nav.scrollLeft || left + here.offsetWidth > nav.scrollLeft + nav.clientWidth) {
+    // Centred; one wider than the row shows its start, inside the row's padding.
+    const pad = parseFloat(getComputedStyle(nav).paddingLeft) || 0;
+    nav.scrollLeft = left - Math.max(pad, (nav.clientWidth - here.offsetWidth) / 2);
+  }
+}
+document.fonts?.ready.then(showCurrent);
+document.fonts?.addEventListener('loadingdone', showCurrent);
 
 async function loadProjects() {
   try {
@@ -421,40 +429,11 @@ async function loadProjects() {
   } catch {
     // keeps the list it had
   }
-  if (!$('pindah-menu').hidden) drawSwitcher();
-}
-
-function openSwitcher() {
   drawSwitcher();
-  $('pindah-menu').hidden = false;
-  $('pindah').setAttribute('aria-expanded', 'true');
-  loadProjects();
-}
-function closeSwitcher({ focus = false } = {}) {
-  $('pindah-menu').hidden = true;
-  $('pindah').setAttribute('aria-expanded', 'false');
-  if (focus) $('pindah').focus();
 }
 
-$('pindah').addEventListener('click', () => {
-  if ($('pindah-menu').hidden) openSwitcher();
-  else closeSwitcher();
-});
-// A click or a Tab anywhere else puts the list away.
-document.addEventListener('click', (e) => {
-  if (!$('pindah-menu').hidden && !e.target.closest('.pindah')) closeSwitcher();
-});
-document.addEventListener('focusin', (e) => {
-  if (!$('pindah-menu').hidden && !e.target.closest('.pindah')) closeSwitcher();
-});
-document.addEventListener('keydown', (e) => {
-  const name = keyTarget(e, switchItems());
-  if (!name) return;
-  e.preventDefault();
-  location.href = projectHref(name);
-});
-// Archiving on the home page, in another tab, changes the list here too.
-window.addEventListener('storage', (e) => { if (e.key === ARCHIVED_KEY && !$('pindah-menu').hidden) drawSwitcher(); });
+// Archiving on the home page, in another tab, changes the buttons here too.
+window.addEventListener('storage', (e) => { if (e.key === ARCHIVED_KEY) drawSwitcher(); });
 document.addEventListener('visibilitychange', () => { if (!document.hidden) loadProjects(); });
 loadProjects();
 
