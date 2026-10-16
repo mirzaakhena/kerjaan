@@ -6,7 +6,7 @@ labels: [sesi-a192c9e8, scripts]
 reporter: mirza
 assign_to: claude
 created: 2026-10-16 14:19:07
-updated: 2026-10-17 06:07:24
+updated: 2026-10-17 06:09:40
 related: [261016141915]
 blocked_by: [261016141901, 261016141902]
 ---
@@ -48,6 +48,7 @@ dan pemeriksaan-pemeriksaan yang terlalu longgar menjadi tepat.
 - 2026-10-16 14:46:24 todo
 - 2026-10-17 05:35:25 e97c38bb-2b6f-487d-a8b0-2fdab5809ee3 in_progress
 - 2026-10-17 06:07:24 e97c38bb-2b6f-487d-a8b0-2fdab5809ee3 review
+- 2026-10-17 06:09:40 e97c38bb-2b6f-487d-a8b0-2fdab5809ee3 done
 
 ## Notes
 - Berasal dari penilaian independen atas skill kerjaan di sesi Claude Code
@@ -131,3 +132,48 @@ dan pemeriksaan-pemeriksaan yang terlalu longgar menjadi tepat.
       disembunyikan, tanpa catatan -> masing-masing 1 merah.
   - Rangkaian penuh sebelum: 451 lulus; sesudah: 508 lulus.
 - 2026-10-17 06:07:20: test run — `node --test --test-timeout=900000 --test-force-exit` exited 0 after 2m21s, on content fingerprint 96f53bbd3d2678a6b185070e62ec226b241e9e31 (the same before and after the run; .kerjaan/ left out).
+- 2026-10-17: Reviewed at level normal, round 1, at commit 007373d: passed.
+  Level normal di sini: rangkaian uji proyek tidak dijalankan ulang karena
+  `test-run.sh --check 261016141914 007373d` menjawab SAME (jalannya pengerja
+  2026-10-17 06:07:20, fingerprint 96f53bbd3d2678a6b185070e62ec226b241e9e31,
+  exit 0, 508 uji); diff dibaca per kriteria, uji baru dan uji yang diubah
+  dibaca untuk mencari uji kosong, dan repair.sh serta penolakan ID kembar
+  dicoba sendiri pada papan sementara. Tidak ada cabang tiket; kerja ada di main.
+  - Satu penerapan (kriteria 1): penolakan worktree, pencarian tiket,
+    penambahan catatan dan pembacaan pengaturan kini hanya di lib.sh; grep
+    atas semua skrip .sh tidak menemukan salinan tersisa (`/gitdir"`,
+    `"$board"/*/"$id "*.md`, pembaca settings sendiri). Uji struktural di
+    uji/pustaka-bersama.test.mjs menjaga ini, plus uji perilaku per skrip.
+  - Satu kunci (kriteria 2): new-ticket.sh memakai `kerjaan_board_lock`;
+    `.kerjaan/.lock` hilang. Tiga uji kunci lama di new-ticket.test.mjs diganti
+    karena desain kuncinya memang diganti oleh kriteria ini, bukan dilemahkan:
+    uji barunya memeriksa pengambilalihan dari PID mati, penolakan setelah
+    lock_timeout, dan bahwa di repo git kuncinya sama dengan update-ticket.sh.
+  - Pagar (kriteria 3): semua awk memakai `KERJAAN_FENCE`; update-ticket.sh dan
+    on-ticket-review.sh sebelumnya hanya mengenali ```. board.mjs sudah
+    mengenali keduanya. Diuji untuk kedua pagar di lima skrip.
+  - Ukuran (kriteria 4): ticket-size.sh hanya menerima
+    `- <waktu>: <kalimat --accept-size>` persis. Uji lama "acceptance written
+    by hand counts too" bertentangan langsung dengan kriteria ini, jadi
+    penggantiannya diminta tiket; uji baru mencakup sembilan bentuk yang harus
+    tetap memperingatkan.
+  - ID kembar (kriteria 5): dicoba sendiri: dua tiket 261017100001 di todo
+    dengan order.md; update-ticket.sh menolak dan menyebut repair.sh (exit 1);
+    `repair.sh duplicate-id` mendaftar (exit 1); `repair.sh duplicate-id
+    261017100001` menyisakan yang lebih tua, memberi yang muda 261017100002,
+    memperbarui baris order.md dan menulis catatan di Notes (exit 0); daftar
+    ulang lalu bersih (exit 0).
+  - Semua uji lulus (kriteria 6): dibawa dari jalannya pengerja (SAME, di atas).
+  - Perilaku cabang yang sudah tergabung: `kerjaan_code_rev` dan
+    `kerjaan_merge_state` tidak disentuh diff; logika merge.sh land sama.
+  - Catatan, tidak memblokir:
+    - update-ticket.sh, untuk cabang yang tergabung tetapi worktree-nya masih
+      ada, kini mencetak path mutlak ke worktree.sh (`$here`) alih-alih
+      `$(dirname "$0")`. Isi sarannya sama, hanya bentuk path.
+    - merge.sh land dari worktree kini memakai pesan penolakan bersama
+      (kode keluar tetap 1), bukan "Tickets land from the main tree".
+    - on-ticket-review.sh: bila ID di review/ dipakai dua tiket, hook kini tidak
+      menemukan tiket sama sekali (dulu mengambil yang pertama). Wajar, karena
+      skrip lain menolak ID itu juga.
+    - repair.sh dengan path pada tiga tiket kembar hanya memindahkan satu; dua
+      lainnya tetap berbagi ID dan perlu dijalankan lagi. Sesuai dokumentasinya.
