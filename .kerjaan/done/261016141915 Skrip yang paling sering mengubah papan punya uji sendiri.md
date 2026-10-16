@@ -6,7 +6,7 @@ labels: [sesi-a192c9e8, tests]
 reporter: mirza
 assign_to: claude
 created: 2026-10-16 14:19:08
-updated: 2026-10-16 20:05:31
+updated: 2026-10-16 20:11:12
 related: [261016141901, 261016141902, 261016141914]
 blocked_by: []
 ---
@@ -41,6 +41,7 @@ menjalankan suite tertulis dengan jelas.
 - 2026-10-16 14:46:21 todo
 - 2026-10-16 16:28:28 a192c9e8-0bb5-4bbf-8d56-9831b23e62ec in_progress
 - 2026-10-16 20:05:31 a192c9e8-0bb5-4bbf-8d56-9831b23e62ec review
+- 2026-10-16 20:11:12 a192c9e8-0bb5-4bbf-8d56-9831b23e62ec done
 
 ## Notes
 - Berasal dari penilaian independen atas skill kerjaan di sesi Claude Code
@@ -179,3 +180,14 @@ menjalankan suite tertulis dengan jelas.
     is also this board's own test_command" diganti. Sekarang README menyebut
     test_command itu sebagai run yang sama dengan dua pengaman (Node 22 atau
     lebih baru). Perintah satu-satunya untuk penyumbang tetap `node --test`.
+- 2026-10-16 20:13: Ditinjau di level quick (field `review:` kosong), putaran 1, pada commit d5a0575 di main (tanpa worktree; tidak ada cabang yang memuat ID ini). Uji proyek dihitung satu kali dari run pengerja, lalu perubahan dibaca terhadap tiap kriteria. Untuk kriteria 4 tinjauan melampaui quick: perintah README `node --test` dijalankan sekali, karena run yang dibawa memakai `--test-force-exit`, dan pengaman itu bisa menutupi uji yang tergantung pada perintah polos.
+  - `test-run.sh --check 261016141915 HEAD`: SAME. Run pengerja 2026-10-16 20:05:08, `node --test --test-timeout=900000 --test-force-exit` keluar 0 (327/327, 4m43s), sidik jari e2c5ebeab5daaba9beb3a12de906e96ca3436469. Run ini dibawa dan tidak diulang.
+  - `test-run.sh --review 261016141915 -- node --test` (Node 22.20, beban 1 menit ~15 saat mulai): keluar 0 setelah 4m31s. 327 uji, 327 lulus, tidak ada yang tergantung, dan tidak ada proses yang tertinggal.
+  - `explain.sh check`: belum ada penjelasan, dan `owner_explanation: off`. Repo ini tidak punya CLAUDE.md atau AGENTS.md.
+  - Kriteria 1 lulus: `uji/update-ticket.test.mjs` +21 uji mencakup pemangkasan order.md untuk keempat tujuan, grup kosong beserta lead-in dua baris, penggantian nama yang hanya mengubah baris tiket itu, dan penyisipan History (setelah baris terakhir, sebelum Notes, blok kode dilewati, penolakan tanpa perubahan).
+  - Kriteria 2 lulus: `uji/new-ticket.test.mjs` mencakup pembuatan bersamaan (8 x 3 putaran, ID unik dan berurutan), tiket ke-99 diterima dan ke-100 ditolak tanpa menulis apa pun, serta kunci basi dan kunci segar.
+  - Kriteria 3 lulus: `uji/test-run.test.mjs` mencakup berkas belum dilacak (ubah/tambah/hapus memberi DIFFERENT, indeks asli tidak tersentuh) dan isi yang berubah saat uji berjalan (empat varian memberi NO EVIDENCE dengan kode keluar perintah tetap diteruskan).
+  - Kriteria 4 lulus: README bagian "Running the tests" menyebut `node --test`, dan perintah itu lulus pada run peninjau di atas.
+  - Kriteria 5 lulus: sebelum 238 detik (282 uji), sesudah 283 detik (327 uji) tercatat di Notes 20:05. Run peninjau dengan `node --test` polos memakan 271 detik.
+  - Catatan, tidak menahan: angka "sebelum" diukur tanpa mencatat beban mesin, sedangkan angka "sesudah" diukur pada beban sekitar 22–33, jadi keduanya hanya kira-kira sebanding. Uji pembuatan bersamaan menerima penolakan "Could not lock" di bawah beban (lihat catatan 17:12). Karena itu uji ini hanya menjamin ID unik di antara pembuatan yang berhasil, dan minimal dua pembuatan harus lolos.
+  - Hanya dibaca, tidak dirusak sendiri (level quick): bahwa uji baru bisa merah. Bukti merusak skrip di Notes 16:55 dan 17:12 adalah klaim pengerja dan tidak diulang.
