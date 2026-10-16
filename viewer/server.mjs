@@ -7,6 +7,10 @@
 // --project only picks the address printed and opened: that project's kanban
 // rather than the front page.
 //
+// Tickets in progress and in review also show what their Claude Code agent is
+// doing, read from the logs under $CLAUDE_CONFIG_DIR (default ~/.claude)/projects;
+// see agen.mjs. Without those logs the board looks as it always did.
+//
 // Read-only: it never writes to any board. No dependencies beyond Node 18+.
 
 import path from 'node:path';

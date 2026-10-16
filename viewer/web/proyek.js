@@ -2,7 +2,8 @@ import { STATUSES, statusName, statusColor, getJson, liveIndicator } from './umu
 import { render, esc } from './markdown.js';
 import { readFilter, writeFilter, matches, columnOrder, choices, FILTER_KEYS, readHidden } from './saring.js';
 import { pills } from './pil.js';
-import { drawerHead, drawerFacts } from './laci.js';
+import { drawerHead, drawerFacts, drawerAgent, agentHeadHtml, agentBodyHtml } from './laci.js';
+import { agentLine, AGENT_STATUSES } from './agen.js';
 
 // The page lives at /<project>/, /<project>/tiket/<id> and /<project>/urutan
 // (order.md); everything it asks the server for is under /<project>/.
@@ -42,6 +43,9 @@ const state = {
   expanded: new Set(),
   hidden: loadHidden(),
   openId: null,
+  // The open ticket's agent, with its steps, and whether the step list is open.
+  openAgent: null,
+  stepsOpen: false,
 };
 
 document.title = `${project} — kerjaan`;
@@ -104,8 +108,11 @@ $('clear').addEventListener('click', () => {
 
 function card(t, rank) {
   const labels = t.labels.map((l) => `<span class="tag">${esc(l)}</span>`).join('');
+  const agent = AGENT_STATUSES.includes(t.status)
+    ? `<div class="agen-slot" data-agen-for="${t.id}">${t.agent ? agentLine(t.agent, t.status, Date.now()) : ''}</div>`
+    : '';
   return `<li><button class="card" data-id="${t.id}" aria-current="${t.id === state.openId}">
-    <div class="title">${esc(t.title)}</div>
+    <div class="title">${esc(t.title)}</div>${agent}
     <div class="meta">
       ${rank ? `<span class="rank" title="Urutan di order.md">#${rank}</span>` : ''}
       <span class="id">${t.id}</span>
@@ -294,8 +301,9 @@ async function showTicket(id, { keepScroll = false } = {}) {
   }
   if (state.openId !== id) return;
   const t = files[0];
+  state.openAgent = t.agent || null;
   $('drawer-head').innerHTML = drawerHead(t, drawerCtx);
-  body.innerHTML = drawerFacts(t, drawerCtx, { dup: files }) + render(t.body, { ticket: lookup, href: ticketHref });
+  body.innerHTML = drawerAgent(t, drawerCtx, { open: state.stepsOpen }) + drawerFacts(t, drawerCtx, { dup: files }) + render(t.body, { ticket: lookup, href: ticketHref });
   if (!keepScroll) drawer.classList.remove('scrolled');
   showFullTitle();
   body.scrollTop = scroll;
@@ -324,10 +332,70 @@ window.addEventListener('popstate', () => {
   else close({ push: false });
 });
 
+// ---------- agents ----------
+
+// Refills the agent slots on the cards and in the drawer. Run every second, so
+// "12 dtk lalu" counts on and a silent agent turns quiet without any event; a
+// slot is only written when what it shows has changed.
+function fill(el, html) {
+  if (el && el.dataset.shown !== html) {
+    el.innerHTML = html;
+    el.dataset.shown = html;
+  }
+}
+function refreshAgents() {
+  const now = Date.now();
+  for (const slot of document.querySelectorAll('[data-agen-for]')) {
+    const t = lookup(slot.dataset.agenFor);
+    fill(slot, t?.agent ? agentLine(t.agent, t.status, now) : '');
+  }
+  const t = state.openId && state.openId !== ORDER ? lookup(state.openId) : null;
+  if (!t) return;
+  const ctx = { ...drawerCtx, now: () => now };
+  const head = document.querySelector('#drawer-head [data-agen-head]');
+  const body = document.querySelector('#drawer-body [data-agen-body]');
+  fill(head, agentHeadHtml(t, state.openAgent, ctx));
+  fill(body, agentBodyHtml(t, state.openAgent, ctx, { open: state.stepsOpen }));
+}
+setInterval(refreshAgents, 1000);
+
+$('drawer-body').addEventListener('toggle', (e) => {
+  if (e.target.matches?.('details.agen-langkah')) state.stepsOpen = e.target.open;
+}, true);
+
+// The server says an agent moved: `data` holds each active ticket's agent,
+// without steps. The open ticket's steps are fetched again only when its agent
+// changed.
+async function agentsMoved(data) {
+  if (!state.board) return;
+  for (const t of state.board.tickets) {
+    if (!AGENT_STATUSES.includes(t.status)) continue;
+    if (data[t.id]) t.agent = data[t.id];
+    else delete t.agent;
+  }
+  const id = state.openId;
+  const t = id && id !== ORDER ? lookup(id) : null;
+  const mark = (x) => (x ? `${x.lastAt}|${x.ended}|${x.step?.at}` : '');
+  if (t && mark(t.agent) !== mark(state.openAgent)) {
+    try {
+      const got = await getJson(`${base}api/agen/${id}`);
+      if (state.openId === id) state.openAgent = got.agent;
+    } catch {
+      // keeps the steps it had
+    }
+  }
+  refreshAgents();
+}
+
 // ---------- live ----------
 
 const source = new EventSource(`${base}events`);
 liveIndicator($('live'), source);
+source.addEventListener('agen', (e) => {
+  let data;
+  try { data = JSON.parse(e.data); } catch { return; }
+  agentsMoved(data);
+});
 source.addEventListener('change', async () => {
   await load();
   if (state.openId === ORDER) showOrder({ keepScroll: true });

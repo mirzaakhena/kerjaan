@@ -6,7 +6,7 @@ labels: [viewer, ux, mandor]
 reporter: mirza
 assign_to: claude
 created: 2026-10-16 08:42:23
-updated: 2026-10-16 09:13:10
+updated: 2026-10-16 09:57:49
 related: [261016084201, 261011064201]
 blocked_by: [261016084201]
 ---
@@ -53,14 +53,14 @@ Usulan tampilan (pelaksana boleh mengubah rinciannya selama hasilnya sama):
   "in progress".
 
 ## Done when
-- [ ] Saat seorang worker mengerjakan sebuah tiket, kartunya di kolom "in progress" menunjukkan jenis agen, langkah terakhirnya, dan berapa lama yang lalu langkah itu terjadi
-- [ ] Baris itu berganti sendiri dalam beberapa detik setelah agen melangkah lagi, tanpa memuat ulang halaman
-- [ ] Hal yang sama berlaku untuk reviewer pada tiket di kolom "review"
-- [ ] Laci tiket menampilkan sekitar 15 langkah terakhir agen beserta jamnya, dan sudah berapa lama agen itu berjalan
-- [ ] Agen yang tidak melangkah selama beberapa menit ditandai berbeda dari agen yang baru saja melangkah, dan agen yang sudah berhenti sementara tiketnya masih di "in progress" ditandai paling mencolok
-- [ ] Isi perintah dan hasil langkah tidak pernah tampil di papan, hanya keterangan langkahnya
-- [ ] Tiket tanpa catatan agen, atau bila catatan Claude Code tidak bisa dibaca atau formatnya berubah, tampil seperti sekarang tanpa pesan galat
-- [ ] Pemeriksaan proyek (`node --test`) lulus, termasuk uji yang memakai contoh catatan agen buatan
+- [x] Saat seorang worker mengerjakan sebuah tiket, kartunya di kolom "in progress" menunjukkan jenis agen, langkah terakhirnya, dan berapa lama yang lalu langkah itu terjadi
+- [x] Baris itu berganti sendiri dalam beberapa detik setelah agen melangkah lagi, tanpa memuat ulang halaman
+- [x] Hal yang sama berlaku untuk reviewer pada tiket di kolom "review"
+- [x] Laci tiket menampilkan sekitar 15 langkah terakhir agen beserta jamnya, dan sudah berapa lama agen itu berjalan
+- [ ] Agen yang tidak melangkah selama beberapa menit ditandai berbeda dari agen yang baru saja melangkah, dan agen yang sudah berhenti sementara tiketnya masih di "in progress" ditandai paling mencolok — menunggu mirza: skenario uji manual di Notes
+- [x] Isi perintah dan hasil langkah tidak pernah tampil di papan, hanya keterangan langkahnya
+- [x] Tiket tanpa catatan agen, atau bila catatan Claude Code tidak bisa dibaca atau formatnya berubah, tampil seperti sekarang tanpa pesan galat
+- [x] Pemeriksaan proyek (`node --test`) lulus, termasuk uji yang memakai contoh catatan agen buatan
 
 ## History
 - 2026-10-16 08:42:23 todo
@@ -92,3 +92,120 @@ Usulan tampilan (pelaksana boleh mengubah rinciannya selama hasilnya sama):
   ponsel, kesan visual) ditunda: worker menulis skenario uji manual di Notes,
   rantai tidak menunggu. Tingkat review `normal`. Usulan tata letak di Request
   dipakai.
+- Pelaksanaan worker, 2026-10-16:
+  - Kode: `viewer/agen.mjs` (baru, sisi server: membaca catatan Claude Code),
+    `viewer/web/agen.js` (baru, murni: keadaan, warna, baris kartu, daftar
+    langkah), `viewer/app.mjs` (agen di `api/papan` tanpa daftar langkah, di
+    `api/tiket/<ID>` dengan daftar langkah, `api/agen/<ID>` baru, `event: agen`
+    di SSE, `agen.js` di `ASSETS`), `viewer/web/laci.js` (baris agen di bagian
+    diam setelah `.sekilas`; `drawerAgent` sebagai blok pertama bagian
+    bergulir), `viewer/web/proyek.js`, `viewer/web/gaya.css`. Uji:
+    `viewer/uji/agen.test.mjs`, `viewer/uji/agen-papan.test.mjs`, pembantu
+    catatan buatan di `viewer/uji/bantu.mjs`.
+  - Folder catatan: `$CLAUDE_CONFIG_DIR` (bawaan `~/.claude`) `/projects/`
+    + path proyek dengan setiap karakter selain huruf dan angka menjadi "-".
+    Dipastikan dari folder yang ada: `/Users/mirza/.claude` →
+    `-Users-mirza--claude` (titik ikut menjadi "-"). Garis bawah tidak punya
+    contoh di mesin ini (`shinobi_mobile` tidak punya folder catatan), jadi
+    diperlakukan dengan aturan yang sama. Nama >200 karakter dicocokkan dari
+    200 karakter awalnya — tebakan tanpa contoh. `createViewer({ root,
+    claudeDir })` menerima folder lain; `startViewer` di uji memakai folder
+    yang tidak ada bila tidak diberi, jadi uji tidak pernah membaca `~/.claude`.
+  - Batas yang diketahui: hanya sesi Claude Code yang dimulai di folder proyek
+    itu sendiri yang terbaca. Mandor yang dimulai di folder lain (folder induk,
+    worktree) tidak terlihat di papan.
+  - Agen sebuah tiket: ID 12 digit di `description` meta; cadangannya baris
+    `Ticket:` di prompt pertama. Dari beberapa agen, yang tanda hidup
+    terakhirnya paling baru — bukan yang paling baru dimulai — supaya worker
+    yang dilanjutkan setelah ditolak menang atas reviewer yang sudah selesai.
+  - Akhir agen: `SubagentHandback`, atau pesan penutup dengan `stop_reason:
+    end_turn` (2.1.300 menulis teks penutup sesudah laporan), atau
+    `finished: true` di meta (ada di 2.1.301, tidak di 2.1.300; diabaikan bila
+    catatan masih ditulis sesudah meta) → selesai. `[Request interrupted by
+    user` → dihentikan. Langkah baru sesudah selesai → bekerja lagi.
+  - Penanda (dihitung di halaman, terhadap jam halaman, jadi berubah tanpa ada
+    yang ditulis): hijau bila tanda hidup terakhir < 2 menit; kuning 2–20 menit
+    ("diam"); merah bila dihentikan, bila ≥ 20 menit tanpa kabar ("tidak ada
+    kabar": proses Claude Code mati tanpa penanda), atau bila agen selesai
+    sementara tiket masih di in progress ("berhenti", mis. STOPPED — decision).
+    Merah = latar merah muda pada baris dan tepi kartu merah. Agen selesai pada
+    tiket di review: abu-abu "selesai" (worker menunggu reviewer). Merah juga
+    dipakai untuk reviewer yang dihentikan di review, tidak hanya in progress.
+  - Keterangan langkah disaring di server (`stepLabel` di `viewer/agen.mjs`):
+    hanya `input.description`, atau `file_path`/`notebook_path` (relatif ke
+    proyek, atau nama berkas saja bila di luar). Alat lain hanya namanya:
+    Grep/Glob tanpa pola, WebFetch tanpa URL, Bash tanpa description hanya
+    "Bash". Prompt, teks, pikiran, dan hasil tidak pernah dibaca ke luar
+    (kecuali ID tiket dari baris `Ticket:`).
+  - Pembaruan langsung: selama ada halaman terbuka, server memeriksa catatan
+    tiap 2 dtk (hanya stat; yang dibaca hanya bagian yang bertambah) dan
+    mengirim `event: agen` hanya bila ada yang berubah. Halaman memperbarui
+    "x lalu" dan warna tiap detik, di tempat, tanpa menggambar ulang kartu
+    (fokus kartu tidak hilang).
+  - Laci: daftar langkah berupa `<details>`, tertutup mula-mula, terbaru di
+    atas (jam, alat, keterangan); ringkasannya "15 langkah terakhir worker ·
+    mulai 09:13:31 · berjalan 42 mnt" (atau "bekerja N mnt" bila selesai).
+    Keadaan buka/tutup bertahan saat diperbarui. Bagian diam dengan baris agen
+    tetap ≤ seperlima tinggi laci di 1280×800 dan 390×844 (diuji).
+  - Dicoba di catatan sungguhan (hanya baca): papan kerjaan menampilkan worker
+    tiket ini sendiri ("jalan", langkah terakhir, 2 dtk lalu); papan
+    nukitu-mockup menampilkan worker 261016090101. Membaca semua agen
+    nukitu-mockup (264 tiket) pertama kali ≈ 1 dtk, berikutnya ≈ 7 md; papan
+    hanya membaca agen tiket in progress/review.
+  - Bukti uji bisa merah (laporan worker; tiap penjaga dirusak di salinan,
+    uji dijalankan, berkas dikembalikan dari salinan):
+    - keterangan dari `input.command`, atau dari `pattern`/`url` → merah: uji
+      "keterangan langkah…", "isi perintah, hasil, … tidak pernah keluar dari
+      server", kartu dan laci.
+    - penanda dihentikan dimatikan; laporan diserahkan tidak dianggap selesai;
+      langkah baru tidak membatalkan selesai; `end_turn` diabaikan; meta
+      `finished` diabaikan; meta `finished` tanpa cek waktu → merah: "akhir
+      agen…", "agen yang lama dihentikan kalah…", "penanda…" (peramban).
+    - agen pertama ditemukan dipakai alih-alih yang terakhir aktif → merah:
+      "agen per tiket…", "agen yang lama dihentikan kalah…".
+    - saringan ID yang diminta dibuang → mula-mula HIJAU (deskripsi satu ID
+      sudah tersaring lebih awal); ditambah uji "agen yang menyebut beberapa
+      tiket…", lalu merah.
+    - agen tanpa waktu diterima; jendela ekor tidak membesar; baris setengah
+      jadi dibaca; cadangan baris `Ticket:` dibuang; pengodean hanya "/" →
+      merah di uji masing-masing.
+    - semua lapis try/catch di `agen.mjs` dibuang sekaligus → merah: uji
+      catatan rusak/tak terbaca di server dan peramban (tiap lapis sendiri
+      tertutup lapis lain, sengaja).
+    - saringan status di `api/papan`, `api/tiket`, `api/agen`; daftar langkah
+      ikut ke kartu → merah: "kanban: …", "isi tiket dan api/agen…".
+    - kiriman `event: agen` dimatikan; halaman tidak mendengarkannya; laci
+      tidak mengambil langkah baru; penghitung tiap detik dimatikan → merah:
+      "agen melangkah: …", "kartu: berganti sendiri…", uji laci.
+    - ambang 2 menit dan 20 menit, selesai-di-in-progress, dihentikan di
+      `agentState` → merah: uji murni "penanda…" dan uji peramban "penanda…".
+    - latar merah, tepi kartu merah, warna kuning dihapus dari CSS → latar dan
+      tepi merah; warna kuning mula-mula HIJAU (uji hanya menghitung warna
+      berbeda); uji diubah membandingkan tiap titik dengan `--agen-jalan`,
+      `--agen-diam`, `--agen-berhenti`, lalu merah.
+    - baris agen pada kartu tidak digambar saat kartu dibuat → mula-mula HIJAU
+      (penghitung tiap detik mengisinya); uji kini mencatat lewat
+      MutationObserver apakah baris ada saat kartu pertama muncul, lalu merah.
+    - baris agen di bagian diam laci dikosongkan; daftar langkah tidak tetap
+      terbuka; `agen.js` tidak di `ASSETS` → merah di uji laci/kartu.
+  - Skenario uji manual (menunggu mirza; kesan penanda warna, terang/gelap):
+    1. Jalankan `node viewer/server.mjs --scan ~/Workspace --project kerjaan
+       --open` dari akar repo ini.
+    2. Dari sesi Claude Code di `~/Workspace/kerjaan`, pindahkan satu tiket ke
+       in progress dan kirim worker kerjaan untuknya (mis. "kerjakan tiket
+       <ID>").
+    3. Lihat kartunya di kolom in progress: di bawah judul ada titik hijau
+       berdenyut, "worker", langkah terakhir, dan "N dtk lalu" yang terus
+       bertambah; langkah berganti sendiri dalam beberapa detik.
+    4. Buka kartunya: baris yang sama ada di bagian atas laci; buka "15 langkah
+       terakhir worker" dan lihat jam, alat, keterangan, serta "berjalan N mnt".
+    5. Hentikan worker itu (Esc di sesi mandor, atau hentikan agennya): dalam
+       beberapa detik kartu berubah merah ("dihentikan"), dengan tepi kartu
+       merah, dan tetap paling menonjol di antara kartu lain.
+    6. Biarkan sebuah agen menunggu > 2 menit tanpa langkah (mis. saat uji
+       panjang berjalan): titik dan kata "diam" kuning, tanpa latar.
+    7. Ulangi 3–6 dengan sistem diubah ke tema gelap: hijau, kuning, merah,
+       dan abu-abu tetap mudah dibedakan dan terbaca.
+    Yang harus terlihat: hijau = sedang bekerja, kuning = diam, merah = berhenti
+    sementara tiket masih menunggu; merah paling mencolok di kedua tema.
+- 2026-10-16 09:57:49: test run — `node --test` exited 0 after 0m22s, on content fingerprint 80a5ad64efbc10d3e37bebe1e3d902459c0d2330 (the same before and after the run; .kerjaan/ left out).

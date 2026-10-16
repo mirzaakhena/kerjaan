@@ -22,8 +22,10 @@ export function tempRoot() {
   return fs.mkdtempSync(path.join(os.tmpdir(), 'kerjaan-viewer-'));
 }
 
-export async function startViewer(root) {
-  const server = createViewer({ root });
+// claudeDir defaults to a folder that does not exist, so no test ever reads
+// the real ~/.claude.
+export async function startViewer(root, { claudeDir = path.join(root, '.tidak-ada-claude') } = {}) {
+  const server = createViewer({ root, claudeDir });
   await new Promise((r) => server.listen(0, '127.0.0.1', r));
   const base = `http://127.0.0.1:${server.address().port}`;
   return {
@@ -58,3 +60,34 @@ export function listenEvents(url, until, ms = 4000) {
     resolve.req = req;
   });
 }
+
+// ---------- made-up Claude Code agent logs ----------
+// Shaped like what Claude Code 2.1.30x writes: see viewer/agen.mjs.
+
+export const encodeProject = (dir) => dir.replace(/[^a-zA-Z0-9]/g, '-');
+
+const iso = (at) => new Date(at).toISOString();
+
+// Log lines. `at` is a time in ms.
+export const line = {
+  prompt: (at, text) => ({ parentUuid: null, isSidechain: true, type: 'user', message: { role: 'user', content: text }, timestamp: iso(at) }),
+  step: (at, name, input = {}) => ({ isSidechain: true, type: 'assistant', message: { role: 'assistant', content: [{ type: 'tool_use', id: `toolu_${at}`, name, input }], stop_reason: null }, timestamp: iso(at) }),
+  think: (at, thinking) => ({ type: 'assistant', message: { role: 'assistant', content: [{ type: 'thinking', thinking, signature: 'x' }] }, timestamp: iso(at) }),
+  say: (at, text, stop = null) => ({ type: 'assistant', message: { role: 'assistant', content: [{ type: 'text', text }], stop_reason: stop }, timestamp: iso(at) }),
+  result: (at, text) => ({ type: 'user', message: { role: 'user', content: [{ tool_use_id: 'toolu_x', type: 'tool_result', content: [{ type: 'text', text }] }] }, toolUseResult: { stdout: text }, timestamp: iso(at) }),
+  interrupt: (at) => ({ type: 'user', message: { role: 'user', content: [{ type: 'text', text: '[Request interrupted by user]' }] }, timestamp: iso(at) }),
+  request: (at, body) => ({ type: 'api-request', timestamp: iso(at), params: { messages: body } }),
+};
+
+// Writes one agent's pair of files; returns the log's path, for appending.
+export function agentLog(claudeDir, projectDir, { session = 'sesi-1', id, agentType = 'kerjaan:kerjaan-worker', description, finished, lines = [], meta } = {}) {
+  const dir = path.join(claudeDir, 'projects', encodeProject(projectDir), session, 'subagents');
+  fs.mkdirSync(dir, { recursive: true });
+  const m = meta ?? JSON.stringify({ agentType, launchedWithDefaults: true, description, toolUseId: 'toolu_1', spawnDepth: 1, ...(finished ? { finished: true } : {}) });
+  fs.writeFileSync(path.join(dir, `agent-${id}.meta.json`), m);
+  const log = path.join(dir, `agent-${id}.jsonl`);
+  fs.writeFileSync(log, lines.map((l) => (typeof l === 'string' ? l : JSON.stringify(l)) + '\n').join(''));
+  return log;
+}
+
+export const appendLog = (log, ...lines) => fs.appendFileSync(log, lines.map((l) => JSON.stringify(l) + '\n').join(''));

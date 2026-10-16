@@ -18,6 +18,10 @@
   --low: #767ca6;
   --warn-bg: #fff4e0;
   --warn-ink: #8a5300;
+  --agen-jalan: #138f67;
+  --agen-diam: #a87a00;
+  --agen-berhenti: #d1342f;
+  --stop-bg: #fde8e6;
   --shadow: 0 6px 24px rgba(20, 30, 55, 0.12);
   --sans: "IBM Plex Sans Condensed", "Arial Narrow", ui-sans-serif, system-ui, sans-serif;
   --text: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
@@ -45,6 +49,10 @@
     --low: #9ba1c9;
     --warn-bg: #3a2a10;
     --warn-ink: #ffcf87;
+    --agen-jalan: #3fcf9d;
+    --agen-diam: #f2c94c;
+    --agen-berhenti: #ff6b5e;
+    --stop-bg: #4a1714;
     --shadow: 0 8px 30px rgba(0, 0, 0, 0.45);
     color-scheme: dark;
   }
@@ -177,6 +185,49 @@ button, input, select { font: inherit; color: inherit; }
 .col .none { color: var(--muted); font-size: 12px; padding: 4px 4px 8px; }
 .more { border: 0; background: none; color: var(--accent); cursor: pointer; padding: 6px; font-size: 12px; }
 
+/* ---------- the agent on a ticket ---------- */
+/* One line: dot, kind, state, last step (cut short when it does not fit), and
+   how long ago, which always stays in view. Green while the agent works,
+   yellow once it has been quiet a few minutes, red when it has stopped and
+   the ticket is still waiting on it; grey when it finished its part. */
+.agen-slot:empty, .agen-baris:empty, .agen-blok:empty { display: none; }
+.card .agen-slot { margin-top: 5px; }
+.agen {
+  --tone: var(--faint);
+  display: flex; align-items: center; gap: 0 6px; min-width: 0;
+  font-size: 11.5px; line-height: 1.5; color: var(--muted); white-space: nowrap;
+}
+.agen.jalan { --tone: var(--agen-jalan); }
+.agen.diam { --tone: var(--agen-diam); }
+.agen.berhenti { --tone: var(--agen-berhenti); background: var(--stop-bg); color: var(--ink); border-radius: 4px; padding: 0 6px; margin: 0 -6px; }
+.agen .titik { flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--tone); }
+.agen.selesai .titik { background: none; border: 1.5px solid var(--faint); }
+.agen .jenis { flex: none; font-weight: 600; color: var(--ink); }
+.agen .keadaan { flex: none; font-weight: 600; color: var(--tone); }
+.agen.selesai .keadaan { color: var(--muted); }
+.agen .langkah { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.agen .keadaan::before, .agen .langkah::before { content: "·"; margin-right: 6px; color: var(--muted); font-weight: 400; }
+.agen .lalu { flex: none; margin-left: auto; font-variant-numeric: tabular-nums; }
+.agen.jalan .titik { animation: denyut 1.6s ease-in-out infinite; }
+@keyframes denyut { 50% { opacity: .35; } }
+@media (prefers-reduced-motion: reduce) { .agen.jalan .titik { animation: none; } }
+.card:has(.agen.berhenti) { border-color: var(--agen-berhenti); box-shadow: inset 3px 0 0 var(--agen-berhenti); }
+.drawer .agen-baris { margin-top: 5px; }
+.drawer .agen-baris .agen { font-size: 12px; }
+.drawer .agen-blok { margin: 12px 0 0; }
+.drawer .agen-langkah { font: 12.5px/1.45 var(--sans); border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; }
+.drawer .agen-langkah summary { cursor: pointer; font-weight: 600; overflow-wrap: anywhere; }
+.drawer .agen-langkah summary .muted { font-weight: 400; }
+.drawer .agen-langkah ol { list-style: none; margin: 6px 0 2px; padding: 0; }
+.drawer .agen-langkah li {
+  display: grid; grid-template-columns: max-content minmax(0, 8em) minmax(0, 1fr); gap: 10px;
+  margin: 0; padding: 2px 0; border-top: 1px solid var(--line);
+}
+.drawer .agen-langkah li.muted { display: block; }
+.drawer .agen-langkah time { font: 11.5px/1.6 var(--mono); color: var(--muted); }
+.drawer .agen-langkah .alat { font: 11.5px/1.6 var(--mono); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.drawer .agen-langkah .ket { overflow-wrap: anywhere; }
+
 /* ---------- ticket drawer ---------- */
 .drawer {
   position: fixed; top: 0; right: 0; bottom: 0; z-index: 20;
@@ -264,4 +315,5 @@ button, input, select { font: inherit; color: inherit; }
 }
 @media (max-width: 480px) {
   .drawer .facts { grid-template-columns: minmax(0, 1fr); }
+  .drawer .agen-langkah li { grid-template-columns: max-content minmax(0, 4.5em) minmax(0, 1fr); gap: 8px; }
 }

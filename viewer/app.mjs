@@ -12,9 +12,14 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { STATUSES, readBoard, watchBoard } from '../skills/kerjaan/scripts/board.mjs';
+import { readAgents, summary, defaultClaudeDir } from './agen.mjs';
+import { AGENT_STATUSES } from './web/agen.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const web = path.join(here, 'web');
+
+// How often, while a page is open, the agents' logs are looked at.
+const AGENT_POLL = 2000;
 
 const ASSETS = {
   'gaya.css': 'text/css; charset=utf-8',
@@ -24,6 +29,7 @@ const ASSETS = {
   'saring.js': 'text/javascript; charset=utf-8',
   'pil.js': 'text/javascript; charset=utf-8',
   'laci.js': 'text/javascript; charset=utf-8',
+  'agen.js': 'text/javascript; charset=utf-8',
   'umum.js': 'text/javascript; charset=utf-8',
 };
 
@@ -62,19 +68,49 @@ function notFound(res, what) {
   send(res, 404, 'text/html; charset=utf-8', html);
 }
 
+// The tickets an agent may be at work on: those in progress or in review,
+// by ID, read off the file names alone.
+function activeIds(project) {
+  const ids = new Map();
+  for (const status of AGENT_STATUSES) {
+    try {
+      for (const f of fs.readdirSync(path.join(project.board, status))) {
+        const id = f.match(/^(\d{12})\b.*\.md$/)?.[1];
+        if (id && !ids.has(id)) ids.set(id, status);
+      }
+    } catch {
+      // A missing status folder simply holds nothing.
+    }
+  }
+  return ids;
+}
+
+const projectDir = (project) => path.dirname(project.board);
+
+// The agents on a project's active tickets: Map<id, agent>, or empty when
+// Claude Code's logs are missing or unreadable.
+const agentsOf = (project, claudeDir) => readAgents(projectDir(project), { claudeDir, ids: [...activeIds(project).keys()] });
+
 // The kanban needs every card but no ticket's full text; the text is fetched
-// one ticket at a time when a card is opened.
-function boardSummary(project) {
+// one ticket at a time when a card is opened. Tickets in progress or in review
+// carry what their agent last did, without the step list.
+function boardSummary(project, claudeDir) {
   const data = readBoard(project.board);
+  const agents = agentsOf(project, claudeDir);
   return {
     name: project.name,
     readAt: data.readAt,
     statuses: STATUSES,
     hasOrder: data.hasOrder,
     order: data.order,
-    tickets: data.tickets.map(({ body, meta, ...t }) => t),
+    tickets: data.tickets.map(({ body, meta, ...t }) => {
+      const a = AGENT_STATUSES.includes(t.status) && agents.get(t.id);
+      return a ? { ...t, agent: summary(a) } : t;
+    }),
   };
 }
+
+const agentSummaries = (project, claudeDir) => Object.fromEntries([...agentsOf(project, claudeDir)].map(([id, a]) => [id, summary(a)]));
 
 function counts(project) {
   const n = Object.fromEntries(STATUSES.map((s) => [s, 0]));
@@ -88,7 +124,9 @@ function counts(project) {
   return n;
 }
 
-export function createViewer({ root }) {
+// claudeDir: where Claude Code keeps its logs (its `projects/` folder is read);
+// the tests point it at a made-up one.
+export function createViewer({ root, claudeDir = defaultClaudeDir() }) {
   // One watcher per project, alive only while somebody is listening.
   const listeners = new Map();
 
@@ -102,9 +140,19 @@ export function createViewer({ root }) {
     let entry = listeners.get(project.board);
     if (!entry) {
       const clients = new Set();
-      const stop = watchBoard(project.board, () => {
+      const unwatch = watchBoard(project.board, () => {
         for (const c of clients) c.write('event: change\ndata: {}\n\n');
       });
+      // Agents write to Claude Code's logs, not to the board, so those are
+      // looked at every AGENT_POLL ms; the page hears only of a change.
+      let last = JSON.stringify(agentSummaries(project, claudeDir));
+      const poll = setInterval(() => {
+        const now = JSON.stringify(agentSummaries(project, claudeDir));
+        if (now === last) return;
+        last = now;
+        for (const c of clients) c.write(`event: agen\ndata: ${now}\n\n`);
+      }, AGENT_POLL);
+      const stop = () => { clearInterval(poll); unwatch(); };
       entry = { clients, stop };
       listeners.set(project.board, entry);
     }
@@ -156,7 +204,7 @@ export function createViewer({ root }) {
     if (at === '') return page(res, 'proyek.html');
     if (rest[0] === 'tiket' && rest.length === 2 && /^\d{12}$/.test(rest[1])) return page(res, 'proyek.html');
     if (at === 'urutan') return page(res, 'proyek.html');
-    if (at === 'api/papan') return json(res, boardSummary(project));
+    if (at === 'api/papan') return json(res, boardSummary(project, claudeDir));
     if (at === 'api/urutan') {
       const file = path.join(project.board, 'order.md');
       if (!fs.existsSync(file)) return send(res, 404, 'application/json; charset=utf-8', JSON.stringify({ error: 'tidak ada' }));
@@ -165,7 +213,11 @@ export function createViewer({ root }) {
     if (rest[0] === 'api' && rest[1] === 'tiket' && rest.length === 3 && /^\d{12}$/.test(rest[2])) {
       const ticket = readBoard(project.board).tickets.filter((t) => t.id === rest[2]);
       if (ticket.length === 0) return send(res, 404, 'application/json; charset=utf-8', JSON.stringify({ error: 'tidak ada' }));
-      return json(res, ticket);
+      const a = AGENT_STATUSES.includes(ticket[0].status) && agentsOf(project, claudeDir).get(rest[2]);
+      return json(res, a ? [{ ...ticket[0], agent: a }, ...ticket.slice(1)] : ticket);
+    }
+    if (rest[0] === 'api' && rest[1] === 'agen' && rest.length === 3 && /^\d{12}$/.test(rest[2])) {
+      return json(res, { agent: activeIds(project).has(rest[2]) ? agentsOf(project, claudeDir).get(rest[2]) || null : null });
     }
     if (at === 'events') return listen(project, req, res);
     return notFound(res, 'Halaman ini');

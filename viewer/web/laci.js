@@ -5,10 +5,21 @@
 // part that scrolls, above Background, so no fact leaves the drawer.
 //
 // Pure: no DOM, so the tests run it in Node. `ctx` carries what depends on the
-// page: { lookup(id) -> ticket|null, href(id) -> url, statusName, statusColor }.
+// page: { lookup(id) -> ticket|null, href(id) -> url, statusName, statusColor,
+// now() -> ms (optional) }.
+//
+// A ticket in progress or in review also shows its agent: one line in the
+// fixed head, and its last steps first thing in the scrolling part. Both sit
+// in slots the page refills as the agent works (see agen.js).
 
 import { esc } from './markdown.js';
 import { pills } from './pil.js';
+import { agentLine, agentSteps, AGENT_STATUSES } from './agen.js';
+
+const nowOf = (ctx) => (ctx.now ? ctx.now() : Date.now());
+
+export const agentHeadHtml = (t, a, ctx) => (a ? agentLine(a, t.status, nowOf(ctx)) : '');
+export const agentBodyHtml = (t, a, ctx, { open = false } = {}) => (a ? agentSteps(a, t.status, nowOf(ctx), { open }) : '');
 
 // The fixed head: one row with status, ID and the close button, the title
 // (clamped by the stylesheet), and one row of status-at-a-glance.
@@ -28,7 +39,13 @@ export function drawerHead(t, ctx) {
       ${t.priority ? `<span class="prio ${esc(t.priority)}" title="Prioritas">${esc(t.priority)}</span>` : '<span class="muted" title="Prioritas">—</span>'}
       <span class="review" title="Tingkat review"><span class="muted">review</span> ${esc(t.review) || '<span class="muted">quick</span>'}</span>
       ${items.length ? `<span class="kemajuan">${pills(items, { className: 'progress' })}${count}</span>` : ''}
-    </div>`;
+    </div>${AGENT_STATUSES.includes(t.status) ? `
+    <div class="agen-baris" data-agen-head>${agentHeadHtml(t, t.agent, ctx)}</div>` : ''}`;
+}
+
+// The agent's last steps, first in the scrolling part; folded unless `open`.
+export function drawerAgent(t, ctx, { open = false } = {}) {
+  return AGENT_STATUSES.includes(t.status) ? `<div class="agen-blok" data-agen-body>${agentBodyHtml(t, t.agent, ctx, { open })}</div>` : '';
 }
 
 const refLinks = (ids, ctx) =>
