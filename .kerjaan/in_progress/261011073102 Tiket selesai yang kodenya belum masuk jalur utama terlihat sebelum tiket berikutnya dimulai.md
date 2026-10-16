@@ -6,7 +6,7 @@ labels: []
 reporter: mirza
 assign_to: claude
 created: 2026-10-11 07:31:49
-updated: 2026-10-16 14:11:03
+updated: 2026-10-16 14:13:45
 related: [261006121504]
 blocked_by: []
 ---
@@ -57,3 +57,4 @@ masuk jalur utama, tanpa harus menunggu ada yang memulai tiket baru.
 - 2026-10-16 Bukti uji bisa merah (`viewer/uji/gabung.test.mjs`), tiap rusakan dipulihkan dari salinan: (1) syarat status done di app.mjs dihapus -> uji 3, 4, 9 merah; (2) pengecualian long_lived dihapus -> 3, 4, 6, 9 merah; (3) cek `.git` dihapus -> 8 merah (proyek bukan repo meminjam cabang repo induk); (4) `--no-merged=HEAD` dihapus -> 3, 4, 6, 7, 9 merah; (5) kiriman `change` dari pemeriksaan cabang dimatikan -> 7 dan 10 (peramban) merah; (6) galat git dilempar alih-alih dibaca kosong -> 8 merah; (7) warna tanda diganti -> 9 merah; (8) baris tanda di kartu dihapus -> 9, 10 merah. Pemeriksaan "ada tiket done" sebelum memanggil git hanya penghemat, tidak dijaga uji.
 - 2026-10-16 Diperiksa sendiri di Chrome headless (lebar 1280 dan ponsel 375, terang dan gelap; `GABUNG_SHOT=<awalan>` menyimpan gambarnya): tanda terbaca di keempatnya, tetap di dalam kartu, nama cabang panjang patah di dalam kartu tanpa gulir samping, hanya kartu done yang cabangnya belum digabung yang bertanda.
 - 2026-10-16 14:11:03: test run — `node --test` exited 0 after 2m12s, on content fingerprint a932eacce2c682104cde7207f71c5ee313d8d51b (the same before and after the run; .kerjaan/ left out). Waited 0m39s for the test lock first, held by another run (ticket 261016130801, slot 1, /Users/mirza/Workspace/kerjaan-catatan-gabung).
+- 2026-10-16 14:13:45: test run — `node --test` exited 0 after 2m27s, on content fingerprint 4060d88317cf0d23c98beff11ecf88b87969f9df (the same before and after the run; .kerjaan/ left out).
