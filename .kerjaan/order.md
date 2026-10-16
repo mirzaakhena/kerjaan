@@ -2,7 +2,6 @@ Batch penilaian skill (sesi a192c9e8). 261016141916 tidak ada di sini: tiket kep
 
 **Dua perbaikan skrip dan riwayat bersesi lebih dulu, karena semua tiket sesudahnya menulis ke tiket lewat kode ini, dan pemilik memprioritaskan riwayat bersesi.** Ketiganya tidak saling menunggu hasil; 261016141901 dan 261016141902 sama-sama mengubah lib.sh, update-ticket.sh, test-run.sh, uji/update-ticket.test.mjs dan uji/test-run.test.mjs, dan 261016144601 berbagi update-ticket.sh dan uji/update-ticket.test.mjs dengan keduanya, jadi 261016141901 digabung lebih dulu, lalu 261016144601 digabung sebelum 261016141902.
 
-- 261016141901 Teks bergaris miring terbalik tersimpan utuh di tiket
 - 261016141902 Pekerjaan berdampingan yang mulai bersamaan tidak saling menimpa catatan papan
 - 261016144601 Setiap baris riwayat tiket mencatat sesi Claude Code yang memindahkannya
 
