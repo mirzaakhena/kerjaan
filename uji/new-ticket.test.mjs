@@ -1,12 +1,14 @@
 // new-ticket.sh: the first ## History line of a new ticket names the Claude
-// Code session that created it, and only when there is one.
+// Code session that created it, and only when there is one; IDs stay unique
+// when tickets are created at once, a minute holds at most 99, and a lock left
+// behind by a dead process does not block the board forever.
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { spawnSync } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -47,3 +49,113 @@ for (const [where, session] of [['with no CLAUDE_CODE_SESSION_ID', undefined], [
     assert.deepEqual(history, [`- ${created} backlog`]);
   });
 }
+
+// Choosing the ID. The minute an ID starts with is pinned by a `date` on PATH
+// that answers new-ticket.sh's one question about it with a fixed minute and
+// passes everything else to the real one, so a test never straddles a minute
+// boundary.
+const MINUTE = '2610161200';
+
+function pinnedEnv() {
+  const bin = fs.mkdtempSync(path.join(os.tmpdir(), 'kerjaan-date-'));
+  const real = spawnSync('bash', ['-c', 'command -v date'], { encoding: 'utf8' }).stdout.trim();
+  fs.writeFileSync(path.join(bin, 'date'),
+    `#!/bin/sh\nif [ "$1" = "+%y%m%d%H%M" ]; then echo ${MINUTE}; else exec ${real} "$@"; fi\n`, { mode: 0o755 });
+  const env = { ...process.env, PATH: `${bin}:${process.env.PATH}` };
+  delete env.CLAUDE_CODE_SESSION_ID;
+  return env;
+}
+
+function createPinned(root, title = 'Sebuah tiket', status = 'backlog') {
+  const r = spawnSync('bash', [create, status, title], { cwd: root, encoding: 'utf8', env: pinnedEnv() });
+  return { code: r.status, out: r.stdout.trim(), err: r.stderr };
+}
+
+function createPinnedAsync(root, title, env) {
+  return new Promise((resolve) => {
+    const child = spawn('bash', [create, 'todo', title], { cwd: root, env });
+    let out = '';
+    let err = '';
+    child.stdout.on('data', (d) => { out += d; });
+    child.stderr.on('data', (d) => { err += d; });
+    child.on('close', (code) => resolve({ code, out: out.trim(), err }));
+  });
+}
+
+const allTickets = (root) => ['backlog', 'todo', 'in_progress', 'review', 'done', 'cancel']
+  .flatMap((s) => fs.readdirSync(path.join(root, '.kerjaan', s)).filter((f) => f.endsWith('.md')));
+const placeholder = (root, status, name) => fs.writeFileSync(path.join(root, '.kerjaan', status, name), '');
+
+// new-ticket.sh waits about four seconds for its lock and then gives up out
+// loud; on a machine under heavy load some of the creations below can reach
+// that limit. Giving up that way is allowed. Anything else is not: another
+// failure, two tickets sharing an ID, or a gap in the numbering.
+test('tickets created at the same moment each get their own ID, numbered on from 01', async () => {
+  for (let round = 0; round < 3; round++) {
+    const root = board();
+    const env = pinnedEnv();
+    const n = 8;
+    const runs = await Promise.all(Array.from({ length: n }, (_, i) => createPinnedAsync(root, `Tiket ${i}`, env)));
+    const made = runs.filter((r) => r.code === 0);
+    for (const r of runs.filter((x) => x.code !== 0)) {
+      assert.equal(r.code, 1, r.err);
+      assert.match(r.err, /^Could not lock /, r.err);
+      assert.equal(r.out, '');
+    }
+    assert.ok(made.length >= 2, `only ${made.length} of ${n} creations got through in round ${round}`);
+    const ids = made.map((r) => path.basename(r.out).slice(0, 12)).sort();
+    const want = Array.from({ length: made.length }, (_, i) => `${MINUTE}${String(i + 1).padStart(2, '0')}`);
+    assert.deepEqual(ids, want, `round ${round}`);
+    assert.equal(allTickets(root).length, made.length);
+    assert.equal(fs.existsSync(path.join(root, '.kerjaan', '.lock')), false, 'the lock is released');
+  }
+});
+
+test('the next number is counted across every status folder, so an ID that moved on is not reused', () => {
+  const root = board();
+  placeholder(root, 'done', `${MINUTE}05 Sudah selesai.md`);
+  placeholder(root, 'cancel', `${MINUTE}03 Batal.md`);
+  placeholder(root, 'todo', '261016115999 Menit sebelumnya.md');
+  const r = createPinned(root);
+  assert.equal(r.code, 0, r.err);
+  assert.equal(path.basename(r.out), `${MINUTE}06 Sebuah tiket.md`);
+});
+
+test('the 99th ticket of a minute is created; the 100th is refused, with nothing written', () => {
+  const root = board();
+  placeholder(root, 'cancel', `${MINUTE}98 Hampir penuh.md`);
+  const ok = createPinned(root);
+  assert.equal(ok.code, 0, ok.err);
+  assert.equal(path.basename(ok.out), `${MINUTE}99 Sebuah tiket.md`);
+  const before = allTickets(root).sort();
+  const full = createPinned(root, 'Satu lagi');
+  assert.equal(full.code, 1);
+  assert.equal(full.out, '');
+  assert.match(full.err, new RegExp(`Minute ${MINUTE} already holds 99 tickets`));
+  assert.deepEqual(allTickets(root).sort(), before);
+  assert.equal(fs.existsSync(path.join(root, '.kerjaan', '.lock')), false, 'the lock is released');
+});
+
+test('a lock left behind by a process that died long ago is taken over', () => {
+  const root = board();
+  const lock = path.join(root, '.kerjaan', '.lock');
+  fs.mkdirSync(lock);
+  const old = new Date(Date.now() - 5 * 60 * 1000);
+  fs.utimesSync(lock, old, old);
+  const r = createPinned(root);
+  assert.equal(r.code, 0, r.err);
+  assert.equal(path.basename(r.out), `${MINUTE}01 Sebuah tiket.md`);
+  assert.equal(fs.existsSync(lock), false);
+});
+
+test('a lock that is still fresh is waited on, then refused: no ticket, and the lock is left to its holder', () => {
+  const root = board();
+  const lock = path.join(root, '.kerjaan', '.lock');
+  fs.mkdirSync(lock);
+  const r = createPinned(root);
+  assert.equal(r.code, 1);
+  assert.equal(r.out, '');
+  assert.match(r.err, /Could not lock/);
+  assert.deepEqual(allTickets(root), []);
+  assert.equal(fs.existsSync(lock), true);
+});

@@ -571,6 +571,26 @@ A checklist that only describes the happy path stays unblocked even at
 unvalidated input is what worries you, the fix is a criterion that says so —
 not a deeper review.
 
+## Running the tests
+
+From the repository root, with Node 18 or newer and nothing installed:
+
+```bash
+node --test
+```
+
+That one command runs the whole suite: every `*.test.mjs` under `uji/` (the
+scripts in `skills/kerjaan/scripts/`) and `viewer/uji/` (the viewer). It is
+also this board's own `test_command`, so it is what `test-run.sh` runs before
+a ticket goes to review. Each test builds a throwaway repository with a board
+under the system temp folder and runs the real scripts against it; nothing in
+this checkout is changed. Expect a few minutes for the whole run.
+
+Naming a folder does not work: `node --test uji/` tries to load `uji/` as a
+single module and fails with "Cannot find module". To run part of the
+suite, name the files, or a glob in quotes (Node 21 or newer):
+`node --test uji/update-ticket.test.mjs` or `node --test 'uji/*.test.mjs'`.
+
 ## Releasing a new version
 
 A Claude Code session does not run this repository. It runs the copy of the

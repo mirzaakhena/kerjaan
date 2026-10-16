@@ -111,3 +111,96 @@ for (const [where, notes] of [
     assert.match(chk.out, /^SAME: /);
   });
 }
+
+// The fingerprint covers untracked files too — the checks usually run before
+// anything is added to git — while ignored files and .kerjaan/ stay outside
+// it, and building it never touches the real index.
+const ticketFile = (root) => path.join(root, '.kerjaan', 'in_progress', `${A} Tiket.md`);
+const records = (root) => fs.readFileSync(ticketFile(root), 'utf8').split('\n').filter((l) => l.includes(': test run — '));
+
+test('an untracked file is part of what the run vouches for: changing it, or adding one, is DIFFERENT', () => {
+  const root = repo('true', '(none yet)');
+  fs.writeFileSync(path.join(root, 'baru.js'), 'satu\n');
+  assert.equal(run(root, A).code, 0);
+  assert.match(records(root)[0], /on content fingerprint [0-9a-f]{40,64} \(the same before and after the run/);
+  assert.equal(git(root, 'status', '--porcelain', '--', 'baru.js'), '?? baru.js', 'the real index is not touched');
+  let chk = run(root, '--check', A);
+  assert.equal(chk.code, 0, chk.out);
+
+  fs.writeFileSync(path.join(root, 'baru.js'), 'dua\n');
+  chk = run(root, '--check', A);
+  assert.equal(chk.code, 1, chk.out);
+  assert.match(chk.out, /^DIFFERENT: /);
+  assert.match(chk.out, /\n {2}M\tbaru\.js\n/);
+
+  fs.writeFileSync(path.join(root, 'baru.js'), 'satu\n');
+  fs.writeFileSync(path.join(root, 'lain.js'), 'x\n');
+  chk = run(root, '--check', A);
+  assert.equal(chk.code, 1, chk.out);
+  assert.match(chk.out, /\n {2}A\tlain\.js\n/);
+
+  fs.rmSync(path.join(root, 'lain.js'));
+  fs.rmSync(path.join(root, 'baru.js'));
+  chk = run(root, '--check', A);
+  assert.equal(chk.code, 1, chk.out);
+  assert.match(chk.out, /\n {2}D\tbaru\.js\n/);
+});
+
+test('ignored files and the board are outside the fingerprint', () => {
+  const root = repo('true', '(none yet)');
+  fs.writeFileSync(path.join(root, '.gitignore'), '*.log\n');
+  git(root, 'add', '.gitignore');
+  git(root, 'commit', '-q', '-m', 'abaikan log');
+  assert.equal(run(root, A).code, 0);
+  fs.writeFileSync(path.join(root, 'jejak.log'), 'apa saja\n');
+  fs.writeFileSync(path.join(root, '.kerjaan', 'in_progress', '261016600002 Lain.md'), 'tiket lain\n');
+  const chk = run(root, '--check', A);
+  assert.equal(chk.code, 0, chk.out);
+  assert.match(chk.out, /^SAME: /);
+});
+
+// A run that changes the content it is testing vouches for no version: the
+// record says what changed, the exit status is still the command's own, and
+// --check gives NO EVIDENCE.
+for (const [what, setup, cmd, changed] of [
+  ['writes a new untracked file', () => {}, 'echo x > ditulis.js; exit 3', 'ditulis.js'],
+  ['edits an untracked file that was there before', (root) => fs.writeFileSync(path.join(root, 'baru.js'), 'a\n'), 'echo b >> baru.js; exit 3', 'baru.js'],
+  ['edits a tracked file', () => {}, 'echo b >> a.js; exit 3', 'a.js'],
+  ['deletes a tracked file', () => {}, 'rm a.js; exit 3', 'a.js'],
+]) {
+  test(`a run that ${what} is recorded as vouching for nothing, and --check says NO EVIDENCE`, () => {
+    const root = repo(cmd, '(none yet)');
+    setup(root);
+    const r = run(root, A);
+    assert.equal(r.code, 3, r.err);
+    assert.match(r.err, new RegExp(`The content changed while the checks ran: ${changed.replace('.', '\\.')}`));
+    const rec = records(root);
+    assert.equal(rec.length, 1);
+    assert.ok(rec[0].includes(`\`${cmd}\` exited 3 after `), rec[0]);
+    assert.ok(rec[0].includes(`but the content changed during the run (${changed}), so it vouches for no version.`), rec[0]);
+    assert.doesNotMatch(rec[0], /fingerprint/);
+    const chk = run(root, '--check', A);
+    assert.equal(chk.code, 2, chk.out);
+    assert.match(chk.out, /^NO EVIDENCE: the latest run \(.*\) saw the content change while it ran\./);
+  });
+}
+
+test('a run that writes only ignored files keeps its fingerprint', () => {
+  const root = repo('echo x > hasil.log', '(none yet)');
+  fs.writeFileSync(path.join(root, '.gitignore'), '*.log\n');
+  git(root, 'add', '.gitignore');
+  git(root, 'commit', '-q', '-m', 'abaikan log');
+  assert.equal(run(root, A).code, 0);
+  assert.match(records(root)[0], /the same before and after the run/);
+  assert.equal(run(root, '--check', A).code, 0);
+});
+
+test('a later clean run supersedes one whose content changed', () => {
+  const root = repo('test -e ditulis.js || echo x > ditulis.js', '(none yet)');
+  assert.equal(run(root, A).code, 0);
+  assert.equal(run(root, '--check', A).code, 2);
+  assert.equal(run(root, A).code, 0);
+  assert.equal(records(root).length, 2);
+  const chk = run(root, '--check', A);
+  assert.equal(chk.code, 0, chk.out);
+});
