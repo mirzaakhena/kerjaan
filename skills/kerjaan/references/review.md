@@ -6,11 +6,11 @@ reviewing.
 
 ## How deeply a ticket gets reviewed
 
-| `review:` | What the reviewer does |
-|---|---|
-| `quick` *(empty)* | Runs the project's checks once and reads the change against the criteria |
-| `normal` | Proves every criterion by running something, starts the app when a criterion is about what a user sees, and reads the tests for assertions that cannot fail |
-| `strict` | All of `normal`, in a clean copy of the repo, plus deliberately breaking the code to confirm the tests catch it |
+The `review:` field is `quick` (also when empty), `normal` or `strict`. What
+each level makes the reviewer do is defined in one place, the table in
+`agents/kerjaan-reviewer.md`, "How thorough to be": in short, `quick` reads the
+change against the criteria beside one run of the checks, `normal` proves each
+criterion by running something, and `strict` also breaks the code on purpose.
 
 Most tickets want `quick`: a wording fix, a renamed button, a config change.
 Depth is expensive — `strict` can install dependencies from scratch and rerun
@@ -19,9 +19,9 @@ costs the most is one people learn to route around. `normal` fits criteria that
 describe behaviour rather than content; `strict` fits work where being wrong is
 expensive.
 
-The level bounds effort, not honesty. Even `quick` judges `Done when` line by
-line, refuses to take `## Notes` as evidence, and digs deeper on its own when
-something does not add up. Every review records its level in `## Notes`.
+The level bounds effort, not honesty: what holds at every level, `quick`
+included, is listed under the same table. Every review records its level in
+`## Notes`.
 
 ### Suggesting a level
 
@@ -61,18 +61,6 @@ level second.
 If you only realise after the move that a ticket needed a deeper look, edit the
 field and dispatch `kerjaan-reviewer` again by hand.
 
-### Your own checks are not evidence
-
-`## Notes` is the claim under test, never evidence. The one exception is the
-line `test-run.sh` writes: it carries a fingerprint of the content the checks
-ran on, the reviewer compares that with what it is reviewing through git, and
-a match with a passing run spares the second run. A run described in your own
-words spares nothing. Everything else you write about testing your own work —
-including breaking the code yourself to watch the
-tests fail — can only be recorded by the reviewer as a report. If doing so
-found a test that cannot fail, fix the test and commit it: a test in the repo
-is something the reviewer runs; a sentence about one is not.
-
 ## Rounds
 
 One definition, used by the foreman, the reviewer and the review hook alike:
@@ -91,20 +79,15 @@ only `merge.sh resolution <id>`. A ticket passed in round 1 and reviewed again
 after a merge postponed has still had no rejection; if that review sends it
 back, that is a rejection like any other.
 
-**Every review opens with one fixed line**, in English whatever the board's
-language, so whoever comes later — a replacement reviewer, the hook — finds
-every earlier review on any board:
-
-```
-- <YYYY-MM-DD>: Reviewed at level <level>, round <n>, at commit <hash>: <passed | sent back>.
-- <YYYY-MM-DD>: Reviewed at level quick, after merge postponed, at commit <hash>: <passed | sent back>.
-```
-
-The line stands alone; the rest of the review follows it in the board's
-language. Counting the lines that end in `sent back` gives the rejections.
-Reviews written before this line was fixed may open in the board's language;
-for those, `## History` tells the same: a move into `in_progress` straight
-from `review` is a rejection, one from `done` is a merge postponed.
+**Every review opens with one fixed line**, in English on every board, whose
+form is given in `agents/kerjaan-reviewer.md`, "The decision": it starts
+`Reviewed at level` and ends in `passed` or `sent back`, and the review after
+a merge postponed says `after merge postponed` where the round would stand.
+Counting the lines that end in `sent back` gives the rejections. `## History`
+tells the same: a move into `in_progress` straight from `review` is a
+rejection, one from `done` is a merge postponed. Count both; they agree when
+both reach back to the start, and when one misses some — a review from before
+the fixed line, a ticket from before History — the larger count holds.
 
 ## When a review sends the ticket back
 

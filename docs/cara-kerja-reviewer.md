@@ -1,215 +1,86 @@
-# Cara kerja reviewer, dan cara sabotase dipercepat
+# Cara kerja reviewer, dan kenapa sabotase dibuat murah
 
 Dokumen ini menjelaskan dengan bahasa sederhana apa yang dilakukan
-`kerjaan-reviewer`, lalu membandingkan cara sabotase dijalankan sebelum dan
-sesudah versi 1.2.1.
-
-Aturan yang mengikat tetap yang tertulis di `agents/kerjaan-reviewer.md`.
-Dokumen ini hanya penjelasannya.
-
----
-
-## Bagian 1: Yang dilakukan reviewer
-
-Reviewer adalah **pemeriksa dari luar**: ia tidak ikut mengerjakan dan tidak
-peduli pekerjaan itu lolos atau tidak.
-
-**Kapan ia bekerja.** Begitu pengerja memindah tiket ke `review` dan melapor,
-sesi utama (mandor) mengutusnya. Pengguna tidak perlu memanggilnya. Kalau
-tiket ditolak, putaran berikutnya diberikan kepada peninjau yang sama,
-yang dilanjutkan dari transkripnya.
-
-### Langkah dasar, di semua level
-
-1. Membaca tiket, terutama daftar `Done when`. Itulah satu-satunya ukuran lulus.
-2. Membaca aturan proyek (`CLAUDE.md` dan sejenisnya), lalu memastikan kode yang
-   dikerjakan ada di mana.
-3. Memeriksa **setiap baris** `Done when` satu per satu.
-4. Menganggap `Notes` dari pengembang sebagai **klaim yang harus dibuktikan**,
-   bukan bukti. Tulisan "semua uji lulus" tetap harus ia buktikan sendiri.
-5. **Tidak pernah memperbaiki kode.** Ia hanya memutuskan:
-   - semua terpenuhi → tiket dipindah ke `done`;
-   - ada yang gagal → tiket dikembalikan ke `in_progress`, beserta buktinya.
-6. Hal di luar kriteria yang ia temukan hanya **ditulis sebagai saran**, tidak
-   dijadikan tiket.
-
-### Seberapa dalam ia memeriksa
-
-| Level | Yang dikerjakan |
-|---|---|
-| `quick` (bawaan) | Menjalankan uji proyek sekali, lalu membaca perubahan kode dan mencocokkannya dengan kriteria |
-| `normal` | Membuktikan tiap kriteria dengan menjalankan sesuatu, menyalakan aplikasi bila perlu, dan memeriksa apakah ujinya benar-benar menguji atau cuma formalitas |
-| `strict` | Semua isi `normal`, ditambah **sabotase** di salinan terpisah |
-
-### Apa itu sabotase
-
-Reviewer sengaja merusak kode di salinannya sendiri. Misalnya pengecekan "hanya
-pemilik akun yang boleh menghapus" ia hapus. Lalu uji dijalankan:
-
-- **Uji gagal (merah)** → bagus, ujinya benar-benar menjaga fitur itu.
-- **Uji tetap lulus (hijau)** → ujinya ompong: fitur rusak pun tidak ketahuan.
-  Di `strict`, ini menahan tiket.
-
-### Aturan yang ditambahkan di 1.2.0
-
-- **Satu temuan dianggap contoh, bukan daftar lengkap.** Kalau menemukan satu
-  lubang, reviewer wajib mencari lubang sejenis di tempat lain, lalu melaporkan
-  semuanya sekaligus.
-- **Putaran kedua dan seterusnya lebih sempit.** Yang diperiksa hanya temuan yang
-  dulu gagal, kode yang berubah sejak tinjauan terakhir, dan kesalahan sejenis.
-- **Batas putaran.** Satu putaran berakhir dengan satu penolakan oleh
-  peninjau. Sesudah dua kali ditolak, sesi bertanya dulu kepada pemilik tiket
-  sebelum mencoba lagi. Tiket yang sudah lolos lalu dikembalikan `merge.sh
-  land` karena main atau cabangnya berubah lebih dulu disebut `merge
-  postponed`. Itu bukan penolakan: review sesudahnya tidak diberi nomor
-  putaran dan tidak ikut dihitung.
-- **Baris pembuka tetap.** Setiap review dibuka dengan satu baris berbahasa
-  Inggris yang sama di papan berbahasa apa pun, misalnya
-  `- 2026-10-17: Reviewed at level quick, round 1, at commit a1b2c3d: passed.`
-  Sisanya ditulis dalam bahasa papan. Dengan begitu peninjau pengganti selalu
-  menemukan review sebelumnya dan melanjutkan hitungannya.
-- **Uji kurang gigi di `normal`.** Kalau kodenya terbukti benar, uji yang lemah
-  cukup jadi catatan dan saran tiket lanjutan. Di `strict` tetap menahan tiket.
-
-### Uji tidak dijalankan dua kali
-
-Pengerja menjalankan `test_command` sebelum menyerahkan tiket, lewat
-`test-run.sh <id>`. Skrip itu menambahkan satu baris ke `## Notes`: kapan uji
-dijalankan, lulus atau tidak, dan **sidik isi**, yaitu satu kode yang mewakili
-isi semua berkas yang diuji. Berkas baru yang belum didaftarkan ke git ikut
-dihitung. Folder `.kerjaan/` tidak ikut, jadi memindah atau menyunting tiket
-tidak mengubah sidiknya.
-
-Reviewer tidak percaya begitu saja. Ia menjalankan
-`test-run.sh --check <id> <commit>`, yang menghitung sidik versi yang sedang
-ditinjau lalu mencocokkannya:
-
-- **SAME**: isinya persis sama dan ujinya lulus. Reviewer tidak menjalankan
-  ulang seluruh uji.
-- **DIFFERENT**: ada yang berubah sesudah run, sekecil apa pun, dan berkasnya
-  disebut. Reviewer menjalankan uji sendiri.
-- **NO EVIDENCE**: tidak ada catatan run, run-nya gagal, isinya berubah saat
-  uji berjalan, atau `test_command` sudah diganti. Reviewer menjalankan uji
-  sendiri.
-
-Commit sesudah run tidak merusak kecocokan, karena commit tidak mengubah isi.
-Yang dipercaya hanya satu hal: bahwa run itu memang lulus. Kode yang diubah
-reviewer sendiri, seperti sabotase di `strict`, tetap ia uji sendiri.
+`kerjaan-reviewer` dan alasan di balik cara kerjanya. Dokumen ini tidak memuat
+aturan. Semua aturan yang mengikat ada di satu tempat,
+[`agents/kerjaan-reviewer.md`](../agents/kerjaan-reviewer.md); nama bagian di
+dalam tanda kutip di bawah merujuk ke bagian di berkas itu. Cara mandor memakai
+putusan reviewer ada di
+[`skills/kerjaan/references/review.md`](../skills/kerjaan/references/review.md).
 
 ---
 
-## Bagian 2: Sabotase sebelum dan sesudah 1.2.1
+## Pemeriksa dari luar
 
-Contohnya kasus dengan 4 sabotase: pintu "menandai", "membuang", "mencari", dan
-satu lagi. **Angka waktu di bawah hanya ilustrasi, bukan hasil ukur.** Anggap
-seluruh uji proyek butuh 3 menit, sedangkan satu berkas uji yang relevan butuh 20
-detik.
+Reviewer tidak ikut mengerjakan tiket dan tidak peduli tiket itu lolos atau
+tidak. Mandor mengutusnya begitu pengerja menyerahkan tiket, dan pengguna tidak
+perlu memanggilnya. Kalau tiket ditolak, putaran berikutnya diberikan kepada
+reviewer yang sama, supaya ia tidak memeriksa ulang dari nol.
 
-### Sebelum (sampai 1.2.0)
+Ukurannya hanya daftar `Done when` di tiket. Tulisan pengerja di `Notes`
+diperlakukan sebagai klaim yang harus dibuktikan, bukan bukti. Reviewer tidak
+pernah memperbaiki kode: kalau ia ikut memperbaiki, papan kehilangan
+satu-satunya pemeriksa yang independen, dan pengerja tidak tahu apa yang
+salah. Hal di luar kriteria hanya ia tulis sebagai saran, karena ia tidak bisa
+bertanya kepada siapa pun untuk menulis tiket yang lengkap.
 
-Semuanya antre di satu salinan, dan tiap sabotase menjalankan **seluruh** uji:
+## Kenapa ada level
 
-```
-Uji awal (seluruh uji)               3 menit
-Sabotase 1 → seluruh uji → pulihkan  3 menit
-Sabotase 2 → seluruh uji → pulihkan  3 menit
-Sabotase 3 → seluruh uji → pulihkan  3 menit
-Sabotase 4 → seluruh uji → pulihkan  3 menit
-                                     ─────────
-                                     ± 15 menit
-```
+Tidak semua tiket pantas diperiksa sama dalam. Mengganti satu kata tidak perlu
+pemeriksaan selama perubahan di jalur pembayaran. Karena itu tiket punya
+kolom `review:` dengan tiga level, dan bawaannya yang paling murah. Apa yang
+dikerjakan tiap level dijelaskan di satu tabel, di bagian "How thorough to
+be". Level hanya membatasi seberapa banyak yang dilihat, tidak pernah
+membolehkan reviewer meloloskan sesuatu yang ia ragukan.
 
-Ibaratnya, untuk mengecek satu lampu mati, seluruh rumah diperiksa ulang, dan
-itu diulang untuk tiap lampu.
+## Apa itu sabotase
 
-Masalah ini makin terasa sesudah 1.2.0, karena aturan "cari lubang sejenis"
-menambah jumlah sabotase. Setiap tambahan dibayar dengan satu kali seluruh uji.
+Uji yang lulus belum tentu menjaga apa pun. Di level tertinggi, reviewer
+sengaja merusak kodenya, misalnya menghapus pengecekan "hanya pemilik akun
+yang boleh menghapus", lalu menjalankan ujinya. Kalau uji jadi merah, uji itu
+memang menjaga fitur. Kalau tetap hijau, ujinya ompong: fitur rusak pun tidak
+ketahuan. Langkah dan akibatnya ada di bagian "Green tests prove nothing on
+their own".
 
-### Perubahan 1: hanya menjalankan uji yang relevan
+## Kenapa uji tidak dijalankan dua kali
 
-Seluruh uji tetap dijalankan **sekali** di awal. Sesudah itu, tiap sabotase
-cukup menjalankan berkas uji yang menjaga bagian itu:
+Pengerja menjalankan uji lewat `test-run.sh`, yang mencatat **sidik isi**:
+satu kode yang mewakili isi semua berkas yang diuji. Reviewer tidak percaya
+begitu saja. Ia meminta git menghitung sidik versi yang sedang ditinjau. Kalau
+sama, yang ia percayai hanya bahwa run itu memang lulus, seperti orang
+mempercayai lencana CI. Jadi menunggu seluruh uji untuk kedua kalinya tidak
+perlu. Kode yang ia ubah sendiri, seperti sabotase, tetap ia uji sendiri.
+Rinciannya ada di bagian "Test runs".
 
-```
-Uji awal (seluruh uji)               3 menit
-Sabotase 1 → uji "menandai"          20 detik
-Sabotase 2 → uji "membuang"          20 detik
-Sabotase 3 → uji "mencari"           20 detik
-Sabotase 4 → uji terkait             20 detik
-                                     ─────────
-                                     ± 4–5 menit
-```
+## Kenapa sabotase dibuat murah
 
-**Pengamannya.** Kadang ada uji di berkas lain yang ternyata ikut menangkap
-sabotase itu. Karena itu:
+Sampai versi 1.2.0, setiap sabotase menjalankan seluruh uji, satu per satu.
+Sejak 1.2.0 reviewer juga diminta mencari kesalahan sejenis di tempat lain,
+jadi jumlah sabotase bertambah. Contoh berikut hanya ilustrasi, bukan hasil
+ukur: seluruh uji 3 menit, satu berkas uji yang relevan 20 detik, 4 sabotase.
 
-- berkas relevan **merah** → selesai, cepat;
-- berkas relevan **hijau** → jalankan seluruh uji sekali untuk memastikan,
-  **sebelum** menyatakan ujinya ompong.
-
-Dengan begitu tiket tidak pernah ditahan hanya karena reviewer mengecek terlalu
-sempit. Kesimpulannya tetap sama akuratnya, hanya lebih cepat.
-
-### Perubahan 2: sabotase dijalankan bersamaan, kalau aman
-
-Salinan yang sudah siap pakai (dependensinya sudah terpasang) difotokopi instan
-menjadi 4, satu untuk tiap sabotase. Di macOS memakai `cp -cR`, yang tidak
-memakan ruang disk tambahan. Keempatnya diuji **pada waktu yang sama**:
-
-```
-Uji awal (seluruh uji)               3 menit
-Sabotase 1 ┐
-Sabotase 2 ├ bersamaan               ± 20–30 detik
-Sabotase 3 │
-Sabotase 4 ┘
-                                     ─────────
-                                     ± 3,5 menit
-```
-
-Salinan yang sudah selesai cukup dihapus, jadi tidak ada kode yang perlu
-dipulihkan.
-
-**Batasannya.** Reviewer kembali antre satu per satu, tetap dengan perubahan 1,
-kalau:
-
-- **Uji proyek berebut sumber yang sama**, misalnya port, database, berkas di
-  lokasi tetap, atau cache. Kalau dijalankan bersamaan, hasil satu sabotase bisa
-  mengacaukan yang lain. Merah karena gangguan tetangga tidak bisa dibedakan dari
-  merah sungguhan.
-- **Salinan tidak bisa jalan di folder baru.** Sebagian dependensi mengingat
-  folder tempat ia dipasang; contoh yang paling sering adalah virtual environment
-  Python. Kalau salinan gagal bahkan sebelum ujinya mulai, reviewer berhenti
-  menyalin.
-
----
-
-## Ringkasan
-
-| | Sampai 1.2.0 | + Perubahan 1 | + Perubahan 1 dan 2 |
+| | Sampai 1.2.0 | Hanya uji yang relevan | Ditambah berjalan bersamaan |
 |---|---|---|---|
-| Uji per sabotase | seluruh uji | berkas relevan saja | berkas relevan saja |
-| Urutan | antre | antre | bersamaan (kalau aman) |
+| Uji per sabotase | seluruh uji | berkas yang menjaga bagian itu | berkas yang menjaga bagian itu |
+| Urutan | antre | antre | bersamaan, kalau aman |
 | Contoh waktu | ± 15 menit | ± 4–5 menit | ± 3,5 menit |
 | Yang tertangkap | sama | sama | sama |
 
-**Yang tidak berubah:** apa yang diperiksa, apa yang menahan tiket, dan
-kejujuran hasilnya. Yang berubah hanya berapa lama menunggu.
+Ibaratnya, untuk mengecek satu lampu mati, dulu seluruh rumah diperiksa ulang
+untuk tiap lampu. Sekarang yang diperiksa cukup lampunya. Kalau lampu itu
+ternyata tidak ketahuan mati, seluruh rumah diperiksa sekali lagi sebelum
+dinyatakan bermasalah, jadi kesimpulannya tetap sama akuratnya.
+
+Berjalan bersamaan memakai salinan instan dari satu salinan yang sudah siap,
+dan tidak dipakai kalau uji proyek berebut sumber yang sama (port, database,
+berkas di lokasi tetap), karena merah akibat gangguan tetangga tidak bisa
+dibedakan dari merah sungguhan. Syarat lengkapnya ada di bagian yang sama.
 
 ## Kenapa tidak memakai beberapa subagent
 
-Pernah dipertimbangkan: reviewer utama menyusun rencana sabotase lalu
-membagikannya ke beberapa subagent supaya berjalan paralel. Tidak dipilih karena:
-
-- Alasan pertama dulu: subagent tidak bisa mengutus subagent lain, dan sesi
-  utama tidak boleh mengutus karena sesi itulah yang mengerjakan kodenya.
-  Keduanya sudah tidak berlaku. Claude Code kini mengizinkan subagent
-  bersarang, dan sejak sesi utama menjadi mandor, ia tidak menulis kode tiket.
-  Dua alasan di bawah ini tetap berlaku, dan keduanya sudah cukup.
-- **Tiap subagent mulai dari nol.** Ia harus mengenal repo dan memasang
-  dependensi sendiri, yang sering lebih mahal daripada sabotasenya.
-- **Tidak menambah cakupan.** Agen yang hanya menjalankan rencana tidak membawa
-  penilaian baru. Kalau rencananya bolong, hasilnya tetap bolong, hanya lebih
-  cepat.
-
-Paralel lewat shell, seperti perubahan 2, memberi kecepatan yang sama tanpa
-biaya itu.
+Pernah dipertimbangkan: reviewer menyusun rencana sabotase lalu membaginya ke
+beberapa subagent. Tidak dipilih karena tiap subagent mulai dari nol (mengenal
+repo dan memasang dependensi sendiri, sering lebih mahal daripada sabotasenya),
+dan agen yang hanya menjalankan rencana tidak membawa penilaian baru: kalau
+rencananya bolong, hasilnya tetap bolong, hanya lebih cepat. Paralel lewat
+shell memberi kecepatan yang sama tanpa biaya itu.

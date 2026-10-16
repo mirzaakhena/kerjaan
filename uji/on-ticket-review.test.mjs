@@ -462,14 +462,17 @@ test('docs: the foreman guide, the review guide and the reviewer define a round 
   assert.match(flat(docs['on-ticket-review.sh']), /a round ends with one rejection by the reviewer/i);
 });
 
-test('docs: the review guide and the reviewer give the same fixed opening line, in English, for both kinds of review', () => {
+// The form is written once, in the reviewer's definition (261016141910); the
+// review guide names what the foreman counts by and points at it.
+test('docs: the reviewer gives the fixed opening line, in English, for both kinds of review, and the review guide points at it', () => {
   const fixed = [
     '- <YYYY-MM-DD>: Reviewed at level <level>, round <n>, at commit <hash>: <passed | sent back>.',
     '- <YYYY-MM-DD>: Reviewed at level quick, after merge postponed, at commit <hash>: <passed | sent back>.',
   ];
-  for (const name of ['review.md', 'kerjaan-reviewer.md']) {
-    for (const line of fixed) assert.ok(docs[name].includes(`\n${line}\n`), `${name} lacks: ${line}`);
-  }
+  for (const line of fixed) assert.ok(docs['kerjaan-reviewer.md'].includes(`\n${line}\n`), `kerjaan-reviewer.md lacks: ${line}`);
+  const guide = flat(docs['review.md']);
+  assert.match(guide, /agents\/kerjaan-reviewer\.md`, "The decision"/);
+  for (const term of ['`Reviewed at level`', '`sent back`', '`after merge postponed`']) assert.ok(guide.includes(term), `review.md lacks ${term}`);
   assert.match(flat(docs['kerjaan-reviewer.md']), /in English on every board whatever its language/);
   assert.match(flat(docs['kerjaan-reviewer.md']), /do not translate it/);
 });

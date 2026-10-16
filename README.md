@@ -526,13 +526,11 @@ deliberate break at `strict`, is always tested by the reviewer.
 ### How deep the review goes
 
 A ticket's `review` field decides that, and it is **optional — empty means
-`quick`**:
-
-| | What the reviewer does |
-|---|---|
-| `quick` *(default)* | Runs the project's checks once and reads the change against the criteria |
-| `normal` | Proves every criterion by running something, starts the app when a criterion is about what a user sees, and reads the tests for assertions that cannot fail |
-| `strict` | All of `normal`, in a clean copy of the repo, plus deliberately breaking the code to confirm the tests actually catch it |
+`quick`**. `quick` reads the change against the criteria beside one run of the checks,
+`normal` proves each criterion by running something, and `strict` also breaks
+the code on purpose to see the tests catch it. The full table of what each
+level does is in [`agents/kerjaan-reviewer.md`](agents/kerjaan-reviewer.md),
+"How thorough to be".
 
 The default is the cheap one on purpose. `strict` can install a project's
 dependencies from scratch and run the tests again for every piece of code it
