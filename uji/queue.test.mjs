@@ -679,3 +679,37 @@ test('the planner agent ships beside the worker and the reviewer', () => {
     assert.ok(fs.existsSync(path.join(agents, other)));
   }
 });
+
+// ## History lines name the Claude Code session that made each move when there
+// was one. The readiness check reads the same ticket either way, and a ticket
+// moved through todo by update-ticket.sh inside a session is still ready.
+for (const [form, history] of [
+  ['older lines with no session', '- 2026-10-16 20:00:00 backlog\n- 2026-10-16 20:05:00 todo'],
+  ['lines naming a session', '- 2026-10-16 20:00:00 4dbcf082-290a-4f65-845c-ee75fd3b3e9c backlog\n- 2026-10-16 20:05:00 a192c9e8-0bb5-4bbf-8d56-9831b23e62ec todo'],
+  ['a mix of both', '- 2026-10-16 20:00:00 backlog\n- 2026-10-16 20:05:00 a192c9e8-0bb5-4bbf-8d56-9831b23e62ec todo'],
+]) {
+  test(`check: a ticket whose History holds ${form} is ready`, () => {
+    const root = repo();
+    readyTicket(root, A);
+    const file = fileOf(root, A);
+    const text = fs.readFileSync(file, 'utf8').replace('- 2026-10-16 20:00:00 backlog', history);
+    assert.notEqual(text, fs.readFileSync(file, 'utf8'));
+    fs.writeFileSync(file, text);
+    const r = q(root, 'check', A);
+    assert.equal(r.code, 0, r.out);
+    assert.match(r.out, /\n  ready\nREADY\n$/);
+  });
+}
+
+test('check: a ticket moved into todo inside a Claude Code session, and ordered, is ready', () => {
+  const root = repo();
+  readyTicket(root, A);
+  const env = { ...gitEnv, CLAUDE_CODE_SESSION_ID: '4dbcf082-290a-4f65-845c-ee75fd3b3e9c' };
+  const m = spawnSync('bash', [update, A, '--status', 'todo'], { cwd: root, encoding: 'utf8', env });
+  assert.equal(m.status, 0, m.stderr);
+  assert.match(read(root, A), /\n- \d{4}-\d\d-\d\d \d\d:\d\d:\d\d 4dbcf082-290a-4f65-845c-ee75fd3b3e9c todo\n/);
+  order(root, `**Grup.**\n- ${A} Tiket ${A}\n`);
+  const r = q(root, 'check');
+  assert.equal(r.code, 0, r.out);
+  assert.match(r.out, /READY\n$/);
+});

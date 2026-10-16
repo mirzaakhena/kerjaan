@@ -411,13 +411,18 @@ fi
 # from before History existed gets the section on its next move, holding that
 # move alone: what came before is unknown and is not made up.
 #
+# Inside a Claude Code session the line also names the session that made the
+# move, `- <time> <session-id> <status>`, so the owner can open that
+# conversation again; anywhere else it stays `- <time> <status>`. lib.sh's
+# kerjaan_history_line decides which. The status is always the last word.
+#
 # Headings inside fenced blocks are prose, not sections, so they are skipped.
 # The file itself is written once, below, so a ticket this cannot place a
 # line in is refused with nothing changed — not even `updated`.
 
 if [ "$dest_status" != "$current_status" ]; then
-  if ! awk -v line="- $now $dest_status" '
-    BEGIN { fm = 0; body = 0; infence = 0; inhist = 0; hist = 0; lasthist = 0; notes = 0 }
+  if ! KERJAAN_LINE="$(kerjaan_history_line "$now" "$dest_status")" awk '
+    BEGIN { fm = 0; body = 0; infence = 0; inhist = 0; hist = 0; lasthist = 0; notes = 0; line = ENVIRON["KERJAAN_LINE"] }
     { lines[NR] = $0 }
     !body { if ($0 == "---" && ++fm == 2) body = 1; next }
     /^```/ { infence = !infence }

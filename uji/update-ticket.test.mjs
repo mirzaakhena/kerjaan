@@ -106,3 +106,79 @@ test('a note update-ticket writes into an empty Notes replaces "(none yet)"', ()
   const notes = fs.readFileSync(file, 'utf8').split('## Notes\n')[1];
   assert.match(notes, /^- [\d-]+ [\d:]+: size accepted by the owner with --accept-size: [^\n]+\n$/);
 });
+
+// ## History: a move made inside a Claude Code session names that session, so
+// the owner can open the conversation again with `claude --resume <id>`; a
+// move made anywhere else keeps the old line, with no empty marker. The tests
+// set or remove CLAUDE_CODE_SESSION_ID themselves, never trusting the
+// environment they happen to run in.
+const SESSION = '4dbcf082-290a-4f65-845c-ee75fd3b3e9c';
+
+function runWith(root, session, ...args) {
+  const env = { ...gitEnv };
+  if (session === undefined) delete env.CLAUDE_CODE_SESSION_ID;
+  else env.CLAUDE_CODE_SESSION_ID = session;
+  const r = spawnSync('bash', [update, ...args], { cwd: root, encoding: 'utf8', env });
+  return { code: r.status, out: r.stdout, err: r.stderr };
+}
+
+function historyOf(file) {
+  const text = fs.readFileSync(file, 'utf8');
+  return text.split('## History\n')[1].split('\n\n## Notes')[0].split('\n');
+}
+
+const TIME = String.raw`\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}`;
+
+test('a move inside a Claude Code session writes "- <time> <session-id> <status>"', () => {
+  const root = repo();
+  const r = runWith(root, SESSION, A, '--status', 'backlog');
+  assert.equal(r.code, 0, r.err);
+  const lines = historyOf(path.join(root, '.kerjaan', 'backlog', `${A} Judul lama.md`));
+  assert.equal(lines.length, 2, lines.join('\n'));
+  assert.equal(lines[0], '- 2026-10-16 20:00:00 todo');
+  assert.match(lines[1], new RegExp(`^- ${TIME} ${SESSION} backlog$`));
+});
+
+for (const [where, session] of [['with no CLAUDE_CODE_SESSION_ID', undefined], ['with it set but empty', '']]) {
+  test(`a move ${where} writes "- <time> <status>", no empty marker`, () => {
+    const root = repo();
+    const r = runWith(root, session, A, '--status', 'backlog');
+    assert.equal(r.code, 0, r.err);
+    const lines = historyOf(path.join(root, '.kerjaan', 'backlog', `${A} Judul lama.md`));
+    assert.match(lines[1], new RegExp(`^- ${TIME} backlog$`));
+  });
+}
+
+// The status must stay the last word, and the line one record: a value that
+// is not a single plain word is left out rather than written.
+for (const bad of ['dua kata', 'a\tb', 'x\ny', '$(id)', 'a/b']) {
+  test(`a session value that is not one plain word (${JSON.stringify(bad)}) is left out`, () => {
+    const root = repo();
+    const r = runWith(root, bad, A, '--status', 'backlog');
+    assert.equal(r.code, 0, r.err);
+    const lines = historyOf(path.join(root, '.kerjaan', 'backlog', `${A} Judul lama.md`));
+    assert.equal(lines.length, 2, lines.join('\n'));
+    assert.match(lines[1], new RegExp(`^- ${TIME} backlog$`));
+  });
+}
+
+test('each move names the session that made it, next to older lines without one', () => {
+  const root = repo();
+  const other = 'a192c9e8-0bb5-4bbf-8d56-9831b23e62ec';
+  assert.equal(runWith(root, SESSION, A, '--status', 'backlog').code, 0);
+  assert.equal(runWith(root, undefined, A, '--status', 'todo').code, 0);
+  assert.equal(runWith(root, other, A, '--status', 'cancel').code, 0);
+  const lines = historyOf(path.join(root, '.kerjaan', 'cancel', `${A} Judul lama.md`));
+  assert.equal(lines.length, 4, lines.join('\n'));
+  assert.equal(lines[0], '- 2026-10-16 20:00:00 todo');
+  assert.match(lines[1], new RegExp(`^- ${TIME} ${SESSION} backlog$`));
+  assert.match(lines[2], new RegExp(`^- ${TIME} todo$`));
+  assert.match(lines[3], new RegExp(`^- ${TIME} ${other} cancel$`));
+});
+
+test('a rename inside a session adds no History line', () => {
+  const root = repo();
+  assert.equal(runWith(root, SESSION, A, '--title', 'Judul baru').code, 0);
+  const lines = historyOf(path.join(root, '.kerjaan', 'todo', `${A} Judul baru.md`));
+  assert.deepEqual(lines, ['- 2026-10-16 20:00:00 todo']);
+});

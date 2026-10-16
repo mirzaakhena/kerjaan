@@ -151,7 +151,7 @@ test('new-ticket.sh runs the check: a template with standing criteria over the l
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'kerjaan-size-new-'));
   const skill = path.join(root, 'skill');
   fs.mkdirSync(path.join(skill, 'scripts'), { recursive: true });
-  for (const f of ['new-ticket.sh', 'ticket-size.sh']) {
+  for (const f of ['new-ticket.sh', 'ticket-size.sh', 'lib.sh']) {
     fs.copyFileSync(path.join(scripts, f), path.join(skill, 'scripts', f));
   }
   const template = fs.readFileSync(path.join(scripts, '..', 'TEMPLATE.md'), 'utf8')

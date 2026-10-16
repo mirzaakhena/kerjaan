@@ -355,6 +355,18 @@ body.proyek .bar .live { flex: none; }
 .md del { color: var(--muted); }
 .md a.tiket { font-family: var(--mono); font-size: 12.5px; }
 .md a.tiket .t { font-family: var(--text); font-size: 13px; margin-left: 4px; }
+.md ul.riwayat { list-style: none; padding-left: 0; display: grid; grid-template-columns: max-content max-content minmax(0, 1fr); column-gap: 14px; row-gap: 2px; font-size: 13px; }
+.md ul.riwayat li { display: contents; }
+.md ul.riwayat .waktu { font-family: var(--mono); font-size: 12.5px; color: var(--muted); white-space: nowrap; }
+.md ul.riwayat .status { white-space: nowrap; font-weight: 600; }
+.md ul.riwayat .status::before { content: ""; display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 6px; vertical-align: 1px; background: var(--faint); }
+.md ul.riwayat .s-backlog::before { background: var(--backlog); }
+.md ul.riwayat .s-todo::before { background: var(--todo); }
+.md ul.riwayat .s-in_progress::before { background: var(--in_progress); }
+.md ul.riwayat .s-review::before { background: var(--review); }
+.md ul.riwayat .s-done::before { background: var(--done); }
+.md ul.riwayat .s-cancel::before { background: var(--cancel); }
+.md ul.riwayat .sesi { font-size: 11.5px; color: var(--muted); background: none; padding: 0; align-self: center; overflow-wrap: anywhere; user-select: all; }
 .md .missing { font-family: var(--mono); font-size: 12.5px; color: var(--cancel); text-decoration: underline dotted; }
 
 /* ---------- narrow screens: one status at a time ---------- */
@@ -373,6 +385,13 @@ body.proyek .bar .live { flex: none; }
   }
   .status-pick button[aria-pressed="true"] { border-color: var(--c); box-shadow: inset 0 0 0 1px var(--c); font-weight: 600; }
   .drawer .head, .drawer .body { padding-left: 16px; padding-right: 16px; }
+}
+/* Too narrow for the session beside the status: it goes on its own line
+   under them, whole, rather than broken over three. */
+@media (max-width: 600px) {
+  .md ul.riwayat { grid-template-columns: max-content minmax(0, 1fr); }
+  .md ul.riwayat .sesi { grid-column: 1 / -1; margin: -2px 0 4px; }
+  .md ul.riwayat .sesi.kosong { display: none; }
 }
 @media (max-width: 480px) {
   .drawer .facts { grid-template-columns: minmax(0, 1fr); }

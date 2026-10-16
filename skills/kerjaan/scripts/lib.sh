@@ -15,6 +15,7 @@
 #   kerjaan_ticket_branch <id>         the branch carrying the ticket's ID
 #   kerjaan_tree_without_board <tree>  a tree with .kerjaan/ left out
 #   kerjaan_append_note <file> <note>  a line at the end of ## Notes
+#   kerjaan_history_line <time> <st>   one ## History line, naming the session
 #   kerjaan_merge_state <file>         held / postponed / landed (merge.sh)
 #   kerjaan_estimate <file>            the files a ticket is estimated to change
 #   kerjaan_questions <file>           every question asked, numbered for answering
@@ -230,6 +231,29 @@ kerjaan_append_note() {
   else
     printf '%s\n' "$note" >> "$file"
   fi
+}
+
+# Prints one ## History line for a move into <status> at <time>:
+#
+#   - <time> <session-id> <status>   inside a Claude Code session
+#   - <time> <status>                anywhere else
+#
+# The session is the one `claude --resume <session-id>` opens again, so the
+# owner can go from any line back to the conversation that made the move.
+# Claude Code hands it to every command it runs as CLAUDE_CODE_SESSION_ID, and
+# a subagent (worker, reviewer) gets the same value as the main session that
+# dispatched it -- that main session is the one with a transcript of its own,
+# and the subagents' transcripts are kept inside it.
+#
+# A value that is empty, or holds anything but letters, digits and dashes, is
+# left out rather than written: the status must stay the last word of the line,
+# and an empty marker would read as a damaged line. Readers accept both forms.
+kerjaan_history_line() {
+  local sid="${CLAUDE_CODE_SESSION_ID:-}"
+  case "$sid" in
+    '' | *[!A-Za-z0-9-]*) printf -- '- %s %s\n' "$1" "$2" ;;
+    *) printf -- '- %s %s %s\n' "$1" "$sid" "$2" ;;
+  esac
 }
 
 # Prints where the ticket <file> stands with merge.sh land, from the last

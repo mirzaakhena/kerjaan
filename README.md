@@ -86,11 +86,16 @@ Messages that arrive together must all still get a reply, with none lost.
 
 ## History
 - 2026-09-05 16:04:01 todo
-- 2026-09-06 14:02:10 in_progress
+- 2026-09-06 14:02:10 4dbcf082-290a-4f65-845c-ee75fd3b3e9c in_progress
 
 ## Notes
 (none yet)
 ```
+
+A move made inside a Claude Code session also names that session in its
+History line, so `claude --resume <session-id>` opens the conversation that
+made it again, for as long as Claude Code keeps the transcript. A move made
+from a plain terminal leaves the id out.
 
 Five headings appear in every ticket. `## How to reproduce` is the one
 exception: bug tickets carry it, and `feature` and `task` tickets leave it out

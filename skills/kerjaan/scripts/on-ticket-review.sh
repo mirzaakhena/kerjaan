@@ -127,6 +127,9 @@ foreman="$(cd "$(dirname "$0")/.." && pwd)/references/foreman.md"
 #   - `## History` lists `review` more than once. update-ticket.sh writes
 #     those lines in English whatever the board's language, so this holds on
 #     every board -- but only for tickets whose History reaches back that far.
+#     A line may name the Claude Code session between the time and the status
+#     (`- <time> <session-id> review`) or not (`- <time> review`, older lines
+#     and moves made outside Claude Code); both count.
 #   - `## Notes` holds a block that opens with "Reviewed at level", the
 #     reviewer's own opening line. It covers a ticket from before History
 #     existed, on a board written in English; on other boards the reviewer
@@ -146,7 +149,7 @@ counts=$(awk '
     innotes = ($0 ~ /^## Notes[ \t]*$/)
     next
   }
-  inhist && $0 ~ /^- [0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9] [0-9][0-9]:[0-9][0-9]:[0-9][0-9] review[ \t]*$/ { n++ }
+  inhist && $0 ~ /^- [0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9] [0-9][0-9]:[0-9][0-9]:[0-9][0-9] ([A-Za-z0-9-]+ )?review[ \t]*$/ { n++ }
   innotes && $0 ~ /^([-*+][ \t]+)?(\*\*)?Reviewed at level/ { r++ }
   END { print n + 0, r + 0 }
 ' "$ticket" 2>/dev/null || printf '0 0')

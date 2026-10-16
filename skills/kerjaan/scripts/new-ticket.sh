@@ -132,6 +132,8 @@ created="$(date '+%Y-%m-%d %H:%M:%S')"
 
 # --- write the file from the template --------------------------------------
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=lib.sh
+. "$script_dir/lib.sh"
 template="$script_dir/../TEMPLATE.md"
 if [ ! -f "$template" ]; then
   echo "TEMPLATE.md not found at $template" >&2
@@ -153,7 +155,13 @@ for existing in "$board"/*/"$id "*.md; do
   exit 1
 done
 
-sed -e "s/{{CREATED}}/$created/g" -e "s/{{STATUS}}/$status/g" "$template" > "$dest"
+# {{STATUS}} appears only in the first ## History line, which inside a Claude
+# Code session also names the session: `- <time> <session-id> <status>`
+# (lib.sh, kerjaan_history_line). The session id holds only letters, digits
+# and dashes, so it is safe inside the sed expression.
+hist="$(kerjaan_history_line "$created" "$status")"
+hist_status="${hist#- "$created" }"
+sed -e "s/{{CREATED}}/$created/g" -e "s/{{STATUS}}/$hist_status/g" "$template" > "$dest"
 
 # A board without settings still works, but its language, its test command and
 # its long-lived branches are then guesses. Say so every time rather than once,

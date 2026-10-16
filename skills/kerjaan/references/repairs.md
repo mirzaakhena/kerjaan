@@ -46,7 +46,9 @@ date '+%Y-%m-%d %H:%M:%S'
 
 If the repair moves the ticket to another folder, add the same time as a line
 at the end of `## History` too, `- <time> <status>`, creating that section just
-before `## Notes` if the ticket has none. A move missing from History reads
+before `## Notes` if the ticket has none. Inside a Claude Code session, put the
+session between them as the scripts do — `- <time> $CLAUDE_CODE_SESSION_ID
+<status>` — so the repair can be traced back to its conversation. A move missing from History reads
 later as a ticket that never went there.
 
 `updated` and `## History` are the board's only traces of time. Once either has been wrong, readers

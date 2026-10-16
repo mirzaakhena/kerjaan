@@ -301,3 +301,54 @@ for (const [shape, line] of Object.entries(reviewerOpenings)) {
     assert.match(out.systemMessage, /resuming its reviewer/);
   });
 }
+
+// History lines written inside a Claude Code session name the session between
+// the time and the status; older lines, and moves made from a plain terminal,
+// do not. The round is counted the same from either form, and from a mix.
+const S1 = '4dbcf082-290a-4f65-845c-ee75fd3b3e9c';
+const S2 = 'a192c9e8-0bb5-4bbf-8d56-9831b23e62ec';
+const historyForms = {
+  'every line naming a session': [
+    `- 2026-10-11 07:10:00 ${S1} in_progress`,
+    `- 2026-10-11 07:40:00 ${S1} review`,
+    `- 2026-10-11 07:50:00 ${S2} in_progress`,
+    `- 2026-10-11 08:20:00 ${S2} review`,
+  ],
+  'an old line, then one naming a session': [
+    '- 2026-10-11 07:10:00 in_progress',
+    '- 2026-10-11 07:40:00 review',
+    `- 2026-10-11 07:50:00 ${S2} in_progress`,
+    `- 2026-10-11 08:20:00 ${S2} review`,
+  ],
+  'a session line, then one from a plain terminal': [
+    `- 2026-10-11 07:10:00 ${S1} in_progress`,
+    `- 2026-10-11 07:40:00 ${S1} review`,
+    '- 2026-10-11 07:50:00 in_progress',
+    '- 2026-10-11 08:20:00 review',
+  ],
+};
+
+for (const [form, lines] of Object.entries(historyForms)) {
+  test(`History with ${form}: two review lines are a later round`, () => {
+    const { root, ticket } = board(`\n## History\n${lines.join('\n')}\n\n## Notes\n- Catatan pengerja.\n`);
+    const out = run(moveToReview(root, ticket));
+    assert.match(out.hookSpecificOutput.additionalContext, /Resume the reviewer of the round before/);
+    assert.match(out.systemMessage, /resuming its reviewer/);
+  });
+
+  test(`History with ${form}, cut after the first review: still round one`, () => {
+    const { root, ticket } = board(`\n## History\n${lines.slice(0, 2).join('\n')}\n\n## Notes\n- Catatan pengerja.\n`);
+    const out = run(moveToReview(root, ticket));
+    assert.match(out.hookSpecificOutput.additionalContext, /Dispatch one subagent right now/);
+    assert.doesNotMatch(out.hookSpecificOutput.additionalContext, /Resume the reviewer|later round/);
+  });
+}
+
+// A session id is one word: a line with two words between the time and the
+// status is not a History record, so it does not make a round.
+test('a review line with more than one word before the status is not counted', () => {
+  const body = `\n## History\n- 2026-10-11 07:40:00 ${S1} review\n- 2026-10-11 08:20:00 kata lain review\n\n## Notes\n- x\n`;
+  const { root, ticket } = board(body);
+  const out = run(moveToReview(root, ticket));
+  assert.match(out.hookSpecificOutput.additionalContext, /Dispatch one subagent right now/);
+});

@@ -56,12 +56,18 @@ function ticketLink(id, opts, explicit) {
 }
 
 const ITEM = /^( *)([-*+]|\d+[.)])\s+(.*)$/;
+// A ## History line, as update-ticket.sh and new-ticket.sh write it:
+// `- <time> <status>`, or `- <time> <session-id> <status>` when the move was
+// made inside a Claude Code session. The status is always the last word.
+const HISTORY = /^- (\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})(?: ([A-Za-z0-9-]+))? ([a-z_]+)\s*$/;
+const STATUS_WORDS = ['backlog', 'todo', 'in_progress', 'review', 'done', 'cancel'];
 const FENCE = /^ {0,3}(`{3,}|~{3,})(.*)$/;
 
 export function render(md, opts = {}) {
   const lines = String(md).replace(/\r\n?/g, '\n').replace(/\t/g, '    ').split('\n');
   const out = [];
   let i = 0;
+  let section = '';
 
   const isBlockStart = (l) =>
     /^ {0,3}#{1,6}\s/.test(l) || FENCE.test(l) || ITEM.test(l) || /^ {0,3}>/.test(l) || /^ {0,3}([-*_])( *\1){2,} *$/.test(l) || /^\s*\|.*\|\s*$/.test(l);
@@ -91,7 +97,22 @@ export function render(md, opts = {}) {
 
     // heading
     const h = line.match(/^ {0,3}(#{1,6})\s+(.*?)\s*#*\s*$/);
-    if (h) { out.push(`<h${h[1].length}>${inline(h[2], opts)}</h${h[1].length}>`); i++; continue; }
+    if (h) {
+      section = h[1].length === 2 ? h[2] : '';
+      out.push(`<h${h[1].length}>${inline(h[2], opts)}</h${h[1].length}>`);
+      i++;
+      continue;
+    }
+
+    // ## History: a run of record lines becomes a table-like list, the session
+    // that made each move set apart from the time and the status. Anything
+    // else in the section is rendered as ordinary markdown.
+    if (section === 'History' && HISTORY.test(line)) {
+      const rows = [];
+      while (i < lines.length && HISTORY.test(lines[i])) { rows.push(lines[i].match(HISTORY)); i++; }
+      out.push(`<ul class="riwayat">${rows.map(historyRow).join('')}</ul>`);
+      continue;
+    }
 
     // rule
     if (/^ {0,3}([-*_])( *\1){2,} *$/.test(line)) { out.push('<hr>'); i++; continue; }
@@ -117,7 +138,11 @@ export function render(md, opts = {}) {
 
     // list
     if (ITEM.test(line)) {
-      const [html, next] = list(lines, i, opts);
+      // In History, a list a person wrote ends where the records start again,
+      // so the records after it are still shown as records.
+      let upto = lines.length;
+      if (section === 'History') for (let j = i + 1; j < lines.length; j++) if (HISTORY.test(lines[j])) { upto = j; break; }
+      const [html, next] = list(lines.slice(0, upto), i, opts);
       out.push(html);
       i = next;
       continue;
@@ -129,6 +154,15 @@ export function render(md, opts = {}) {
     out.push(`<p>${inline(para.join('\n'), opts).replace(/\n/g, ' ')}</p>`);
   }
   return out.join('\n');
+}
+
+function historyRow([, time, session, status]) {
+  const known = STATUS_WORDS.includes(status);
+  const st = `<span class="status${known ? ` s-${status}` : ''}">${esc(status.replace('_', ' '))}</span>`;
+  const sesi = session
+    ? `<code class="sesi" title="Sesi Claude Code yang memindahkan tiket ini. Buka lagi: claude --resume ${esc(session)}">${esc(session)}</code>`
+    : '<span class="sesi kosong"></span>';
+  return `<li><span class="waktu">${esc(time)}</span>${st}${sesi}</li>`;
 }
 
 // A list runs until a line that is neither an item nor indented under one.

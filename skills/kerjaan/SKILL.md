@@ -211,7 +211,12 @@ inside a fenced block that the AI never writes in. See
 `references/explanation.md`.
 
 **`## History`** — always present, written only by the scripts: one line per
-status the ticket has entered, `- <time> <status>`. `new-ticket.sh` writes the
+status the ticket has entered, `- <time> <session-id> <status>` when the move
+was made inside a Claude Code session, `- <time> <status>` when it was not (a
+plain terminal, or a line from before sessions were recorded). The status is
+always the last word; anything that reads History accepts both forms. The
+session id is the main session's: a worker or reviewer subagent carries the
+same one as the foreman that dispatched it. `new-ticket.sh` writes the
 first line with the time of `created`; every move through `update-ticket.sh`
 adds one with the time of the new `updated`. A rename or a refresh adds none.
 The folder says where a ticket is, and only this says when it got there — git
@@ -720,6 +725,24 @@ folder can: `order.md` the sequence and its reasons, `settings.md` the board's
 own configuration. Searching is
 deliberately unscripted: a wrong search looks wrong at once, so use whatever
 fits.
+
+**Who moved it, and why.** A History line that names a session points at the
+conversation that made the move — the foreman starting a ticket, a worker
+handing it to review, a reviewer passing or sending it back. To read it again,
+open a terminal in the folder that session was started from (the repo's root
+for a foreman working on main) and run:
+
+```bash
+claude --resume 4dbcf082-290a-4f65-845c-ee75fd3b3e9c
+```
+
+A worker's or reviewer's own steps sit inside that same conversation, as its
+subagents. Claude Code deletes old transcripts on startup — after 30 days
+unless `cleanupPeriodDays` in `~/.claude/settings.json` says otherwise — so an
+old id may open nothing: say so, and fall back on the ticket's `## Notes` and
+on git, which keep the decisions themselves. A line without an id was written
+outside Claude Code, or before ids were recorded, and has no conversation to
+open.
 
 **The viewer.** When the user asks to see the board, run the viewer, or show
 what is in flight in a browser ("tampilkan papannya", "jalankan viewer"),
