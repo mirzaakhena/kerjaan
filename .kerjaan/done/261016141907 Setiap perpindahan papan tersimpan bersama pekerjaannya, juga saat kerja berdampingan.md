@@ -6,7 +6,7 @@ labels: [sesi-a192c9e8, skill, git]
 reporter: mirza
 assign_to: claude
 created: 2026-10-16 14:19:06
-updated: 2026-10-17 04:28:13
+updated: 2026-10-17 04:30:32
 related: [261016130801]
 blocked_by: []
 ---
@@ -53,6 +53,7 @@ biasa maupun berdampingan, dan riwayat git satu tiket jauh lebih ringkas.
 - 2026-10-16 14:46:23 todo
 - 2026-10-17 04:16:07 a192c9e8-0bb5-4bbf-8d56-9831b23e62ec in_progress
 - 2026-10-17 04:28:13 a192c9e8-0bb5-4bbf-8d56-9831b23e62ec review
+- 2026-10-17 04:30:32 a192c9e8-0bb5-4bbf-8d56-9831b23e62ec done
 
 ## Notes
 - Berasal dari penilaian independen atas skill kerjaan di sesi Claude Code
@@ -107,3 +108,40 @@ biasa maupun berdampingan, dan riwayat git satu tiket jauh lebih ringkas.
   `commit` → uji dokumen peninjau merah (pertama kali tetap hijau karena
   regex terlalu sempit; regex diperbaiki lalu sabotase diulang dan merah).
 - 2026-10-17 04:28:06: test run — `node --test --test-timeout=900000 --test-force-exit` exited 0 after 2m17s, on content fingerprint 51a462d577534b18d0bd5f7c3f69fb4751d83c5b (the same before and after the run; .kerjaan/ left out).
+- 2026-10-17: Reviewed at level normal, round 1, at commit 7215c31: passed.
+  Pemeriksaan proyek dijalankan sekali (diambil dari run pengerja), uji baru
+  dijalankan sendiri, dan tiap kriteria dibaca terhadap perubahannya.
+  - Uji penuh tidak diulang: `test-run.sh --check 261016141907` menjawab SAME,
+    run pengerja 2026-10-17 04:28:06 (`node --test --test-timeout=900000
+    --test-force-exit`, exit 0, sidik 51a462d577534b18d0bd5f7c3f69fb4751d83c5b)
+    mencakup isi yang ditinjau.
+  - Dijalankan sendiri: `test-run.sh --review 261016141907 -- node --test
+    --test-force-exit uji/commit-papan.test.mjs` → 5 lulus, 0 gagal.
+  - Pekerjaan langsung di main, tanpa cabang tiket.
+  - Kriteria 1 (putusan tersimpan): `agents/kerjaan-reviewer.md` kini memuat
+    "Commit your verdict" dengan perintah ber-pathspec; uji 1 dan 2 menjalankan
+    perintah itu dari dokumen dan memastikan tidak ada perubahan papan
+    tertinggal, baik lolos maupun dikembalikan. Terpenuhi.
+  - Kriteria 2 (panduan pengerja saat berdampingan): langkah 9 di
+    `agents/kerjaan-worker.md` menyebut kode di cabang dalam worktree dan
+    berkas tiket di main tree via `git -C <main tree>`; uji 3 menjalankannya.
+    Terpenuhi.
+  - Kriteria 3 (tidak menuntut yang mustahil): SKILL.md "Committing" bagian
+    "Side by side" menyatakan kode dan tiket tidak bisa satu commit dan memberi
+    pembagiannya; parallel-work.md menyesuaikan. Terpenuhi (lihat catatan).
+  - Kriteria 4 (paling banyak tiga commit): uji 1 menghitung tepat 3 commit
+    dari mulai sampai done; tiket ini sendiri juga 33b66a3, 7215c31, dan
+    putusan ini. Terpenuhi.
+  - Kriteria 5 (perpindahan tanpa kode): SKILL.md menyebut backlog/todo/cancel
+    ikut commit berikutnya pembuatnya; uji 1 memeriksa tiket yang dibatalkan
+    dan yang masuk todo ikut di commit mulai mandor. Terpenuhi.
+  - Uji `uji/commit-papan.test.mjs` dibaca: menjalankan perintah langsung dari
+    blok kode dokumen di repo uji yang memuat pekerjaan orang lain, dan
+    memeriksa isi tiap commit; tidak ada asersi kosong.
+  - `explain.sh` tidak ada di repo ini dan `owner_explanation` tidak diatur;
+    langkah penjelasan pemilik tidak berlaku. Repo tidak punya CLAUDE.md atau
+    AGENTS.md.
+  - Catatan, tidak memblokir: SKILL.md "Committing" kalimat pembuka masih
+    berbunyi umum "its files under `.kerjaan/` go in the same commit" sebelum
+    pengecualian "Side by side" beberapa paragraf di bawahnya; menambahkan "in
+    the main tree" di kalimat itu akan menghilangkan kesan bertentangan.
