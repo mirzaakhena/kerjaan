@@ -6,7 +6,7 @@ labels: [paralel, mandor]
 reporter: mirza
 assign_to: claude
 created: 2026-10-16 13:08:01
-updated: 2026-10-16 14:09:11
+updated: 2026-10-16 14:10:20
 related: [261016101001, 261016122401]
 blocked_by: []
 ---
@@ -49,6 +49,7 @@ berikutnya bisa langsung berjalan.
 - 2026-10-16 13:54:34 todo
 - 2026-10-16 13:54:35 in_progress
 - 2026-10-16 14:09:11 review
+- 2026-10-16 14:10:20 done
 
 ## Notes
 - 2026-10-16 Berasal dari saran reviewer 261016122401 dan pengamatan mandor
@@ -87,3 +88,32 @@ berikutnya bisa langsung berjalan.
     "menyimpan sendiri catatan".
   - penjaga HEAD lepas dihapus -> merah: "di main tree tanpa cabang".
 - 2026-10-16 14:09:11: review covers branch tiket-261016130801 at ed4219c8b0777faf50836ae40b304496a67581ae, which holds main at 382566b1051f24aed510d461d061b3f4d74508e0 (code outside .kerjaan/); the latest test run passed on exactly this content.
+- 2026-10-16 Review tingkat quick, putaran 1, pada commit ed4219c (cabang
+  tiket-261016130801, worktree /Users/mirza/Workspace/kerjaan-catatan-gabung,
+  belum masuk main — sesuai rancangan, mandor menggabungkannya setelah
+  review): uji proyek tidak dijalankan ulang, perubahan dibaca terhadap
+  kriteria.
+  - Uji: `test-run.sh --check 261016130801 ed4219c` -> SAME; hasil `node --test`
+    (exit 0, 2026-10-16 14:08:50, sidik 3d592a333be29b3b00d4450beb9eab411e3422b5)
+    dibawa dari jalannya pekerja, tidak dijalankan lagi.
+  - Kriteria 1 dan 2: uji baru "penggabungan menyimpan sendiri catatan ..."
+    menggabungkan tiket pertama, memeriksa `git status` kosong, lalu tiket
+    kedua dikirim balik, di-sync, dan mendarat tanpa campur tangan dengan
+    status tetap kosong. Kode: `save_note` dipanggil di jalur landed,
+    postponed, dan held.
+  - Kriteria 3: catatan ada di HEAD, commit `Board: <id> landed on main as
+    <hash>` hanya berisi file tiket, dan commit gabungan tepat di bawahnya.
+  - Kriteria 4: `git commit --only -- <file tiket>` tidak membawa perubahan
+    lain, staged atau tidak; diuji dengan file kode staged dan tiket lain yang
+    berubah. Keputusan pekerja untuk file tiket yang sudah kotor (catatan
+    ditulis tanpa commit, output `NOTE NOT COMMITTED`) sejalan dengan kriteria
+    ini: meng-commit-nya berarti ikut menyimpan perubahan orang lain.
+  - Dinilai dengan membaca kode dan uji saja (tidak dijalankan sendiri):
+    keempat kriteria, karena jalannya uji dibawa dari pekerja.
+  - Catatan (tidak menahan): foreman.md diubah di luar perkiraan file; isinya
+    satu baris tabel `LANDED` yang memang harus ikut berubah agar mandor tidak
+    lagi menyimpan catatan dengan tangan. parallel-work.md menyebut "the one
+    case" yang dibiarkan untuk orang adalah file tiket yang sudah kotor; HEAD
+    lepas adalah kasus kedua, tetapi hanya bisa terjadi di jalur HELD, jadi
+    dampaknya kecil. Baris `HELD` di foreman.md tidak menyebut bahwa
+    `NOTE NOT COMMITTED` bisa muncul di sana.
