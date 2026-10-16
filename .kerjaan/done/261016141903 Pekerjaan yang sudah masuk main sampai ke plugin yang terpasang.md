@@ -6,7 +6,7 @@ labels: [sesi-a192c9e8, release]
 reporter: mirza
 assign_to: claude
 created: 2026-10-16 14:19:06
-updated: 2026-10-16 16:26:54
+updated: 2026-10-16 16:28:05
 related: [261016122402]
 blocked_by: []
 ---
@@ -39,6 +39,7 @@ dan papan mengingatkan bila ada pekerjaan selesai yang belum dirilis.
 - 2026-10-16 14:46:20 todo
 - 2026-10-16 16:10:31 a192c9e8-0bb5-4bbf-8d56-9831b23e62ec in_progress
 - 2026-10-16 16:26:54 a192c9e8-0bb5-4bbf-8d56-9831b23e62ec review
+- 2026-10-16 16:28:05 a192c9e8-0bb5-4bbf-8d56-9831b23e62ec done
 
 ## Notes
 - Berasal dari penilaian independen atas skill kerjaan di sesi Claude Code
@@ -66,3 +67,16 @@ dan papan mengingatkan bila ada pekerjaan selesai yang belum dirilis.
   8. Tambahkan `; A digabung lebih dulu` di akhir kalimat pengantar, jalankan lagi `$K/queue.sh check`: hasilnya `READY`.
   (Langkah 3–8 sudah dicoba dengan skrip repo ini, yang sama dengan isi 1.13.0; yang belum terbukti hanyalah bahwa salinan terpasang sudah 1.13.0.)
 - 2026-10-16 16:26:39: test run — `node --test` exited 0 after 3m48s, on content fingerprint a9613c28b26e242a65790e74114c118c643ced2d (the same before and after the run; .kerjaan/ left out).
+- 2026-10-16: Reviewed at level quick (kolom `review:` kosong, jadi quick), round 1, at commit d5ede10: uji proyek tidak dijalankan ulang karena hasil pengerja terbawa, dan perubahan dibaca terhadap tiap butir Done when.
+  - Uji: `test-run.sh --check 261016141903 HEAD` menjawab SAME — `node --test` exit 0 pada 2026-10-16 16:26:39, fingerprint a9613c28b26e242a65790e74114c118c643ced2d. Dihitung sebagai satu-satunya jalankan penuh untuk review ini; tidak dijalankan lagi.
+  - `explain.sh check`: belum ada penjelasan (owner_explanation: off). Repo ini tidak punya CLAUDE.md atau AGENTS.md, jadi tidak ada aturan proyek tertulis yang diterapkan.
+  - Butir 1, terpenuhi: `.claude-plugin/plugin.json` naik 1.12.0 → 1.13.0 di 020ebaa. Diperiksa dengan git: setiap ID di done/ pada HEAD yang belum ada di done/ pada commit 1.12.0 (26581c8), sepuluh tiket, disebut di pesan commit `Release 1.13.0`, ditambah tiket ini sendiri. `release.sh unreleased` sekarang menjawab `LAST RELEASE: 020ebaa Release 1.13.0` dan `UNRELEASED: none`.
+  - Butir 2, menunggu mirza: keputusan pemilik tercatat di Notes (2026-10-16 14:45:45), dan skenario tangannya berupa langkah yang bisa diikuti dengan hasil yang harus terlihat (`NOT READY` lalu `READY`). Butir ini memang butuh orang: yang belum terbukti hanyalah salinan plugin terpasang sesudah push dan /plugin update. Bukan alasan menolak.
+  - Butir 3, terpenuhi menurut bacaan: SKILL.md, "When the board goes quiet", langkah 2 menjalankan `release.sh unreleased`, menyebut tiket yang tidak bertanda `(board only)` kepada pemilik dan menawarkan rilis; foreman.md sudah merujuk bagian itu. Skrip dibaca dan dijalankan sekali di repo ini (keluaran di atas).
+  - Butir 4, terpenuhi: README mendapat bagian "Releasing a new version" (kapan versi naik, patch/minor/major, cara membuat commit rilis, push dan /plugin update oleh pemilik) dan satu baris di Usage.
+  - Catatan, tidak memblokir: README mengatakan tiket yang hanya mengubah `uji/` tidak butuh rilis, tetapi skrip hanya menandai tiket yang hanya mengubah `.kerjaan/`; tiket yang hanya mengubah uji akan tetap terdaftar tanpa tanda, sehingga mandor bisa menawarkan rilis yang sebenarnya tidak perlu.
+  - Dinilai hanya dengan membaca: butir 3 (perilaku mandor saat papan sepi adalah instruksi di SKILL.md, tidak bisa dijalankan); keabsahan 14 uji di `uji/release.test.mjs` tidak diperiksa pada level quick.
+
+### Suggested follow-up
+
+- **`release.sh unreleased` tidak membedakan tiket yang hanya mengubah uji.** README menyebut tiket yang hanya mengubah `uji/` (atau `.kerjaan/`) tidak butuh rilis, tetapi skrip hanya menandai `(board only)`. Akibatnya mandor bisa menawarkan rilis untuk pekerjaan yang tidak mengubah apa pun yang dipasang. Hasil yang diinginkan: tiket yang tidak mengubah apa pun yang dikirim plugin diberi tanda sendiri dan tidak memicu tawaran rilis, atau README disesuaikan dengan perilaku skrip.
