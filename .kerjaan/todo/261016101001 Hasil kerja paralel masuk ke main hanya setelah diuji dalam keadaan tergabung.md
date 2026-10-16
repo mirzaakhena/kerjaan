@@ -6,7 +6,7 @@ labels: [paralel, mandor, uji]
 reporter: mirza
 assign_to: claude
 created: 2026-10-16 10:10:01
-updated: 2026-10-16 10:11:18
+updated: 2026-10-16 10:24:38
 related: [261016095101, 261016101002]
 blocked_by: []
 ---
@@ -38,6 +38,8 @@ sudah tergabung dengan semua yang sudah ada di main.
 - Tiket yang sudah lolos review dan lolos uji dalam keadaan tergabung langsung
   digabung ke main tanpa menunggu persetujuan pemilik. Penggabungan dilakukan
   satu per satu. Pemilik hanya ditanya bila ada masalah.
+- Bila penggabungan otomatis sebuah tiket gagal, hanya tiket itu yang ditahan
+  menunggu pemilik. Tiket lain yang tidak bergantung padanya tetap berjalan.
 
 ## Done when
 - [ ] Dua tiket yang dikerjakan bersamaan dan mengubah bagian yang sama berakhir di main dengan uji lulus, tanpa campur tangan pemilik
@@ -46,13 +48,16 @@ sudah tergabung dengan semua yang sudah ada di main.
 - [ ] Penggabungan yang lolos tanpa tabrakan teks tetapi membuat uji gagal tidak pernah masuk ke main
 - [ ] Bila tiket disesuaikan ulang setelah review dan kodenya berubah, reviewer memeriksa ulang bagian itu sebelum tiket digabung
 - [ ] Dua penggabungan ke main tidak pernah berjalan berbarengan
-- [ ] Pemilik diberi tahu bila penggabungan otomatis gagal, beserta tiket dan alasannya
+- [ ] Pemilik diberi tahu bila penggabungan otomatis gagal, beserta tiket dan alasannya; hanya tiket itu yang ditahan, dan tiket lain yang tidak bergantung padanya tetap berjalan
 
 ## History
 - 2026-10-16 10:10:01 backlog
+- 2026-10-16 10:24:38 todo
 
 ## Notes
 - 2026-10-16 Keputusan pemilik dalam diskusi kerja paralel: penyesuaian ke
   main dilakukan sebelum review; penyelesaian tabrakan diperiksa ulang dengan
   level `quick`; penggabungan ke main otomatis bila uji lulus, bergiliran.
   Ini mengubah aturan sekarang bahwa penggabungan menunggu persetujuan pemilik.
+- 2026-10-16 Keputusan mirza sebelum rantai dimulai: dikerjakan berurutan (101002, 101001, 095101) karena ketiganya mengubah panduan yang sama; review `normal`; tidak ada pemeriksaan yang hanya bisa dilakukan manusia; setelah ketiganya done, mandor merilis 1.12.0.
+- 2026-10-16 Keputusan mirza: bila penggabungan otomatis gagal, hanya tiket itu yang menunggu pemilik; antrean tidak berhenti total.

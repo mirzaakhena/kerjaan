@@ -1,12 +1,12 @@
 ---
 type: feature
 priority: medium
-review:
+review: normal
 labels: [paralel, uji]
 reporter: mirza
 assign_to: claude
 created: 2026-10-16 10:10:02
-updated: 2026-10-16 10:19:55
+updated: 2026-10-16 10:24:38
 related: [261016095101, 261016101001]
 blocked_by: []
 ---
@@ -54,6 +54,7 @@ cara untuk itu.
 
 ## History
 - 2026-10-16 10:10:02 backlog
+- 2026-10-16 10:24:38 todo
 
 ## Notes
 - 2026-10-16 Keputusan pemilik dalam diskusi kerja paralel: uji bergiliran
@@ -62,3 +63,4 @@ cara untuk itu.
 - 2026-10-16 Pemilik menambahkan: pengerjaan boleh bersamaan, tetapi pengujian
   serial. Data uji dibawa oleh tiketnya masing-masing kecuali mudah dibuat
   ulang, supaya agen pertama tidak menghapus data yang dibutuhkan agen kedua.
+- 2026-10-16 Keputusan mirza sebelum rantai dimulai: dikerjakan berurutan (101002, 101001, 095101) karena ketiganya mengubah panduan yang sama; review `normal`; tidak ada pemeriksaan yang hanya bisa dilakukan manusia; setelah ketiganya done, mandor merilis 1.12.0.

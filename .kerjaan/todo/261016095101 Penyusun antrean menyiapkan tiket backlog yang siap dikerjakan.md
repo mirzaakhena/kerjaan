@@ -1,12 +1,12 @@
 ---
 type: feature
 priority: high
-review:
+review: normal
 labels: [paralel, mandor, antrean]
 reporter: mirza
 assign_to: claude
 created: 2026-10-16 09:51:12
-updated: 2026-10-16 10:19:55
+updated: 2026-10-16 10:24:38
 related: [261011064201, 261016101001, 261016101002]
 blocked_by: []
 ---
@@ -60,6 +60,7 @@ baik bersamaan maupun berurutan.
 
 ## History
 - 2026-10-16 09:51:12 backlog
+- 2026-10-16 10:24:38 todo
 
 ## Notes
 - 2026-10-16 Berasal dari diskusi dengan pemilik tentang kerja paralel.
@@ -74,3 +75,4 @@ baik bersamaan maupun berurutan.
   memecah tiket yang terlalu besar, dan memindahkan tiket yang sudah disetujui
   ke antrean beserta menulis urutannya. Ini berarti pemecahan tiket tidak lagi
   menunggu keputusan pemilik per tiket ketika dilakukan oleh penyusun antrean.
+- 2026-10-16 Keputusan mirza sebelum rantai dimulai: dikerjakan berurutan (101002, 101001, 095101) karena ketiganya mengubah panduan yang sama; review `normal`; tidak ada pemeriksaan yang hanya bisa dilakukan manusia; setelah ketiganya done, mandor merilis 1.12.0.
