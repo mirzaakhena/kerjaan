@@ -17,7 +17,7 @@ for (const dark of [false, true]) {
     makeBoard(root, 'proj', { [`done/${ID} Tiket.md`]: ticket({ body }) });
     const v = await startViewer(root);
     const page = await openBrowser({ dark });
-    if (!page) { v.server.close(); return; }
+    if (!page) { await v.close(); return; }
     try {
       let pitch = null;
       for (const width of [1280, 640, 600, 390, 320]) {
@@ -52,7 +52,7 @@ for (const dark of [false, true]) {
       }
     } finally {
       await page.close();
-      v.server.close();
+      await v.close();
     }
   });
 }

@@ -33,7 +33,7 @@ test('mengarsipkan proyek di peramban: pindah tab, diingat setelah muat ulang', 
   for (const n of ['alpha', 'beta', 'gamma']) makeBoard(root, n);
   const v = await startViewer(root);
   const page = await openBrowser();
-  if (!page) { v.server.close(); return; }
+  if (!page) { await v.close(); return; }
   try {
     await page.size(1000, 800);
     await page.goto(`${v.base}/`);
@@ -69,6 +69,6 @@ test('mengarsipkan proyek di peramban: pindah tab, diingat setelah muat ulang', 
     assert.equal(target, '/alpha/', 'bagian bawah kartu tetap membuka proyek');
   } finally {
     await page.close();
-    v.server.close();
+    await v.close();
   }
 });

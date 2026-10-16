@@ -30,10 +30,16 @@ async function setup({ dark = false, projects = PROJECTS, archived = ['lima'] } 
   for (const n of projects) makeBoard(root, n);
   const v = await startViewer(root);
   const page = await openBrowser({ dark });
-  if (!page) { v.server.close(); return null; }
-  await page.size(1000, 800);
-  await page.goto(`${v.base}/`);
-  await page.eval((a) => localStorage.setItem('kerjaan.proyek-arsip', JSON.stringify(a)), archived);
+  if (!page) { await v.close(); return null; }
+  try {
+    await page.size(1000, 800);
+    await page.goto(`${v.base}/`);
+    await page.eval((a) => localStorage.setItem('kerjaan.proyek-arsip', JSON.stringify(a)), archived);
+  } catch (err) {
+    await page.close();
+    await v.close();
+    throw err;
+  }
   return { v, page };
 }
 
@@ -125,7 +131,7 @@ test('tombol proyek di kepala papan: semua proyek aktif, yang dibuka ditandai, s
     await ready(page);
   } finally {
     await page.close();
-    v.server.close();
+    await v.close();
   }
 });
 
@@ -145,7 +151,7 @@ test('angka dan huruf di papan ketik tidak lagi memindah proyek', { skip: !chrom
     assert.equal(await page.eval(() => document.getElementById('name').textContent), 'delta');
   } finally {
     await page.close();
-    v.server.close();
+    await v.close();
   }
 });
 
@@ -198,7 +204,7 @@ test('tombol yang tidak muat bisa digeser ke samping, di layar lebar dan di pons
     }
   } finally {
     await page.close();
-    v.server.close();
+    await v.close();
   }
 });
 
@@ -246,7 +252,7 @@ test('tombol proyek rapi di layar lebar, di ponsel, dan di mode gelap', { skip: 
       }
     } finally {
       await page.close();
-      v.server.close();
+      await v.close();
     }
   }
 });
@@ -283,6 +289,6 @@ test('tanpa proyek aktif, atau saat daftar proyek tidak bisa dibaca: tanpa tombo
     assert.deepEqual(await state(), { hidden: true, count: 0, board: 6 });
   } finally {
     await page.close();
-    v.server.close();
+    await v.close();
   }
 });
