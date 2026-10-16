@@ -6,7 +6,7 @@ labels: [sesi-a192c9e8, history]
 reporter: mirza
 assign_to: claude
 created: 2026-10-16 14:46:00
-updated: 2026-10-16 14:46:01
+updated: 2026-10-16 14:46:25
 related: [261006110801, 261006121502]
 blocked_by: []
 ---
@@ -31,7 +31,7 @@ pengenal sesi itu, sehingga dari tiket mana pun pemilik bisa menelusuri balik
 ke percakapan yang memindahkannya.
 
 ## Done when
-- [ ] Perpindahan status dari dalam sesi Claude Code menulis pengenal sesi itu di baris riwayatnya
+- [ ] Perpindahan status dari dalam sesi Claude Code menulis baris riwayat berbentuk `- <waktu> <session-id> <status>`, misalnya `- 2026-10-16 14:16:07 4dbcf082-290a-4f65-845c-ee75fd3b3e9c done`
 - [ ] Perpindahan dari terminal biasa, di luar sesi Claude Code, tetap menulis baris seperti sekarang tanpa penanda kosong
 - [ ] Baris riwayat lama tanpa pengenal sesi tetap terbaca benar oleh viewer, hitungan putaran review, dan pemeriksaan antrean
 - [ ] Viewer menampilkan riwayat yang memuat pengenal sesi dengan rapi
@@ -57,6 +57,8 @@ ke percakapan yang memindahkannya.
   agar pemindahan oleh pengerja dan oleh peninjau tetap bisa dibedakan.
 - Penulis baris riwayat: `update-ticket.sh` (sekitar baris 401-434) dan
   `new-ticket.sh`. Pembaca: `on-ticket-review.sh` (menghitung baris review),
-  `viewer/` dan `board.mjs`. Bentuk baris yang disarankan:
-  `- <waktu> <status> (sesi <id>)`, supaya pembaca lama yang hanya mengambil
-  dua kata pertama tetap bekerja.
+  `viewer/` dan `board.mjs`. Semua pembaca harus mengenali kedua bentuk:
+  `- <waktu> <status>` (baris lama atau dari terminal) dan
+  `- <waktu> <session-id> <status>`. Status selalu kata terakhir di baris.
+- Bentuk baris ditetapkan pemilik: `- 2026-10-16 14:16:07
+  4dbcf082-290a-4f65-845c-ee75fd3b3e9c done`.
