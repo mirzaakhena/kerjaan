@@ -87,44 +87,35 @@ button, input, select { font: inherit; color: inherit; }
 .bar h1 { font-size: 16px; font-weight: 600; margin: 0; white-space: nowrap; }
 .bar h1 a { color: var(--muted); font-weight: 500; }
 .bar h1 .sep { color: var(--faint); margin: 0 6px; }
-/* The project switcher next to the project's name. */
-.pindah { position: relative; display: inline-block; margin-left: 4px; }
-#pindah {
-  border: 1px solid transparent; background: none; border-radius: 6px; cursor: pointer;
-  min-width: 28px; min-height: 28px; padding: 0 6px; font-size: 15px; line-height: 1; color: var(--muted); vertical-align: middle;
+/* The board page's bar: the project's name, then every active project as a
+   button, then the live dot. The row of buttons takes the room between them
+   and scrolls sideways when it holds more than fits; the page never widens. */
+body.proyek .bar h1 { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.proyek-tombol {
+  position: relative; flex: 1 1 0; min-width: 0;
+  display: flex; gap: 6px; overflow-x: auto; overscroll-behavior-x: contain;
+  scrollbar-width: none; padding: 2px 0;
 }
-#pindah:hover, #pindah[aria-expanded="true"] { border-color: var(--line); background: var(--sunk); color: var(--ink); }
-.pindah-menu {
-  position: absolute; top: calc(100% + 6px); left: 0;
-  width: max-content; min-width: 220px; max-width: min(360px, calc(100vw - 32px));
-  max-height: min(70vh, 480px); overflow-y: auto;
-  background: var(--panel); border: 1px solid var(--line); border-radius: 10px; box-shadow: var(--shadow);
-  font: 14px/1.45 var(--sans); white-space: normal; padding: 4px;
+.proyek-tombol[hidden] { display: none; }
+.proyek-tombol::-webkit-scrollbar { display: none; }
+.proyek-tombol a {
+  flex: none; white-space: nowrap;
+  padding: 3px 12px; border-radius: 999px; border: 1px solid var(--line); background: var(--panel);
+  font-size: 13px; line-height: 1.4; color: var(--muted);
 }
-.pindah-menu ul { list-style: none; margin: 0; padding: 0; }
-/* .bar h1 a would make these muted and medium; they are a list, not a crumb. */
-.pindah-menu li a { display: flex; align-items: center; gap: 10px; padding: 6px 8px; border-radius: 6px; color: var(--ink); font-weight: 400; }
-.pindah-menu .kaki a { color: var(--accent); font-weight: 400; }
-.pindah-menu li a:hover, .pindah-menu li a:focus-visible { background: var(--sunk); text-decoration: none; outline: none; }
-.pindah-menu li a[aria-current="page"] { background: var(--sunk); font-weight: 600; }
-.pindah-menu .n { min-width: 0; overflow-wrap: anywhere; }
-.pindah-menu kbd {
-  flex: none; width: 20px; height: 20px; display: inline-flex; align-items: center; justify-content: center;
-  font: 500 12px/1 var(--mono); color: var(--muted); border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px;
+.proyek-tombol a:hover { color: var(--ink); border-color: var(--faint); text-decoration: none; }
+.proyek-tombol a:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.proyek-tombol a[aria-current="page"] {
+  color: var(--accent); border-color: var(--accent); background: var(--sunk);
+  box-shadow: inset 0 0 0 1px var(--accent); font-weight: 600;
 }
-.pindah-menu kbd.none { visibility: hidden; }
-.pindah-menu .ini { margin-left: auto; font-size: 11.5px; font-weight: 400; color: var(--accent); }
-.pindah-menu .kosong { margin: 0; padding: 8px; color: var(--muted); }
-.pindah-menu .kaki {
-  display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap;
-  margin-top: 4px; padding: 6px 8px 4px; border-top: 1px solid var(--line); font-size: 12px; color: var(--muted); font-weight: 400;
-}
-@media (hover: none) { .pindah-menu .kaki > span { display: none; } }
-/* On a phone the list spans the screen under the top bar, wherever the
-   project's name ends. */
-@media (max-width: 480px) {
-  .pindah { position: static; }
-  .pindah-menu { top: calc(100% + 4px); left: 8px; right: 8px; width: auto; min-width: 0; max-width: none; }
+body.proyek .bar .live { flex: none; }
+/* On a phone the buttons get a row of their own under the name, the full
+   width of the screen. */
+@media (max-width: 640px) {
+  body.proyek .bar { row-gap: 8px; }
+  body.proyek .bar h1 { flex: 1 1 0; }
+  .proyek-tombol { order: 3; flex: 1 0 calc(100% + 32px); margin: 0 -16px; padding: 2px 16px; scroll-padding: 0 16px; }
 }
 .live { margin-left: auto; font-size: 12px; color: var(--muted); display: flex; align-items: center; gap: 6px; }
 .live::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--faint); }
