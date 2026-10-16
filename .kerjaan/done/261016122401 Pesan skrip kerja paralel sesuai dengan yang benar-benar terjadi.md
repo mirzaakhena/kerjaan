@@ -6,7 +6,7 @@ labels: [paralel, pesan]
 reporter: mirza
 assign_to: claude
 created: 2026-10-16 12:24:01
-updated: 2026-10-16 13:07:44
+updated: 2026-10-16 13:08:04
 related: [261016101001, 261016095101]
 blocked_by: []
 ---
@@ -97,3 +97,4 @@ menjawabnya.
 ### Suggested follow-up
 
 - **`merge.sh land` meninggalkan baris "landed on main" di tiket tanpa commit di main.** Saat 261016122402 digabung hari ini, baris itu tertinggal sebagai perubahan yang belum di-commit di salinan utama, lalu di-commit terpisah (2a5760c). Pembaca papan atau sesi berikutnya bisa menemukan salinan utama "kotor" setelah penggabungan yang tampak selesai. Layak jadi tiket: land sebaiknya meng-commit catatannya sendiri, atau menyatakan dengan jelas bahwa commit itu masih perlu dibuat.
+- 2026-10-16 13:08:03: landed on main as e7bc9631cc6fb548ec66582e20588906b00662a3, merging tiket-261016122401 at 57470c730979d9ebb2aa2c615c6d5ee14cc7f63c; tests carried from the run on this exact content, not run again.
