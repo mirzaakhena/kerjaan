@@ -6,7 +6,7 @@ labels: [paralel, uji]
 reporter: mirza
 assign_to: claude
 created: 2026-10-16 10:10:02
-updated: 2026-10-16 10:53:36
+updated: 2026-10-16 10:55:37
 related: [261016095101, 261016101001]
 blocked_by: []
 ---
@@ -57,6 +57,7 @@ cara untuk itu.
 - 2026-10-16 10:24:38 todo
 - 2026-10-16 10:24:52 in_progress
 - 2026-10-16 10:53:36 review
+- 2026-10-16 10:55:37 done
 
 ## Notes
 - 2026-10-16 Keputusan pemilik dalam diskusi kerja paralel: uji bergiliran
@@ -144,3 +145,46 @@ cara untuk itu.
     Diperbaiki; mengembalikan bug itu → merah: uji kunci slots.
 
 - 2026-10-16 10:53:24: test run — `node --test` exited 0 after 1m5s, on content fingerprint 032a95bd5d450dec9aa8f841c5f4da32ee6798b0 (the same before and after the run; .kerjaan/ left out).
+
+- 2026-10-16 Peninjau: ditinjau pada level normal, putaran 1, pada commit
+  a7baf5c (pekerjaan di e10cbb4, langsung di main, tanpa worktree): setiap
+  kriteria dibuktikan dengan menjalankan sesuatu, dan uji dibaca untuk mencari
+  pernyataan kosong.
+  - Uji proyek: `node --test` dijalankan sendiri di salinan bersih hasil
+    `git archive a7baf5c` (bukan diambil dari catatan pengerja, karena di
+    pohon kerja ada perubahan sesi lain yang bukan milik tiket ini):
+    135 lulus, 0 gagal, 55 detik.
+  - Percobaan tangan di repo sekali pakai, memakai skrip dari salinan bersih:
+    dua worktree dibuat dengan `worktree.sh add` (slot 1 dan 2, persiapan
+    tercatat dengan tiket dan slot masing-masing); dua `test-run.sh`
+    dijalankan bersamaan tanpa `parallel_tests` → berjalan bergiliran, dan
+    baris catatan yang kedua diakhiri "Waited 0m4s for the test lock first,
+    held by another run (ticket …, slot 2, …)"; dengan `parallel_tests: true`
+    → keduanya mulai pada detik yang sama; `worktree.sh remove` dengan ID dan
+    dengan path → pembersihan berjalan dengan tiket dan slot worktree itu;
+    `worktree_setup: false` → keluar 1, worktree tidak ada, cabang yang sudah
+    ada sebelumnya dibiarkan.
+  - Kriteria 1–6: terbukti oleh percobaan di atas dan oleh
+    `uji/worktree.test.mjs`. Uji itu dibaca: tidak ada yang kosong; uji
+    berbarengan hanya lulus bila kedua uji benar-benar saling melihat, dan dua
+    uji data menjalankan kedua urutan dengan pembersihan tiket pertama sebelum
+    uji tiket kedua.
+  - Kriteria 7–8: dibaca di `skills/kerjaan/references/parallel-work.md`
+    (bagian "Tests take turns", "Setup and teardown", "Who owns test data") dan
+    `skills/kerjaan/SETTINGS.md` (tiga pengaturan baru dan keempat variabel).
+    Yang diperbarui adalah templat pengaturan papan, sumber setiap
+    `settings.md`; `.kerjaan/settings.md` papan ini tidak berubah dan nilai
+    bawaannya sudah benar. Saya terima itu sebagai "file pengaturan papan".
+  - `explain.sh check`: belum ada penjelasan, `owner_explanation: off`.
+  - Catatan, tidak menghalangi: peninjau masih menjalankan `test_command`
+    tanpa kunci `tests` (sudah dicatat pengerja). Ulasan ini pun begitu, tetapi
+    di salinan bersih yang bukan worktree repo ini.
+
+### Suggested follow-up
+
+- **Uji peninjau tidak ikut antre.** `agents/kerjaan-reviewer.md` menyuruh
+  peninjau menjalankan `test_command` langsung, di luar kunci `tests`
+  milik `test-run.sh`, sehingga uji peninjau bisa berbarengan dengan uji
+  pengerja di worktree lain dan saling mengganggu. Yang diinginkan: peninjau
+  memakai jalur yang sama (misalnya mode jalan-tanpa-catat di `test-run.sh`),
+  sehingga semua uji di satu repo tetap bergiliran.
