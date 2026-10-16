@@ -6,7 +6,7 @@ labels: [sesi-a192c9e8, skill, token]
 reporter: mirza
 assign_to: claude
 created: 2026-10-16 14:19:07
-updated: 2026-10-17 06:44:17
+updated: 2026-10-17 06:45:37
 related: [261016141909, 261016141910, 261016141916]
 blocked_by: [261016141909, 261016141910]
 ---
@@ -39,6 +39,7 @@ aturan baru harus menyebut aturan lama yang digantikannya.
 - 2026-10-16 14:46:25 todo
 - 2026-10-17 06:35:54 e97c38bb-2b6f-487d-a8b0-2fdab5809ee3 in_progress
 - 2026-10-17 06:44:17 e97c38bb-2b6f-487d-a8b0-2fdab5809ee3 review
+- 2026-10-17 06:45:37 e97c38bb-2b6f-487d-a8b0-2fdab5809ee3 done
 
 ## Notes
 - Berasal dari penilaian independen atas skill kerjaan di sesi Claude Code
@@ -59,3 +60,12 @@ aturan baru harus menyebut aturan lama yang digantikannya.
   - Uji dibuat merah dengan sengaja, lalu dipulihkan dari salinan: +600 kata di repairs.md, +600 di SKILL.md, berkas baru 600 kata di `agents/` dan di `references/` → uji anggaran merah; kalimat aturan di README diganti → uji README merah; kalimat ringkasan di definisi pengerja diganti → uji pengerja merah.
   - Berkas di luar estimasi: `skills/kerjaan/references/foreman.md`, `ordering-the-queue.md`, `parallel-work.md`, `review.md` (pemangkasan) dan `uji/skill-ringkas.test.mjs` (dipakai sebagai ganti `uji/anggaran.test.mjs` yang diestimasi, sesuai arahan agar tidak ada uji anggaran kedua).
 - 2026-10-17 06:44:11: test run — `node --test --test-timeout=900000 --test-force-exit` exited 0 after 2m16s, on content fingerprint 2d810c939b880dc8a4123800442565349d97df04 (the same before and after the run; .kerjaan/ left out).
+- 2026-10-17: Reviewed at level quick, round 1, at commit 83d5a61: passed.
+  Level quick: uji proyek tidak dijalankan ulang karena hasil pengerja sudah mencakup isi yang sama persis, lalu perubahan dibaca terhadap tiap butir Done when. Atas permintaan mandor, pemangkasan di empat panduan dibaca sekilas untuk mencari aturan yang hilang; itu masih dalam lingkup diff, jadi level tidak dinaikkan.
+  - Uji: `test-run.sh --check 261016141911 83d5a61` menjawab SAME. Hasil pengerja dipakai, tanpa menjalankan ulang: `node --test --test-timeout=900000 --test-force-exit` exit 0, 2026-10-17 06:44:11, fingerprint 2d810c939b880dc8a4123800442565349d97df04.
+  - Butir 1 (anggaran 18.000, uji gagal bila lewat): terpenuhi. `uji/skill-ringkas.test.mjs` punya `BUDGET = 18000`, menjumlahkan SKILL.md dan semua `.md` yang dibaca dari folder `references/` dan `agents/`, dan memastikan berkas yang terhitung tidak kosong. Bahwa uji bisa merah hanya dinilai dari isi diff; uji mutasi tidak dijalankan.
+  - Butir 2 (total di bawah anggaran, angka di Notes): terpenuhi. Hitungan ulang peninjau (`cat ... | wc -w`) memberi 17.495, sama dengan angka di Notes. 261016141909 dan 261016141910 sudah di `done/`.
+  - Butir 3 (README): terpenuhi. Ada bagian baru "Keeping the rules small" yang menyebut anggaran, uji pemeriksanya, dan aturan bahwa aturan baru menyebut aturan yang dihapus atau digantikan. Uji README memeriksanya.
+  - Butir 4 (Notes berupa ringkasan): terpenuhi. Langkah 5 di `agents/kerjaan-worker.md` meminta ringkasan, bukan log. Ada uji yang memeriksanya.
+  - Pemangkasan di parallel-work.md, foreman.md, ordering-the-queue.md dan review.md dibaca sekilas. Yang dibuang berupa penjelasan, contoh dan pengulangan. Dua rujukan baru di review.md menunjuk ke teks yang memang ada: langkah 7 planner menyebut uang, autentikasi dan izin, dan bagian "Rounds" di review.md masih menyatakan bahwa penolakan kedua menghentikan rantai. Tidak ditemukan aturan yang hilang.
+  - Catatan, tidak memblokir: foreman.md tidak lagi menyebut, dalam pesan tanya sebelum rantai, "pertanyaan planner dan level review yang disarankannya". Keduanya tetap sampai ke pemilik lewat "Filling the queue", yang dirujuk kalimat yang sama. Kalimat "the start gate applies" di bagian "mark it done" juga dihapus; aturan itu tetap dijalankan oleh `update-ticket.sh`.
