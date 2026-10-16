@@ -6,7 +6,7 @@ labels: [viewer, ux]
 reporter: mirza
 assign_to: claude
 created: 2026-10-16 08:49:24
-updated: 2026-10-16 08:58:24
+updated: 2026-10-16 09:02:23
 related: [261016084201]
 blocked_by: []
 ---
@@ -50,6 +50,7 @@ supaya kartu dan laci berbicara dengan bahasa yang sama.
 - 2026-10-16 08:49:24 todo
 - 2026-10-16 08:49:56 in_progress
 - 2026-10-16 08:58:24 review
+- 2026-10-16 09:02:23 done
 
 ## Notes
 - Permintaan mirza, 2026-10-16, dengan rujukan baris status konteks dan
@@ -108,3 +109,57 @@ supaya kartu dan laci berbicara dengan bahasa yang sama.
   belum, garis tipis = dicoret, tanpa perlu membaca angka.
 
 - 2026-10-16 08:58:16: test run — `node --test` exited 0 after 0m4s, on content fingerprint 3438599c0b99751a80128c2be7e0980a9f024b7d (the same before and after the run; .kerjaan/ left out).
+
+### Review — 2026-10-16
+
+Direview pada tingkat normal, putaran 1, pada commit c29e032 (pekerjaan di
+e40dbe8, langsung di `main`; tidak ada cabang atau worktree terpisah untuk
+tiket ini): pemeriksaan proyek tidak dijalankan ulang karena hasil worker
+terbukti mencakup isi yang sama, lalu tiap butir dibuktikan dengan menjalankan
+penampil pada papan contoh dan membaca hasilnya.
+
+- `test-run.sh --check 261016084901 HEAD` → SAME: `node --test` lulus (exit 0)
+  pada 2026-10-16 08:58:16, sidik 3438599c0b99751a80128c2be7e0980a9f024b7d,
+  isinya sama persis dengan c29e032 di luar `.kerjaan/`. Dibawa dari run
+  worker, tidak dijalankan lagi.
+- Papan contoh di /tmp (tiket 20 butir, 60 butir, tiket dengan 2 butir dicoret,
+  tiket tanpa `## Done when`, tiket tanpa kotak sama sekali; kotak centang juga
+  diletakkan di Background dan Notes), dilayani dengan
+  `node viewer/server.mjs --scan <tmp> --project demo --port 4987`.
+  - `GET /demo/api/papan`: `doneWhen` urut sama dengan tiket
+    (`xx_xx_…`), butir dicoret ditandai, kotak di Background/Notes tidak
+    terhitung, tiket tanpa Done when → `[]`. `checks` = [14,20], [40,60], [1,2].
+  - Tangkapan layar Chrome headless lebar 1000: deretan 20 dan 60 pil muat di
+    dalam kartu tanpa melebarkan atau memotongnya; butir dicoret tampil sebagai
+    garis pendek, beda jelas dari kotak kosong; kartu tanpa Done when tanpa
+    deretan; angka "x/y" tidak ada lagi.
+  - DOM hasil gambar: `role="img"` dengan `aria-label` dan `title` sama, mis.
+    "14 dari 20 selesai", "1 dari 2 selesai, 2 dicoret".
+  - `GET /aset/pil.js` → 200.
+
+Per butir:
+1. Terpenuhi — dilihat di API dan tangkapan layar.
+2. Menunggu mirza (bukan penghalang): keputusan mirza 2026-10-16 tercatat di
+   Notes, skenario uji tangan lengkap dan berakhir pada apa yang harus
+   terlihat. Di mode terang, tangkapan layar menunjukkan hijau terisi dan kotak
+   bergaris bisa dibedakan; mode gelap tidak diperiksa.
+3. Terpenuhi — garis pendek tipis, tidak dihitung dalam ringkasan maupun
+   `checks`.
+4. Terpenuhi — `title` dan `aria-label` identik di DOM.
+5. Terpenuhi — 20 dan 60 butir muat (tangkapan layar).
+6. Terpenuhi — tidak ada deretan untuk tiket tanpa Done when.
+7. Terpenuhi — dibawa dari run worker (SAME, lihat di atas).
+
+Perubahan perilaku yang diperiksa: `checks` (dipakai laci untuk "x dari y
+tercentang") kini hanya menghitung butir Done when yang tidak dicoret; cara
+hitungnya sama dengan `ticket-size.sh` (butir tingkat atas, di luar blok
+berpagar, tanpa yang dicoret). Ini sesuai maksud tiket.
+
+Catatan (tidak menghalangi):
+- Uji "kartu menggambar deretan pil" di `viewer/uji/pil.test.mjs` hanya
+  mencocokkan teks sumber `proyek.js`, bukan hasil gambar; perilakunya sudah
+  dibuktikan lewat tangkapan layar di atas.
+- Pada 20 butir ke atas deretan turun ke baris sendiri di bawah ID dan tag, dan
+  rata kiri; pada sedikit butir ia tetap di kanan bawah. Wajar, sekadar dicatat.
+- Ringkasan memasukkan teks ke `aria-label` tanpa escape; isinya hanya angka
+  buatan sendiri, jadi aman.
