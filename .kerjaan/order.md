@@ -1,5 +1,9 @@
 Batch penilaian skill (sesi a192c9e8). 261016141916 tidak ada di sini: tiket keputusan itu dijalankan langsung dari backlog di awal rantai, selama pemilik hadir.
 
+**Pertama, uji viewer yang menggantung, sendirian.** Run uji akhir 261016141915 yang sedang dikerjakan menunggu perbaikan ini; tiket ini tidak berbagi berkas dengan tiket mana pun di todo maupun yang sedang dikerjakan, jadi digabung lebih dulu daripada semuanya tanpa urutan penggabungan bersama.
+
+- 261016183501 Uji viewer tidak pernah menggantung walau Chrome lain sedang berjalan
+
 **Lalu rilis, penghapusan penjelasan pemilik, dan uji skrip papan, bersamaan.** Rilis membawa grup pertama dan empat tiket sebelumnya, penghapusan membuat tiket aturan sesudahnya tidak perlu mengurus fitur itu, dan uji ditulis atas perilaku yang sudah diperbaiki; 261016141903 dan 261016141904 berbagi SKILL.md, README.md dan foreman.md, dan ketiganya berbagi README.md, jadi 261016141903 digabung lebih dulu, lalu 261016141915 digabung sebelum 261016141904.
 
 - 261016141904 Fitur penjelasan pemilik dihapus dari kerjaan
