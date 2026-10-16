@@ -6,7 +6,7 @@ labels: [sesi-a192c9e8, history]
 reporter: mirza
 assign_to: claude
 created: 2026-10-16 14:46:00
-updated: 2026-10-16 15:44:53
+updated: 2026-10-16 15:46:03
 related: [261006110801, 261006121502]
 blocked_by: []
 ---
@@ -43,6 +43,7 @@ ke percakapan yang memindahkannya.
 - 2026-10-16 14:50:07 todo
 - 2026-10-16 15:04:28 in_progress
 - 2026-10-16 15:44:53 a192c9e8-0bb5-4bbf-8d56-9831b23e62ec review
+- 2026-10-16 15:46:03 a192c9e8-0bb5-4bbf-8d56-9831b23e62ec done
 
 ## Notes
 - Berasal dari penilaian independen atas skill kerjaan di sesi Claude Code
@@ -111,3 +112,14 @@ ke percakapan yang memindahkannya.
       hanya memeriksa tinggi elemen, bukan jarak antarbaris); baris tidak
       sejajar (`display: contents` dihapus) → 2.
 - 2026-10-16 15:44:39: test run — `node --test` exited 0 after 3m32s, on content fingerprint 455c575d897303a8fe480b606a48884df9f0ca3c (the same before and after the run; .kerjaan/ left out).
+- Reviewed at level quick, round 1, at commit 36af54e (kerja di b159a8c, langsung di main, tanpa worktree), 2026-10-16: pemeriksaan proyek dihitung sekali dan perubahan dibaca terhadap setiap kriteria. Tidak ada server yang dijalankan.
+  - `test-run.sh --check 261016144601 HEAD` → SAME: isi HEAD persis isi yang diuji pada 2026-10-16 15:44:39, sidik jari 455c575d897303a8fe480b606a48884df9f0ca3c, `node --test` keluar 0. Uji tidak dijalankan ulang; hasilnya dibawa dari jalannya pengerja.
+  - `explain.sh check` → belum ada penjelasan; `owner_explanation: off`, jadi tidak diperlukan.
+  - Repo ini tidak punya `CLAUDE.md` atau `AGENTS.md`; tidak ada aturan proyek tertulis yang diterapkan.
+  - Kriteria 1 (bentuk dengan sesi): `kerjaan_history_line` di `lib.sh` menulis `- <waktu> <session-id> <status>` dari `CLAUDE_CODE_SESSION_ID`; dipakai `update-ticket.sh` dan `new-ticket.sh`. Baris History tiket ini sendiri (`... a192c9e8-... review`) adalah contoh hidupnya. Terpenuhi.
+  - Kriteria 2 (di luar sesi): nilai kosong atau tidak bersih jatuh ke `- <waktu> <status>`, tanpa penanda kosong; diuji di `uji/update-ticket.test.mjs` dan `uji/new-ticket.test.mjs`. Terpenuhi.
+  - Kriteria 3 (baris lama tetap terbaca): regex `on-ticket-review.sh` menerima satu kata opsional sebelum `review`; `markdown.js` menerima kedua bentuk. Pencarian `History` di `scripts/`, `viewer/`, `hooks/`, `agents/` tidak menemukan pembaca lain. Terpenuhi.
+  - Kriteria 4 (viewer rapi): `markdown.js` merender History sebagai `ul.riwayat` dengan kolom waktu, status, sesi; `gaya.css` menumpuk sesi di layar ≤600px. Dinilai dengan membaca diff dan dari uji peramban di `viewer/uji/riwayat.test.mjs` yang ikut lulus; tampilannya tidak dilihat sendiri.
+  - Kriteria 5 (panduan): `SKILL.md` paragraf "Who moved it, and why" menjelaskan `claude --resume`, folder asal sesi, dan penghapusan transkrip setelah 30 hari / `cleanupPeriodDays`. Terpenuhi.
+  - Kriteria 6 (uji otomatis): ada uji dengan dan tanpa pengenal di `uji/update-ticket`, `new-ticket`, `on-ticket-review`, `queue`, dan `viewer/uji/markdown`, `riwayat`. Isi uji tidak dibaca baris per baris (level quick).
+  - Catatan, tidak menghalangi: `references/repairs.md` kini menyebut bentuk dengan sesi untuk perbaikan tangan; baris yang sudah ada di sana tetap memuat `- <time> <status>` sebagai bentuk dasar, sesuai.
