@@ -61,16 +61,49 @@ they are not the same question:
   first one's change in and resolves it, as every branch does when main moved
   (`parallel-work.md`, "Back into main"). What makes it ordinary rather than a
   surprise is that it is known in advance, so the lead-in says it: **both IDs,
-  the files they share, and which lands first.** Name first the one whose
-  change to those files the other is built around, or else the smaller one.
+  the files they share, and which lands first** — in the wording under
+  "Saying which lands first" below. Put first the one whose change to those
+  files the other is built around, or else the smaller one.
 
 Which files a ticket will change is not guessed from its title. Every ticket
 going into `todo` carries an estimate, recorded with `"$K/queue.sh" estimate
 <id> <path>...`, and `"$K/queue.sh" overlap` lists every pair whose estimates
 share files, with the files. `"$K/queue.sh" check` refuses a `todo` where a
 group holds a ticket together with one it waits for, where a ticket sits before
-one it waits for, or where two tickets of one group share files that their
-lead-in does not name them for.
+one it waits for, or where two tickets of one group share files and their
+lead-in does not name both of them and say which lands first.
+
+## Saying which lands first
+
+The lead-in is prose, but the part that says which lands first is found by
+`queue.sh check`, so it is written in one fixed shape: **the ID, then the
+phrase, nothing in between.**
+
+| Meaning | English | Bahasa Indonesia |
+|---|---|---|
+| this one lands first | `<id> lands first` | `<id> digabung lebih dulu` |
+| this one lands before that one | `<id> lands before <id>` | `<id> digabung sebelum <id>` |
+
+In Indonesian, `mendarat` may stand for `digabung`, `dahulu` for `dulu`, and
+`lebih` may be left out (`<id> digabung dulu`, `<id> mendarat lebih dahulu`).
+A board in any other language uses the English phrase inside its own
+sentence. Letter case does not matter, an ID may sit in backticks or bold, and
+the sentence may wrap anywhere, inside the phrase too.
+
+> **Then these two, side by side.** Both change the menu file, so 260905160502 lands first and 260905160503 merges its menu entry in.
+
+> **Dua tiket ini bersamaan.** 260905160502 dan 260905160503 sama-sama mengubah berkas menu; bila dikerjakan bersamaan, 260905160502 digabung lebih dulu.
+
+Say it **for every pair** that shares files. With two tickets, one `lands
+first` is enough. With three or more sharing files, `<id> lands first` settles
+that ticket against each of the others, and the rest need a `lands before`
+between them: "260905160502 lands first, then 260905160503 lands before
+260905160504". Two tickets of one pair both said to land first is refused as
+unclear.
+
+What is not recognised is refused with the reason, not guessed at:
+`260905160502, the smaller one, lands first` puts words between the ID and
+the phrase, and `one of them lands first` names no ID.
 
 ## Why this is not the index that is banned in SKILL.md
 
