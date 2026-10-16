@@ -580,11 +580,14 @@ node --test
 ```
 
 That one command runs the whole suite: every `*.test.mjs` under `uji/` (the
-scripts in `skills/kerjaan/scripts/`) and `viewer/uji/` (the viewer). It is
-also this board's own `test_command`, so it is what `test-run.sh` runs before
-a ticket goes to review. Each test builds a throwaway repository with a board
-under the system temp folder and runs the real scripts against it; nothing in
-this checkout is changed. Expect a few minutes for the whole run.
+scripts in `skills/kerjaan/scripts/`) and `viewer/uji/` (the viewer). This
+board's own `test_command`, which `test-run.sh` runs before a ticket goes to
+review, is the same run with two guards added (Node 22 or newer):
+`node --test --test-timeout=900000 --test-force-exit`, so that a test which
+hangs fails after 15 minutes instead of holding the run forever. Each test
+builds a throwaway repository with a board under the system temp folder and
+runs the real scripts against it; nothing in this checkout is changed. Expect
+a few minutes for the whole run.
 
 Naming a folder does not work: `node --test uji/` tries to load `uji/` as a
 single module and fails with "Cannot find module". To run part of the

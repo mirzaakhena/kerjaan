@@ -6,7 +6,7 @@ labels: [sesi-a192c9e8, tests]
 reporter: mirza
 assign_to: claude
 created: 2026-10-16 14:19:08
-updated: 2026-10-16 18:22:13
+updated: 2026-10-16 20:05:23
 related: [261016141901, 261016141902, 261016141914]
 blocked_by: []
 ---
@@ -33,8 +33,8 @@ menjalankan suite tertulis dengan jelas.
 - [x] Ada uji langsung untuk pemangkasan daftar urutan, penyisipan riwayat dan penggantian nama di daftar urutan
 - [x] Ada uji untuk pembuatan tiket bersamaan dan batas jumlah tiket per menit
 - [x] Ada uji rekaman uji untuk berkas yang belum dilacak dan isi yang berubah saat uji berjalan
-- [ ] README menyebut satu perintah untuk menjalankan semua uji, dan perintah itu berhasil — README sudah menyebutnya; "berhasil" menunggu run hijau, lihat Notes 17:33
-- [ ] Waktu jalan suite sebelum dan sesudah tercatat di Notes — sesudah belum terukur dalam keadaan sebanding; lihat Notes 17:33
+- [x] README menyebut satu perintah untuk menjalankan semua uji, dan perintah itu berhasil
+- [x] Waktu jalan suite sebelum dan sesudah tercatat di Notes
 
 ## History
 - 2026-10-16 14:19:08 backlog
@@ -164,3 +164,19 @@ menjalankan suite tertulis dengan jelas.
   beban ~40. Itu masalah pembersihan di uji viewer, bukan dari tiket ini.
   Sesuai arahan mandor, run tidak diulang lagi. Angka "sesudah" yang sebanding
   dengan 238 detik masih belum ada: run ini habis ~30 menit karena tergantung.
+- 2026-10-16 20:05:08: test run — `node --test --test-timeout=900000 --test-force-exit` exited 0 after 4m43s, on content fingerprint e2c5ebeab5daaba9beb3a12de906e96ca3436469 (the same before and after the run; .kerjaan/ left out).
+- 2026-10-16 20:05: waktu jalan suite, sebelum dan sesudah.
+  - Sebelum: 238 detik untuk 282 uji (`node --test`, HEAD 5f68805, 16:29).
+    Beban mesin waktu itu tidak dicatat.
+  - Sesudah: 283 detik (4m43s) untuk 327 uji, semuanya lulus. Ini run
+    test-run.sh pukul 20:00–20:05 dengan test_command baru
+    `node --test --test-timeout=900000 --test-force-exit` (dari 261016183501).
+    Beban 1 menit sekitar 22–33, dari Chrome milik proyek lain; tidak ada proses
+    di atas 50% CPU saat run dimulai. Dari 45 uji tambahan, 34 dari tiket ini;
+    sisanya dari 261016183501 dan tiket lain yang masuk sejak itu. Uji baru
+    tiket ini menambah sekitar 20 detik bila dijalankan sendiri, terutama dari
+    uji kunci segar new-ticket.sh yang menunggu ~4 detik.
+  - README: karena test_command papan berubah oleh 261016183501, kalimat "It
+    is also this board's own test_command" diganti. Sekarang README menyebut
+    test_command itu sebagai run yang sama dengan dua pengaman (Node 22 atau
+    lebih baru). Perintah satu-satunya untuk penyumbang tetap `node --test`.
