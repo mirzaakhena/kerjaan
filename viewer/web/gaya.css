@@ -156,7 +156,17 @@ button, input, select { font: inherit; color: inherit; }
 .card .id { font-family: var(--mono); font-size: 10.5px; }
 .card .rank { font-family: var(--mono); font-size: 10.5px; color: var(--todo); font-weight: 500; }
 .card .broken { color: var(--warn-ink); background: var(--warn-bg); border-radius: 4px; padding: 0 5px; }
-.card .progress { margin-left: auto; font-variant-numeric: tabular-nums; }
+/* The Done when row: one pill per item. Each pill is a slot whose drawn part
+   takes three quarters of it, so the gaps narrow together with the pills: the
+   row never needs more than the width it is given, and a long list narrows
+   instead of widening or clipping the card. */
+.pills { display: inline-flex; align-items: center; min-width: 0; max-width: 100%; height: 12px; }
+.pil { flex: 0 1 auto; width: 8px; min-width: 0; height: 10px; display: flex; align-items: center; }
+.pil::before { content: ""; width: 75%; height: 100%; border-radius: 2px; border: 1px solid var(--muted); }
+.pil.done::before { background: var(--done); border-color: var(--done); }
+/* Voided or moved: a low dash, not an empty box waiting for work. */
+.pil.struck::before { height: 2px; border: 0; border-radius: 1px; background: var(--faint); }
+.card .progress { margin-left: auto; }
 .tag { border-radius: 4px; padding: 0 5px; background: var(--sunk); white-space: nowrap; }
 .tag.type-bug { color: var(--cancel); }
 .tag.type-feature { color: var(--todo); }

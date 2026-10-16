@@ -9,6 +9,34 @@ export const STATUSES = ['backlog', 'todo', 'in_progress', 'review', 'done', 'ca
 
 const list = (s) => (s || '').match(/[\w-]+/g) || [];
 
+// The items of a ticket's `## Done when` list, in the order written: whether
+// each is ticked, and whether it is struck through (`- [ ] ~~...~~`) because
+// it was voided or moved to another ticket. Counted the way ticket-size.sh
+// counts: top-level `- [ ]` / `- [x]` lines under that heading, outside fenced
+// blocks; indented lines belong to the item above them. A ticket without the
+// heading has no items, whatever checkboxes it holds elsewhere.
+export function readDoneWhen(body) {
+  const items = [];
+  let section = '';
+  let fenced = false;
+  for (const line of body.split('\n')) {
+    if (/^(```|~~~)/.test(line)) {
+      fenced = !fenced;
+      continue;
+    }
+    if (fenced) continue;
+    if (line.startsWith('## ')) {
+      section = line.trimEnd();
+      continue;
+    }
+    if (section !== '## Done when') continue;
+    const m = line.match(/^- \[([ xX])\]/);
+    if (!m) continue;
+    items.push({ done: m[1] !== ' ', struck: /^- \[[ xX]\][ \t]*~~/.test(line) });
+  }
+  return items;
+}
+
 // A file without frontmatter is still a file in a status folder. It comes back
 // marked `broken` rather than being dropped, so a reader that shows the folders
 // as they are can show it too.
@@ -24,7 +52,8 @@ export function readTicket(board, status, file) {
     }
   }
   const body = (match ? match[2] : text).trim();
-  const boxes = body.match(/^- \[[ xX]\]/gm) || [];
+  const doneWhen = readDoneWhen(body);
+  const open = doneWhen.filter((i) => !i.struck);
   return {
     id: base.slice(0, 12),
     title: base.slice(13) || base,
@@ -40,7 +69,8 @@ export function readTicket(board, status, file) {
     updated: meta.updated || meta.created || '',
     related: list(meta.related),
     blockedBy: list(meta.blocked_by),
-    checks: [boxes.filter((b) => b !== '- [ ]').length, boxes.length],
+    doneWhen,
+    checks: [open.filter((i) => i.done).length, open.length],
     body,
   };
 }

@@ -22,6 +22,7 @@ const ASSETS = {
   'proyek.js': 'text/javascript; charset=utf-8',
   'markdown.js': 'text/javascript; charset=utf-8',
   'saring.js': 'text/javascript; charset=utf-8',
+  'pil.js': 'text/javascript; charset=utf-8',
   'umum.js': 'text/javascript; charset=utf-8',
 };
 

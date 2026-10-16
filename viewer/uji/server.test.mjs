@@ -65,6 +65,8 @@ test('kanban: kartu sama persis dengan isi folder, termasuk berkas rusak', async
     assert.deepEqual(papan.order, [ID.b, ID.a]);
     assert.equal(papan.hasOrder, true);
     assert.ok(papan.tickets.every((t) => !('body' in t)), 'isi tiket tidak dikirim bersama kanban');
+    assert.deepEqual(papan.tickets.find((t) => t.id === ID.c).doneWhen, [{ done: true, struck: false }, { done: false, struck: false }], 'kartu menerima keadaan tiap butir Done when, urut');
+    assert.deepEqual(a.doneWhen, [], 'tiket tanpa Done when tidak punya butir');
   } finally { await v.close(); }
 });
 
@@ -88,6 +90,9 @@ test('alamat halaman proyek dan tiket', async () => {
     assert.equal(r.status, 301);
     assert.equal(r.headers.get('location'), '/alpha/');
     assert.match(await (await v.get('/alpha/')).text(), /aset\/proyek\.js/);
+    const pil = await v.get('/aset/pil.js');
+    assert.equal(pil.status, 200, 'penggambar pil dilayani untuk halaman proyek');
+    assert.match(await pil.text(), /export function pills/);
     assert.match(await (await v.get(`/alpha/tiket/${ID.a}`)).text(), /aset\/proyek\.js/);
     assert.equal((await v.get('/alpha/map/')).status, 404);
   } finally { await v.close(); }

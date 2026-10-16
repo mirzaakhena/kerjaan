@@ -1,6 +1,7 @@
 import { STATUSES, statusName, statusColor, getJson, liveIndicator } from './umum.js';
 import { render, esc } from './markdown.js';
 import { readFilter, writeFilter, matches, columnOrder, choices, FILTER_KEYS, readHidden } from './saring.js';
+import { pills } from './pil.js';
 
 // The page lives at /<project>/, /<project>/tiket/<id> and /<project>/urutan
 // (order.md); everything it asks the server for is under /<project>/.
@@ -101,7 +102,6 @@ $('clear').addEventListener('click', () => {
 // ---------- board ----------
 
 function card(t, rank) {
-  const [done, total] = t.checks;
   const labels = t.labels.map((l) => `<span class="tag">${esc(l)}</span>`).join('');
   return `<li><button class="card" data-id="${t.id}" aria-current="${t.id === state.openId}">
     <div class="title">${esc(t.title)}</div>
@@ -112,7 +112,7 @@ function card(t, rank) {
       ${t.type ? `<span class="tag type-${esc(t.type)}">${esc(t.type)}</span>` : ''}
       ${t.priority ? `<span class="prio ${esc(t.priority)}">${esc(t.priority)}</span>` : ''}
       ${labels}
-      ${total ? `<span class="progress" title="Done when tercentang">${done}/${total}</span>` : ''}
+      ${pills(t.doneWhen, { className: 'progress' })}
     </div></button></li>`;
 }
 
