@@ -265,20 +265,22 @@ test('a ticket that never reached review summons nobody, from either side', () =
   assert.equal(run({ ...payload, agent_id: 'a1' }), null);
 });
 
-// The foreman guide must not promise a hook message the foreman never gets: a
-// worker's move to review speaks to the worker, so the guide's second round
-// rests on the worker's report and resumes the same reviewer.
-test('the foreman guide sends a second round to the same reviewer, with no phantom hook message', () => {
+// The foreman guide must describe the hook message the foreman really gets: a
+// worker's move to review speaks to the worker, and the reminder reaches the
+// foreman with the worker's report (261016141913), resuming the same reviewer.
+test('the foreman guide sends a second round to the same reviewer, and says the reminder comes with the worker\'s report', () => {
   const guide = fs.readFileSync(path.join(here, '..', 'skills', 'kerjaan', 'references', 'foreman.md'), 'utf8');
   const start = guide.indexOf('**Sent back, first time**');
   const end = guide.indexOf('**Sent back a second time**');
   assert.ok(start > 0 && end > start, 'step 5 of the guide was not found');
   const step = guide.slice(start, end);
-  assert.doesNotMatch(step, /the hook asks/i);
   assert.match(step, /resume the \*\*same reviewer\*\*/);
-  assert.match(step, /no hook message reaches you/);
+  assert.match(step, /The hook says the same with the worker's\s+report/);
+  assert.doesNotMatch(step, /no hook message reaches you/);
   const row = guide.split('\n').find((l) => l.startsWith('| `REVIEW` |'));
-  assert.doesNotMatch(row, /as the hook says/);
+  assert.match(row, /attaches the instruction for this round to the report/);
+  assert.match(row, /a worker that ends without moving its ticket brings none/);
+  assert.doesNotMatch(row, /No hook message reaches you/);
 });
 
 for (const [where, body] of Object.entries(quotesThatAreNotReviews)) {
@@ -482,3 +484,313 @@ test('docs: the event merge.sh land reports has one name, merge postponed, and n
   assert.match(docs['foreman.md'], /\n\| `MERGE POSTPONED` \| A merge postponed/);
   assert.match(docs['kerjaan-worker.md'], /## When you are resumed after a merge postponed/);
 });
+
+// ---------------------------------------------------------------------------
+// The reminder that follows a worker's report to the foreman (261016141913).
+//
+// A worker's move to review speaks to the worker. What reaches the foreman is
+// the worker's end: the Agent tool returning (a worker run in the foreground)
+// or a <task-notification> arriving as a prompt (a worker run in the
+// background, or resumed with SendMessage). The hook remembers which agent
+// moved which ticket, and on that end tells the foreman to get the reviewer.
+
+const SESSION = 'sesi-uji-0001';
+const WORKER = 'a5581b3155a971061';
+
+function stateDir() {
+  return fs.mkdtempSync(path.join(os.tmpdir(), 'kerjaan-hook-state-'));
+}
+
+function runIn(state, payload) {
+  const r = spawnSync('bash', [hook], {
+    input: JSON.stringify(payload),
+    encoding: 'utf8',
+    env: { ...process.env, CLAUDE_PROJECT_DIR: '', KERJAAN_HOOK_STATE: state },
+  });
+  assert.equal(r.status, 0, r.stderr);
+  return r.stdout.trim() ? JSON.parse(r.stdout) : null;
+}
+
+function workerMoves(root, ticket, agent = WORKER, session = SESSION) {
+  return moveToReview(root, ticket, { session_id: session, agent_id: agent, agent_type: 'kerjaan:kerjaan-worker' });
+}
+
+// The prompt Claude Code submits when a background agent ends, as captured
+// from Claude Code 2.1.302.
+function notification(agent = WORKER, session = SESSION, result = 'Ticket: 261011070001 — REVIEW') {
+  return {
+    session_id: session,
+    hook_event_name: 'UserPromptSubmit',
+    prompt: `<task-notification>\n<task-id>${agent}</task-id>\n<tool-use-id>toolu_01</tool-use-id>\n` +
+      `<output-file>/tmp/x/tasks/${agent}.output</output-file>\n<status>completed</status>\n` +
+      `<summary>Agent "Kerjakan tiket" finished</summary>\n<result>${result}</result>\n</task-notification>`,
+  };
+}
+
+// The Agent tool's PostToolUse for a foreground run, and for a background
+// launch (which has only started), as captured from Claude Code 2.1.302.
+function agentReturned(agent = WORKER, session = SESSION, extra = {}) {
+  return {
+    session_id: session,
+    hook_event_name: 'PostToolUse',
+    tool_name: 'Agent',
+    tool_input: { description: 'Kerjakan tiket', prompt: `Ticket ${id}`, subagent_type: 'kerjaan:kerjaan-worker', run_in_background: false },
+    tool_response: { status: 'completed', agentId: agent, content: [{ type: 'text', text: 'REVIEW' }] },
+    ...extra,
+  };
+}
+function agentLaunched(agent = WORKER, session = SESSION) {
+  return agentReturned(agent, session, {
+    tool_input: { prompt: `Ticket ${id}`, subagent_type: 'kerjaan:kerjaan-worker', run_in_background: true },
+    tool_response: { isAsync: true, status: 'async_launched', agentId: agent },
+  });
+}
+
+const workerEnds = {
+  'in the background (a <task-notification>)': ['UserPromptSubmit', (a, s) => notification(a, s)],
+  'in the foreground (the Agent tool returns)': ['PostToolUse', (a, s) => agentReturned(a, s)],
+  'under the Agent tool\'s old name, Task': ['PostToolUse', (a, s) => ({ ...agentReturned(a, s), tool_name: 'Task' })],
+};
+
+for (const [how, [eventName, ends]] of Object.entries(workerEnds)) {
+  test(`a worker that moved its ticket to review ends ${how}: the foreman is told to dispatch the reviewer`, () => {
+    const state = stateDir();
+    const { root, ticket } = board(firstRound);
+    const moved = runIn(state, workerMoves(root, ticket));
+    assert.match(moved.hookSpecificOutput.additionalContext, /Finish now with your report/);
+    const out = runIn(state, ends(WORKER, SESSION));
+    assert.ok(out, 'the foreman got no reminder');
+    assert.equal(out.hookSpecificOutput.hookEventName, eventName);
+    const text = out.hookSpecificOutput.additionalContext;
+    assert.match(text, new RegExp(`Your worker subagent ${WORKER} has finished`));
+    assert.match(text, /Dispatch one subagent right now/);
+    assert.match(text, /kerjaan-reviewer/);
+    assert.match(text, new RegExp(id));
+    assert.ok(text.includes(ticket), 'the reminder names the ticket file');
+    assert.match(out.systemMessage, /dispatching a reviewer/);
+  });
+
+  test(`a worker that did not move its ticket ends ${how}: no reminder`, () => {
+    const state = stateDir();
+    board(firstRound);
+    assert.equal(runIn(state, ends(WORKER, SESSION)), null);
+  });
+}
+
+test('a later round: the reminder says to resume the earlier reviewer', () => {
+  const state = stateDir();
+  const { root, ticket } = board(secondRoundByHistory);
+  runIn(state, workerMoves(root, ticket));
+  const text = runIn(state, notification()).hookSpecificOutput.additionalContext;
+  assert.match(text, /Your worker subagent/);
+  assert.match(text, /Resume the reviewer of the round before with SendMessage/);
+  assert.match(text, /round 2, after 1 rejection/);
+  assert.doesNotMatch(text, /Dispatch one subagent right now/);
+});
+
+test('after a merge postponed: the reminder says it is the review after a merge postponed', () => {
+  const state = stateDir();
+  const { root, ticket } = board(`
+## History
+- 2026-10-11 07:40:00 review
+- 2026-10-11 08:00:00 done
+- 2026-10-11 08:10:00 in_progress
+- 2026-10-11 08:30:00 review
+`);
+  runIn(state, workerMoves(root, ticket));
+  const out = runIn(state, notification());
+  assert.match(out.hookSpecificOutput.additionalContext, /review after a merge postponed/);
+  assert.match(out.systemMessage, /after a merge postponed/);
+});
+
+test('the reminder comes once: a worker resumed later that ends without moving its ticket again summons nobody', () => {
+  const state = stateDir();
+  const { root, ticket } = board(firstRound);
+  runIn(state, workerMoves(root, ticket));
+  assert.ok(runIn(state, notification()));
+  // The same task-id notifies again each time the agent is resumed and stops.
+  assert.equal(runIn(state, notification()), null);
+  assert.equal(runIn(state, agentReturned()), null);
+});
+
+test('a worker resumed after a rejection that moves its ticket to review again: a new reminder', () => {
+  const state = stateDir();
+  const { root, ticket } = board(secondRoundByHistory);
+  runIn(state, workerMoves(root, ticket));
+  assert.ok(runIn(state, notification()));
+  runIn(state, workerMoves(root, ticket));
+  assert.match(runIn(state, notification()).hookSpecificOutput.additionalContext, /Resume the reviewer/);
+});
+
+test('a worker that moved its ticket to review and then back out of it: no reminder', () => {
+  const state = stateDir();
+  const { root, ticket } = board(firstRound);
+  runIn(state, workerMoves(root, ticket));
+  const back = path.join(root, '.kerjaan', 'in_progress');
+  fs.mkdirSync(back, { recursive: true });
+  fs.renameSync(ticket, path.join(back, path.basename(ticket)));
+  assert.equal(runIn(state, notification()), null);
+});
+
+test('a background launch is not the worker ending: no reminder yet, and the one at its end still comes', () => {
+  const state = stateDir();
+  const { root, ticket } = board(firstRound);
+  runIn(state, workerMoves(root, ticket));
+  assert.equal(runIn(state, agentLaunched()), null);
+  assert.match(runIn(state, notification()).hookSpecificOutput.additionalContext, /Dispatch one subagent right now/);
+});
+
+test('only the agent that moved the ticket, in the session it moved it in, brings the reminder', () => {
+  const state = stateDir();
+  const { root, ticket } = board(firstRound);
+  runIn(state, workerMoves(root, ticket));
+  assert.equal(runIn(state, notification('aother000000000001')), null, 'another agent');
+  assert.equal(runIn(state, agentReturned('aother000000000001')), null, 'another agent, foreground');
+  assert.equal(runIn(state, notification(WORKER, 'sesi-lain')), null, 'another session');
+  assert.ok(runIn(state, notification()), 'the worker itself');
+});
+
+test('an agent that ends inside a subagent is not reported to the foreman by that subagent\'s hook', () => {
+  const state = stateDir();
+  const { root, ticket } = board(firstRound);
+  runIn(state, workerMoves(root, ticket));
+  assert.equal(runIn(state, { ...agentReturned(), agent_id: 'aparent0000000001' }), null);
+  assert.equal(runIn(state, { ...notification(), agent_id: 'aparent0000000001' }), null);
+  assert.ok(runIn(state, notification()));
+});
+
+test('an ordinary prompt from the owner summons nobody', () => {
+  const state = stateDir();
+  const { root, ticket } = board(firstRound);
+  runIn(state, workerMoves(root, ticket));
+  assert.equal(runIn(state, { session_id: SESSION, hook_event_name: 'UserPromptSubmit', prompt: `lanjutkan tiket ${id} dan ${WORKER}` }), null);
+  // Even one that quotes the tag, outside a <task-notification>.
+  assert.equal(runIn(state, { session_id: SESSION, hook_event_name: 'UserPromptSubmit', prompt: `apa arti <task-id>${WORKER}</task-id>?` }), null);
+  assert.ok(runIn(state, notification()), 'the note is still there for the real end');
+});
+
+test('a notification naming several agents reminds for each that moved a ticket', () => {
+  const state = stateDir();
+  const { root, ticket } = board(firstRound);
+  runIn(state, workerMoves(root, ticket));
+  const both = notification();
+  both.prompt = notification('aother000000000001').prompt + '\n' + both.prompt;
+  const out = runIn(state, both);
+  assert.match(out.hookSpecificOutput.additionalContext, new RegExp(`Your worker subagent ${WORKER}`));
+});
+
+test('a state folder that cannot be written costs the reminder, not the worker\'s message', () => {
+  const blocker = path.join(stateDir(), 'berkas');
+  fs.writeFileSync(blocker, '');
+  const { root, ticket } = board(firstRound);
+  const out = runIn(blocker, workerMoves(root, ticket));
+  assert.match(out.hookSpecificOutput.additionalContext, /Finish now with your report/);
+  assert.equal(runIn(blocker, notification()), null);
+});
+
+// Every way of writing the move to review. Each is run through the real
+// update-ticket.sh by a real shell, so the quotes are the shell's to strip,
+// and the hook then reads the command text and the output it printed.
+const update = path.join(here, '..', 'skills', 'kerjaan', 'scripts', 'update-ticket.sh');
+const gitEnv = {
+  ...process.env,
+  GIT_AUTHOR_NAME: 'Uji', GIT_AUTHOR_EMAIL: 'uji@example.com',
+  GIT_COMMITTER_NAME: 'Uji', GIT_COMMITTER_EMAIL: 'uji@example.com',
+};
+function realBoard() {
+  const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'kerjaan-hook-real-')));
+  const g = (...a) => assert.equal(spawnSync('git', a, { cwd: root, env: gitEnv }).status, 0);
+  g('init', '-q', '-b', 'main');
+  for (const s of ['backlog', 'todo', 'in_progress', 'review', 'done', 'cancel']) {
+    fs.mkdirSync(path.join(root, '.kerjaan', s), { recursive: true });
+    fs.writeFileSync(path.join(root, '.kerjaan', s, '.gitkeep'), '');
+  }
+  fs.writeFileSync(path.join(root, '.kerjaan', 'settings.md'), '---\nlanguage: Bahasa Indonesia\ntest_command:\nlong_lived_branches: []\n---\n');
+  fs.writeFileSync(path.join(root, '.kerjaan', 'in_progress', `${id} Sebuah tiket.md`),
+    '---\ntype: task\npriority: medium\nreview: quick\nlabels: []\nreporter: mirza\nassign_to: claude\n' +
+    'created: 2026-10-11 07:00:00\nupdated: 2026-10-11 07:10:00\nrelated: []\nblocked_by: []\n---\n\n' +
+    '## Background\nSesuatu.\n\n## Request\nSesuatu.\n\n## Done when\n- [x] Sesuatu.\n\n## History\n- 2026-10-11 07:10:00 in_progress\n\n## Notes\n(none yet)\n');
+  g('add', '-A');
+  g('commit', '-q', '-m', 'awal');
+  return root;
+}
+
+const reviewForms = {
+  'bare': `--status review`,
+  'in double quotes': `--status "review"`,
+  'in single quotes': `--status 'review'`,
+  'joined with =': `--status=review`,
+  'joined with = and double quotes': `--status="review"`,
+  'joined with = and single quotes': `--status='review'`,
+  'after two spaces': `--status  review`,
+  'after a tab': `--status\treview`,
+  'before a pipe': `--status review | cat`,
+  'before &&': `--status "review" && true`,
+  'before ;': `--status=review; true`,
+};
+
+for (const [form, flag] of Object.entries(reviewForms)) {
+  const command = `bash "${update}" ${id} ${flag}`;
+
+  test(`the move written ${form} (${flag}): the ticket arrives and the foreman is told to dispatch`, () => {
+    const root = realBoard();
+    const r = spawnSync('bash', ['-c', command], { cwd: root, encoding: 'utf8', env: { ...gitEnv, CLAUDE_CODE_SESSION_ID: '' } });
+    assert.equal(r.status, 0, r.stderr);
+    const ticket = path.join(root, '.kerjaan', 'review', `${id} Sebuah tiket.md`);
+    assert.ok(fs.existsSync(ticket), 'update-ticket.sh did not move the ticket');
+    const payload = { cwd: root, hook_event_name: 'PostToolUse', tool_name: 'Bash', tool_input: { command }, tool_response: { stdout: r.stdout, stderr: '' } };
+    const out = runIn(stateDir(), payload);
+    assert.ok(out, `the hook did not recognise: ${command}`);
+    assert.match(out.hookSpecificOutput.additionalContext, /Dispatch one subagent right now/);
+  });
+
+  test(`the move written ${form} (${flag}) by a worker: told to report, and the foreman reminded at its end`, () => {
+    const state = stateDir();
+    const { root, ticket } = board(firstRound);
+    const payload = workerMoves(root, ticket);
+    payload.tool_input.command = `"$K/update-ticket.sh" ${id} ${flag}`;
+    const out = runIn(state, payload);
+    assert.ok(out, `the hook did not recognise: ${payload.tool_input.command}`);
+    assert.match(out.hookSpecificOutput.additionalContext, /Finish now with your report/);
+    assert.match(runIn(state, notification()).hookSpecificOutput.additionalContext, /Dispatch one subagent right now/);
+  });
+}
+
+for (const flag of ['--status reviewed', '--status=reviewer', '--status in_progress', '--status=done', '--title review']) {
+  test(`a command that does not move to review (${flag}) summons nobody, even with the ticket in review/`, () => {
+    const state = stateDir();
+    const { root, ticket } = board(firstRound);
+    const payload = moveToReview(root, ticket);
+    payload.tool_input.command = `"$K/update-ticket.sh" ${id} ${flag}`;
+    assert.equal(runIn(state, payload), null);
+    assert.equal(runIn(state, { ...payload, session_id: SESSION, agent_id: WORKER }), null);
+    assert.equal(runIn(state, notification()), null);
+  });
+}
+
+test('update-ticket.sh refuses --status= with no value', () => {
+  const root = realBoard();
+  const r = spawnSync('bash', [update, id, '--status='], { cwd: root, encoding: 'utf8', env: gitEnv });
+  assert.notEqual(r.status, 0);
+  assert.match(r.stderr, /--status needs a value/);
+});
+
+test('hooks.json sends the Agent tool and every prompt to the review hook, as well as Bash', () => {
+  const conf = JSON.parse(fs.readFileSync(path.join(here, '..', 'hooks', 'hooks.json'), 'utf8')).hooks;
+  const script = /on-ticket-review\.sh/;
+  const post = conf.PostToolUse.find((h) => h.matcher.split('|').includes('Agent'));
+  assert.ok(post && post.hooks.some((h) => script.test(h.command)), 'no PostToolUse hook on Agent');
+  assert.ok(post.matcher.split('|').includes('Task'));
+  assert.ok(conf.UserPromptSubmit.some((g) => !g.matcher && g.hooks.some((h) => script.test(h.command))), 'no UserPromptSubmit hook');
+  assert.ok(conf.PostToolUse.some((g) => g.matcher === 'Bash' && g.hooks.some((h) => script.test(h.command))));
+});
+
+for (const [which, response] of [['status async_launched', { status: 'async_launched', agentId: WORKER }], ['isAsync', { isAsync: true, agentId: WORKER }]]) {
+  test(`a background launch told by ${which} alone is not the worker ending`, () => {
+    const state = stateDir();
+    const { root, ticket } = board(firstRound);
+    runIn(state, workerMoves(root, ticket));
+    assert.equal(runIn(state, agentReturned(WORKER, SESSION, { tool_response: response })), null);
+    assert.ok(runIn(state, notification()));
+  });
+}

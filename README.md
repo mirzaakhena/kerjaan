@@ -450,7 +450,9 @@ the PostToolUse hook fires — but only if the ticket really is in .kerjaan/revi
         ↓
 inside the worker it says: stop and report; never dispatch a reviewer yourself
         ↓
-the foreman reads the report and dispatches kerjaan-reviewer
+the worker ends; with its report, the hook tells the foreman: dispatch the reviewer
+        ↓
+the foreman dispatches kerjaan-reviewer
         ↓
 kerjaan-reviewer runs the ticket's own "Done when" checks itself
         ↓
@@ -460,7 +462,11 @@ it moves the ticket to done/, or back to in_progress/ with the evidence
 Only the foreman dispatches reviewers, because only the foreman counts the
 rounds, carries a verdict's lesson to the next worker, and knows which worker
 to resume. The hook tells the two apart by whether the move was made inside a
-subagent. When the foreman makes the move itself for a ticket that has been
+subagent, and remembers which worker moved which ticket: when that worker
+ends — the Agent tool returning, or the notification of a worker run in the
+background — the reminder arrives with its report, so a ticket does not sit
+in review because the foreman's attention was elsewhere. A worker that ends
+without moving its ticket brings no reminder. When the foreman makes the move itself for a ticket that has been
 reviewed before, the hook tells it to resume that reviewer rather than
 dispatch a new one, and says which round this is. A round ends with one
 rejection by the reviewer; a merge postponed — `merge.sh land` sending a

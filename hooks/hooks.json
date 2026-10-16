@@ -1,5 +1,5 @@
 {
-  "description": "kerjaan — dispatch the reviewer agent when a ticket enters review",
+  "description": "kerjaan — dispatch the reviewer agent when a ticket enters review, and remind the foreman when a worker that moved its ticket there has finished",
   "hooks": {
     "PostToolUse": [
       {
@@ -11,6 +11,27 @@
             "if": "Bash(*update-ticket.sh*)",
             "timeout": 10,
             "statusMessage": "Checking for a ticket entering review"
+          }
+        ]
+      },
+      {
+        "matcher": "Agent|Task",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/skills/kerjaan/scripts/on-ticket-review.sh\"",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/skills/kerjaan/scripts/on-ticket-review.sh\"",
+            "timeout": 10
           }
         ]
       }

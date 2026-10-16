@@ -653,9 +653,10 @@ first.
 
 **The move hands the ticket off.** The worker moves its ticket to `review`,
 and a hook sees the move. Inside the worker it says only to stop and report:
-a worker never dispatches a reviewer. When the worker's report reaches the
-foreman, the foreman dispatches `kerjaan-reviewer` — and when the foreman makes
-the move itself, the hook tells it to do the same. The foreman waits for the verdict before the next worker starts. Nobody
+a worker never dispatches a reviewer. When the worker ends, the hook attaches
+a reminder to its report as it reaches the foreman, and the foreman dispatches
+`kerjaan-reviewer` — and when the foreman makes the move itself, the hook
+tells it to do the same at once. The foreman waits for the verdict before the next worker starts. Nobody
 performs the review but the reviewer. From this moment the ticket's code is
 untouchable: an edit made now, even to strengthen a test, is one the reviewer
 judges without knowing it happened. If something genuinely remains, move the

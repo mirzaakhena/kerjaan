@@ -35,6 +35,7 @@ Usage: update-ticket.sh <id|path> [--status <status>] [--title "<new title>"] [-
 
   <id|path>        12-digit ID, or the path to a ticket file
   --status         move to one of: ${STATUSES[*]}
+                   (--status=<status> works too, as does --title=<title>)
   --title          rename (the file is renamed; the ID stays)
   --ack-unmerged   start the ticket although other branches hold unmerged
                    work; the branches are recorded in the ticket's Notes
@@ -66,11 +67,21 @@ while [ "$#" -gt 0 ]; do
       new_status="$2"
       shift 2
       ;;
+    --status=*)
+      new_status="${1#--status=}"
+      [ -n "$new_status" ] || { echo "--status needs a value." >&2; usage; }
+      shift
+      ;;
     --title)
       [ "$#" -ge 2 ] || { echo "--title needs a value." >&2; usage; }
       new_title="$2"
       title_given=1
       shift 2
+      ;;
+    --title=*)
+      new_title="${1#--title=}"
+      title_given=1
+      shift
       ;;
     --ack-unmerged)
       ack_unmerged=1

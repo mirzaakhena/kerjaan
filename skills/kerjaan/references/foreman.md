@@ -251,7 +251,7 @@ working.
 
 | Report | What the foreman does |
 |---|---|
-| `REVIEW` | The ticket is in `review/`. In the first round, dispatch `kerjaan-reviewer` and record its agent ID next to the worker's; in a later round, or after a merge postponed, resume that reviewer (steps 5 and 6). No hook message reaches you here: the worker made the move, so the hook spoke to the worker. |
+| `REVIEW` | The ticket is in `review/`. In the first round, dispatch `kerjaan-reviewer` and record its agent ID next to the worker's; in a later round, or after a merge postponed, resume that reviewer (steps 5 and 6). The hook says the same with the report: it saw the worker move the ticket, and when the worker ends with the ticket still in `review/` it attaches the instruction for this round to the report as it arrives. It comes once per move; a worker that ends without moving its ticket brings none. |
 | `STOPPED — decision` | Stop the chain (see "When the chain stops"). The question is numbered in the ticket; `"$K/queue.sh" check <id>` shows it. Once the owner answers, resume that worker ("When the owner answers"). |
 | anything else | Read why. If the ticket is groundwork for others, stop the chain. Otherwise note it, leave the ticket in `in_progress` with its Notes, and go on. |
 
@@ -276,11 +276,10 @@ tickets that run side by side in worktrees overlap (`references/parallel-work.md
   it fixes without reading either again from the top. When it reports `REVIEW`,
   resume the **same reviewer** with `SendMessage` instead of dispatching a new
   one, saying the fix is in and at which commit. It still holds its first round
-  and narrows the second by itself. The worker's report is your only cue here;
-  the worker made the move, so no hook message reaches you. When you make the
-  move yourself instead, the hook sees the
-  earlier review in the ticket and tells you the same thing: resume, and
-  dispatch a new reviewer only if that one cannot be resumed.
+  and narrows the second by itself. The hook says the same with the worker's
+  report: it saw the worker move the ticket, sees the earlier review in it,
+  and tells you to resume, dispatching a new reviewer only if that one cannot
+  be resumed. When you make the move yourself instead, it tells you at once.
 - **Sent back a second time** — the second rejection: stop the chain (see below).
 - **Accepted by the owner** after the second rejection (`references/review.md`)
   — you move it to `done` yourself, and from there it is treated as passed:
