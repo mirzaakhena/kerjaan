@@ -6,7 +6,7 @@ labels: [viewer]
 reporter: mirza
 assign_to: claude
 created: 2026-10-16 10:53:31
-updated: 2026-10-16 10:59:34
+updated: 2026-10-16 12:29:44
 related: [261006121501]
 blocked_by: []
 ---
@@ -35,6 +35,7 @@ tanpa harus kembali ke daftar proyek.
 
 ## History
 - 2026-10-16 10:53:31 todo
+- 2026-10-16 12:29:44 in_progress
 
 ## Notes
 Keputusan awal yang diambil saat tiket dibuat (bisa diubah pemilik):
@@ -46,3 +47,4 @@ Keputusan awal yang diambil saat tiket dibuat (bisa diubah pemilik):
 - Urutan menurut nama proyek, supaya tanda tiap proyek mudah ditebak dan
   tidak bergantung pada urutan lain. Tanda tetap bisa bergeser saat proyek
   ditambah atau diarsipkan.
+- 2026-10-16 Keputusan mandor atas instruksi pemilik untuk langsung mengerjakan tanpa pertanyaan lagi: butir tampilan di ponsel dan mode gelap diperiksa lewat peramban dengan ukuran layar ponsel dan tema gelap; bila tidak bisa dipastikan otomatis, butir itu ditandai menunggu mirza dengan skenario tangan, dan rantai tidak menunggu.
