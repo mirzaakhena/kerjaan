@@ -210,7 +210,7 @@ tickets that run side by side in worktrees overlap (`references/parallel-work.md
 
 | `land` says | What the foreman does |
 |---|---|
-| `LANDED` | The ticket is on main, its worktree and branch are gone. Commit the board as usual. |
+| `LANDED` | The ticket is on main, its worktree and branch are gone. Land has already committed its own note in the ticket (`Note committed: …`), so there is nothing of it to commit by hand. Only when it says `NOTE NOT COMMITTED` — the ticket's file had uncommitted changes before land ran — commit that file once those changes are settled. |
 | `SENT BACK` | Main moved since the branch was tested, or the branch changed after review. The ticket is back in `in_progress`. Resume the **same worker**: main moved, bring it in with `merge.sh sync <id>`, resolve any conflict, test, commit, move to review. When it reports `REVIEW`, resume the **same reviewer**, saying this is a re-integration round: level `quick`, reading only `merge.sh resolution <id>`. Then land again. This is not a rejection and does not count toward the second return. |
 | `HELD` | Tell the owner now, in one line: the ticket and the reason the output gives (it is in the ticket's `## Notes` too). Do not retry, and do not work around it. Only this ticket waits: carry on with the chain, except tickets whose `blocked_by` names it. When the owner has cleared the cause, run `land` again. |
 
