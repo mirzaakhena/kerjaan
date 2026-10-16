@@ -14,6 +14,7 @@ import { fileURLToPath } from 'node:url';
 import { STATUSES, readBoard, watchBoard } from '../skills/kerjaan/scripts/board.mjs';
 import { readAgents, summary, defaultClaudeDir } from './agen.mjs';
 import { AGENT_STATUSES } from './web/agen.js';
+import { unmergedBranches } from './gabung.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const web = path.join(here, 'web');
@@ -93,12 +94,20 @@ const projectDir = (project) => path.dirname(project.board);
 // Claude Code's logs are missing or unreadable.
 const agentsOf = (project, claudeDir) => readAgents(projectDir(project), { claudeDir, ids: [...activeIds(project).keys()] });
 
+// Branches holding work outside the main line, by the ticket ID they carry:
+// Map<id, branch names[]> (see gabung.mjs). Only done tickets are marked with
+// them; a board with none skips git altogether.
+const unmergedFor = (project, tickets) =>
+  (tickets.some((t) => t.status === 'done') ? unmergedBranches(projectDir(project), project.board) : Promise.resolve(new Map()));
+
 // The kanban needs every card but no ticket's full text; the text is fetched
 // one ticket at a time when a card is opened. Tickets in progress or in review
-// carry what their agent last did, without the step list.
-function boardSummary(project, claudeDir) {
+// carry what their agent last did, without the step list; tickets in done
+// whose branch is not merged into main carry that branch's name.
+async function boardSummary(project, claudeDir) {
   const data = readBoard(project.board);
   const agents = agentsOf(project, claudeDir);
+  const unmerged = await unmergedFor(project, data.tickets);
   return {
     name: project.name,
     readAt: data.readAt,
@@ -107,7 +116,9 @@ function boardSummary(project, claudeDir) {
     order: data.order,
     tickets: data.tickets.map(({ body, meta, ...t }) => {
       const a = AGENT_STATUSES.includes(t.status) && agents.get(t.id);
-      return a ? { ...t, agent: summary(a) } : t;
+      if (a) t.agent = summary(a);
+      if (t.status === 'done' && unmerged.has(t.id)) t.unmerged = unmerged.get(t.id);
+      return t;
     }),
   };
 }
@@ -148,11 +159,30 @@ export function createViewer({ root, claudeDir = defaultClaudeDir() }) {
       // Agents write to Claude Code's logs, not to the board, so those are
       // looked at every AGENT_POLL ms; the page hears only of a change.
       let last = JSON.stringify(agentSummaries(project, claudeDir));
-      const poll = setInterval(() => {
+      // A branch merged or deleted changes git, not the board, so the
+      // unmerged branches are looked at on the same beat (one git call, none
+      // for a folder that is not a repository); when they change the page
+      // reads the board again. A ticket moving changes the board, which the
+      // watcher already reports.
+      const branchKey = async () => JSON.stringify([...await unmergedBranches(projectDir(project), project.board)]);
+      let lastBranches = null;
+      let checking = false;
+      branchKey().then((k) => { lastBranches ??= k; });
+      const poll = setInterval(async () => {
         const now = JSON.stringify(agentSummaries(project, claudeDir));
-        if (now === last) return;
-        last = now;
-        for (const c of clients) c.write(`event: agen\ndata: ${now}\n\n`);
+        if (now !== last) {
+          last = now;
+          for (const c of clients) c.write(`event: agen\ndata: ${now}\n\n`);
+        }
+        if (checking) return;
+        checking = true;
+        try {
+          const k = await branchKey();
+          if (lastBranches !== null && k !== lastBranches) for (const c of clients) c.write('event: change\ndata: {}\n\n');
+          lastBranches = k;
+        } finally {
+          checking = false;
+        }
       }, AGENT_POLL);
       const stop = () => { clearInterval(poll); unwatch(); };
       entry = { clients, stop };
@@ -206,7 +236,10 @@ export function createViewer({ root, claudeDir = defaultClaudeDir() }) {
     if (at === '') return page(res, 'proyek.html');
     if (rest[0] === 'tiket' && rest.length === 2 && /^\d{12}$/.test(rest[1])) return page(res, 'proyek.html');
     if (at === 'urutan') return page(res, 'proyek.html');
-    if (at === 'api/papan') return json(res, boardSummary(project, claudeDir));
+    if (at === 'api/papan') {
+      boardSummary(project, claudeDir).then((data) => json(res, data), () => send(res, 500, 'text/plain; charset=utf-8', 'Papan tidak bisa dibaca.'));
+      return;
+    }
     if (at === 'api/urutan') {
       const file = path.join(project.board, 'order.md');
       if (!fs.existsSync(file)) return send(res, 404, 'application/json; charset=utf-8', JSON.stringify({ error: 'tidak ada' }));

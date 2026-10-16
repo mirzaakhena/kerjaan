@@ -357,6 +357,15 @@ browser) is a button, by name, the open one marked, so another board is one
 click away. When they do not fit on one line the row scrolls sideways; on a
 phone it gets a line of its own under the name.
 
+A card in `done` whose code is not on the main line yet says so: "belum
+digabung", with the name of every branch that carries its ID and holds
+commits outside `HEAD` — the same rule `update-ticket.sh` applies when it
+refuses to start the next ticket, so the board shows beforehand what that
+refusal would name. A merge held for the owner is marked too, since its code
+is not on main either. Branches in `long_lived_branches` are never named, and
+the mark goes away by itself once the branch is merged or deleted, on an open
+page as well. A project that is not a git repository shows no mark.
+
 It only reads, needs Node 18 or newer and nothing else, and
 listens on `127.0.0.1` only. `--port` picks another port (`0` for any free
 one). Its tests run with `node --test` from the repo root.
