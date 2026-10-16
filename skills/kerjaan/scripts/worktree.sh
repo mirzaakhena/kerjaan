@@ -22,6 +22,9 @@
 #       run worktree_teardown inside the worktree, then remove it. Refused,
 #       with nothing removed, when the worktree holds uncommitted changes or the
 #       teardown fails. The branch is left alone: merging it is a decision.
+#       merge.sh land sets KERJAAN_BRANCH_DELETED_NEXT=1 when it calls this,
+#       because it deletes the merged branch right after; the message then
+#       leaves the branch to land, which says what became of it.
 #   worktree.sh slot
 #       print the slot of the tree this runs in (0 for the main tree).
 #
@@ -221,7 +224,11 @@ case "$cmd" in
       echo "Clean up what it would have removed by hand (ticket ${id:-unknown})." >&2
       git worktree prune >&2
     fi
-    echo "Removed the worktree at $path.${branch:+ Branch $branch is kept; merge or delete it.}" >&2
+    if [ "${KERJAAN_BRANCH_DELETED_NEXT:-}" = "1" ]; then
+      echo "Removed the worktree at $path." >&2
+    else
+      echo "Removed the worktree at $path.${branch:+ Branch $branch is kept; merge or delete it.}" >&2
+    fi
     ;;
 
   *)

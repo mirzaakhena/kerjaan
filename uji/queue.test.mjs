@@ -286,6 +286,29 @@ test('gate: once answered, the move goes through', () => {
   assert.ok(fileOf(root, A).includes('/todo/'));
 });
 
+test('gate: the refusal numbers each open question as answer takes it, answered ones counted', () => {
+  const root = repo();
+  add(root, A);
+  q(root, 'ask', A, 'Satu?');
+  q(root, 'ask', A, 'Dua?');
+  q(root, 'ask', A, 'Tiga?');
+  q(root, 'answer', A, '1', 'ya');
+  const r = run(root, update, A, '--status', 'todo');
+  assert.equal(r.code, 1, r.err);
+  assert.match(r.err, /^  2\. Dua\?$/m);
+  assert.match(r.err, /^  3\. Tiga\?$/m);
+  assert.doesNotMatch(r.err, /^  1\./m);
+  // The number in the message is the one that answers it.
+  assert.equal(q(root, 'answer', A, '2', 'boleh').code, 0);
+  const again = run(root, update, A, '--status', 'todo');
+  assert.equal(again.code, 1);
+  assert.match(again.err, /^  3\. Tiga\?$/m);
+  assert.doesNotMatch(again.err, /^  [12]\./m);
+  assert.equal(q(root, 'answer', A, '3', 'boleh').code, 0);
+  assert.equal(run(root, update, A, '--status', 'todo').code, 0, 'the move after every answer');
+  assert.ok(fileOf(root, A).includes('/todo/'));
+});
+
 test('gate: other moves are not held up by an open question, and a fenced example is not one', () => {
   const root = repo();
   add(root, A);
