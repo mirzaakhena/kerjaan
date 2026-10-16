@@ -6,7 +6,7 @@ labels: [sesi-a192c9e8, history]
 reporter: mirza
 assign_to: claude
 created: 2026-10-16 14:46:00
-updated: 2026-10-16 14:49:16
+updated: 2026-10-16 14:50:07
 related: [261006110801, 261006121502]
 blocked_by: []
 ---
@@ -40,6 +40,7 @@ ke percakapan yang memindahkannya.
 
 ## History
 - 2026-10-16 14:46:00 backlog
+- 2026-10-16 14:50:07 todo
 
 ## Notes
 - Berasal dari penilaian independen atas skill kerjaan di sesi Claude Code
@@ -62,3 +63,4 @@ ke percakapan yang memindahkannya.
   `- <waktu> <session-id> <status>`. Status selalu kata terakhir di baris.
 - Bentuk baris ditetapkan pemilik: `- 2026-10-16 14:16:07
   4dbcf082-290a-4f65-845c-ee75fd3b3e9c done`.
+- 2026-10-16 14:49:58: files estimated to change: `skills/kerjaan/SKILL.md`, `skills/kerjaan/TEMPLATE.md`, `skills/kerjaan/scripts/new-ticket.sh`, `skills/kerjaan/scripts/on-ticket-review.sh`, `skills/kerjaan/scripts/update-ticket.sh`, `uji/on-ticket-review.test.mjs`, `uji/update-ticket.test.mjs`, `viewer/uji/markdown.test.mjs`, `viewer/web/gaya.css`, `viewer/web/markdown.js`
