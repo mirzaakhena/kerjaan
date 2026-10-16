@@ -6,7 +6,7 @@ labels: []
 reporter: mirza
 assign_to: claude
 created: 2026-10-11 07:31:49
-updated: 2026-10-16 14:13:51
+updated: 2026-10-16 14:16:07
 related: [261006121504]
 blocked_by: []
 ---
@@ -43,6 +43,7 @@ masuk jalur utama, tanpa harus menunggu ada yang memulai tiket baru.
 - 2026-10-16 13:54:34 todo
 - 2026-10-16 13:54:36 in_progress
 - 2026-10-16 14:13:51 review
+- 2026-10-16 14:16:07 done
 
 ## Notes
 - Berasal dari CATATAN-BERIKUTNYA.md butir 3.
@@ -60,3 +61,13 @@ masuk jalur utama, tanpa harus menunggu ada yang memulai tiket baru.
 - 2026-10-16 14:11:03: test run — `node --test` exited 0 after 2m12s, on content fingerprint a932eacce2c682104cde7207f71c5ee313d8d51b (the same before and after the run; .kerjaan/ left out). Waited 0m39s for the test lock first, held by another run (ticket 261016130801, slot 1, /Users/mirza/Workspace/kerjaan-catatan-gabung).
 - 2026-10-16 14:13:45: test run — `node --test` exited 0 after 2m27s, on content fingerprint 4060d88317cf0d23c98beff11ecf88b87969f9df (the same before and after the run; .kerjaan/ left out).
 - 2026-10-16 14:13:51: review covers branch tiket-261011073102 at 1b77e64d7475cc8bc27aa1b6d7d933948945b323, which holds main at e43b0a9a8c118563f0d4992fa22d6d3984f68aca (code outside .kerjaan/); the latest test run passed on exactly this content.
+- 2026-10-16 Reviewed at level normal, round 1, at commit 1b77e64 (branch tiket-261011073102, worktree /Users/mirza/Workspace/kerjaan-tanda-belum-gabung, belum digabung ke main — itu memang langkah sesudah review): tiap kriteria dibuktikan dengan menjalankan viewer pada repo buangan, uji tiket ini dijalankan ulang, dan uji-ujinya dibaca. Hasil: lolos.
+  - Uji penuh tidak dijalankan ulang: `test-run.sh --check 261011073102 1b77e64` menjawab SAME — isi ini persis yang diuji worker pada 2026-10-16 14:13:45 (`node --test` exit 0, sidik 4060d88317cf0d23c98beff11ecf88b87969f9df). Lewat `test-run.sh --review` reviewer menjalankan `node --test viewer/uji/gabung.test.mjs` di worktree: 10 lulus, 0 dilewati (dua uji peramban ikut berjalan), 22 detik.
+  - Percobaan sendiri: folder pindai buangan di scratchpad berisi proyek `repo` (git; done 111…, 222…, 333…, todo 444…; cabang `tiket-111111111111`, `tiket-222222222222`, `rel/333333333333`, `kerjaan/444444444444`, `develop`, masing-masing satu commit di luar main; `long_lived_branches: [develop, "rel/*"]`) dan proyek `polos` (bukan repo, tiket sama). `node viewer/server.mjs --scan <folder> --port 47391` dari worktree, lalu `curl`.
+  - Kriteria 1 — terpenuhi. `/repo/api/papan`: 111 dan 222 membawa `unmerged` berisi nama cabangnya; 444 (todo) tidak, meski cabangnya belum digabung. Kartu dan warnanya diperiksa uji peramban (lebar/ponsel, terang/gelap) yang lulus di atas.
+  - Kriteria 2 — terpenuhi. Sambil `/repo/events` didengarkan: `git merge tiket-111111111111` → tanda 111 hilang; `git branch -D tiket-222222222222` → tanda 222 hilang; dua `event: change` terkirim tanpa ada perubahan di `.kerjaan/`.
+  - Kriteria 3 — terpenuhi. 333 (cabang `rel/333333333333`, cocok pola `rel/*`) tidak ditandai; `develop` tidak muncul di mana pun.
+  - Kriteria 4 — terpenuhi. `/polos/api/papan` HTTP 200, empat tiket, tanpa tanda. Uji 8 juga mencakup repo tanpa commit dan proyek di dalam repo induk.
+  - Uji dibaca: penegasannya membandingkan nilai nyata (daftar cabang per tiket, warna terhitung, posisi di dalam kartu), tidak ada yang kosong makna. Uji kesepakatan dengan gerbang mulai benar-benar menjalankan update-ticket.sh dan membandingkan daftar cabang yang ia sebut.
+  - Penjelasan pemilik: `owner_explanation: off`; `explain.sh check` — belum ada penjelasan, tidak ada yang diperiksa.
+  - Catatan (tidak menghalangi): (a) aturan "belum digabung" disalin ke `viewer/gabung.mjs`, tidak memanggil script; satu uji menjaga keduanya tetap sama untuk kasus-kasus dalam uji itu. Dua beda kecil di luar kasus itu: script mengambil 12 angka pertama dari nama cabang meski bagian dari deret angka yang lebih panjang, viewer hanya deret tepat 12 angka; viewer mengaitkan cabang ke setiap ID di namanya, script hanya ke yang pertama. (b) Tiket yang penggabungannya ditahan tetap ditandai — sesuai keputusan mandor di atas dan sesuai kriteria 1 (kodenya memang belum di main). (c) Selama halaman papan terbuka, server memanggil `git for-each-ref` sekali per 2 detik per proyek; ada penjaga agar panggilan tidak bertumpuk dan batas waktu 5 detik, jadi biayanya kecil. (d) Proyek dianggap repo hanya bila foldernya sendiri memuat `.git`; papan yang tidak di akar repo tidak akan pernah bertanda (diasumsikan dan ditulis di gabung.mjs).
