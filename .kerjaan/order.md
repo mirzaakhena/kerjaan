@@ -1,9 +1,8 @@
 Batch penilaian skill (sesi a192c9e8). 261016141916 tidak ada di sini: tiket keputusan itu dijalankan langsung dari backlog di awal rantai, selama pemilik hadir.
 
 **Aturan commit, jalan pintas pemilik, dan hook pengingat peninjau.** Ketiganya tidak saling menunggu hasil; 261016141907 dan 261016141908 berbagi SKILL.md, foreman.md, kerjaan-worker.md, merge.sh dan uji/merge.test.mjs, dan 261016141913 berbagi foreman.md dengan keduanya, jadi 261016141907 digabung lebih dulu, lalu 261016141908 digabung sebelum 261016141913.
-<!-- lands-first: 261016141907, 261016141908, 261016141913 -->
+<!-- lands-first: 261016141908, 261016141913 -->
 
-- 261016141907 Setiap perpindahan papan tersimpan bersama pekerjaannya, juga saat kerja berdampingan
 - 261016141908 Jalan pintas dari pemilik punya aturan yang jelas
 - 261016141913 Peninjau pasti dipanggil setelah pengerja menyelesaikan tiket
 
