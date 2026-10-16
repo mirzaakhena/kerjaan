@@ -6,7 +6,7 @@ labels: [viewer, ux]
 reporter: mirza
 assign_to: claude
 created: 2026-10-16 08:42:23
-updated: 2026-10-16 09:11:20
+updated: 2026-10-16 09:12:50
 related: [261006121501, 261016084901]
 blocked_by: [261016084901]
 ---
@@ -60,6 +60,7 @@ Usulan tata letak (pelaksana boleh mengubah rinciannya selama hasilnya sama):
 - 2026-10-16 08:42:23 todo
 - 2026-10-16 09:02:45 in_progress
 - 2026-10-16 09:11:20 review
+- 2026-10-16 09:12:50 done
 
 ## Notes
 - Usulan tata letak di Request datang dari percakapan dengan mirza, 2026-10-16,
@@ -137,3 +138,37 @@ Usulan tata letak (pelaksana boleh mengubah rinciannya selama hasilnya sama):
   6. (Ponsel, opsional) Buka tiket yang sama di ponsel: tidak ada geser ke
      samping, blok keterangan satu kolom.
 - 2026-10-16 09:11:12: test run — `node --test` exited 0 after 0m10s, on content fingerprint 3e43cc822476c3078f7ee457e0bc828c64f62aa3 (the same before and after the run; .kerjaan/ left out).
+- Review (reviewer, 2026-10-16). Ditinjau di tingkat normal, putaran 1, pada
+  commit e51a246: setiap butir Done when dibuktikan dengan menjalankan
+  sesuatu, dan uji-ujinya dibaca untuk memastikan uji itu benar-benar
+  memeriksa yang dijanjikan namanya.
+  - `node --test` tidak dijalankan ulang: `test-run.sh --check` menjawab
+    SAME, isi pohon kerja sama persis dengan yang diuji worker pada
+    2026-10-16 09:11:12 (sidik 3e43cc822476c3078f7ee457e0bc828c64f62aa3,
+    keluar 0). Hasil itu dipakai sebagai satu-satunya jalankan uji penuh.
+  - `node --test viewer/uji/laci.test.mjs` dijalankan sendiri: 10 lulus,
+    0 dilewati. Jadi keenam uji Chrome benar-benar berjalan, bukan dilewati.
+  - Uji di `laci.test.mjs` dibaca: semuanya mengukur hal nyata di peramban
+    (tinggi bagian diam dibanding seperlima laci, terlihat di layar setelah
+    digulir, lebar gulir halaman/laci, teks yang melebihi kotaknya, klik
+    tautan yang mengganti tiket dan alamat). Tidak ada uji yang kosong.
+  - Pemeriksaan tambahan sendiri di Chrome headless, dengan tiket 25 butir
+    Done when dan judul sangat panjang: 1280×800 bagian diam 113 px
+    (batas 160), 91 px setelah digulir; 390×844 dan 320×568 juga 113/91 px,
+    tanpa geser ke samping, deretan pil tetap di dalam laci.
+  - Butir 1–6 dan 8: terpenuhi, dibuktikan oleh uji Chrome yang dijalankan
+    di atas dan oleh pemeriksaan tambahan tadi.
+  - Butir 7 (terang/gelap): menunggu mirza, sesuai keputusannya yang
+    tercatat di Notes. Skenario uji manual ada dan bisa diikuti, serta
+    berakhir pada apa yang harus terlihat. Butir ini tidak menghalangi.
+  - Catatan, tidak menghalangi: proyek ini tidak punya CLAUDE.md atau
+    AGENTS.md, jadi tidak ada aturan proyek tertulis yang diperiksa. Pekerjaan
+    ada langsung di main; tidak ada cabang terpisah untuk tiket ini.
+
+### Suggested follow-up
+
+- **Mode gelap belum pernah diperiksa mesin.** `viewer/uji/peramban.mjs`
+  sudah bisa membuka Chrome dalam mode gelap (`openBrowser({ dark: true })`),
+  tetapi tidak ada uji yang memakainya. Layak jadi tiket: uji yang membuka
+  laci dalam mode terang dan gelap dan memeriksa kontras tulisan terhadap
+  latarnya, supaya pemeriksaan terang/gelap tidak selalu menunggu orang.
