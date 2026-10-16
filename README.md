@@ -646,6 +646,27 @@ than trusting the feeling of being finished. Both rules cost the worker
 something and pay the reader back. Whenever a step feels like pointless ceremony
 to whoever is doing it, that is the signal to check who it was for.
 
+## Keeping the rules small
+
+The rules a session reads — `skills/kerjaan/SKILL.md`, the guides in
+`skills/kerjaan/references/` and the agent definitions in `agents/` — have a
+budget of **18,000 words together**. `uji/skill-ringkas.test.mjs` counts them
+and fails when the budget is exceeded, so the suite goes red before a release
+can carry a heavier skill.
+
+Two habits keep it there:
+
+- **A new rule names the rule it removes or replaces.** The ticket that adds
+  one says, in its `Request` or `Notes`, which existing rule, explanation or
+  script option goes away or is folded into it — and the commit message
+  repeats it. An incident is first a reason to sharpen a rule that exists, not
+  to add one more. A rule that replaces nothing has to fit under the budget as
+  it stands; when it does not, something else is cut first.
+- **Ticket Notes are summaries.** A worker records what it decided and what it
+  broke to prove its tests, one line each, never a full log of commands and
+  output (`agents/kerjaan-worker.md`, step 5): a reviewer reads those Notes
+  again, and so does every later session.
+
 ## Deliberately absent
 
 - **No board view, index, or summary.** The moment a summary exists it starts

@@ -12,10 +12,8 @@ each level makes the reviewer do is defined in one place, the table in
 change against the criteria beside one run of the checks, `normal` proves each
 criterion by running something, and `strict` also breaks the code on purpose.
 
-Most tickets want `quick`: a wording fix, a renamed button, a config change.
-Depth is expensive — `strict` can install dependencies from scratch and rerun
-tests for every piece of code it breaks on purpose — and a review that always
-costs the most is one people learn to route around. `normal` fits criteria that
+Most tickets want `quick`. Depth is expensive, and a review that always costs
+the most is one people learn to route around. `normal` fits criteria that
 describe behaviour rather than content; `strict` fits work where being wrong is
 expensive.
 
@@ -34,12 +32,8 @@ and the planner writes the owner's choice into `review:`:
 > strict`, so the reviewer breaks the code on purpose and checks the tests
 > actually catch it. Agree?
 
-The planner suggests more than `quick` when the work lands on money,
-authentication, permissions, data that cannot be recovered, or anything a
-customer hits first — and equally when it is unsure the change can be got
-right. That last case is the most valuable and the easiest to skip.
-
-Then the owner's answer stands, and:
+What earns more than `quick` is in the planner's step 7. Then the owner's
+answer stands, and:
 
 - **When the owner has asked for speed, stop offering.** "Ini cuma mock", "buat
   MVP dulu", "yang penting jalan", "jangan lama-lama" settle it for the work
@@ -92,10 +86,7 @@ The same worker fixes it and the same reviewer judges the fix, both resumed
 worker fixes is in its definition.
 
 **After the second rejection, ask before trying again.** Only rejections
-count ("Rounds", above): a merge postponed has no findings against it, and the
-review after it is a short one of the conflict resolution alone. The reviewer
-states the round in its opening line, and the foreman counts the rejections: a
-second one stops the chain. Put the choice to the ticket's owner in one line:
+count ("Rounds", above). Put the choice to the ticket's owner in one line:
 
 > The reviewer sent this back twice; what is left is that two permission tests cannot fail.
 > Fix and review a third time, or accept it as is and ticket the tests?
@@ -125,10 +116,8 @@ multiple-choice question where any number, or none, may be picked:
 > - [ ] **Settings page has no undo** — from 260905160401
 
 In Claude Code that is `AskUserQuestion` with `multiSelect: true`: label is the
-bullet's bold lead, description is the rest plus the ticket it came from.
-Split into several questions when there are more suggestions than one question
-holds, grouped by source ticket. Waiting for the batch means the user decides
-once, with duplicates visible side by side.
+bullet's bold lead, description is the rest plus the ticket it came from;
+several questions, grouped by source ticket, when one does not hold them all.
 
 For every pick, search the board first (a follow-up is often already there),
 then create it in `backlog` unless the user says otherwise, with

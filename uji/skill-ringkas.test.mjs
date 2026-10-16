@@ -30,11 +30,29 @@ test('SKILL.md is at most about 350 lines', () => {
   assert.ok(n <= 360, `${SKILL} has ${n} lines`);
 });
 
-// Before 261016141909 the main file, the guides and the agent definitions held
-// 25,617 words between them. Moving text between them is not shortening it.
-test('the main file, the guides and the agent definitions together stay well under the 25,617 words they had', () => {
+// The budget for the rules a session reads (261016141911): the main file, every
+// guide and every agent definition together, 18,000 words. Before 261016141909
+// they held 25,617. This is the one place the number is checked; a new rule
+// names what it removes or replaces (README, "Keeping the rules small").
+const BUDGET = 18000;
+test(`the main file, the guides and the agent definitions together stay within ${BUDGET} words`, () => {
+  assert.deepEqual(docs.slice(0, 1), [SKILL]);
+  assert.ok(refs.length >= 5 && agents.length >= 3, docs.join(', '));
   const n = docs.reduce((sum, f) => sum + words(read(f)), 0);
-  assert.ok(n <= 21000, `${n} words in ${docs.join(', ')}`);
+  assert.ok(n <= BUDGET, `${n} words in ${docs.join(', ')}, over the budget of ${BUDGET}`);
+});
+
+test('the README gives the budget and the rule that a new rule names what it removes', () => {
+  const section = flat(read('README.md').split('## Keeping the rules small')[1].split('\n## ')[0]);
+  assert.match(section, new RegExp(`${BUDGET.toLocaleString('en-US')} words`));
+  assert.match(section, /uji\/skill-ringkas\.test\.mjs/);
+  assert.match(section, /A new rule names the rule it removes or replaces/);
+});
+
+test('the worker writes its Notes as a summary, not a full log', () => {
+  const step = flat(read('agents/kerjaan-worker.md').split('**5. Prove the tests can go red.**')[1].split('**6. ')[0]);
+  assert.match(step, /What you write in `## Notes` is a summary, never a log/);
+  assert.match(step, /No commands with their output/);
 });
 
 const quickReference = () => read(SKILL).split('## Quick reference')[1].match(/```bash\n([\s\S]*?)```/)[1];

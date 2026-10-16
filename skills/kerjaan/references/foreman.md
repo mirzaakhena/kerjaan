@@ -6,16 +6,10 @@ reviewer verdict comes back.
 
 The main session never writes a ticket's code. It is the **foreman**: it keeps
 the board, talks to the owner, and hands each ticket to a `kerjaan-worker`
-subagent that starts from an empty context. When the worker reports, the
-foreman dispatches `kerjaan-reviewer`; when the verdict comes back, it either
-moves on or resumes the same worker to fix what was found. What goes into the
-queue is prepared by `kerjaan-planner`, so that reading the backlog does not
-fill the foreman's context either.
-
-Why: a session that executes tickets itself fills its context with files,
-diffs and test output, and by the second or third ticket it is compacted. A
-foreman receives only short reports, so each ticket gets a clean start and
-the user hands over a whole queue once. One small fix is a chain of one.
+subagent that starts from an empty context, then dispatches `kerjaan-reviewer`
+on its report. `kerjaan-planner` prepares the queue. A session that executed
+tickets itself would fill its context with files, diffs and test output; a
+foreman receives only short reports. One small fix is a chain of one.
 
 ## What stays with the foreman
 
@@ -38,15 +32,13 @@ in a report. It sends the line back to the worker.
 
 One exception, and only one: **a tiny change in text the owner asks for
 directly** — a typo, a word, a sentence of prose in a README, a guide or a
-comment. The foreman may make that itself, with no worker and no reviewer,
-because a worker and a reviewer reading their way in from an empty context
-cost many times a one-word change, and prose has no behaviour for tests or a
-review to catch. It covers text with no logic in it only: anything that
-touches a script, code, configuration, a test, or a file a test reads or a
-script parses goes to a worker, however small. It covers the owner's own
-request only: a slip the foreman spots in a report is sent back, not fixed.
-Commit it, when the owner wants commits, naming the file alone, and tell the
-owner in one line what changed.
+comment. The foreman may make that itself, with no worker and no reviewer: a
+worker and a reviewer reading their way in cost many times a one-word change,
+and prose has no behaviour to catch. Anything that touches a script, code,
+configuration, a test, or a file a test reads or a script parses goes to a
+worker, however small; a slip the foreman spots in a report is sent back, not
+fixed. Commit it, when the owner wants commits, naming the file alone, and
+tell the owner in one line what changed.
 
 ## Work without a ticket
 
@@ -63,12 +55,9 @@ Commit: <yes, if the owner wants it committed | no>
 Carry-forward: <as for a ticket, if a chain is running>
 ```
 
-The worker builds it, runs the project's checks, commits only if the prompt
-says so, and reports; its report ends in a `For the reviewer:` block, which is
-the written record of the work.
-
-**A reviewer always follows.** Skipping the ticket skips the board, not the
-check: dispatch `kerjaan-reviewer` once the worker reports `DONE`, with:
+Its report ends in a `For the reviewer:` block, the written record of the
+work. **A reviewer always follows**: dispatch `kerjaan-reviewer` once the
+worker reports `DONE`, with:
 
 ```
 Repo: /path/to/repo
@@ -85,9 +74,8 @@ the owner (`references/review.md`). Tell the owner the outcome in one line.
 ## Filling the queue
 
 When the owner asks what can be worked on — "what can we do today", "fill the
-queue", "what's next from the backlog" — or the board goes quiet, **do not
-read the backlog yourself.** Its tickets, and the code needed to judge them,
-are exactly the reading that would crowd out the tickets in flight.
+queue" — or the board goes quiet, **do not read the backlog yourself**; that
+reading would crowd out the tickets in flight.
 
 **1. Dispatch** with `subagent_type` `kerjaan:kerjaan-planner` (or
 `kerjaan-planner` without the plugin namespace), in the background, and wait
@@ -131,19 +119,14 @@ no `order.md`, any ticket in `todo`. Ask only when the order no longer fits
 what the board shows, and name that one problem. A ticket in `backlog` that
 the user names explicitly is the user's own move; take it.
 
-**2. Ask everything in one message**, before any worker starts — the user may
-leave once the chain runs, and a question asked one ticket at a time stalls
-the work after they have gone.
+**2. Ask everything in one message**, before any worker starts: the user may
+leave once the chain runs.
 
 Run `"$K/queue.sh" check` (with the IDs, for tickets named from `backlog`).
 `READY` means nothing about the tickets is left to ask. Whatever it names
-instead — a ticket put in `todo` by hand, one named from `backlog`, one edited
-since — goes to the planner first ("Filling the queue"), and its questions
-join this message. The foreman does not sweep the tickets itself.
+instead goes to the planner first ("Filling the queue"), and its questions
+join this message. Also in it:
 
-What remains for this message:
-
-- the planner's questions and its suggested review levels, if any;
 - **checks only a person can make** that a ticket's Notes do not settle yet:
   **deferred** (the worker writes a hand scenario, the item is marked as
   awaiting the owner, and the reviewer does not reject the ticket for it) or
@@ -164,10 +147,9 @@ dated, in the board's language — followed by `update-ticket.sh` on each:
 If nothing needs asking, say in one line that the chain is starting and with
 which tickets, and start.
 
-**3. Keep a progress log** outside the repo — the session's scratchpad, or the
+**3. Keep a progress log** outside `.kerjaan/` — the scratchpad, or the
 conversation itself — one line per event: ticket, worker and reviewer agent
-IDs, commits, verdict and round, questions. The summary is written from it.
-Never put it in `.kerjaan/`.
+IDs, commits, verdict and round, questions.
 
 ## One ticket, start to finish
 
@@ -207,18 +189,16 @@ Carry-forward:
 - <what reviewers rejected before, as a pattern>
 ```
 
-A worker does not message the foreman mid-work; its questions arrive in its
-report and in its ticket. Run it in the background and wait. **A "completed"
-notification is not a report**: a worker that waits on a run of its own can
-trigger several before its report exists. Until the report arrives, in the
-shape its definition gives, the worker is still working.
+Run it in the background and wait. **A "completed" notification is not a
+report**: until the report arrives, in the shape its definition gives, the
+worker is still working.
 
 **3. Act on the report.**
 
 | Report | What the foreman does |
 |---|---|
-| `REVIEW` | The ticket is in `review/`. In the first round, dispatch `kerjaan-reviewer` and record its agent ID next to the worker's; in a later round, or after a merge postponed, resume that reviewer (steps 5 and 6). The hook says the same with the report: it saw the worker move the ticket, and when the worker ends with the ticket still in `review/` it attaches the instruction for this round to the report as it arrives. It comes once per move; a worker that ends without moving its ticket brings none. |
-| `STOPPED — decision` | Stop the chain (see "When the chain stops"). The question is numbered in the ticket; `"$K/queue.sh" check <id>` shows it. Once the owner answers, resume that worker ("When the owner answers"). |
+| `REVIEW` | In the first round, dispatch `kerjaan-reviewer` and record its agent ID next to the worker's; in a later round, or after a merge postponed, resume that reviewer (steps 5 and 6). When the worker ends with the ticket in `review/`, the hook attaches the instruction for this round to the report, once per move; a worker that ends without moving its ticket brings none. |
+| `STOPPED — decision` | Stop the chain ("When the chain stops"); `"$K/queue.sh" check <id>` shows the numbered question. |
 | anything else | Read why. If the ticket is groundwork for others, stop the chain. Otherwise note it, leave the ticket in `in_progress` with its Notes, and go on. |
 
 Add the report's carry-forward to the log, and the questions that did not stop
@@ -233,31 +213,26 @@ in worktrees overlap (`references/parallel-work.md`).
 
 - **Passed** — the ticket is in `done/`, and its reviewer committed the
   verdict; there is nothing of it for you to commit. When it was worked in a worktree,
-  land it now: `"$K/merge.sh" land <id>` from the main tree, at once, one at a
-  time, without asking the owner, and act on the answer (step 6). Add what the
-  reviewer said is worth knowing to the carry-forward, and start the next
-  ticket.
+  land it now: `"$K/merge.sh" land <id>` from the main tree, one at a time,
+  without asking the owner, and act on the answer (step 6). Add what the
+  reviewer said is worth knowing to the carry-forward.
 - **Sent back, first time** — resume the **same worker** with `SendMessage` to
-  its agent ID: name the ticket, say the reviewer sent it back, and give the
-  findings in a few lines. It still holds the ticket and the code. When it
-  reports `REVIEW`, resume the **same reviewer** with `SendMessage` instead of
-  dispatching a new one, saying the fix is in and at which commit; it narrows
-  the second round by itself. The hook says the same with the worker's
+  its agent ID: name the ticket and give the findings in a few lines. When it
+  reports `REVIEW`, resume the **same reviewer** with `SendMessage`, saying the
+  fix is in and at which commit. The hook says the same with the worker's
   report, dispatching a new reviewer only if that one cannot be resumed.
 - **Sent back a second time** — the second rejection: stop the chain (see below).
 - **Accepted by the owner** after the second rejection (`references/review.md`)
-  — you move it to `done` yourself, and from there it is treated as passed:
-  when it was worked in a worktree, land it with `"$K/merge.sh" land <id>` and
-  act on the answer (step 6). A `done` ticket whose branch never reached main
-  is work the board calls finished and main does not have.
+  — you move it to `done` yourself, and it is treated as passed: a worktree
+  ticket is landed with `"$K/merge.sh" land <id>` (step 6).
 
 **6. Act on the landing** (worktree tickets only).
 
 | `land` says | What the foreman does |
 |---|---|
-| `LANDED` | The ticket is on main, its worktree and branch are gone, and land committed its own note. Only on `NOTE NOT COMMITTED` — the ticket's file had uncommitted changes before land ran — commit that file once those changes are settled. |
-| `MERGE POSTPONED` | A merge postponed: main changed since the branch was tested, or the branch changed after review. The ticket is back in `in_progress`. Resume the **same worker**: bring main in with `merge.sh sync <id>`, resolve, test, commit, move to review. When it reports `REVIEW`, resume the **same reviewer**, saying this is the review after a merge postponed. Then land again. It gets no round number and does not count toward the second rejection. |
-| `HELD` | Tell the owner now, in one line: the ticket and the reason the output gives (also in its `## Notes`). Do not retry or work around it. Only this ticket waits, and tickets whose `blocked_by` names it. When the owner has cleared the cause, run `land` again. |
+| `LANDED` | Done; land committed its own note. Only on `NOTE NOT COMMITTED`, commit the ticket's file once its earlier uncommitted changes are settled. |
+| `MERGE POSTPONED` | A merge postponed: the ticket is back in `in_progress`. Resume the **same worker** to bring main in (`merge.sh sync <id>`) and move it to review; then resume the **same reviewer**, saying this is the review after a merge postponed, and land again. No round number. |
+| `HELD` | Tell the owner now, in one line, with the reason the output gives. Do not retry or work around it. Only this ticket waits, with tickets whose `blocked_by` names it; once the owner cleared the cause, run `land` again. |
 
 **When a worker or reviewer cannot be resumed** — the session was replaced,
 the transcript expired, `SendMessage` refuses the ID — dispatch a new one. A
@@ -281,14 +256,12 @@ A ticket sent back adds one work and one verdict commit per round. Nobody
 commits the board alone in between.
 
 **Side by side**, a worktree holds no `.kerjaan/`, so code and ticket cannot
-share a commit: the worker commits its code on its branch, in its worktree,
-and its ticket's file in the main tree, right after the move to review. The
-verdict and `merge.sh land`'s notes are committed in the main tree.
+share a commit: the worker commits its code on its branch, and its ticket's
+file in the main tree. The verdict and `land`'s notes go in the main tree.
 
 ## Carry-forward
 
-What one ticket learned reaches the next only through you. After every report
-and verdict, keep:
+What one ticket learned reaches the next only through you. Keep:
 
 - **What is built**: components, helpers, conventions the next ticket can
   reuse, with where they live.
@@ -303,9 +276,8 @@ Pass the whole list to each worker, trimmed to what could plausibly apply.
 
 The chain stops itself, and reports to the user, in three cases:
 
-1. **A decision belongs to the user.** A worker reported `STOPPED — decision`
-   and recorded the question, the options and its recommendation with
-   `queue.sh ask`. Put it to the owner with its number; record the answer with
+1. **A decision belongs to the user.** A worker reported `STOPPED — decision`.
+   Put the question to the owner with its number; record the answer with
    `"$K/queue.sh" answer <id> <n> "<answer>"`, then resume that worker
    ("When the owner answers", below). Or a human check is holding the chain.
 2. **The reviewer rejected the same ticket twice.** Put the choice to the
@@ -319,19 +291,13 @@ for the summary.
 
 ### When the owner answers
 
-A ticket stopped on a decision is still in `in_progress`; the start gate does
-not run again.
-
-1. Record each answer with `queue.sh answer`, word for word, under the number
-   the worker's report gave. It is committed with the worker's work.
-2. Resume **the same worker** with `SendMessage` to its agent ID: name the
-   ticket, say the owner answered, and give each answer with its number. It
-   picks up where it stopped instead of starting over.
-3. Act on its report as on any other (step 3 above).
-
-A worker that cannot be resumed is replaced by a new one, told that its
-question was answered in `## Notes` under its number and that earlier work may
-already sit in the tree.
+The ticket is still in `in_progress`; the start gate does not run again. Once
+each answer is recorded word for word under its number (it is committed with
+the worker's work), resume **the same worker** with `SendMessage`: name the
+ticket, say the owner answered, and give each answer with its number. Act on
+its report as on any other. A worker that cannot be resumed is replaced by a
+new one, told that its question was answered in `## Notes` and that earlier
+work may already sit in the tree.
 
 ## When the owner says "mark it done"
 
@@ -339,20 +305,18 @@ already sit in the tree.
 whatever the ticket's status. The foreman neither ticks `Done when` nor moves
 a ticket to `review` itself.
 
-- **`todo` or `in_progress`.** Move a `todo` ticket to `in_progress` (the start
-  gate applies), then dispatch a worker as for any ticket, adding to its
+- **`todo` or `in_progress`.** Move a `todo` ticket to `in_progress`, then
+  dispatch a worker (or resume this chain's worker on it), adding to its
   prompt: `The owner says this work is done: <their words>.` It checks each
-  line against what the repo holds, finishes what is missing, runs
-  `test-run.sh` and moves the ticket to `review`. A ticket in `in_progress`
-  with a worker of this chain on it goes to that worker, resumed. Tell the
-  user in one line that the reviewer will move it to `done`.
+  line, finishes what is missing, runs `test-run.sh` and moves the ticket to
+  `review`. Tell the user the reviewer will move it to `done`.
 - **`review`.** It is already waiting for its reviewer; say so.
 
-If the owner explicitly wants to skip review — "langsung done saja", "no
-review needed" — the path is the same up to `review`, so `test-run.sh` still
-records the checks; then the foreman moves the ticket to `done` without review
-instead of dispatching a reviewer, and appends to `## Notes`: `Moved to done by
-<owner> without review, <date>.` A worktree ticket is then landed as in step 5.
+If the owner explicitly wants to skip review — "langsung done saja" — the path
+is the same up to `review`, so `test-run.sh` still records the checks; then
+the foreman moves the ticket to `done` without review and appends to
+`## Notes`: `Moved to done by <owner> without review, <date>.` A worktree
+ticket is then landed as in step 5.
 
 ## Tickets whose work is a decision
 
@@ -363,8 +327,7 @@ writing the answers down. The rules hold all the same:
 - **Its estimate is what it writes**, or `queue.sh estimate <id> --none` when
   it changes no file of the project.
 - **Give it a criterion for where the decision ends up** — the README, a
-  `CLAUDE.md`, whatever every session reads. A decision left only in a ticket
-  in `done/` is history no new session will look for.
+  `CLAUDE.md`, whatever every session reads, not only a ticket in `done/`.
 - It goes to `review` from `in_progress` like any ticket, and a reviewer
   judges it.
 
@@ -388,9 +351,8 @@ from the log:
 
 ## When the board goes quiet
 
-When `todo`, `in_progress` and `review` are all empty, the batch is over, and
-the foreman that ran it knows the work better than any later session. Before
-the conversation ends, without waiting to be asked:
+When `todo`, `in_progress` and `review` are all empty, the batch is over.
+Before the conversation ends, without waiting to be asked:
 
 1. Offer the reviewers' suggested follow-ups (`references/review.md`).
 2. Run `"$K/release.sh" unreleased`. When it lists tickets not marked

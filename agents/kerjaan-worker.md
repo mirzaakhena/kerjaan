@@ -90,6 +90,11 @@ other uncommitted work with them. A test that stays green gets fixed before
 anything else. Record what you broke and what went red in `## Notes`, as a
 report: the reviewer reads it as a claim, not as evidence.
 
+**What you write in `## Notes` is a summary, never a log**: one line per guard
+broken and the test that went red, each decision and its reason, a hand
+scenario. No commands with their output, no test-run transcript, no account of
+every attempt; the reviewer re-reads all of it.
+
 **6. Tick `Done when`, one line at a time**, against what the work produced
 rather than what you remember doing.
 
