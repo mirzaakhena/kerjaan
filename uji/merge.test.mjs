@@ -368,9 +368,11 @@ test('tiket pertama yang digabung tanpa perubahan kode di main tidak diuji ulang
   const land = run(mergeSh, r.root, ['land', A]);
   assert.equal(land.code, 0, land.out + land.err);
   assert.equal(runCount(r), runs, 'land ran the tests');
-  assert.equal(git(r.root, 'rev-parse', 'HEAD^1').trim(), boardOnly);
+  // HEAD is land's commit of the ticket's note; the merge sits right under it.
+  const merge = git(r.root, 'rev-parse', 'HEAD^').trim();
+  assert.equal(git(r.root, 'rev-parse', `${merge}^1`).trim(), boardOnly);
   assert.equal(show(r, 'HEAD', 'pakai.txt'), 'satu\ndua\n');
-  assert.match(notes(r, A), new RegExp(`landed on main as ${head(r)}, merging tiket-${A} at [0-9a-f]{40}; tests carried`));
+  assert.match(notes(r, A), new RegExp(`landed on main as ${merge}, merging tiket-${A} at [0-9a-f]{40}; tests carried`));
 });
 
 test('cabang yang berubah setelah masuk review dikembalikan, tidak digabung', () => {
@@ -651,4 +653,167 @@ test('uji reviewer ikut antre di kunci uji yang sama dengan uji pengerja, dan ti
   // Its command fails the way the suite does.
   const red = run(testRun, wa, ['--review', A], { UJI_GAGAL: '1' });
   assert.equal(red.code, 1);
+});
+
+// ---------------------------------------------------------------------------
+// Every note land writes into a ticket is committed by land itself, in a
+// commit holding only that ticket's file, so the main tree is left as clean as
+// land found it — and nothing else uncommitted there is swept into that commit.
+
+// What the foreman does after each board move: commit the board.
+function commitBoard(r, msg = 'Papan') {
+  git(r.root, 'add', '-A', '--', '.kerjaan');
+  git(r.root, 'commit', '-q', '-m', msg);
+}
+const status = (r) => git(r.root, 'status', '--porcelain', '--untracked-files=all');
+const lastFiles = (r) => git(r.root, 'show', '--no-renames', '--name-status', '--format=', 'HEAD').trim().split('\n');
+const ticketPath = (r, id) => {
+  const s = where(r, id);
+  const f = fs.readdirSync(path.join(r.k, s)).find((n) => n.startsWith(id));
+  return `.kerjaan/${s}/${f}`;
+};
+
+test('penggabungan menyimpan sendiri catatan "sudah masuk main", dan penggabungan berikutnya langsung berjalan', () => {
+  const r = repo();
+  const wa = add(r, A);
+  const wb = add(r, B);
+  work(wa, { 'kode.txt': 'def esa\ndef dua\n', 'pakai.txt': 'esa\n' });
+  work(wb, { 'pakai-b.txt': 'dua\n' });
+  for (const [wt, id] of [[wa, A], [wb, B]]) {
+    assert.equal(run(testRun, wt, [id]).code, 0);
+    toReview(r, id);
+    passReview(r, id);
+  }
+  commitBoard(r, 'Papan: A dan B lolos review');
+  assert.equal(status(r), '');
+
+  const first = run(mergeSh, r.root, ['land', A]);
+  assert.equal(first.code, 0, first.out + first.err);
+  const merge = git(r.root, 'rev-parse', 'HEAD^').trim();
+  // Step 3: the main tree is clean.
+  assert.equal(status(r), '', 'land left the main tree dirty');
+  // The note is in the ticket, and history shows when it was committed: the
+  // commit right after the merge, holding only the ticket's file.
+  const fileA = ticketPath(r, A);
+  assert.match(show(r, 'HEAD', fileA), new RegExp(`landed on main as ${merge}, merging tiket-${A}`));
+  assert.doesNotMatch(show(r, 'HEAD^', fileA), /landed on main/);
+  assert.deepEqual(lastFiles(r), [`M\t${fileA}`]);
+  assert.match(git(r.root, 'log', '-1', '--format=%s').trim(), new RegExp(`^Board: ${A} landed on main as ${merge.slice(0, 12)}$`));
+  assert.match(first.out, new RegExp(`Note committed: [0-9a-f]+ Board: ${A} landed on main`));
+
+  // Step 4: the second landing runs with nobody in between. Main's code moved,
+  // so it is sent back — the move recorded in a commit of its own as well.
+  const second = run(mergeSh, r.root, ['land', B]);
+  assert.equal(second.code, 3, second.out + second.err);
+  assert.equal(status(r), '', 'sending back left the main tree dirty');
+  assert.deepEqual(lastFiles(r).sort(), [`A\t${ticketPath(r, B)}`, `D\t.kerjaan/done/${B} Tiket kedua.md`].sort());
+  assert.match(show(r, 'HEAD', ticketPath(r, B)), /merge postponed — main changed/);
+  assert.equal(git(r.root, 'log', '-1', '--format=%s').trim(), `Board: ${B} back to in_progress, merge postponed`);
+
+  assert.equal(run(mergeSh, wb, ['sync', B]).code, 0);
+  assert.equal(run(testRun, wb, [B]).code, 0);
+  toReview(r, B);
+  passReview(r, B);
+  commitBoard(r, 'Papan: B lolos review lagi');
+  const third = run(mergeSh, r.root, ['land', B]);
+  assert.equal(third.code, 0, third.out + third.err);
+  assert.match(third.out, /LANDED/);
+  assert.equal(status(r), '');
+  assert.deepEqual(lastFiles(r), [`M\t${ticketPath(r, B)}`]);
+  assert.doesNotMatch(notes(r, A) + notes(r, B), /held for the owner/);
+});
+
+test('catatan "ditahan" juga tersimpan sendiri, tanpa membawa perubahan yang sudah ada di main tree', () => {
+  const r = repo();
+  const wa = add(r, A);
+  work(wa, { 'pakai.txt': 'satu\ndua\n' });
+  assert.equal(run(testRun, wa, [A]).code, 0);
+  toReview(r, A);
+  passReview(r, A);
+  commitBoard(r);
+  // Somebody's staged change, which makes git refuse the merge, and an
+  // unstaged one beside it.
+  fs.writeFileSync(path.join(r.root, 'kode.txt'), 'def satu\ndef dua\ndef staged\n');
+  git(r.root, 'add', 'kode.txt');
+  fs.writeFileSync(path.join(r.root, 'cek.sh'), `${cek}# belum disimpan\n`);
+  const before = status(r);
+  const held = run(mergeSh, r.root, ['land', A]);
+  assert.equal(held.code, 1, held.out + held.err);
+  assert.match(held.out, /HELD: ticket 261016300001/);
+  assert.match(show(r, 'HEAD', ticketPath(r, A)), /merge held for the owner — git refused the merge/);
+  assert.deepEqual(lastFiles(r), [`M\t${ticketPath(r, A)}`]);
+  assert.equal(git(r.root, 'log', '-1', '--format=%s').trim(), `Board: ${A} merge held for the owner`);
+  // Everything that was uncommitted is still uncommitted, staged as before.
+  assert.equal(status(r), before);
+  assert.equal(git(r.root, 'diff', '--cached', '--name-only').trim(), 'kode.txt');
+  assert.equal(fs.readFileSync(path.join(r.root, 'kode.txt'), 'utf8'), 'def satu\ndef dua\ndef staged\n');
+});
+
+test('perubahan lain di main tree tidak ikut tersimpan bersama catatan "sudah masuk main"', () => {
+  const r = repo();
+  const wa = add(r, A);
+  work(wa, { 'pakai.txt': 'satu\ndua\n' });
+  assert.equal(run(testRun, wa, [A]).code, 0);
+  toReview(r, A);
+  passReview(r, A);
+  commitBoard(r);
+  // Uncommitted work of every kind the merge does not touch: a changed code
+  // file, a new file, another ticket edited, a new ticket.
+  fs.writeFileSync(path.join(r.root, 'cek.sh'), `${cek}# belum disimpan\n`);
+  fs.writeFileSync(path.join(r.root, 'baru.txt'), 'baru\n');
+  const fileC = path.join(r.k, 'todo', `${C} Tiket ketiga.md`);
+  fs.appendFileSync(fileC, '- catatan pemilik yang belum disimpan\n');
+  fs.writeFileSync(path.join(r.k, 'backlog', '261016300009 Ide.md'), ticket('Ide'));
+  const before = status(r);
+  assert.equal(before.trim().split('\n').length, 4);
+
+  const land = run(mergeSh, r.root, ['land', A]);
+  assert.equal(land.code, 0, land.out + land.err);
+  assert.match(land.out, /LANDED/);
+  assert.deepEqual(lastFiles(r), [`M\t${ticketPath(r, A)}`]);
+  assert.match(show(r, 'HEAD', ticketPath(r, A)), /landed on main as/);
+  assert.equal(status(r), before);
+  assert.match(fs.readFileSync(fileC, 'utf8'), /catatan pemilik yang belum disimpan/);
+  assert.doesNotMatch(show(r, 'HEAD', `.kerjaan/todo/${C} Tiket ketiga.md`), /catatan pemilik/);
+});
+
+test('tiket yang sudah punya perubahan belum disimpan tidak di-commit bersama catatannya', () => {
+  const r = repo();
+  const wa = add(r, A);
+  work(wa, { 'pakai.txt': 'satu\ndua\n' });
+  assert.equal(run(testRun, wa, [A]).code, 0);
+  toReview(r, A);
+  passReview(r, A);
+  commitBoard(r);
+  const fileA = path.join(r.root, ticketPath(r, A));
+  fs.appendFileSync(fileA, '- catatan pemilik yang belum disimpan\n');
+
+  const land = run(mergeSh, r.root, ['land', A]);
+  assert.equal(land.code, 0, land.out + land.err);
+  assert.match(land.out, /LANDED/);
+  assert.match(land.out, /NOTE NOT COMMITTED: \.kerjaan\/done\/261016300001 Tiket pertama\.md already had uncommitted changes/);
+  // HEAD is the merge itself; the ticket's file, with both lines, waits.
+  assert.equal(git(r.root, 'log', '-1', '--format=%s').trim(), `Merge tiket-${A} into main (ticket ${A})`);
+  assert.doesNotMatch(show(r, 'HEAD', ticketPath(r, A)), /catatan pemilik|landed on main/);
+  const body = fs.readFileSync(fileA, 'utf8');
+  assert.match(body, /catatan pemilik yang belum disimpan/);
+  assert.match(body, /landed on main as/);
+});
+
+test('di main tree tanpa cabang, catatan "ditahan" tidak di-commit ke HEAD yang lepas', () => {
+  const r = repo();
+  const wa = add(r, A);
+  work(wa, { 'pakai.txt': 'satu\ndua\n' });
+  assert.equal(run(testRun, wa, [A]).code, 0);
+  toReview(r, A);
+  passReview(r, A);
+  commitBoard(r);
+  git(r.root, 'checkout', '-q', '--detach');
+  const before = head(r);
+  const held = run(mergeSh, r.root, ['land', A]);
+  assert.equal(held.code, 1, held.out + held.err);
+  assert.match(held.out, /NOTE NOT COMMITTED: the main tree is on no branch/);
+  assert.match(held.out, /HELD: ticket 261016300001/);
+  assert.equal(head(r), before);
+  assert.match(notes(r, A), /merge held for the owner — the main tree is on no branch/);
 });
