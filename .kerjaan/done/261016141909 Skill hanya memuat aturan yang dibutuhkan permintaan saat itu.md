@@ -6,7 +6,7 @@ labels: [sesi-a192c9e8, skill, token]
 reporter: mirza
 assign_to: claude
 created: 2026-10-16 14:19:07
-updated: 2026-10-17 06:32:43
+updated: 2026-10-17 06:35:26
 related: [261011073101, 261016141911]
 blocked_by: [261016141904, 261016141905, 261016141907, 261016141908]
 ---
@@ -44,6 +44,7 @@ punya satu tempat.
 - 2026-10-16 14:46:25 todo
 - 2026-10-17 06:10:01 e97c38bb-2b6f-487d-a8b0-2fdab5809ee3 in_progress
 - 2026-10-17 06:32:43 e97c38bb-2b6f-487d-a8b0-2fdab5809ee3 review
+- 2026-10-17 06:35:26 e97c38bb-2b6f-487d-a8b0-2fdab5809ee3 done
 
 ## Notes
 - Berasal dari penilaian independen atas skill kerjaan di sesi Claude Code
@@ -79,3 +80,18 @@ punya satu tempat.
   - Butir 5: repo dengan papan kosong, diminta "catat ini ke backlog: di halaman laporan perlu tombol untuk mengunduh penjualan harian sebagai berkas CSV ...". Panggilan alat: Skill kerjaan, `ls`/`cat settings.md`, `new-ticket.sh backlog`, Read tiket, dua Edit, `update-ticket.sh <id>` — tak satu pun membuka `references/`. Hasil: tiket `feature`/`medium` di backlog dengan Background, Request dan lima Done when yang bisa diperiksa orang awam, History terisi.
   - Butir 6: repo dengan satu tiket siap di todo, diminta "kerjakan todo". Sesi membaca `references/foreman.md` sebagai langkah pertama setelah skill, menjalankan `queue.sh check`, memindah tiket ke in_progress dan meng-commit awal, mengutus `kerjaan:kerjaan-worker` lalu `kerjaan:kerjaan-reviewer`, dan saat papan sepi menjalankan `release.sh unreleased` dan `queue.sh compare`. Riwayat: tiga commit (mulai, kerja, putusan), tiket di done.
 - 2026-10-17 06:32:37: test run — `node --test --test-timeout=900000 --test-force-exit` exited 0 after 2m35s, on content fingerprint bede20cb0d15f38f811a99b516b344e42c6e3860 (the same before and after the run; .kerjaan/ left out).
+- 2026-10-17: Reviewed at level normal, round 1, at commit 1751f5f: passed.
+  Level normal di sini berarti: uji proyek dihitung sekali (dibawa dari jalannya pengerja), lalu tiap butir Done when dibuktikan sendiri dengan menghitung, membandingkan isi lama dan baru, dan membaca uji barunya apakah benar bisa gagal.
+  - Uji proyek: `test-run.sh --check 261016141909 1751f5f` menjawab SAME — jalannya pengerja 2026-10-17 06:32:37 (`node --test ...`, exit 0, sidik jari bede20cb0d15f38f811a99b516b344e42c6e3860) mencakup isi yang persis sama, jadi tidak dijalankan ulang.
+  - Butir 1: `wc -l -w` sendiri — SKILL.md 351 baris / 2.855 kata sekarang, 846 / 7.418 di 1751f5f^. Cocok dengan Notes.
+  - Butir 2: ringkasan perintah kini hanya `new-ticket.sh`, `update-ticket.sh` (pindah, ganti judul, segarkan) dan `ls` cari ID, plus cadangan `K=` yang mencari folder skrip bila `CLAUDE_PLUGIN_ROOT` kosong. Perintah lain disebut di panduan; uji per skrip menjaganya.
+  - Butir 3: isi SKILL.md lama dibandingkan bagian demi bagian dengan tempat barunya. Yang dipindah ada utuh di `references/foreman.md` (Commits, tandai selesai, tiket keputusan, saat papan sepi, gerbang cabang belum digabung di langkah 1, urutan mengambil tiket di "Starting the chain"); centang Done when (tak terpenuhi, batal, menunggu orang) ada di definisi pengerja; pemicu uang/otentikasi untuk tingkat review ada di review.md dan planner; perawatan order.md oleh update-ticket.sh ada di ordering-the-queue.md. Batas ukuran tiket kini hanya di SKILL.md; "Never review your own work" hanya di SKILL.md (definisi pengerja hanya melarangnya dalam daftar). Tidak ditemukan aturan yang hilang; yang dihapus adalah alasan panjang, contoh berulang, dan uraian cara kerja skrip (algoritme ID, sidik jari, daftar pengecualian cabang, riwayat History).
+  - Butir 4: diff memastikan blok `git worktree add`/`git sparse-checkout set` di parallel-work.md, `diff <(` di ordering-the-queue.md dan blok `git worktree list` sudah diganti penjelasan apa yang dikerjakan skrip. Uji per dokumen membaca blok kode pagar demi pagar.
+  - Butir 5 dan 6: `claude -p` bersarang ditolak lingkungan peninjau, jadi dinilai dari jejak yang disimpan pengerja di scratchpad sesi. `coba5.jsonl`: init memuat kerjaan dari repo ini (`kerjaan@inline`), panggilan alatnya Skill, `ls`/`cat settings.md`, `new-ticket.sh`, Read, dua Edit, `update-ticket.sh` — tidak ada yang membuka `references/`; tiket yang dihasilkan (`coba5/.kerjaan/backlog/261017062301 …`) lengkap dan benar formatnya, dengan Done when yang bisa diperiksa orang awam. `coba6.jsonl`: langkah pertama setelah Skill adalah membaca `references/foreman.md`, lalu `queue.sh check`, pindah ke in_progress, utus `kerjaan:kerjaan-worker`, lalu `kerjaan:kerjaan-reviewer`. Teks skill yang dimuat kedua sesi itu sama bagian akhirnya dengan SKILL.md yang di-commit, dan cadangan dokumen terakhir pengerja (`bak_*`) identik dengan isi commit.
+  - Butir 7: total SKILL.md + references + agents dihitung sendiri: 25.617 kata di 1751f5f^, 19.535 sekarang. Turun 6.082 kata, bukan hanya pindah.
+  - Uji baru `uji/skill-ringkas.test.mjs` dibaca: penjaganya bisa gagal (dijalankan, bukan cuma mencocokkan teks literal — misalnya cadangan `K` benar dijalankan di bash dengan HOME palsu), dan perubahan `uji/commit-papan.test.mjs` mengikuti pemindahan bagian Commits.
+  - Catatan, tidak menghalangi: (1) Pengecualian "ubahan teks kecil yang diminta pemilik" kini hanya ada di foreman.md, dan aturan 2 di SKILL.md berbunyi mutlak ("every ticket goes to a `kerjaan-worker`") tanpa menyebut ada pengecualian. Sesi yang diminta membetulkan salah ketik baru akan menemukannya setelah membuka foreman.md, dan bisa lebih dulu membuat tiket. Arahnya aman (lebih banyak kerja, bukan aturan dilanggar), tapi ini jalan pintas yang justru dipakai di permintaan kecil. (2) "Tick `Done when` line by line" keluar dari daftar aturan yang sering dilanggar; kini dibawa definisi pengerja dan SKILL.md menunjuk ke sana. (3) Uji baru memasang plafon 21.000 kata, lebih longgar dari anggaran 18.000 milik 261016141911, jadi tidak bertabrakan; total sekarang 19.535 masih di atas 18.000. 261016141911 sebaiknya mengganti angka di uji yang sama, bukan menambah uji kedua dengan batas lain.
+
+### Suggested follow-up
+
+- **Aturan 2 di berkas utama skill tidak menyebut pengecualian ubahan teks kecil.** Bila pemilik meminta membetulkan satu salah ketik di README, sesi baru membaca "setiap tiket ke pengerja" dan bisa membuat tiket serta mengutus pengerja dan peninjau untuk satu kata. Yang diinginkan: satu baris di aturan 2 yang menyebut adanya pengecualian itu dan merujuk ke panduan mandor, tanpa menyalin isinya.
