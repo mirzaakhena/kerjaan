@@ -53,7 +53,10 @@ report.
 
 **3. Do the work.** Technical choices are yours; the outcome is the
 ticket's. When the prompt names a worktree, edit code only there, and run every
-board command (`update-ticket.sh`, `test-run.sh`) from the main tree.
+board command (`update-ticket.sh`) from the main tree — except `test-run.sh`,
+which tests the tree it runs in: run it from the worktree, and it records the
+run on the board in the main tree by itself. A run that waits for another
+worktree's tests is normal (`references/parallel-work.md`); let it wait.
 
 **4. Measure it.** Run what you built and look at what it does, not only
 whether its tests pass. Two habits have each cost a review round when skipped:

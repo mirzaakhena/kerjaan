@@ -5,6 +5,9 @@ long_lived_branches: []
 owner_explanation: off
 explanation_translation: false
 done_when_limit: 8
+parallel_tests: false
+worktree_setup:
+worktree_teardown:
 ---
 
 Settings for this board, read by the kerjaan skill, its reviewer, and
@@ -33,3 +36,24 @@ Settings for this board, read by the kerjaan skill, its reviewer, and
   `update-ticket.sh` and `new-ticket.sh` warn that it should be split. Empty
   or missing means 8. The warning never stops a ticket being saved, and the
   owner can keep one ticket whole with `update-ticket.sh <id> --accept-size`.
+- `parallel_tests` — whether test runs from different worktrees of this repo
+  may overlap. `false`, the default, makes `test-run.sh` wait its turn: one
+  run at a time across the whole repository, and a run that had to wait says
+  so in the line it records. Set `true` only when the tests share nothing
+  between worktrees — no fixed port, local database, fixed temp path or
+  cache — for instance because they choose those from `KERJAAN_SLOT`.
+- `worktree_setup` — a command run inside every worktree `worktree.sh add`
+  creates, before it is used: copy `.env` from `$KERJAAN_MAIN_TREE`, install
+  packages, create this ticket's own test database. When it fails, the
+  worktree is removed again and not used. Empty means nothing is run.
+- `worktree_teardown` — a command run inside a worktree when `worktree.sh
+  remove` removes it, and when a failed setup is undone: drop the test
+  database or folders that belong to this ticket or slot. It removes only
+  what this worktree owns, never shared data. When it fails, the worktree is
+  kept. Empty means nothing is run.
+
+The test command and both worktree commands see `KERJAAN_TICKET` (the ticket
+ID), `KERJAAN_SLOT` (0 in the main tree; 1, 2, ... in linked worktrees, never
+the same for two worktrees at once), `KERJAAN_WORKTREE` and
+`KERJAAN_MAIN_TREE`. Who owns which test data is set out in
+`references/parallel-work.md` in the kerjaan skill.

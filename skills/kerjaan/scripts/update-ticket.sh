@@ -501,7 +501,7 @@ case "$dest_status" in
         if git merge-base --is-ancestor "refs/heads/$branch" HEAD 2> /dev/null; then
           if git worktree list --porcelain 2> /dev/null | grep -qx "branch refs/heads/$branch"; then
             echo "Note: $branch is merged, but its worktree is still checked out." >&2
-            echo "  git worktree remove <path> && git branch -d $branch" >&2
+            echo "  $(dirname "$0")/worktree.sh remove $id && git branch -d $branch" >&2
           fi
         else
           echo "WARNING: $branch holds commits that are not in HEAD, and the ticket" >&2

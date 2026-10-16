@@ -33,7 +33,8 @@ there is no service to run, host, or pay for.
 ├── done/         passed review
 ├── cancel/       abandoned
 ├── order.md      the order to pick `todo` up in — optional
-└── settings.md   language, test command, long-lived branches, explanation
+└── settings.md   language, test command, long-lived branches, explanation,
+                  side-by-side tests and worktree setup
 ```
 
 `settings.md` is written once, the first time the board is used: Claude
@@ -160,6 +161,10 @@ $K/ticket-size.sh 260905160401            # is it too big? changes nothing
 # run test_command and record what it ran on; then ask whether a version matches
 $K/test-run.sh 260905160401
 $K/test-run.sh --check 260905160401 HEAD  # SAME / DIFFERENT / NO EVIDENCE
+
+# a worktree for working two tickets side by side, and removing it again
+$K/worktree.sh add 260905160401 ../repo-topic
+$K/worktree.sh remove 260905160401
 
 # the owner's explanation, when settings.md asks for one
 $K/explain.sh changes 260905160401        # files and line ranges the ticket wrote
@@ -350,6 +355,17 @@ are left alone, and so are the `long_lived_branches` in `settings.md`. For
 anything else you decide: merge it, delete it, or start anyway with
 `--ack-unmerged`, which records the branches in the new ticket. Claude never
 passes that flag on its own.
+
+A worktree separates files, not the ports, local databases and caches a test
+suite uses, so test runs from different worktrees take turns: `test-run.sh`
+holds one lock for the whole repository, and a run that had to wait says so in
+the line it records. A board whose tests share nothing sets
+`parallel_tests: true`. Each worktree gets a slot number and its ticket ID in
+`KERJAAN_SLOT` and `KERJAAN_TICKET`, to name its own port or database by. The
+worktrees are made with `worktree.sh`, which runs `worktree_setup` from
+`settings.md` in each new one (copying `.env`, installing packages) and
+`worktree_teardown` when it is removed; each ticket's test data carries its
+name, so one ticket's teardown never removes another's.
 
 The reviewer checks for a worktree before reading any diff, because reviewing
 the main tree for work that lives on a branch would report "nothing changed"

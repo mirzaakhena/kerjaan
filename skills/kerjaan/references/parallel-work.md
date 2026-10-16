@@ -23,6 +23,16 @@ would touch the same files, the answer is not a worktree, it is that they never
 belonged in one group.
 
 ```bash
+"$K/worktree.sh" add 260905160401 ../<repo>-<topic>      # from the main tree
+"$K/worktree.sh" remove 260905160401                     # when it is merged
+```
+
+`add` does what the three git commands below do, and then gives the worktree
+a slot and runs the board's `worktree_setup` in it (see "Tests take turns" and
+"Setup and teardown" below). Use the script rather than the commands, so the
+setup cannot be skipped; the commands are here so the result is understood:
+
+```bash
 git worktree add -b tiket-260905160401 ../<repo>-<topic>
 cd ../<repo>-<topic>
 git sparse-checkout set --no-cone '/*' '!/.kerjaan/'
@@ -30,9 +40,10 @@ git sparse-checkout set --no-cone '/*' '!/.kerjaan/'
 
 - **The branch name contains the ticket ID**, and that is the entire link
   between git and the board. The prefix is free — `tiket-`, `kerjaan/`,
-  whatever a project already uses — because the ID is what is matched on.
-  Nothing is written down, so no record can go stale, and the ticket gains no
-  `branch:` field that would repeat its own ID back at it.
+  whatever a project already uses (`add --branch <name>`) — because the ID is
+  what is matched on. Nothing is written down, so no record can go stale, and
+  the ticket gains no `branch:` field that would repeat its own ID back at it.
+  A branch that already carries the ID, from a ticket sent back, is reused.
 - **The worktree sits beside the repo, never inside it.** A `.worktrees/`
   folder within the repository makes every test runner, linter and type checker
   walk a second complete copy of the project.
@@ -40,7 +51,9 @@ git sparse-checkout set --no-cone '/*' '!/.kerjaan/'
   easiest to skip and most expensive to omit; the next section is about it.
 
 While the work happens in that worktree, **every board command still runs from
-the main tree** — the scripts refuse to run anywhere else. The worker is told
+the main tree** — the scripts refuse to run anywhere else. The one exception is
+`test-run.sh`, which tests the tree it is run in and writes its record to the
+board in the main tree by itself: run it from the worktree. The worker is told
 both paths in its prompt.
 
 ## The board has one home
@@ -73,6 +86,91 @@ A caveat worth checking on your own git: the pattern uses non-cone mode, which
 newer versions treat as deprecated even while it keeps working. A project
 already using sparse-checkout for something else must merge this pattern into
 what it has rather than overwrite it.
+
+## Tests take turns
+
+A worktree separates files and nothing else. Two worktrees still share the
+machine's ports, its local databases and services, fixed paths in `/tmp`, and
+caches. Two test suites running at the same moment can fail each other while
+the code in both is fine — and a red run that is nobody's fault costs a review
+round to find out.
+
+So by default **the work runs side by side and the tests queue.** `test-run.sh`
+holds a lock for the whole repository while `test_command` runs (it lives in
+git's common directory, `.git/kerjaan-locks/`, which every worktree shares). A
+second run waits, says on screen whose run it is waiting for, and the line it
+records in `## Notes` ends with how long it waited and behind which ticket.
+A lock left by a run that was killed is taken over as soon as its process is
+found gone.
+
+A project whose tests share nothing between worktrees sets
+`parallel_tests: true` in `settings.md`, and the runs overlap. That is a claim
+about the tests, so make it only once they really choose their port, database
+and temp folders per worktree — which is what the slot is for.
+
+**Every worktree has a slot**, a small number its tests can build names from:
+`0` for the main tree, and the lowest free number from `1` up for each linked
+worktree. Two worktrees that exist at the same time never hold the same
+number; a number is freed when its worktree is removed. The test command and
+both worktree commands receive:
+
+| Variable | Holds |
+|---|---|
+| `KERJAAN_TICKET` | the ticket ID, e.g. `260905160401` |
+| `KERJAAN_SLOT` | the slot: `0`, `1`, `2`, ... |
+| `KERJAAN_WORKTREE` | the worktree's top directory |
+| `KERJAAN_MAIN_TREE` | the main tree, where `.env` and the board live |
+
+So a test setup can say `PORT=$((4000 + KERJAAN_SLOT))`, or name its database
+`app_test_$KERJAAN_SLOT`. `"$K/worktree.sh" slot` prints the slot of the tree
+it runs in. A worktree made by hand, without the script, gets one the first
+time it is asked.
+
+## Setup and teardown
+
+What git does not track does not reach a new worktree: the `.env` nobody
+commits, installed packages, a built asset. A fresh worktree can fail its very
+first test run for no reason in the code. Two settings close that:
+
+- **`worktree_setup`** runs inside every worktree `worktree.sh add` creates,
+  before anyone works in it — `cp "$KERJAAN_MAIN_TREE/.env" . && npm ci`, say.
+  If it fails, the worktree is removed again (its teardown included) and the
+  script exits non-zero: a half-prepared worktree is not handed to a worker.
+- **`worktree_teardown`** runs inside the worktree when `worktree.sh remove`
+  removes it — `dropdb --if-exists "app_test_$KERJAAN_SLOT"`, say. If it fails,
+  the worktree is kept, so the teardown can be fixed and run again. A worktree
+  with uncommitted changes is refused before the teardown runs, so data is
+  never dropped from a worktree that then refuses to go. What setup creates
+  inside the worktree, like `.env` or `node_modules`, belongs in `.gitignore`.
+
+Both run with the variables above, set to the worktree's own ticket and slot —
+never taken from the environment of whoever runs the script.
+
+## Who owns test data
+
+Data a test keeps outside the repo — a database, a folder of fixtures, an
+uploaded-files directory — is the one thing two tickets can still destroy for
+each other after everything above, because removing a worktree runs a
+teardown, and a teardown that removes too much removes the next ticket's data.
+The owner's rule is that **each ticket carries its own data**, so the first
+ticket's teardown can never take what the second still needs:
+
+- **Data a ticket owns is named after it** — after `KERJAAN_TICKET`, or after
+  `KERJAAN_SLOT` when names must stay short. `app_test_260905160401`, not
+  `app_test`.
+- **Teardown removes only what it owns**, by that exact name. Never a pattern
+  (`app_test_*`), never "everything the tests made".
+- **Shared data is read, never written.** Seed files, reference datasets, a
+  shared read-only database: tests copy from them into their own, and nobody's
+  teardown touches them.
+- **Data that is easy to make again is made again** by `worktree_setup` — a
+  copy of the seed, a fresh schema — rather than carried around or shared.
+  Data that is not easy to make again is the ticket's to bring, in its
+  worktree or under its own name.
+
+Kept to, these make the order of events irrelevant: two tickets pass whichever
+is tested first, including when the first one's worktree has already been
+removed before the second is tested.
 
 ## Nothing is remembered
 
@@ -107,7 +205,8 @@ in it.
 
 Closing that window belongs to the foreman, which picks up the verdict and
 has the owner at hand when merging is theirs to approve: merge the branch,
-remove the worktree, delete the branch. The warning at `done` exists because
+remove the worktree with `worktree.sh remove` (so its teardown runs), delete
+the branch. The warning at `done` exists because
 that handover is easy to drop — and since a warning in a reviewer's report is
 easy to drop too, the next ticket cannot start while the branch is still
 there. `update-ticket.sh` refuses the move to `in_progress` until the owner has

@@ -24,6 +24,21 @@
 #
 # --check writes nothing to the repository: the objects it builds go to a
 # temporary directory, which is what lets the reviewer use it.
+#
+# Runs from several worktrees of one repository take turns. Worktrees separate
+# files, but not the ports, local databases, fixed temp paths and caches a
+# test suite tends to use, so two suites running at once can fail each other
+# with nothing wrong in either. A run therefore waits for the `tests` lock
+# (lib.sh), held by at most one run in the whole repository, and the recorded
+# line says how long it waited. A board whose tests are safe side by side sets
+# `parallel_tests: true` in settings.md, and the lock is skipped.
+#
+# The test command sees, in its environment:
+#   KERJAAN_TICKET     the ticket ID given to this script
+#   KERJAAN_SLOT       0 in the main tree; 1, 2, ... in linked worktrees, never
+#                      the same for two worktrees that exist at once
+#   KERJAAN_WORKTREE   the top of the tree being tested
+#   KERJAAN_MAIN_TREE  the top of the main tree, where the board lives
 
 set -euo pipefail
 
@@ -63,6 +78,8 @@ case "$id" in
 esac
 
 here="$(cd "$(dirname "$0")" && pwd)"
+# shellcheck source=lib.sh
+. "$here/lib.sh"
 
 git rev-parse --git-dir > /dev/null 2>&1 || { echo "Not inside a git repository." >&2; exit 2; }
 
@@ -83,13 +100,7 @@ for f in "$board"/*/"$id "*.md; do
 done
 [ -n "$ticket" ] || { echo "No ticket with ID $id." >&2; exit 2; }
 
-test_command=""
-if [ -f "$board/settings.md" ]; then
-  test_command="$(awk '
-    $0 == "---" { fence++; next }
-    fence == 1 && /^test_command:/ { sub(/^test_command:[[:space:]]*/, ""); print; exit }
-  ' "$board/settings.md" | sed -e 's/[[:space:]]*$//' -e 's/^"\(.*\)"$/\1/' -e "s/^'\(.*\)'\$/\1/")"
-fi
+test_command="$(kerjaan_setting "$board/settings.md" test_command)"
 
 tmpdir="$(mktemp -d)"
 trap 'rm -rf "$tmpdir"' EXIT
@@ -184,6 +195,24 @@ if [ -z "$test_command" ]; then
   exit 2
 fi
 
+slot="$(kerjaan_slot)"
+waited_note=""
+case "$(kerjaan_setting "$board/settings.md" parallel_tests)" in
+  true | yes) ;;
+  *)
+    trap 'kerjaan_lock_release tests; rm -rf "$tmpdir"' EXIT
+    kerjaan_lock_acquire tests "ticket $id, slot $slot, $top"
+    if [ -n "$KERJAAN_LOCK_WAITED" ]; then
+      waited_note=" Waited $(( KERJAAN_LOCK_WAITED / 60 ))m$(( KERJAAN_LOCK_WAITED % 60 ))s for the test lock first, held by another run (${KERJAAN_LOCK_HOLDER:-unknown})."
+      echo "Got the test lock after waiting ${KERJAAN_LOCK_WAITED}s." >&2
+    fi
+    ;;
+esac
+
+export KERJAAN_TICKET="$id" KERJAAN_SLOT="$slot" KERJAAN_WORKTREE="$top" KERJAAN_MAIN_TREE="$main_tree"
+
+# Taken after the wait, so content changed while waiting is not mistaken for
+# content changed by the run.
 before="$(worktree_fingerprint before)"
 start="$SECONDS"
 set +e
@@ -197,10 +226,10 @@ duration="$(( elapsed / 60 ))m$(( elapsed % 60 ))s"
 now="$(date '+%Y-%m-%d %H:%M:%S')"
 
 if [ "$before" = "$after" ]; then
-  note="- $now: test run — \`$test_command\` exited $code after $duration, on content fingerprint $after (the same before and after the run; .kerjaan/ left out)."
+  note="- $now: test run — \`$test_command\` exited $code after $duration, on content fingerprint $after (the same before and after the run; .kerjaan/ left out).$waited_note"
 else
   changed="$(git diff-tree -r --no-renames --name-only "$before" "$after" | tr '\n' ' ' | sed 's/ $//')"
-  note="- $now: test run — \`$test_command\` exited $code after $duration, but the content changed during the run ($changed), so it vouches for no version."
+  note="- $now: test run — \`$test_command\` exited $code after $duration, but the content changed during the run ($changed), so it vouches for no version.$waited_note"
   echo "The content changed while the checks ran: $changed" >&2
   echo "This run is recorded but proves nothing. If the run itself writes these" >&2
   echo "files, add them to .gitignore; otherwise stop editing and run again." >&2

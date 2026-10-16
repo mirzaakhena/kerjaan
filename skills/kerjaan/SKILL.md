@@ -27,6 +27,8 @@ K="${CLAUDE_PLUGIN_ROOT}/skills/kerjaan/scripts"      # always run from the repo
 "$K/update-ticket.sh" 260905160401 --accept-size                   # owner keeps a big ticket whole
 "$K/ticket-size.sh" 260905160401                                   # size check alone, changes nothing
 "$K/test-run.sh" 260905160401                                      # run test_command, record it
+"$K/worktree.sh" add 260905160401 ../repo-topic                    # worktree for side-by-side work
+"$K/worktree.sh" remove 260905160401                               # its teardown, then remove it
 "$K/explain.sh" changes 260905160401                               # files and lines the ticket wrote
 ls .kerjaan/*/"260905160401 "*.md                                  # find by ID; the folder is its status
 ```
@@ -75,8 +77,10 @@ is yours to keep.
 `.kerjaan/settings.md` holds what the board cannot guess: the language ticket
 prose is written in, the command that runs the project's checks (the reviewer
 runs it first), which branches live outside `HEAD` on purpose, whether the
-owner explains each ticket's code before review, and how many `Done when`
-items a ticket may hold before the scripts warn. When it is
+owner explains each ticket's code before review, how many `Done when`
+items a ticket may hold before the scripts warn, and — for side-by-side work —
+whether tests from several worktrees may overlap and what runs when a worktree
+is created or removed. When it is
 missing — `new-ticket.sh` says so — work out likely values from the repo
 (the language of existing tickets, `package.json`/`Makefile`/CI, the branch
 list), put them to the owner in one message, and write the file from
@@ -494,7 +498,8 @@ One ticket at a time is normal. Two tickets in the same `order.md` group are
 declared independent and may run side by side in separate git worktrees — but
 a worktree checks out a second copy of `.kerjaan/`, which silently disagrees
 with the first, and the scripts refuse to run there. The foreman creates the
-worktrees and gives each worker its own. **Read
+worktrees with `worktree.sh` and gives each worker its own; their test runs
+take turns unless `parallel_tests` says otherwise. **Read
 `references/parallel-work.md` before creating a worktree.**
 
 ### Tickets whose work is a decision
