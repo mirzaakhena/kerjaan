@@ -1,12 +1,12 @@
 ---
 type: feature
-priority: medium
+priority: high
 review:
 labels: [sesi-a192c9e8, history]
 reporter: mirza
 assign_to: claude
 created: 2026-10-16 14:46:00
-updated: 2026-10-16 14:46:25
+updated: 2026-10-16 14:49:16
 related: [261006110801, 261006121502]
 blocked_by: []
 ---
