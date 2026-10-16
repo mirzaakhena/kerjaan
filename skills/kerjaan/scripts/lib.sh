@@ -214,12 +214,17 @@ kerjaan_tree_without_board() {
 
 # Appends <note> to the ticket <file>; Notes is always its last section. A
 # Notes section holding only "(none yet)" has that line replaced.
+#
+# Free text reaches awk through the environment, never through `awk -v`: -v
+# reads its value as a string literal, so `\d+` would become `d+` and `C:\temp`
+# a tab. ENVIRON hands the bytes over untouched. Every awk in these scripts
+# that carries text a person wrote follows the same rule.
 kerjaan_append_note() {
   local file="$1" note="$2" tmp
   if [ "$(awk 'NF { last = $0 } END { print last }' "$file")" = "(none yet)" ]; then
     tmp="$(mktemp)"
-    awk -v note="$note" '{ lines[NR] = $0; if (NF) lastnf = NR }
-      END { for (i = 1; i <= NR; i++) print (i == lastnf ? note : lines[i]) }' "$file" > "$tmp"
+    KERJAAN_NOTE="$note" awk '{ lines[NR] = $0; if (NF) lastnf = NR }
+      END { for (i = 1; i <= NR; i++) print (i == lastnf ? ENVIRON["KERJAAN_NOTE"] : lines[i]) }' "$file" > "$tmp"
     cat "$tmp" > "$file"
     rm -f "$tmp"
   else

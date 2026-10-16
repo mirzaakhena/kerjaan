@@ -254,6 +254,31 @@ test('answer: refuses an answered question, a number that does not exist, and an
   assert.match(read(root, A), /open question: Dua\?\n$/);
 });
 
+// awk -v reads its value as a string literal: `\d` became `d` and `\t` a tab.
+const slashed = String.raw`pakai pola \d+ di C:\temp`;
+
+test('answer: backslashes in the answer are stored exactly as given', () => {
+  const root = repo();
+  add(root, A);
+  q(root, 'ask', A, 'Pola apa?');
+  assert.equal(q(root, 'answer', A, '1', slashed).code, 0);
+  const lines = read(root, A).split('\n');
+  const ans = lines.find((l) => l.startsWith('  answer, '));
+  assert.equal(ans.replace(/^  answer, [\d-]+ [\d:]+: /, ''), slashed);
+});
+
+test('ask: backslashes survive both as the first note and as a later one', () => {
+  const root = repo();
+  add(root, A);
+  // The first note replaces "(none yet)"; the second is appended after it.
+  q(root, 'ask', A, `Pertama ${slashed}?`);
+  q(root, 'ask', A, `Kedua ${slashed}?`);
+  const notes = read(root, A).split('## Notes\n')[1].split('\n');
+  assert.equal(notes[0].replace(/^- [\d-]+ [\d:]+: open question: /, ''), `Pertama ${slashed}?`);
+  assert.equal(notes[1].replace(/^- [\d-]+ [\d:]+: open question: /, ''), `Kedua ${slashed}?`);
+  assert.ok(!notes.includes('(none yet)'));
+});
+
 test('ask: an empty question is refused', () => {
   const root = repo();
   add(root, A);

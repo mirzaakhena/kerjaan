@@ -270,8 +270,9 @@ if [ "$cmd" = "answer" ]; then
   esac
   # The nth question line outside fences becomes answered, and the answer goes
   # right under it, after any lines that continue the question.
-  awk -v n="$n" -v ans="  answer, $(now): $a" '
-    function flushans() { if (pending) { print ans; pending = 0 } }
+  # The answer goes through the environment, not -v, so backslashes survive.
+  KERJAAN_ANSWER="  answer, $(now): $a" awk -v n="$n" '
+    function flushans() { if (pending) { print ENVIRON["KERJAAN_ANSWER"]; pending = 0 } }
     !body { print; if ($0 == "---" && ++fm == 2) body = 1; next }
     pending && !/^[ \t]+[^ \t]/ { flushans() }
     /^(```|~~~)/ { infence = !infence; print; next }

@@ -454,13 +454,7 @@ cat "$tmp" > "$file"
 # are written into the ticket, so the decision outlives the terminal it was
 # made in. Notes is always the last section.
 append_note() {
-  if [ "$(awk 'NF { last = $0 } END { print last }' "$file")" = "(none yet)" ]; then
-    awk -v note="$1" '{ lines[NR] = $0; if (NF) lastnf = NR }
-      END { for (i = 1; i <= NR; i++) print (i == lastnf ? note : lines[i]) }' "$file" > "$tmp"
-    cat "$tmp" > "$file"
-  else
-    printf '%s\n' "$1" >> "$file"
-  fi
+  kerjaan_append_note "$file" "$1"
 }
 
 if [ -n "${review_record:-}" ]; then
@@ -534,8 +528,9 @@ if [ -f "$order" ] && [ "$current_status" = "todo" ] && [ "$dest_status" != "tod
   fi
 elif [ -f "$order" ] && [ "$current_status" = "todo" ] && [ "$title_given" -eq 1 ]; then
   otmp="$(mktemp)"
-  awk -v id="$id" -v t="$dest_title" '
-    { if (index($0, "- " id " ") == 1) { print "- " id " " t } else { print } }
+  # The title goes through the environment, not -v, so backslashes survive.
+  KERJAAN_TITLE="$dest_title" awk -v id="$id" '
+    { if (index($0, "- " id " ") == 1) { print "- " id " " ENVIRON["KERJAAN_TITLE"] } else { print } }
   ' "$order" > "$otmp"
   cat "$otmp" > "$order"
   rm -f "$otmp"

@@ -286,14 +286,8 @@ else
   echo "files, add them to .gitignore; otherwise stop editing and run again." >&2
 fi
 
-# Notes is always the last section of a ticket.
-if [ "$(awk 'NF { last = $0 } END { print last }' "$ticket")" = "(none yet)" ]; then
-  awk -v note="$note" '{ lines[NR] = $0; if (NF) lastnf = NR }
-    END { for (i = 1; i <= NR; i++) print (i == lastnf ? note : lines[i]) }' "$ticket" > "$tmpdir/ticket"
-  cat "$tmpdir/ticket" > "$ticket"
-else
-  printf '%s\n' "$note" >> "$ticket"
-fi
+# Written word for word: --check compares the command in it with settings.md.
+kerjaan_append_note "$ticket" "$note"
 (cd "$main_tree" && "$here/update-ticket.sh" "$id" > /dev/null)
 
 echo "$note" >&2
