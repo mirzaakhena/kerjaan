@@ -6,7 +6,7 @@ labels: [sesi-a192c9e8, skill, explain]
 reporter: mirza
 assign_to: claude
 created: 2026-10-16 14:19:06
-updated: 2026-10-17 02:55:57
+updated: 2026-10-17 02:57:03
 related: [261011073103, 261016141909]
 blocked_by: []
 ---
@@ -41,6 +41,7 @@ yang tiketnya sudah memuat bagian penjelasan.
 - 2026-10-16 14:46:21 todo
 - 2026-10-17 02:49:47 a192c9e8-0bb5-4bbf-8d56-9831b23e62ec in_progress
 - 2026-10-17 02:55:57 a192c9e8-0bb5-4bbf-8d56-9831b23e62ec review
+- 2026-10-17 02:57:03 a192c9e8-0bb5-4bbf-8d56-9831b23e62ec done
 
 ## Notes
 - Berasal dari penilaian independen atas skill kerjaan di sesi Claude Code
@@ -66,3 +67,13 @@ yang tiketnya sudah memuat bagian penjelasan.
   - Butir 5: 261011073103 sudah ada di `.kerjaan/cancel/` dengan alasan "fitur penjelasan pemilik akan dihapus seluruhnya (261016141904)", dibatalkan mirza 2026-10-16.
   - Catatan: tiket todo 261016141907 masih menyebut `explanation.md:60-62` sebagai rujukan; berkas itu kini sudah tidak ada (tiket itu sendiri sudah menulis "ikut hilang").
 - 2026-10-17 02:55:41: test run — `node --test --test-timeout=900000 --test-force-exit` exited 0 after 2m18s, on content fingerprint 4589729238e6439d91134112e3501ab24bed447e (the same before and after the run; .kerjaan/ left out).
+- 2026-10-17: Reviewed at level normal, round 1, at commit a863174 (pekerjaan di 5a664b0, langsung di main, tanpa worktree): uji proyek tidak dijalankan ulang karena hasil pengerja terbukti mencakup isi yang sama persis; tiap butir dibuktikan dengan pencarian di git, membaca perubahan, dan mencoba penampil tiket.
+  - Uji: `test-run.sh --check 261016141904 HEAD` → SAME; run pengerja 2026-10-17 02:55:41, sidik isi 4589729238e6439d91134112e3501ab24bed447e, keluar 0 — dibawa, tidak diulang.
+  - Butir 1: `skills/kerjaan/SETTINGS.md` dan `.kerjaan/settings.md` tidak lagi memuat `owner_explanation`/`explanation_translation`; `git grep -i 'explan\|penjelasan' HEAD -- ':!.kerjaan'` hanya menemukan uji baru (yang sengaja memakai kunci lama), kata kerja "explain" biasa, dan "penjelasannya" di `docs/cara-kerja-reviewer.md` yang tidak berkaitan. Lulus.
+  - Butir 2: SKILL.md, README, `agents/kerjaan-worker.md`, `agents/kerjaan-reviewer.md`, `references/foreman.md` dibaca pada diff; semua sebutan hilang, kalimat yang tersisa tetap utuh. Lulus.
+  - Butir 3: `scripts/explain.sh` dan `references/explanation.md` tidak ada lagi; baris `explain.sh gate` hilang dari `update-ticket.sh`; `WAITING — explanation` hilang dari pengerja dan mandor. Lulus.
+  - Butir 4: uji baru di `uji/update-ticket.test.mjs` dibaca — memindah tiket berkode dengan/ tanpa `## Explanation` dan dengan/ tanpa History sampai review di papan berpengaturan lama, memeriksa bagian itu utuh dan History tepat sebelum Notes; tidak hampa. Penampil dicoba sendiri: `render()` dari `viewer/web/markdown.js` pada tiket ber-`## Explanation` menampilkan Explanation sebagai judul dan blok kode, `## Notes` di dalam pagar tidak dianggap judul, History dan Notes tampil biasa. Lulus.
+  - Butir 5: `.kerjaan/cancel/261011073103 …` memuat "Dibatalkan oleh mirza, 2026-10-16: fitur penjelasan pemilik akan dihapus seluruhnya (261016141904)". Lulus.
+  - Butir 6: run pengerja yang dibawa (SAME, keluar 0). Lulus.
+  - Proyek ini tidak punya `CLAUDE.md`/`AGENTS.md`, jadi tidak ada aturan tertulis tambahan yang diperiksa.
+  - Catatan (tidak menghalangi): tiket todo 261016141907 masih merujuk `explanation.md:60-62` yang kini sudah tidak ada, seperti sudah dicatat pengerja.
