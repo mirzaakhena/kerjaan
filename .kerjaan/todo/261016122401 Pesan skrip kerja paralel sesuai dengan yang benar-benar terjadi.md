@@ -6,7 +6,7 @@ labels: [paralel, pesan]
 reporter: mirza
 assign_to: claude
 created: 2026-10-16 12:24:01
-updated: 2026-10-16 12:24:42
+updated: 2026-10-16 12:38:09
 related: [261016101001, 261016095101]
 blocked_by: []
 ---
@@ -50,7 +50,9 @@ menjawabnya.
 
 ## History
 - 2026-10-16 12:24:01 backlog
+- 2026-10-16 12:38:09 todo
 
 ## Notes
 - 2026-10-16 Berasal dari catatan reviewer 261016101001 (pesan cabang) dan
   261016095101 (penomoran pertanyaan).
+- 2026-10-16 12:38:09: files estimated to change: `skills/kerjaan/scripts/merge.sh`, `skills/kerjaan/scripts/update-ticket.sh`, `skills/kerjaan/scripts/worktree.sh`, `uji/`

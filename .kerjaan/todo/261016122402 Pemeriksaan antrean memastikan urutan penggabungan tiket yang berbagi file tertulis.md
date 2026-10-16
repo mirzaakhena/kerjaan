@@ -6,7 +6,7 @@ labels: [paralel, antrean]
 reporter: mirza
 assign_to: claude
 created: 2026-10-16 12:24:02
-updated: 2026-10-16 12:24:42
+updated: 2026-10-16 12:38:09
 related: [261016095101]
 blocked_by: []
 ---
@@ -32,6 +32,8 @@ bila urutan penggabungannya tidak tertulis.
 
 ## History
 - 2026-10-16 12:24:02 backlog
+- 2026-10-16 12:38:09 todo
 
 ## Notes
 - 2026-10-16 Berasal dari catatan reviewer 261016095101.
+- 2026-10-16 12:38:09: files estimated to change: `skills/kerjaan/references/ordering-the-queue.md`, `skills/kerjaan/scripts/queue.sh`, `uji/queue.test.mjs`
