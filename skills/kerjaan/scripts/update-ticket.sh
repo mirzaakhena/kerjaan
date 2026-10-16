@@ -521,10 +521,27 @@ if [ -f "$order" ] && [ "$current_status" = "todo" ] && [ "$dest_status" != "tod
     # disappears the first time any ticket leaves `todo`, silently, which is
     # the one failure this file cannot afford: what it carries is the
     # reasoning, and nothing else records it.
+    #
+    # The ticket's ID also comes off its group's lands-first line
+    # (`<!-- lands-first: <id>, <id> -->`, references/ordering-the-queue.md),
+    # keeping the others in their order; a line left naming nobody goes. A
+    # line in any other shape is left exactly as written for queue.sh check
+    # to report.
     awk -v id="$id" '
       function flush(   i) {
         if (started && (kept || !had_bullet)) { for (i = 0; i < n; i++) print buf[i] }
         n = 0; kept = 0; had_bullet = 0
+      }
+      function unmark(line,   s, parts, k, i, out) {
+        s = line
+        if (!(sub(/^[ \t]*<!--[ \t]*lands-first:/, "", s) && sub(/-->[ \t]*$/, "", s) \
+            && s ~ /^[ \t]*[0-9]{12}([ \t]*,[ \t]*[0-9]{12})*[ \t]*$/)) return line
+        gsub(/[ \t,]+/, " ", s)
+        k = split(s, parts, " ")
+        out = ""
+        for (i = 1; i <= k; i++) if (parts[i] != id) out = out (out == "" ? "" : ", ") parts[i]
+        if (out == "") return ""
+        return "<!-- lands-first: " out " -->"
       }
       BEGIN { n = 0; kept = 0; had_bullet = 0; started = 0 }
       {
@@ -533,6 +550,10 @@ if [ -f "$order" ] && [ "$current_status" = "todo" ] && [ "$dest_status" != "tod
           had_bullet = 1
           if (index($0, "- " id " ") == 1) { next }
           kept = 1
+        }
+        if ($0 ~ /^[ \t]*<!--[ \t]*lands-first:/ && index($0, id)) {
+          $0 = unmark($0)
+          if ($0 == "") next
         }
         if (started) { buf[n++] = $0 } else { print }
       }

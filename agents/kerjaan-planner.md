@@ -106,7 +106,8 @@ Then, for every pair in your proposal:
 - **They only change the same files** — they **may** share a group. The group's
   lead-in then names both IDs, the files they share, and which lands first:
   usually the one whose change to those files the other is built around, or
-  the smaller one. The other's worker knows from the start that it will merge
+  the smaller one. Which lands first also goes on the group's
+  `<!-- lands-first: <id>, <id> -->` line, the only place `check` reads it. The other's worker knows from the start that it will merge
   that change in.
 - **Neither** — they may share a group, and the lead-in says they are
   independent.
@@ -139,14 +140,16 @@ question instead of moving anything. The foreman takes it back to the owner.
 todo`, and write `order.md` as `references/ordering-the-queue.md` describes,
 keeping any ticket already in `todo` in its place unless the owner moved it.
 Each lead-in says why in one sentence, and, for two tickets in one group that
-share files, names both, the files, and which lands first, in the fixed
-wording `check` recognises (`<id> lands first`, or `<id> digabung lebih dulu`
-on an Indonesian board; "Saying which lands first" in that reference).
+share files, names both, the files, and which lands first. Under the lead-in
+of such a group goes one line with the IDs in the order they land,
+`<!-- lands-first: <id>, <id> -->`, the same on a board in any language: it is
+what `check` reads, never the prose ("Saying which lands first" in that
+reference).
 
 **4. Check it.** `"$K/queue.sh" check` judges `todo` and `order.md` together:
 no open question, an estimate and a fitting size on every ticket, nothing
-grouped with what it waits for or placed before it, every shared file named in
-its group's lead-in. Fix everything it names until it prints `READY`.
+grouped with what it waits for or placed before it, every two tickets sharing
+files ordered by their group's lands-first line. Fix everything it names until it prints `READY`.
 
 **5. Commit the board.** Name every path: the tickets you moved (both their
 old and new paths), the tickets you split off, the ones you only wrote answers

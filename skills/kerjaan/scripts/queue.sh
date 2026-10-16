@@ -304,31 +304,20 @@ fi
 # every ticket in order.md and no stale entry, no group holding a ticket
 # together with one it waits for (directly or through others), nothing placed
 # before what it waits for, and every two tickets of one group that share
-# files named in that group's lead-in, which says which lands first in the
-# wording lands_first and lands_before below recognise.
-
-# Which of two tickets sharing files lands first, as the lead-in says it. The
-# wording is fixed so a planner can write it and this can find it, and it is
-# documented in references/ordering-the-queue.md ("Saying which lands first"):
-# the ID, then "lands first" — or "lands before <other ID>" — or the same in
-# Indonesian ("digabung lebih dulu", "digabung sebelum <other ID>"; "mendarat"
-# for "digabung", "dahulu" for "dulu", "lebih" optional). Backticks, bold or
-# italics around an ID are fine, letter case is not significant, and a lead-in
-# wrapped over several lines is one sentence here.
-first_re='lands first|(digabung|mendarat)( lebih)? (dulu|dahulu)'
-before_re='lands before|(digabung|mendarat)( lebih (dulu|dahulu))? sebelum'
-# The lead-in, on one line with single spaces. Fed to grep -q as a here-string,
-# not a pipe: under pipefail a writer cut off by grep's early exit would turn
-# a match into a failure.
-squeeze() { printf '%s\n' "$1" | tr '\t' ' ' | sed 's/  */ /g'; }
-# lands_first <lead-in> <id>
-lands_first() {
-  grep -Eiq "(^|[^0-9])$2[\`*_]* ($first_re)([^[:alpha:]]|\$)" <<< "$(squeeze "$1")"
-}
-# lands_before <lead-in> <id> <other id>
-lands_before() {
-  grep -Eiq "(^|[^0-9])$2[\`*_]* ($before_re) [\`*_]*$3([^0-9]|\$)" <<< "$(squeeze "$1")"
-}
+# files ordered by that group's lands-first line.
+#
+# The lands-first line is the one fixed marker for which lands first, the same
+# on a board in any language, documented in references/ordering-the-queue.md
+# ("Saying which lands first"):
+#
+#   <!-- lands-first: <id>, <id> -->
+#
+# one line per group, its IDs in the order they land. Of two tickets sharing
+# files, the one listed earlier lands first, and a listed one lands before any
+# the line leaves out; two left out are unordered. The prose of the lead-in is
+# never read for it: free wording in every language could not be matched
+# reliably. update-ticket.sh takes a ticket's ID off the line when it leaves
+# todo, so an ID naming no ticket of its group is a hand edit and reported.
 
 whole=0
 if [ "$#" -gt 0 ]; then
@@ -399,14 +388,25 @@ if [ "$whole" -eq 1 ] && [ -f "$order" ]; then
     done
   done
 
-  # Groups: "<n> <id>" per bullet, and "<n>\t<lead-in>" per group. A group runs
-  # from one bold opening line to the next; only blocks holding bullets count.
-  awk -v gl="$tmpdir/groups" -v ll="$tmpdir/leadins" '
-    /^\*\*/ { g++; lead[g] = $0; inlead = 1; next }
-    /^- [0-9]{12}( |$)/ { inlead = 0; print g + 0, substr($0, 3, 12) > gl; has[g + 0] = 1; next }
-    inlead && NF { lead[g] = lead[g] " " $0; next }
-    { inlead = 0 }
-    END { printf "" > gl; printf "" > ll; for (i = 0; i <= g; i++) if (has[i]) print i "\t" lead[i] > ll }
+  # Groups: "<n> <id>" per bullet. A group runs from one bold opening line to
+  # the next, and is a group only when it holds bullets. Its lands-first lines
+  # go to "marks" as "<n> <line number> <id>..." when they read as the fixed
+  # shape, and to "badmarks" as "<line number>" when they only look like it —
+  # a comment mentioning lands first, in any letter case and joined by a
+  # hyphen, a space or nothing — so a misspelt marker is reported rather than
+  # passed over.
+  awk -v gl="$tmpdir/groups" -v ml="$tmpdir/marks" -v bl="$tmpdir/badmarks" '
+    BEGIN { printf "" > gl; printf "" > ml; printf "" > bl }
+    /^\*\*/ { g++; next }
+    /^- [0-9]{12}( |$)/ { print g + 0, substr($0, 3, 12) > gl; next }
+    tolower($0) ~ /^[ \t]*<!--.*lands[- _]*first/ {
+      s = $0
+      if (sub(/^[ \t]*<!--[ \t]*lands-first:/, "", s) && sub(/-->[ \t]*$/, "", s) \
+          && s ~ /^[ \t]*[0-9]{12}([ \t]*,[ \t]*[0-9]{12})*[ \t]*$/) {
+        gsub(/[ \t,]+/, " ", s); sub(/^ /, "", s); sub(/ $/, "", s)
+        print g + 0, NR, s > ml
+      } else print NR > bl
+    }
   ' "$order"
 
   while IFS= read -r id; do
@@ -448,8 +448,33 @@ if [ "$whole" -eq 1 ] && [ -f "$order" ]; then
       }
     }' "$tmpdir/edges" "$tmpdir/groups")
 
-  # Two tickets of one group that share files: allowed, once the lead-in names
-  # them and says which lands first.
+  # The lands-first lines themselves: readable, one per group, and naming only
+  # tickets of their group, each once. "firsts" holds "<n> <position> <id>"
+  # from the first line of each group.
+  while read -r ln; do
+    problem "order.md line $ln is not a lands-first line check can read: write it as <!-- lands-first: <id>, <id> -->, the IDs in the order they land"
+  done < "$tmpdir/badmarks"
+  : > "$tmpdir/firsts"
+  while read -r g ln ids; do
+    if awk -v g="$g" -v ln="$ln" '$1 == g && $2 < ln { f = 1 } END { exit !f }' "$tmpdir/marks"; then
+      problem "order.md line $ln is a second lands-first line in its group: write one, with every ID in the order they land"
+      continue
+    fi
+    pos=0
+    for mid in $ids; do
+      pos=$((pos + 1))
+      if awk -v g="$g" -v id="$mid" '$1 == g && $3 == id { f = 1 } END { exit !f }' "$tmpdir/firsts"; then
+        problem "order.md line $ln names $mid twice"
+        continue
+      fi
+      awk -v g="$g" -v id="$mid" '$1 == g && $2 == id { f = 1 } END { exit !f }' "$tmpdir/groups" \
+        || problem "order.md line $ln names $mid, which is not a ticket of its group"
+      echo "$g $pos $mid" >> "$tmpdir/firsts"
+    done
+  done < "$tmpdir/marks"
+
+  # Two tickets of one group that share files: allowed, once the group's
+  # lands-first line says which of them lands first.
   while read -r ga a; do
     while read -r gb b; do
       [ "$ga" = "$gb" ] && [ "$a" \< "$b" ] || continue
@@ -460,24 +485,13 @@ if [ "$whole" -eq 1 ] && [ -f "$order" ]; then
       kerjaan_estimate "$fb" > "$tmpdir/eb"
       shared="$(shared_paths "$tmpdir/ea" "$tmpdir/eb" | paste -sd ',' - | sed 's/,/, /g')"
       [ -n "$shared" ] || continue
-      leadin="$(awk -F '\t' -v g="$ga" '$1 == g { print substr($0, length($1) + 2) }' "$tmpdir/leadins")"
-      case "$leadin" in
-        *"$a"*"$b"* | *"$b"*"$a"*) ;;
-        *)
-          problem "$a and $b share a group and the files $shared; its lead-in must name both and say which lands first"
-          continue
-          ;;
-      esac
-      lands_before "$leadin" "$a" "$b" && continue
-      lands_before "$leadin" "$b" "$a" && continue
-      first_a=0; first_b=0
-      lands_first "$leadin" "$a" && first_a=1
-      lands_first "$leadin" "$b" && first_b=1
-      [ "$first_a" -ne "$first_b" ] && continue
-      if [ "$first_a" -eq 1 ]; then
-        problem "$a and $b share a group and the files $shared; its lead-in says both land first, so which one is unclear"
+      # Either one listed settles the pair: the earlier, or the only one listed.
+      awk -v g="$ga" -v a="$a" -v b="$b" '$1 == g && ($3 == a || $3 == b) { f = 1 } END { exit !f }' "$tmpdir/firsts" \
+        && continue
+      if awk -v g="$ga" '$1 == g { f = 1 } END { exit !f }' "$tmpdir/marks"; then
+        problem "$a and $b share a group and the files $shared; its lands-first line names neither, so which lands first is open (add one of them to it)"
       else
-        problem "$a and $b share a group and the files $shared; its lead-in names both but not which lands first (write \"<id> lands first\")"
+        problem "$a and $b share a group and the files $shared; the group has no line saying which lands first (write <!-- lands-first: <id> --> under its lead-in)"
       fi
     done < "$tmpdir/groups"
   done < "$tmpdir/groups"

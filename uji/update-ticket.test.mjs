@@ -235,6 +235,51 @@ test('a bullet that only starts with the same digits is not this ticket', () => 
   assert.equal(readOrder(root), `**Grup satu.**\n- ${longer} Mirip\n`);
 });
 
+// The group's lands-first line (references/ordering-the-queue.md) loses the
+// ticket's ID with its bullet, so it never names a ticket outside todo.
+const C = '261016500003';
+for (const [before, after] of [
+  [`<!-- lands-first: ${A}, ${B}, ${C} -->`, `<!-- lands-first: ${B}, ${C} -->`],
+  [`<!-- lands-first: ${B}, ${A}, ${C} -->`, `<!-- lands-first: ${B}, ${C} -->`],
+  [`<!-- lands-first: ${C}, ${B}, ${A} -->`, `<!-- lands-first: ${C}, ${B} -->`],
+  [`<!--lands-first:${C},${A}-->`, `<!-- lands-first: ${C} -->`],
+]) {
+  test(`leaving todo takes the ticket off its lands-first line, the rest in order: ${before}`, () => {
+    const root = repo();
+    writeOrder(root, `**Grup satu.** Alasan.\n${before}\n\n- ${A} Judul lama\n- ${B} Lain\n- ${C} Ketiga\n`);
+    const r = run(root, A, '--status', 'in_progress');
+    assert.equal(r.code, 0, r.err);
+    assert.equal(readOrder(root), `**Grup satu.** Alasan.\n${after}\n\n- ${B} Lain\n- ${C} Ketiga\n`);
+  });
+}
+
+test('a lands-first line left naming nobody goes; the group and its lead-in stay', () => {
+  const root = repo();
+  writeOrder(root, `**Grup satu.** Alasan.\n<!-- lands-first: ${A} -->\n\n- ${A} Judul lama\n- ${B} Lain\n`);
+  assert.equal(run(root, A, '--status', 'in_progress').code, 0);
+  assert.equal(readOrder(root), `**Grup satu.** Alasan.\n\n- ${B} Lain\n`);
+});
+
+test('a group left with no bullets goes with its lands-first line', () => {
+  const root = repo();
+  writeOrder(root, `**Grup satu.**\n<!-- lands-first: ${A} -->\n\n- ${A} Judul lama\n\n**Grup dua.**\n\n- ${B} Lain\n`);
+  assert.equal(run(root, A, '--status', 'in_progress').code, 0);
+  assert.equal(readOrder(root), `**Grup dua.**\n\n- ${B} Lain\n`);
+});
+
+test('lands-first lines not naming this ticket, or not in the fixed shape, are left byte for byte', () => {
+  const root = repo();
+  const lines = [
+    `<!--  lands-first:  ${B} ,${C}  -->`,
+    `<!-- lands-first: ${A}9, ${B} -->`,
+    `<!-- lands-first: ${A} ${B} -->`,
+    `<!-- Lands-First: ${A} -->`,
+  ];
+  writeOrder(root, `**Grup satu.**\n${lines.join('\n')}\n\n- ${A} Judul lama\n- ${B} Lain\n- ${C} Ketiga\n`);
+  assert.equal(run(root, A, '--status', 'backlog').code, 0);
+  assert.equal(readOrder(root), `**Grup satu.**\n${lines.join('\n')}\n\n- ${B} Lain\n- ${C} Ketiga\n`);
+});
+
 test('a ticket leaving todo without a bullet in order.md is reported, and order.md is left as it was', () => {
   const root = repo();
   const text = `**Grup satu.**\n- ${B} Lain\n`;

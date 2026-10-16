@@ -531,8 +531,8 @@ depend on one further down, say — and then name that one problem.
 
 One ticket at a time is normal. Two tickets in the same `order.md` group are
 declared able to run together — neither waits for the other's result, and any
-files they both change are named in the group's lead-in with which lands
-first — and may run side by side in separate git worktrees — but
+files they both change are named in the group's lead-in, with which lands
+first on its `<!-- lands-first: ... -->` line — and may run side by side in separate git worktrees — but
 a worktree checks out a second copy of `.kerjaan/`, which silently disagrees
 with the first, and the scripts refuse to run there. The foreman creates the
 worktrees with `worktree.sh` and gives each worker its own; their test runs,

@@ -1,17 +1,20 @@
 Batch penilaian skill (sesi a192c9e8). 261016141916 tidak ada di sini: tiket keputusan itu dijalankan langsung dari backlog di awal rantai, selama pemilik hadir.
 
 **Aturan antrean dan review.** Ketiganya tidak saling menunggu hasil; 261016141912 dan 261016141905 berbagi queue.sh, uji/queue.test.mjs, ordering-the-queue.md, kerjaan-planner.md dan SKILL.md, 261016141905 dan 261016141906 berbagi foreman.md, review.md dan kerjaan-worker.md, 261016141912 dan 261016141906 berbagi parallel-work.md, jadi 261016141912 digabung lebih dulu, lalu 261016141905 digabung sebelum 261016141906.
+<!-- lands-first: 261016141905, 261016141906 -->
 
 - 261016141905 Syarat tiket siap dikerjakan hanya punya satu definisi
 - 261016141906 Putaran review dihitung sama oleh mandor, peninjau, dan hook
 
 **Aturan commit, jalan pintas pemilik, dan hook pengingat peninjau.** Ketiganya tidak saling menunggu hasil; 261016141907 dan 261016141908 berbagi SKILL.md, foreman.md, kerjaan-worker.md, merge.sh dan uji/merge.test.mjs, dan 261016141913 berbagi foreman.md dengan keduanya, jadi 261016141907 digabung lebih dulu, lalu 261016141908 digabung sebelum 261016141913.
+<!-- lands-first: 261016141907, 261016141908, 261016141913 -->
 
 - 261016141907 Setiap perpindahan papan tersimpan bersama pekerjaannya, juga saat kerja berdampingan
 - 261016141908 Jalan pintas dari pemilik punya aturan yang jelas
 - 261016141913 Peninjau pasti dipanggil setelah pengerja menyelesaikan tiket
 
 **Perampingan, setelah semua aturan dan skrip di atas masuk main.** Semua penghalangnya ada di grup sebelumnya; 261016141910 dan 261016141909 berbagi kerjaan-reviewer.md dan review.md, 261016141914 dan 261016141909 berbagi references/repairs.md, jadi 261016141910 digabung lebih dulu, lalu 261016141914 digabung sebelum 261016141909.
+<!-- lands-first: 261016141910, 261016141914, 261016141909 -->
 
 - 261016141910 Aturan peninjau tidak lagi tersalin di beberapa tempat
 - 261016141914 Skrip papan berbagi satu pustaka untuk pekerjaan yang sama

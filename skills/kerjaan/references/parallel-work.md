@@ -31,7 +31,8 @@ may share a group"), and only one of them keeps tickets apart:
   branches editing one file conflict when they meet, and resolving that is
   ordinary work, done by the ticket that lands second when it brings main in
   ("Back into main"). The lead-in has already named both tickets, the shared
-  files and which lands first, so the conflict is expected rather than found.
+  files and which lands first, and the group's `<!-- lands-first: ... -->`
+  line holds that order, so the conflict is expected rather than found.
   The foreman passes that to each worker (`Shares files with:` in its
   prompt), and the one landing second knows from the start whose change it
   will merge.

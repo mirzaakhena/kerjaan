@@ -19,6 +19,7 @@ That lives in one file, `.kerjaan/order.md`, covering `todo/` and nothing else.
 **Then these two, side by side.** Neither needs the other's result; both change
 the menu file, so 260905160502 lands first and 260905160503 merges its menu
 entry in.
+<!-- lands-first: 260905160502 -->
 
 - 260905160502 Import screen
 - 260905160503 Export screen
@@ -61,49 +62,69 @@ they are not the same question:
   first one's change in and resolves it, as every branch does when main moved
   (`parallel-work.md`, "Back into main"). What makes it ordinary rather than a
   surprise is that it is known in advance, so the lead-in says it: **both IDs,
-  the files they share, and which lands first** — in the wording under
-  "Saying which lands first" below. Put first the one whose change to those
-  files the other is built around, or else the smaller one.
+  the files they share, and which lands first** — the last of those also on
+  the group's lands-first line, under "Saying which lands first" below. Put
+  first the one whose change to those files the other is built around, or
+  else the smaller one.
 
 Which files a ticket will change is not guessed from its title. Every ticket
 going into `todo` carries an estimate, recorded with `"$K/queue.sh" estimate
 <id> <path>...`, and `"$K/queue.sh" overlap` lists every pair whose estimates
 share files, with the files. `"$K/queue.sh" check` refuses a `todo` where a
 group holds a ticket together with one it waits for, where a ticket sits before
-one it waits for, or where two tickets of one group share files and their
-lead-in does not name both of them and say which lands first.
+one it waits for, or where two tickets of one group share files and the
+group's lands-first line does not say which of them lands first.
 
 ## Saying which lands first
 
-The lead-in is prose, but the part that says which lands first is found by
-`queue.sh check`, so it is written in one fixed shape: **the ID, then the
-phrase, nothing in between.**
+The lead-in says it in prose, for people, in the board's language. What
+`queue.sh check` reads is one fixed line in the group, the same on a board in
+any language:
 
-| Meaning | English | Bahasa Indonesia |
-|---|---|---|
-| this one lands first | `<id> lands first` | `<id> digabung lebih dulu` |
-| this one lands before that one | `<id> lands before <id>` | `<id> digabung sebelum <id>` |
+```
+<!-- lands-first: <id> -->
+<!-- lands-first: <id>, <id> -->
+```
 
-In Indonesian, `mendarat` may stand for `digabung`, `dahulu` for `dulu`, and
-`lebih` may be left out (`<id> digabung dulu`, `<id> mendarat lebih dahulu`).
-A board in any other language uses the English phrase inside its own
-sentence. Letter case does not matter, an ID may sit in backticks or bold, and
-the sentence may wrap anywhere, inside the phrase too.
+The IDs are the group's tickets in the order they land, separated by commas.
+Of two tickets that share files, the one listed earlier lands first, and a
+listed ticket goes ahead of any the line leaves out. So with two tickets,
+naming one is enough. With three or more sharing files, list every ticket
+whose order matters: `<!-- lands-first: 260905160502 -->` settles that ticket
+against each of the others, but leaves the others open between themselves.
 
-> **Then these two, side by side.** Both change the menu file, so 260905160502 lands first and 260905160503 merges its menu entry in.
+```markdown
+**Then these two, side by side.** Both change the menu file, so 260905160502 lands first and 260905160503 merges its menu entry in.
+<!-- lands-first: 260905160502 -->
 
-> **Dua tiket ini bersamaan.** 260905160502 dan 260905160503 sama-sama mengubah berkas menu; bila dikerjakan bersamaan, 260905160502 digabung lebih dulu.
+- 260905160502 Import screen
+- 260905160503 Export screen
+```
 
-Say it **for every pair** that shares files. With two tickets, one `lands
-first` is enough. With three or more sharing files, `<id> lands first` settles
-that ticket against each of the others, and the rest need a `lands before`
-between them: "260905160502 lands first, then 260905160503 lands before
-260905160504". Two tickets of one pair both said to land first is refused as
-unclear.
+```markdown
+**Dua tiket ini bersamaan.** 260905160502 dan 260905160503 sama-sama mengubah berkas menu; bila dikerjakan bersamaan, 260905160502 digabung ke main lebih dulu.
+<!-- lands-first: 260905160502, 260905160503 -->
 
-What is not recognised is refused with the reason, not guessed at:
-`260905160502, the smaller one, lands first` puts words between the ID and
-the phrase, and `one of them lands first` names no ID.
+- 260905160502 Layar impor
+- 260905160503 Layar ekspor
+```
+
+The line may sit anywhere between the group's bold opening and the next one;
+under the lead-in is where people look for it. It is an HTML comment, so a
+markdown preview hides it, and the prose stays the place a reader learns why.
+One line per group, written exactly as above: the words `lands-first` in
+lower case, the colon, and twelve-digit IDs with commas between them. Spaces
+may vary. The prose itself is never read for the order, in any language.
+
+What is not the shape is refused with the reason, not guessed at: a line that
+looks like the marker but cannot be read (`<!-- lands first: ... -->`, an ID
+in backticks, IDs without commas) is named by its line number; so is a second
+lands-first line in one group, an ID listed twice, and an ID that is not a
+ticket of that group. A pair that shares files and that no line orders is
+named with the files it shares.
+
+`update-ticket.sh` keeps the line in step: a ticket leaving `todo` comes off
+it, the others keep their order, and a line left naming nobody goes.
 
 ## Why this is not the index that is banned in SKILL.md
 

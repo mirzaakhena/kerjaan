@@ -451,127 +451,195 @@ test('check: a ticket placed before the one it waits for; after it, it is fine',
   assert.equal(r.code, 0, r.out);
 });
 
-test('check: two tickets of one group sharing files must both be named in its lead-in', () => {
+// Two tickets of one group sharing files: the order they land in is said by
+// the group's one fixed line, <!-- lands-first: <id>, <id> -->, never by the
+// wording of its lead-in.
+function sharingPair() {
   const root = repo();
   add(root, A, { status: 'todo' }); add(root, B, { status: 'todo' });
   q(root, 'estimate', A, 'src/a.js', 'src/web/');
   q(root, 'estimate', B, 'src/web/b.js');
-  const problem = /261016400001 and 261016400002 share a group and the files src\/web\/b\.js; its lead-in must name both/;
+  return root;
+}
+const noLine = new RegExp(`${A} and ${B} share a group and the files src/web/b\\.js; the group has no line saying which lands first \\(write <!-- lands-first: <id> --> under its lead-in\\)`);
 
-  order(root, `**Bersama.** Tanpa keterangan.\n\n- ${A} Satu\n- ${B} Dua\n`);
-  assert.match(q(root, 'check').out, problem);
-
-  order(root, `**Bersama.** ${A} mendarat dulu.\n\n- ${A} Satu\n- ${B} Dua\n`);
-  assert.match(q(root, 'check').out, problem);
-
-  // A lead-in wrapped over two lines still counts as one.
-  order(root, `**Bersama.** Keduanya mengubah src/web/b.js; ${A} mendarat dulu,\nlalu ${B} menggabungkannya.\n\n- ${A} Satu\n- ${B} Dua\n`);
+test('check: two tickets of one group sharing files, with no lands-first line, are not ready, and it says why', () => {
+  const root = sharingPair();
+  order(root, `**Bersama.** ${A} dan ${B} sama-sama mengubah src/web/b.js.\n\n- ${A} Satu\n- ${B} Dua\n`);
   const r = q(root, 'check');
-  assert.equal(r.code, 0, r.out);
-});
-
-test('check: a lead-in naming both tickets that share files but not which lands first is not ready, and says why', () => {
-  const root = repo();
-  add(root, A, { status: 'todo' }); add(root, B, { status: 'todo' });
-  q(root, 'estimate', A, 'src/a.js');
-  q(root, 'estimate', B, 'src/a.js');
-  const unordered = new RegExp(`${A} and ${B} share a group and the files src/a\\.js; its lead-in names both but not which lands first \\(write "<id> lands first"\\)`);
-
-  order(root, `**Bersama.** ${A} dan ${B} sama-sama mengubah src/a.js.\n\n- ${A} Satu\n- ${B} Dua\n`);
-  let r = q(root, 'check');
   assert.equal(r.code, 1, r.out);
-  assert.match(r.out, unordered);
+  assert.match(r.out, noLine);
   assert.match(r.out, /NOT READY: 1 problem/);
-
-  // The same group, once its lead-in says which lands first.
-  order(root, `**Bersama.** ${A} dan ${B} sama-sama mengubah src/a.js;\nbila dikerjakan bersamaan, ${A} digabung lebih dulu.\n\n- ${A} Satu\n- ${B} Dua\n`);
-  r = q(root, 'check');
-  assert.equal(r.code, 0, r.out);
-  assert.match(r.out, /in step with todo\nREADY/);
 });
 
-test('check: every documented way of saying which lands first is recognised, for either ticket', () => {
-  const root = repo();
-  add(root, A, { status: 'todo' }); add(root, B, { status: 'todo' });
-  q(root, 'estimate', A, 'src/a.js');
-  q(root, 'estimate', B, 'src/a.js');
-  const ready = [
-    `${A} and ${B} both change src/a.js, so ${A} lands first.`,
-    `${A} and ${B} both change src/a.js; ${B} lands first.`,
-    `${A} and ${B} both change src/a.js; ${B} lands before ${A}.`,
-    `${A} and ${B} both change src/a.js; ${A} lands before ${B}.`,
-    `${A} dan ${B} mengubah src/a.js; ${B} digabung lebih dulu.`,
-    `${A} dan ${B} mengubah src/a.js; ${A} digabung lebih dahulu.`,
-    `${A} dan ${B} mengubah src/a.js; ${A} digabung dulu.`,
-    `${A} dan ${B} mengubah src/a.js; ${B} mendarat lebih dulu.`,
-    `${A} dan ${B} mengubah src/a.js; ${A} mendarat dulu.`,
-    `${A} dan ${B} mengubah src/a.js; ${B} digabung sebelum ${A}.`,
-    `${A} dan ${B} mengubah src/a.js; ${A} mendarat lebih dulu sebelum ${B}.`,
-    // Markup around the ID, letter case, and a line break inside the phrase.
-    `${A} and ${B} both change src/a.js; \`${A}\` lands first.`,
-    `${A} and ${B} both change src/a.js; **${B}** Lands First.`,
-    `${A} and ${B} both change src/a.js; ${B} lands\nfirst.`,
-    `${A} and ${B} both change src/a.js; ${B}  lands \tfirst.`,
-    `${A} dan ${B} mengubah src/a.js; ${A} digabung  \nlebih dulu.`,
-    `${A} dan ${B} mengubah src/a.js; _${A}_ digabung sebelum \`${B}\`.`,
-  ];
-  for (const lead of ready) {
-    order(root, `**Bersama.** ${lead}\n\n- ${A} Satu\n- ${B} Dua\n`);
-    const r = q(root, 'check');
-    assert.equal(r.code, 0, `${lead}\n${r.out}`);
-  }
-
-  const notReady = [
-    [`${A} and ${B} both change src/a.js; one of them lands first.`, /names both but not which lands first/],
-    [`${A} and ${B} both change src/a.js; ${A}, the smaller, lands first.`, /names both but not which lands first/],
-    [`${A} and ${B} both change src/a.js; 9${A} lands first.`, /names both but not which lands first/],
-    [`${A} and ${B} both change src/a.js; ${A} lands firstly.`, /names both but not which lands first/],
-    [`${A} and ${B} both change src/a.js; ${A} lands before 9${B}.`, /names both but not which lands first/],
-    [`${A} and ${B} both change src/a.js; ${A} lands before ${B}9.`, /names both but not which lands first/],
-    [`${A} lands first, and ${B} lands first.`, /its lead-in says both land first, so which one is unclear/],
-  ];
-  for (const [lead, expected] of notReady) {
+test('check: the free wording that used to say which lands first is no longer read, in any language', () => {
+  const root = sharingPair();
+  for (const lead of [
+    `${A} and ${B} both change src/web/b.js, so ${A} lands first.`,
+    `${A} and ${B} both change src/web/b.js; ${A} lands before ${B}.`,
+    `${A} dan ${B} mengubah src/web/b.js; ${A} digabung lebih dulu.`,
+    `${A} dan ${B} mengubah src/web/b.js; ${A} mendarat dahulu.`,
+    `${A} dan ${B} mengubah src/web/b.js; ${B} digabung sebelum ${A}.`,
+  ]) {
     order(root, `**Bersama.** ${lead}\n\n- ${A} Satu\n- ${B} Dua\n`);
     const r = q(root, 'check');
     assert.equal(r.code, 1, `${lead}\n${r.out}`);
-    assert.match(r.out, expected, lead);
+    assert.match(r.out, noLine, lead);
   }
 });
 
-test('check: in a group of three sharing one file, every pair needs its order', () => {
+test('check: a lands-first line naming either ticket, or both in either order, makes the group ready', () => {
+  const root = sharingPair();
+  for (const line of [
+    `<!-- lands-first: ${A} -->`,
+    `<!-- lands-first: ${B} -->`,
+    `<!-- lands-first: ${A}, ${B} -->`,
+    `<!-- lands-first: ${B}, ${A} -->`,
+    // Spacing inside the line is free; the words and the colon are not.
+    `<!--lands-first:${B},${A}-->`,
+    `  <!--   lands-first:   ${A} ,  ${B}   -->  `,
+  ]) {
+    order(root, `**Bersama.** Keduanya mengubah src/web/b.js.\n${line}\n\n- ${A} Satu\n- ${B} Dua\n`);
+    const r = q(root, 'check');
+    assert.equal(r.code, 0, `${line}\n${r.out}`);
+    assert.match(r.out, /in step with todo\nREADY/);
+  }
+});
+
+test('check: the lands-first line counts anywhere inside its group, and only there', () => {
+  const root = sharingPair();
+  const mark = `<!-- lands-first: ${A} -->`;
+  for (const text of [
+    `**Bersama.** Alasan yang\nterbungkus dua baris.\n${mark}\n\n- ${A} Satu\n- ${B} Dua\n`,
+    `**Bersama.** Alasan.\n\n${mark}\n\n- ${A} Satu\n- ${B} Dua\n`,
+    `**Bersama.** Alasan.\n\n- ${A} Satu\n- ${B} Dua\n${mark}\n`,
+    // Group zero: bullets with no bold line above them.
+    `${mark}\n- ${A} Satu\n- ${B} Dua\n`,
+  ]) {
+    order(root, text);
+    const r = q(root, 'check');
+    assert.equal(r.code, 0, `${text}\n${r.out}`);
+  }
+  // In the group above, it settles nothing here, and names tickets not in its own group.
+  add(root, C, { status: 'todo' }); q(root, 'estimate', C, 'src/c.js');
+  order(root, `**Dulu.**\n${mark}\n\n- ${C} Tiga\n\n**Bersama.**\n\n- ${A} Satu\n- ${B} Dua\n`);
+  const r = q(root, 'check');
+  assert.equal(r.code, 1, r.out);
+  assert.match(r.out, new RegExp(`order\\.md line 2 names ${A}, which is not a ticket of its group`));
+  assert.match(r.out, noLine);
+  assert.match(r.out, /NOT READY: 2 problem/);
+});
+
+test('check: a lands-first line that cannot be read is reported with its line and the shape to write', () => {
+  const root = sharingPair();
+  for (const line of [
+    `<!-- lands-first ${A} -->`,
+    `<!-- lands first: ${A} -->`,
+    `<!-- landsfirst: ${A} -->`,
+    `<!-- Lands_First: ${A} -->`,
+    `<!-- Lands-First: ${A} -->`,
+    `<!-- LANDS-FIRST: ${A} -->`,
+    `<!-- lands-first: ${A}; ${B} -->`,
+    `<!-- lands-first: ${A} ${B} -->`,
+    `<!-- lands-first: 9${A} -->`,
+    `<!-- lands-first: ${A}9 -->`,
+    `<!-- lands-first: -->`,
+    `<!-- lands-first: ${A}`,
+    `<!-- lands-first: ${A} --> lalu ${B}`,
+    `<!-- lands-first: \`${A}\` -->`,
+  ]) {
+    order(root, `**Bersama.** Alasan.\n${line}\n\n- ${A} Satu\n- ${B} Dua\n`);
+    const r = q(root, 'check');
+    assert.equal(r.code, 1, `${line}\n${r.out}`);
+    assert.match(r.out, /order\.md line 2 is not a lands-first line check can read: write it as <!-- lands-first: <id>, <id> -->, the IDs in the order they land/, line);
+    assert.match(r.out, noLine, line);
+  }
+});
+
+test('check: a second lands-first line in a group, and an ID named twice, are reported', () => {
+  const root = sharingPair();
+  order(root, `**Bersama.**\n<!-- lands-first: ${A} -->\n<!-- lands-first: ${B} -->\n\n- ${A} Satu\n- ${B} Dua\n`);
+  let r = q(root, 'check');
+  assert.equal(r.code, 1, r.out);
+  assert.match(r.out, /order\.md line 3 is a second lands-first line in its group: write one, with every ID in the order they land/);
+  assert.match(r.out, /NOT READY: 1 problem/);
+
+  // One line in each of two groups is not a second line.
+  add(root, C, { status: 'todo' }); add(root, D, { status: 'todo' });
+  q(root, 'estimate', C, 'src/c.js'); q(root, 'estimate', D, 'src/c.js');
+  order(root, `**Satu.**\n<!-- lands-first: ${A} -->\n\n- ${A} Satu\n- ${B} Dua\n\n**Dua.**\n<!-- lands-first: ${D} -->\n\n- ${C} Tiga\n- ${D} Empat\n`);
+  r = q(root, 'check');
+  assert.equal(r.code, 0, r.out);
+
+  order(root, `**Satu.**\n<!-- lands-first: ${A}, ${B}, ${A} -->\n\n- ${A} Satu\n- ${B} Dua\n\n**Dua.**\n<!-- lands-first: ${D} -->\n\n- ${C} Tiga\n- ${D} Empat\n`);
+  r = q(root, 'check');
+  assert.equal(r.code, 1, r.out);
+  assert.match(r.out, new RegExp(`order\\.md line 2 names ${A} twice`));
+  assert.match(r.out, /NOT READY: 1 problem/);
+});
+
+test('check: in a group of three sharing one file, the line settles each pair or says which one it leaves open', () => {
   const root = repo();
   for (const id of [A, B, C]) { add(root, id, { status: 'todo' }); q(root, 'estimate', id, 'src/a.js'); }
   const bullets = `- ${A} Satu\n- ${B} Dua\n- ${C} Tiga\n`;
 
-  order(root, `**Bersama.** ${A}, ${B} dan ${C} mengubah src/a.js; ${A} digabung lebih dulu.\n\n${bullets}`);
+  // One ID settles that ticket against each of the others, not the others between them.
+  order(root, `**Bersama.**\n<!-- lands-first: ${A} -->\n\n${bullets}`);
   let r = q(root, 'check');
   assert.equal(r.code, 1, r.out);
-  assert.match(r.out, new RegExp(`${B} and ${C} share a group and the files src/a\\.js; its lead-in names both but not which lands first`));
+  assert.match(r.out, new RegExp(`${B} and ${C} share a group and the files src/a\\.js; its lands-first line names neither, so which lands first is open \\(add one of them to it\\)`));
   assert.match(r.out, /NOT READY: 1 problem/);
 
-  order(root, `**Bersama.** ${A}, ${B} dan ${C} mengubah src/a.js; ${A} digabung lebih dulu,\nlalu ${B} digabung sebelum ${C}.\n\n${bullets}`);
+  for (const ids of [[A, B], [C, B], [C, B, A], [B, A, C]]) {
+    order(root, `**Bersama.**\n<!-- lands-first: ${ids.join(', ')} -->\n\n${bullets}`);
+    r = q(root, 'check');
+    assert.equal(r.code, 0, `${ids}\n${r.out}`);
+  }
+
+  // Without the line, every pair is named.
+  order(root, `**Bersama.**\n\n${bullets}`);
   r = q(root, 'check');
-  assert.equal(r.code, 0, r.out);
+  assert.match(r.out, /NOT READY: 3 problem/);
 });
 
-test('check: the wording ordering-the-queue.md documents is the wording check recognises', () => {
+test('check: a ticket leaving todo comes off the lands-first line, and the rest of the group stays ready', () => {
+  const root = repo();
+  for (const id of [A, B, C]) { readyTicket(root, id, { status: 'todo' }); q(root, 'estimate', id, 'src/a.js'); }
+  order(root, `**Bersama.**\n<!-- lands-first: ${A}, ${B}, ${C} -->\n\n- ${A} Satu\n- ${B} Dua\n- ${C} Tiga\n`);
+  git(root, 'add', '-A'); git(root, 'commit', '-q', '-m', 'papan');
+  assert.equal(q(root, 'check').code, 0);
+  for (const [id, line] of [[B, `<!-- lands-first: ${A}, ${C} -->`], [A, `<!-- lands-first: ${C} -->`]]) {
+    const r = run(root, update, id, '--status', 'in_progress');
+    assert.equal(r.code, 0, r.err);
+    const text = fs.readFileSync(path.join(root, '.kerjaan', 'order.md'), 'utf8');
+    assert.ok(text.includes(`\n${line}\n`), text);
+    assert.doesNotMatch(text, new RegExp(`- ${id} `));
+    const c = q(root, 'check');
+    assert.equal(c.code, 0, c.out);
+  }
+});
+
+test('check: the marker ordering-the-queue.md documents is the one check reads', () => {
   const guide = fs.readFileSync(path.join(here, '..', 'skills', 'kerjaan', 'references', 'ordering-the-queue.md'), 'utf8');
   const section = guide.split('## Saying which lands first')[1].split('\n## ')[0];
-  for (const phrase of ['lands first', 'lands before', 'digabung lebih dulu', 'digabung sebelum', 'mendarat', 'dahulu']) {
-    assert.ok(section.includes(phrase), phrase);
+  assert.ok(section.includes('<!-- lands-first: <id> -->'), section);
+  assert.ok(section.includes('<!-- lands-first: <id>, <id> -->'), section);
+  // No free phrase is offered as a way of saying it any more.
+  for (const phrase of ['digabung lebih dulu', 'digabung sebelum', 'mendarat', 'lands before']) {
+    assert.ok(!section.includes(phrase), phrase);
   }
   const root = repo();
   add(root, A, { status: 'todo' }); add(root, B, { status: 'todo' });
   q(root, 'estimate', A, 'src/a.js');
   q(root, 'estimate', B, 'src/a.js');
-  // The examples in the guide, with their IDs swapped for these tickets.
-  const examples = [...section.matchAll(/^> (.*)$/gm)].map((m) => m[1]);
+  // The examples in the section, with their IDs swapped for these tickets.
+  const examples = [...section.matchAll(/```markdown\n([\s\S]*?)```/g)].map((m) => m[1]);
   assert.ok(examples.length >= 2, section);
   for (const ex of examples) {
-    const lead = ex.replaceAll('260905160502', A).replaceAll('260905160503', B);
-    order(root, `${lead}\n\n- ${A} Satu\n- ${B} Dua\n`);
+    const text = ex.replaceAll('260905160502', A).replaceAll('260905160503', B);
+    order(root, text);
     const r = q(root, 'check');
-    assert.equal(r.code, 0, `${lead}\n${r.out}`);
+    assert.equal(r.code, 0, `${text}\n${r.out}`);
   }
 
   // The example order.md at the head of the guide, as written there.
