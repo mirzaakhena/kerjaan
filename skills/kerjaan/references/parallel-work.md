@@ -127,7 +127,10 @@ git's common directory, `.git/kerjaan-locks/`, which every worktree shares). A
 second run waits, says on screen whose run it is waiting for, and the line it
 records in `## Notes` ends with how long it waited and behind which ticket.
 A lock left by a run that was killed is taken over as soon as its process is
-found gone.
+found gone. A run that is alive but hung cannot be told apart from a slow one,
+so the wait has a limit: after `test_lock_timeout` seconds (default 3600, an
+hour) the waiting run gives up without running anything, and its message names
+the run it was waiting for, so the foreman knows which worktree to look at.
 
 The reviewer's runs queue on the same lock. A reviewer runs the suite, or a
 few of its tests, through `"$K/test-run.sh" --review <id>` — in the ticket's
@@ -158,6 +161,26 @@ So a test setup can say `PORT=$((4000 + KERJAAN_SLOT))`, or name its database
 `app_test_$KERJAAN_SLOT`. `"$K/worktree.sh" slot` prints the slot of the tree
 it runs in. A worktree made by hand, without the script, gets one the first
 time it is asked.
+
+## Changes to the board take turns too
+
+Workers running side by side move their tickets at nearly the same moment,
+and a test run in a worktree writes its result into the ticket in the main
+tree while the foreman may be moving that same ticket. Each of those reads a
+file — the ticket, `order.md` — changes it, and writes it back, so without
+turns the second write silently brings back what the first removed: a started
+ticket still listed in `order.md`, a test result gone from `## Notes`.
+
+So every script that writes the board — `update-ticket.sh`, the record
+`test-run.sh` makes, the notes `merge.sh land` writes, `queue.sh estimate`,
+`ask` and `answer` — does it under one `board` lock, kept with the others in
+`.git/kerjaan-locks/`. A turn lasts well under a second. A script that runs
+another while holding it (test-run.sh calling update-ticket.sh, say) shares its
+turn instead of waiting for itself. A wait longer than `lock_timeout` seconds
+(default 120) ends with a message naming who holds the board, and nothing
+changed; a test run that gives up this way still prints its result. Both
+limits are in `settings.md`; `0` waits without limit. `new-ticket.sh` keeps its
+own lock while it picks an ID.
 
 ## Setup and teardown
 

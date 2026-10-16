@@ -6,6 +6,8 @@ owner_explanation: off
 explanation_translation: false
 done_when_limit: 8
 parallel_tests: false
+lock_timeout:
+test_lock_timeout:
 worktree_setup:
 worktree_teardown:
 ---
@@ -42,6 +44,17 @@ Settings for this board, read by the kerjaan skill, its reviewer, and
   run that had to wait says so in the line it records. Set `true` only when the tests share nothing
   between worktrees — no fixed port, local database, fixed temp path or
   cache — for instance because they choose those from `KERJAAN_SLOT`.
+- `lock_timeout` — how many seconds a script waits for its turn to write the
+  board before giving up. Every change to a ticket or to `order.md` is made
+  one at a time, so two workers moving tickets at the same moment cannot
+  overwrite each other; a turn lasts well under a second. Empty or missing
+  means 120. A wait that runs out ends with a message naming who holds the
+  turn and with nothing changed. `0` waits without limit.
+- `test_lock_timeout` — how many seconds `test-run.sh` waits for another run's
+  turn at the tests (see `parallel_tests`) before giving up, with a message
+  naming the run it waited for, without running anything. Empty or missing
+  means 3600, an hour: set it above the time your slowest suite takes, so
+  only a run that hangs is reported. `0` waits without limit.
 - `worktree_setup` — a command run inside every worktree `worktree.sh add`
   creates, before it is used: copy `.env` from `$KERJAAN_MAIN_TREE`, install
   packages, create this ticket's own test database. When it fails, the

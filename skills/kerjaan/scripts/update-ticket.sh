@@ -113,6 +113,25 @@ fi
 board="$PWD/.kerjaan"
 [ -d "$board" ] || { echo "No .kerjaan/ in $PWD" >&2; exit 1; }
 
+here="$(cd "$(dirname "$0")" && pwd)"
+# shellcheck source=lib.sh
+. "$here/lib.sh"
+
+# --- one writer at a time ----------------------------------------------------
+# Everything below reads a ticket or order.md, changes it, and writes it back.
+# Two workers starting two tickets of one order.md group at the same moment
+# would each drop their own line from the copy they read, and the second write
+# would put the first one's line back. So the whole run holds the board lock
+# (lib.sh), from finding the ticket — which another run may be moving — to the
+# last write. A run called by a script that already holds it (test-run.sh,
+# merge.sh, queue.sh) shares that hold. A wait longer than lock_timeout ends
+# with the holder named and nothing changed.
+lock_who="update-ticket.sh $target"
+[ -z "$new_status" ] || lock_who="$lock_who --status $new_status"
+[ "$title_given" -eq 0 ] || lock_who="$lock_who --title"
+trap 'kerjaan_lock_release board' EXIT
+kerjaan_board_lock "$board" "$lock_who" 1
+
 # --- locate the ticket file ------------------------------------------------
 if [ -f "$target" ]; then
   file="$target"
@@ -228,10 +247,6 @@ fi
 # A repo without git, or a move that is not a start, is left entirely alone. A
 # ticket coming back from review or done — sent back by its reviewer, or by
 # merge.sh land because main moved — is not new work, so it is not a start.
-
-here="$(cd "$(dirname "$0")" && pwd)"
-# shellcheck source=lib.sh
-. "$here/lib.sh"
 
 # --- the way into todo -------------------------------------------------------
 # `todo` means ready to be worked without asking anything more. A question the
@@ -378,7 +393,7 @@ fi
 # that happens to appear in the prose is left alone.
 now="$(date '+%Y-%m-%d %H:%M:%S')"
 tmp="$(mktemp)"
-trap 'rm -f "$tmp" "$tmp.history"' EXIT
+trap 'rm -f "$tmp" "$tmp.history"; kerjaan_lock_release board' EXIT
 
 if ! awk -v now="$now" '
   BEGIN { fence = 0; done = 0 }

@@ -64,7 +64,14 @@ board="$PWD/.kerjaan"
 [ -d "$board" ] || { echo "No .kerjaan/ in $PWD" >&2; exit 2; }
 
 tmpdir="$(mktemp -d)"
-trap 'rm -rf "$tmpdir"' EXIT
+trap 'rm -rf "$tmpdir"; kerjaan_lock_release board' EXIT
+
+# The commands that write a ticket hold the board lock (lib.sh) from reading it
+# to the refresh after, which update-ticket.sh shares, so a ticket moved by
+# someone else at that moment cannot overwrite the record, nor the reverse.
+case "$cmd" in
+  estimate | ask | answer) kerjaan_board_lock "$board" "queue.sh $cmd ${1:-}" ;;
+esac
 
 now() { date '+%Y-%m-%d %H:%M:%S'; }
 

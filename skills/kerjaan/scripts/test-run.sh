@@ -35,7 +35,10 @@
 # test suite tends to use, so two suites running at once can fail each other
 # with nothing wrong in either. A run therefore waits for the `tests` lock
 # (lib.sh), held by at most one run in the whole repository, and the recorded
-# line says how long it waited. A board whose tests are safe side by side sets
+# line says how long it waited, up to test_lock_timeout seconds (default 3600);
+# past that it gives up, naming the run it waited for, and runs nothing. The
+# result is written into the ticket under the board lock (lib.sh), like every
+# other change to the board. A board whose tests are safe side by side sets
 # `parallel_tests: true` in settings.md, and the lock is skipped. The
 # reviewer's runs (--review) wait for the same lock: a reviewer's suite
 # running beside a worker's shares exactly what two workers' suites would.
@@ -238,7 +241,10 @@ case "$(kerjaan_setting "$board/settings.md" parallel_tests)" in
   true | yes) ;;
   *)
     trap 'kerjaan_lock_release tests; rm -rf "$tmpdir"' EXIT
-    kerjaan_lock_acquire tests "$holder"
+    if ! kerjaan_lock_acquire tests "$holder" "$(kerjaan_lock_timeout "$board" test_lock_timeout 3600)"; then
+      echo "Nothing was run. The limit is test_lock_timeout in $board/settings.md." >&2
+      exit 2
+    fi
     if [ -n "$KERJAAN_LOCK_WAITED" ]; then
       waited_note=" Waited $(( KERJAAN_LOCK_WAITED / 60 ))m$(( KERJAAN_LOCK_WAITED % 60 ))s for the test lock first, held by another run (${KERJAAN_LOCK_HOLDER:-unknown})."
       echo "Got the test lock after waiting ${KERJAAN_LOCK_WAITED}s." >&2
@@ -287,8 +293,24 @@ else
 fi
 
 # Written word for word: --check compares the command in it with settings.md.
+#
+# Under the board lock, held across the note and the refresh of `updated`: a
+# worker or the foreman may be moving this very ticket from the main tree at
+# the moment a run in a worktree finishes, and update-ticket.sh writes back the
+# copy it read. The ticket is looked up again inside the lock, since it may
+# have changed folders while the tests ran. Should the wait run out, the result
+# is still printed below, so the run is not lost to the person watching.
+trap 'kerjaan_lock_release board; kerjaan_lock_release tests; rm -rf "$tmpdir"' EXIT
+if ! kerjaan_board_lock_try "$board" "test-run.sh $id recording its result"; then
+  echo "The run was not recorded in $id; this is its result:" >&2
+  echo "$note" >&2
+  exit 2
+fi
+ticket="$(kerjaan_ticket_file "$board" "$id" || true)"
+[ -n "$ticket" ] || { echo "Ticket $id disappeared during the run; nothing recorded." >&2; echo "$note" >&2; exit 2; }
 kerjaan_append_note "$ticket" "$note"
 (cd "$main_tree" && "$here/update-ticket.sh" "$id" > /dev/null)
+kerjaan_lock_release board
 
 echo "$note" >&2
 exit "$code"

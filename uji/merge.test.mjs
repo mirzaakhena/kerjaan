@@ -598,6 +598,49 @@ test('penggabungan menunggu kunci merge', async () => {
   assert.notEqual(head(r), before);
 });
 
+// Every note land writes is made under the board lock, with the refresh of the
+// ticket after it, so a ticket being moved from elsewhere at that moment cannot
+// write its copy back over the note. Checked per kind of note: while another
+// live process holds the lock, the note is not there yet.
+async function noteWaitsForBoard(r, record) {
+  const lock = path.join(r.root, '.git', 'kerjaan-locks', 'board.lock');
+  fs.mkdirSync(lock, { recursive: true });
+  fs.writeFileSync(lock + '/owner', `${process.pid}\tuji yang memegang kunci papan\n`);
+  let done = false;
+  const running = runAsync(mergeSh, r.root, ['land', A]).then((res) => { done = true; return res; });
+  await sleep(2500);
+  const whileHeld = { done, written: record.test(notes(r, A)) };
+  fs.rmSync(lock, { recursive: true });
+  return { whileHeld, res: await running };
+}
+
+for (const [kind, prepare, record, code] of [
+  ['"landed on"', () => {}, /landed on main as /, 0],
+  ['"merge postponed"', (r, wa) => {
+    work(wa, { 'pakai.txt': 'satu\ndua\nsatu\n' }, 'diam-diam setelah review');
+    assert.equal(run(testRun, wa, [A]).code, 0);
+  }, /merge postponed — /, 3],
+  ['"merge held for the owner"', (r) => {
+    const file = path.join(r.k, 'done', `${A} Tiket pertama.md`);
+    fs.writeFileSync(file, fs.readFileSync(file, 'utf8').replace(/^- .*review covers branch .*\n/m, ''));
+  }, /merge held for the owner — /, 1],
+]) {
+  test(`catatan ${kind} dari land menunggu kunci papan`, async () => {
+    const r = repo();
+    const wa = add(r, A);
+    work(wa, { 'pakai.txt': 'satu\ndua\n' });
+    assert.equal(run(testRun, wa, [A]).code, 0);
+    toReview(r, A);
+    passReview(r, A);
+    prepare(r, wa);
+    const { whileHeld, res } = await noteWaitsForBoard(r, record);
+    assert.deepEqual(whileHeld, { done: false, written: false }, 'land wrote its note while the board lock was held');
+    assert.equal(res.code, code, res.out + res.err);
+    assert.match(res.err, /Waiting for the board lock, held by uji yang memegang kunci papan/);
+    assert.match(notes(r, A), record);
+  });
+}
+
 test('dua penggabungan yang dimulai bersamaan berjalan bergiliran', async () => {
   const r = repo();
   const wa = add(r, A);

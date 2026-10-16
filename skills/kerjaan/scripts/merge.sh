@@ -258,9 +258,15 @@ case "$cmd" in
     # The owner is told through the ticket and through this output; the
     # ticket stays in done/, and the start gate in update-ticket.sh lets other
     # tickets go on past its branch.
+    #
+    # Each note and the update-ticket.sh run after it are made under the board
+    # lock (lib.sh), so a ticket being moved from elsewhere at that moment
+    # cannot write its copy back over the note.
     held() {
+      kerjaan_board_lock "$board" "merge.sh land $id recording a held merge"
       kerjaan_append_note "$ticket" "- $(now): merge held for the owner — $1"
       (cd "$main_tree" && "$here/update-ticket.sh" "$id" > /dev/null 2>&1) || true
+      kerjaan_lock_release board
       save_note "Board: $id merge held for the owner"
       echo "HELD: ticket $id was not merged into ${main:-main} and waits for the owner."
       echo "Reason: $1"
@@ -270,10 +276,12 @@ case "$cmd" in
     # Main moved, or the branch changed after its review: the ticket goes back
     # to its worker, and through review again, without the owner.
     postpone() {
+      kerjaan_board_lock "$board" "merge.sh land $id sending it back"
       kerjaan_append_note "$ticket" "- $(now): merge postponed — $1; back to in_progress to be brought up to date with $main, tested and reviewed again."
       if ! (cd "$main_tree" && "$here/update-ticket.sh" "$id" --status in_progress > /dev/null); then
         held "it had to go back to in_progress ($1), but the move was refused"
       fi
+      kerjaan_lock_release board
       save_note "Board: $id back to in_progress, merge postponed"
       echo "SENT BACK: ticket $id was not merged into $main, and is in in_progress again."
       echo "Reason: $1."
@@ -283,7 +291,7 @@ case "$cmd" in
 
     [ -n "$main" ] || held "the main tree is on no branch (a detached HEAD), so there is no main to merge into"
 
-    trap 'kerjaan_lock_release merge' EXIT
+    trap 'kerjaan_lock_release board; kerjaan_lock_release merge' EXIT
     kerjaan_lock_acquire merge "merge.sh land $id"
 
     tip="$(git rev-parse "$branch^{commit}")"
@@ -330,8 +338,10 @@ case "$cmd" in
         held "the merge commit failed: $(printf '%s' "$commit_log" | tr '\n' ' ')"
       fi
       landed="$(git rev-parse HEAD)"
+      kerjaan_board_lock "$board" "merge.sh land $id recording the landing"
       kerjaan_append_note "$ticket" "- $(now): landed on $main as $landed, merging $branch at $tip; $carried."
       (cd "$main_tree" && "$here/update-ticket.sh" "$id" > /dev/null 2>&1) || true
+      kerjaan_lock_release board
       echo "LANDED: ticket $id is in $main as ${landed:0:12}; $carried."
       save_note "Board: $id landed on $main as ${landed:0:12}"
     fi

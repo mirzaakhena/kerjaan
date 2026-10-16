@@ -10,6 +10,8 @@
 #   kerjaan_setting <file> <key>       one value from settings.md's frontmatter
 #   kerjaan_lock_acquire <name> <who>  wait for a named lock shared by every
 #   kerjaan_lock_release <name>        worktree of this repository, then hold it
+#   kerjaan_board_lock <board> <who>   the lock every write to the board takes
+#   kerjaan_lock_timeout <board> <key> <default>  how long a wait may last
 #   kerjaan_slot                       this worktree's slot number
 #   kerjaan_ticket_file <board> <id>   the ticket's path
 #   kerjaan_ticket_branch <id>         the branch carrying the ticket's ID
@@ -49,11 +51,31 @@ kerjaan_setting() {
 # rebooted — leaves the directory behind. A waiter that finds the holder's PID
 # gone breaks the lock, under a second, short-lived lock so that two waiters
 # cannot both break it and the second remove the first one's fresh claim.
+#
+# A holder that is alive but stuck is another matter: no PID check can tell it
+# from one that is merely slow. So a wait has a limit, and a waiter that
+# reaches it gives up with a message naming the holder, instead of everyone
+# behind it waiting in silence. The limits are settings (see below).
+#
+# A lock is held by a process and everything it runs: a script that holds the
+# `board` lock and runs update-ticket.sh, which takes the same lock, must not
+# wait for itself. KERJAAN_HELD_LOCKS, exported to children, lists the locks
+# this process tree holds, one `<lock dir>=<pid>` per line (a path may hold
+# spaces); a child finding its lock there, still owned by that live PID, goes
+# ahead without taking it again, and its release leaves it alone.
 
 kerjaan_locks_dir() {
   local common
-  common="$(git rev-parse --git-common-dir)"
-  common="$(cd "$common" && pwd)"
+  if ! common="$(git rev-parse --git-common-dir 2> /dev/null)"; then
+    # A board outside any git repository: nothing is committed there, so the
+    # board folder itself can hold the locks. Every script that writes the
+    # board runs from the folder holding .kerjaan/.
+    common="$(pwd -P)/.kerjaan/.locks"
+    mkdir -p "$common"
+    printf '%s\n' "$common"
+    return 0
+  fi
+  common="$(cd "$common" && pwd -P)"  # physical: the same lock is one path from every tree
   mkdir -p "$common/kerjaan-locks"
   printf '%s\n' "$common/kerjaan-locks"
 }
@@ -78,15 +100,31 @@ kerjaan_lock_break() {
 }
 
 # Waits until the lock called <name> is free, then holds it for this process.
-# <who> describes the holder to anyone who has to wait. Afterwards:
+# <who> describes the holder to anyone who has to wait. <timeout> is the most
+# seconds to wait; empty or 0 waits for as long as it takes. Returns 1, having
+# said who holds the lock, when the wait reached <timeout>. Afterwards:
 #   KERJAAN_LOCK_WAITED  seconds spent waiting, empty when the lock was free
 #   KERJAAN_LOCK_HOLDER  who held it when this process started waiting
-# KERJAAN_LOCK_POLL sets the polling interval in seconds (default 1).
+# KERJAAN_LOCK_POLL sets the polling interval in seconds (default 1, or the
+# <poll> given).
 kerjaan_lock_acquire() {
-  local name="$1" who="$2" lock owner pid start ownerless=0 waited=0
+  local name="$1" who="$2" limit="${3:-0}" poll="${KERJAAN_LOCK_POLL:-${4:-1}}"
+  local lock owner pid start ownerless=0 waited=0 entry
   lock="$(kerjaan_locks_dir)/$name.lock"
   KERJAAN_LOCK_WAITED=""
   KERJAAN_LOCK_HOLDER=""
+  case "$limit" in '' | *[!0-9]*) limit=0 ;; esac
+
+  # Already held by the process tree this one runs in.
+  while IFS= read -r entry; do
+    [ "${entry%=*}" = "$lock" ] || continue
+    pid="${entry##*=}"
+    owner="$(cat "$lock/owner" 2> /dev/null || true)"
+    if [ "${owner%%$'\t'*}" = "$pid" ] && kill -0 "$pid" 2> /dev/null; then
+      return 0
+    fi
+  done <<< "${KERJAAN_HELD_LOCKS:-}"
+
   start="$SECONDS"
   while ! mkdir "$lock" 2> /dev/null; do
     owner="$(cat "$lock/owner" 2> /dev/null || true)"
@@ -113,20 +151,79 @@ kerjaan_lock_acquire() {
       KERJAAN_LOCK_HOLDER="${owner#*$'\t'}"
       echo "Waiting for the $name lock, held by ${KERJAAN_LOCK_HOLDER:-a process just starting}." >&2
     fi
-    sleep "${KERJAAN_LOCK_POLL:-1}"
+    if [ "$limit" -gt 0 ] && [ $(( SECONDS - start )) -ge "$limit" ]; then
+      if [ -n "$owner" ]; then
+        echo "Gave up waiting for the $name lock after ${limit}s. It is held by ${owner#*$'\t'}" >&2
+        echo "(process $pid, still running). If that process is stuck, stop it; its lock" >&2
+        echo "is taken over as soon as it is gone. Otherwise try again once it finishes." >&2
+      else
+        echo "Gave up waiting for the $name lock after ${limit}s. It was claimed by a process" >&2
+        echo "that never said who it is: $lock" >&2
+      fi
+      return 1
+    fi
+    sleep "$poll"
   done
   printf '%s\t%s\n' "$$" "$who" > "$lock/owner"
+  KERJAAN_HELD_LOCKS="${KERJAAN_HELD_LOCKS:+$KERJAAN_HELD_LOCKS$'\n'}$lock=$$"
+  export KERJAAN_HELD_LOCKS
   [ "$waited" -eq 0 ] || KERJAAN_LOCK_WAITED=$(( SECONDS - start ))
   return 0
 }
 
-# Releases the lock called <name>, but only when this process holds it.
+# Releases the lock called <name>, but only when this process holds it — not
+# when it only rode on a parent's.
 kerjaan_lock_release() {
-  local lock owner
+  local lock owner entry kept=""
   lock="$(kerjaan_locks_dir)/$1.lock"
   owner="$(cat "$lock/owner" 2> /dev/null || true)"
-  [ "${owner%%$'\t'*}" = "$$" ] && rm -rf "$lock"
+  [ "${owner%%$'\t'*}" = "$$" ] || return 0
+  rm -rf "$lock"
+  while IFS= read -r entry; do
+    [ -z "$entry" ] || [ "$entry" = "$lock=$$" ] || kept="${kept:+$kept$'\n'}$entry"
+  done <<< "${KERJAAN_HELD_LOCKS:-}"
+  export KERJAAN_HELD_LOCKS="$kept"
   return 0
+}
+
+# The limits on waiting, in seconds, from <board>/settings.md:
+#
+#   lock_timeout       the `board` lock, held for the moment it takes to rewrite
+#                      a ticket or order.md. Default 120: a wait that long means
+#                      the holder is stuck, not busy.
+#   test_lock_timeout  the `tests` lock (test-run.sh), held for a whole run of
+#                      test_command. Default 3600: long enough for a slow suite
+#                      to finish ahead of you, short enough that a hung one is
+#                      reported within the hour.
+#
+# 0 waits without limit. A value that is not a whole number counts as missing.
+kerjaan_lock_timeout() {
+  local board="$1" key="$2" default="$3" v
+  v="$(kerjaan_setting "$board/settings.md" "$key")"
+  case "$v" in '' | *[!0-9]*) v="$default" ;; esac
+  printf '%s\n' "$v"
+}
+
+# Takes the `board` lock: every change to a ticket file or to order.md is made
+# under it, so two workers moving tickets at the same moment, or a test run
+# recording its result while the ticket is being moved, cannot each read the
+# file, change it, and write back over the other's change. <who> says what is
+# being done, for whoever has to wait. Returns 1, having named the holder and
+# the setting, when the wait reaches lock_timeout.
+kerjaan_board_lock_try() {
+  local board="$1" who="$2"
+  kerjaan_lock_acquire board "$who, process $$" \
+      "$(kerjaan_lock_timeout "$board" lock_timeout 120)" 0.1 && return 0
+  echo "The limit is lock_timeout in $board/settings.md." >&2
+  return 1
+}
+
+# The same, for a script that has changed nothing yet: exits it with <status>
+# (default 2) when the wait runs out.
+kerjaan_board_lock() {
+  kerjaan_board_lock_try "$1" "$2" && return 0
+  echo "Nothing was changed." >&2
+  exit "${3:-2}"
 }
 
 # --- slots -------------------------------------------------------------------
