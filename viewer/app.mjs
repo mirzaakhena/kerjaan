@@ -23,6 +23,7 @@ const ASSETS = {
   'markdown.js': 'text/javascript; charset=utf-8',
   'saring.js': 'text/javascript; charset=utf-8',
   'pil.js': 'text/javascript; charset=utf-8',
+  'laci.js': 'text/javascript; charset=utf-8',
   'umum.js': 'text/javascript; charset=utf-8',
 };
 

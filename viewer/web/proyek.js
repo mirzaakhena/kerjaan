@@ -2,6 +2,7 @@ import { STATUSES, statusName, statusColor, getJson, liveIndicator } from './umu
 import { render, esc } from './markdown.js';
 import { readFilter, writeFilter, matches, columnOrder, choices, FILTER_KEYS, readHidden } from './saring.js';
 import { pills } from './pil.js';
+import { drawerHead, drawerFacts } from './laci.js';
 
 // The page lives at /<project>/, /<project>/tiket/<id> and /<project>/urutan
 // (order.md); everything it asks the server for is under /<project>/.
@@ -219,6 +220,7 @@ async function showOrder({ keepScroll = false } = {}) {
   const scroll = keepScroll ? body.scrollTop : 0;
   drawer.hidden = false;
   $('backdrop').hidden = false;
+  if (!keepScroll) drawer.classList.remove('scrolled');
   $('drawer-head').innerHTML = `
     <div class="top">
       <span class="status-pill" style="--c:${statusColor('todo')}">todo</span>
@@ -239,18 +241,37 @@ async function showOrder({ keepScroll = false } = {}) {
   if (state.openId !== ORDER) return;
   body.innerHTML = render(text, { ticket: lookup, href: ticketHref });
   body.scrollTop = scroll;
+  foldTitle();
   if (!keepScroll) drawer.querySelector('[data-close]').focus({ preventScroll: true });
 }
 
-const refLinks = (ids) =>
-  ids.length
-    ? ids.map((id) => {
-        const t = lookup(id);
-        return t
-          ? `<a class="tiket ref" href="${ticketHref(id)}" data-id="${id}"><span class="mono">${id}</span> <span class="t">${esc(t.title)}</span></a> <span class="muted">· ${statusName(t.status)}</span>`
-          : `<span class="missing" title="Tidak ada tiket dengan ID ini di papan">${esc(id)}</span>`;
-      }).join('<br>')
-    : '<span class="muted">—</span>';
+const drawerCtx = { lookup, href: ticketHref, statusName, statusColor };
+
+// The title in the head is cut to two lines (one once the ticket is scrolled).
+// When two lines are not enough, the whole title opens the scrolling part, so
+// it can still be read in full.
+function showFullTitle() {
+  const drawer = $('drawer');
+  const h2 = drawer.querySelector('#drawer-head h2');
+  const full = drawer.querySelector('#drawer-body .judul-penuh');
+  if (!h2 || !full) return;
+  const folded = drawer.classList.contains('scrolled');
+  drawer.classList.remove('scrolled');
+  full.hidden = h2.scrollHeight <= h2.clientHeight + 1;
+  if (folded) drawer.classList.add('scrolled');
+}
+
+// Once the ticket is scrolled, the title folds to one line to give the text
+// more room, and unfolds back at the top. It only folds when the text is long
+// enough to stay scrolled after the head shrinks, so it cannot flicker.
+function foldTitle() {
+  const drawer = $('drawer');
+  const body = $('drawer-body');
+  if (body.scrollTop <= 4) drawer.classList.remove('scrolled');
+  else if (body.scrollTop > 16 && body.scrollHeight - body.clientHeight > 64) drawer.classList.add('scrolled');
+}
+$('drawer-body').addEventListener('scroll', foldTitle, { passive: true });
+window.addEventListener('resize', showFullTitle);
 
 async function showTicket(id, { keepScroll = false } = {}) {
   const drawer = $('drawer');
@@ -264,6 +285,7 @@ async function showTicket(id, { keepScroll = false } = {}) {
     files = await getJson(`${base}api/tiket/${id}`);
   } catch (err) {
     if (state.openId !== id) return;
+    drawer.classList.remove('scrolled');
     $('drawer-head').innerHTML = `<div class="top"><span class="mono">${id}</span><button class="close" data-close>Tutup</button></div>`;
     body.innerHTML = err.status === 404
       ? '<p class="notice">Tiket ini tidak ada (lagi) di papan.</p>'
@@ -272,34 +294,12 @@ async function showTicket(id, { keepScroll = false } = {}) {
   }
   if (state.openId !== id) return;
   const t = files[0];
-  const dup = files.length > 1
-    ? `<p class="notice">ID ini dipakai ${files.length} berkas: ${files.map((f) => `<code>${esc(f.status)}/${esc(f.file)}</code>`).join(', ')}. Yang ditampilkan berkas pertama.</p>`
-    : '';
-  const [done, total] = t.checks;
-  $('drawer-head').innerHTML = `
-    <div class="top">
-      <span class="status-pill" style="--c:${statusColor(t.status)}">${statusName(t.status)}</span>
-      <span class="mono">${t.id}</span>
-      <button class="close" data-close aria-label="Tutup tiket">Tutup</button>
-    </div>
-    <h2>${esc(t.title)}</h2>
-    <dl class="facts">
-      <dt>Tipe</dt><dd>${esc(t.type) || '—'}</dd>
-      <dt>Prioritas</dt><dd>${t.priority ? `<span class="prio ${esc(t.priority)}">${esc(t.priority)}</span>` : '—'}</dd>
-      <dt>Review</dt><dd>${esc(t.review) || '<span class="muted">quick (kosong)</span>'}</dd>
-      <dt>Label</dt><dd>${t.labels.map((l) => `<span class="tag">${esc(l)}</span>`).join(' ') || '—'}</dd>
-      <dt>Pelapor</dt><dd>${esc(t.meta.reporter || '') || '—'}</dd>
-      <dt>Dikerjakan</dt><dd>${esc(t.meta.assign_to || '') || '—'}</dd>
-      <dt>Dibuat</dt><dd>${esc(t.created) || '—'}</dd>
-      <dt>Diubah</dt><dd>${esc(t.updated) || '—'}</dd>
-      ${total ? `<dt>Done when</dt><dd>${done} dari ${total} tercentang</dd>` : ''}
-      <dt>Terkait</dt><dd>${refLinks(t.related)}</dd>
-      <dt>Menunggu</dt><dd>${refLinks(t.blockedBy)}</dd>
-    </dl>
-    ${t.broken ? '<p class="notice">Berkas ini tidak punya frontmatter, jadi tipe, prioritas, dan tanggalnya tidak diketahui.</p>' : ''}
-    ${dup}`;
-  body.innerHTML = render(t.body, { ticket: lookup, href: ticketHref });
+  $('drawer-head').innerHTML = drawerHead(t, drawerCtx);
+  body.innerHTML = drawerFacts(t, drawerCtx, { dup: files }) + render(t.body, { ticket: lookup, href: ticketHref });
+  if (!keepScroll) drawer.classList.remove('scrolled');
+  showFullTitle();
   body.scrollTop = scroll;
+  foldTitle();
   if (!keepScroll) drawer.querySelector('[data-close]').focus({ preventScroll: true });
 }
 
