@@ -24,8 +24,12 @@ belonged in one group.
 
 ```bash
 "$K/worktree.sh" add 260905160401 ../<repo>-<topic>      # from the main tree
-"$K/worktree.sh" remove 260905160401                     # when it is merged
+"$K/merge.sh" sync 260905160401                          # in the worktree, before review
+"$K/merge.sh" land 260905160401                          # from the main tree, once done
 ```
+
+`land` merges the branch into main and removes the worktree and the branch
+itself; `"$K/worktree.sh" remove <id>` is for a worktree given up on.
 
 `add` does what the three git commands below do, and then gives the worktree
 a slot and runs the board's `worktree_setup` in it (see "Tests take turns" and
@@ -53,7 +57,8 @@ git sparse-checkout set --no-cone '/*' '!/.kerjaan/'
 While the work happens in that worktree, **every board command still runs from
 the main tree** — the scripts refuse to run anywhere else. The one exception is
 `test-run.sh`, which tests the tree it is run in and writes its record to the
-board in the main tree by itself: run it from the worktree. The worker is told
+board in the main tree by itself: run it from the worktree. `merge.sh sync`,
+which brings main into the ticket's branch, runs there too. The worker is told
 both paths in its prompt.
 
 ## The board has one home
@@ -102,6 +107,13 @@ second run waits, says on screen whose run it is waiting for, and the line it
 records in `## Notes` ends with how long it waited and behind which ticket.
 A lock left by a run that was killed is taken over as soon as its process is
 found gone.
+
+The reviewer's runs queue on the same lock. A reviewer runs the suite, or a
+few of its tests, through `"$K/test-run.sh" --review <id>` — in the ticket's
+worktree, or with `--dir` in a clean export — and that run waits behind any
+worker's run and makes the next one wait, exactly like a second worker's
+would. It records nothing in the ticket: the latest run there stays the
+worker's, which is what `--check` compares.
 
 A project whose tests share nothing between worktrees sets
 `parallel_tests: true` in `settings.md`, and the runs overlap. That is a claim
@@ -194,23 +206,84 @@ does not depend on names.
 or `review` — it lists any worktree still checked out. Nothing is in flight, so
 anything still there is work the board has lost track of.
 
-## `done` does not mean merged
+## Back into main: tested together, merged one at a time
 
-The reviewer moves a ticket to `done`, and the reviewer is forbidden from
-changing the repo — which means it cannot merge. So there is a real window
-where a ticket says `done` while its branch is still separate, and that window
-is not a flaw to be papered over: merging is a decision about the main line,
-and the thing that just judged the work is deliberately the thing with no stake
-in it.
+Each ticket is tested and reviewed in its own worktree, which proves each
+change on its own. Two changes that pass alone can still break each other
+once both are on main — the first renames something, the second still uses
+the old name — and git merges them without a word. So **nothing from a branch
+reaches main until it has been tested with everything main already holds**,
+and the reviewer judges exactly what main will get. `merge.sh` carries it in
+three steps; "main" is whatever branch the main tree has checked out.
 
-Closing that window belongs to the foreman, which picks up the verdict and
-has the owner at hand when merging is theirs to approve: merge the branch,
-remove the worktree with `worktree.sh remove` (so its teardown runs), delete
-the branch. The warning at `done` exists because
-that handover is easy to drop — and since a warning in a reviewer's report is
-easy to drop too, the next ticket cannot start while the branch is still
-there. `update-ticket.sh` refuses the move to `in_progress` until the owner has
-merged it, deleted it, listed it in `long_lived_branches`, or chosen
-`--ack-unmerged`. That check does not rely on branch names: a branch of a
-ticket still in `in_progress` or `review` is left alone, and any other branch
-with work outside `HEAD` is named.
+**1. Before review, the worker brings main in.** In its own worktree, after
+its last commit: `"$K/merge.sh" sync <id>`. A conflict stops the merge there,
+and resolving it is the worker's job, as part of the ticket — never the
+foreman's, which writes no code. Then `test-run.sh`, then commit. The move to
+review is **refused** until the branch holds all of main's code and the latest
+test run passed on exactly the committed content of the branch; the refusal
+says which (`STALE`: main moved, run `sync`; `UNTESTED`: run the tests again,
+commit what they ran on). The move then records, in `## Notes`, the commit
+that went to review: `review covers branch <b> at <commit>, which holds main
+at <commit>`.
+
+**2. Once the reviewer passes it, the foreman lands it — at once, without
+asking the owner.** `"$K/merge.sh" land <id>`, from the main tree, for a ticket
+in `done/`. Landings take turns under the repository's `merge` lock, so two
+never run at the same moment. It merges only when all three hold:
+
+- main's code has not moved since the branch took it in,
+- the branch is still the commit the move to review recorded,
+- the latest test run passed on exactly that content.
+
+When they hold, the merged content is exactly what was tested, so **the tests
+are not run again**: the first ticket of two merges with no second run. Land
+checks the merged content against the tested content once more just before
+it commits, in case main moved during the merge; then it removes the
+worktree (its teardown included) and deletes the branch.
+
+Commits that touch only `.kerjaan/` never count as main moving: the board is
+committed on main all the time, and a ticket changing folders changes no code.
+
+**3. When main moved, the ticket goes back — not the owner's problem.** Main
+moves under every ticket but the first to land. `land` then answers `SENT
+BACK` (exit 3), records why in `## Notes`, and moves the ticket to
+`in_progress` itself. Its worker brings main in (step 1) and moves it to
+review again. The reviewer then looks again, briefly — level `quick`,
+whatever the ticket's own level — at only what the worker did beyond the
+automatic merge: `"$K/merge.sh" resolution <id>` prints exactly that, the
+conflict resolution and any fix the tests demanded, and says `EMPTY` when
+there was nothing. A merge that is clean in git but breaks the tests is caught
+here too: the worker's test run after `sync` goes red, and the move to review
+is refused until it is fixed.
+
+A return of this kind is not a rejection. It does not count toward the two
+returns that stop the chain (`references/foreman.md`).
+
+**When a merge fails, only that ticket waits for the owner.** Anything else
+that stops `land` — git refuses because of uncommitted changes in the main
+tree, a hook fails, the main tree is on no branch, the test record no longer
+vouches for the branch — answers `HELD` (exit 1), writes `merge held for the
+owner — <reason>` into the ticket's `## Notes`, and leaves the ticket in
+`done/`. The foreman tells the owner at once, with the ticket and the reason.
+Everything else carries on: the start gate below does not wait for a held
+branch, and other tickets keep landing. A ticket that lists the held one in
+`blocked_by` is refused at its start, since what it builds on is not on main.
+When the owner has cleared the cause, `land` is simply run again.
+
+## Branches nobody merged
+
+`land` closes the gap between `done` and merged within moments. A branch can
+still be left behind — a ticket finished before this existed, a worktree made
+by hand, a `land` nobody ran — and that is what the checks here are for.
+
+Closing it belongs to the foreman: `land` it. The warning at `done` exists
+because that step is easy to drop — and since a warning in a reviewer's
+report is easy to drop too, the next ticket cannot start while the branch is
+still there. `update-ticket.sh` refuses the move to `in_progress` until the
+branch is merged, deleted, listed in `long_lived_branches`, or the owner has
+chosen `--ack-unmerged`. That check does not rely on branch names: a branch
+of a ticket still in `in_progress` or `review` is left alone, a branch whose
+merge is held for the owner is named but not waited for, and any other branch
+with work outside `HEAD` is named. It applies to starting a ticket; a ticket
+coming back from `review` or `done` is not new work.

@@ -21,6 +21,11 @@
 #   test-run.sh <id>                  run test_command, record the run in <id>
 #   test-run.sh --check <id> [<rev>]  compare the recorded run with <rev>,
 #                                     or with this working tree when omitted
+#   test-run.sh --review <id> [--dir <path>] [-- <command>...]
+#                                     the reviewer's run: test_command, or the
+#                                     command given, in <path> (a clean export,
+#                                     say) or this tree; takes its turn like
+#                                     any other run, and records nothing
 #
 # --check writes nothing to the repository: the objects it builds go to a
 # temporary directory, which is what lets the reviewer use it.
@@ -31,7 +36,9 @@
 # with nothing wrong in either. A run therefore waits for the `tests` lock
 # (lib.sh), held by at most one run in the whole repository, and the recorded
 # line says how long it waited. A board whose tests are safe side by side sets
-# `parallel_tests: true` in settings.md, and the lock is skipped.
+# `parallel_tests: true` in settings.md, and the lock is skipped. The
+# reviewer's runs (--review) wait for the same lock: a reviewer's suite
+# running beside a worker's shares exactly what two workers' suites would.
 #
 # The test command sees, in its environment:
 #   KERJAAN_TICKET     the ticket ID given to this script
@@ -46,6 +53,7 @@ usage() {
   cat >&2 <<USAGE
 Usage: test-run.sh <id>
        test-run.sh --check <id> [<rev>]
+       test-run.sh --review <id> [--dir <path>] [-- <command>...]
 
   <id>      12-digit ticket ID
   <rev>     the commit or branch under review; omitted, the working tree of the
@@ -57,20 +65,41 @@ ticket's Notes. Exits with the test command's own status.
 
 With --check: prints SAME, DIFFERENT (with the files), or NO EVIDENCE.
 Exit status 0, 1 and 2 respectively. Writes nothing to the repository.
+
+With --review: the reviewer's run. Runs test_command, or the command after
+--, in <path> or at the top of the current tree, waiting for the same test
+lock as every other run unless parallel_tests is true. Run it from inside the
+repository even when <path> is outside it. Records nothing; exits with the
+command's own status.
 USAGE
   exit 2
 }
 
 check=0
-if [ "${1:-}" = "--check" ]; then
-  check=1
-  shift
-fi
+review=0
+review_dir=""
+review_cmd=""
+case "${1:-}" in
+  --check) check=1; shift ;;
+  --review) review=1; shift ;;
+esac
 [ "$#" -ge 1 ] || usage
 id="$1"
 rev="${2:-}"
-[ "$check" -eq 1 ] || [ "$#" -eq 1 ] || usage
-[ "$#" -le 2 ] || usage
+if [ "$review" -eq 1 ]; then
+  shift
+  rev=""
+  while [ "$#" -gt 0 ]; do
+    case "$1" in
+      --dir) [ "$#" -ge 2 ] || usage; review_dir="$2"; shift 2 ;;
+      --) shift; [ "$#" -ge 1 ] || usage; review_cmd="$*"; break ;;
+      *) usage ;;
+    esac
+  done
+else
+  [ "$check" -eq 1 ] || [ "$#" -eq 1 ] || usage
+  [ "$#" -le 2 ] || usage
+fi
 
 case "$id" in
   [0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]) ;;
@@ -189,6 +218,7 @@ fi
 # ---------------------------------------------------------------------------
 # Record: run test_command between two fingerprints
 # ---------------------------------------------------------------------------
+[ -n "$review_cmd" ] && test_command="$review_cmd"
 if [ -z "$test_command" ]; then
   echo "test_command is empty in $board/settings.md; there is nothing to run." >&2
   echo "Fill it in, or run the project's checks by hand and say so in the ticket." >&2
@@ -196,12 +226,19 @@ if [ -z "$test_command" ]; then
 fi
 
 slot="$(kerjaan_slot)"
+holder="ticket $id, slot $slot, $top"
+if [ "$review" -eq 1 ]; then
+  run_dir="${review_dir:-$top}"
+  [ -d "$run_dir" ] || { echo "No directory $run_dir" >&2; exit 2; }
+  run_dir="$(cd "$run_dir" && pwd)"
+  holder="the reviewer of ticket $id, in $run_dir"
+fi
 waited_note=""
 case "$(kerjaan_setting "$board/settings.md" parallel_tests)" in
   true | yes) ;;
   *)
     trap 'kerjaan_lock_release tests; rm -rf "$tmpdir"' EXIT
-    kerjaan_lock_acquire tests "ticket $id, slot $slot, $top"
+    kerjaan_lock_acquire tests "$holder"
     if [ -n "$KERJAAN_LOCK_WAITED" ]; then
       waited_note=" Waited $(( KERJAAN_LOCK_WAITED / 60 ))m$(( KERJAAN_LOCK_WAITED % 60 ))s for the test lock first, held by another run (${KERJAAN_LOCK_HOLDER:-unknown})."
       echo "Got the test lock after waiting ${KERJAAN_LOCK_WAITED}s." >&2
@@ -210,6 +247,20 @@ case "$(kerjaan_setting "$board/settings.md" parallel_tests)" in
 esac
 
 export KERJAAN_TICKET="$id" KERJAAN_SLOT="$slot" KERJAAN_WORKTREE="$top" KERJAAN_MAIN_TREE="$main_tree"
+
+# The reviewer's run proves nothing to anyone but the reviewer, so it leaves no
+# record: the ticket's latest run stays the worker's, which --check compares.
+if [ "$review" -eq 1 ]; then
+  export KERJAAN_WORKTREE="$run_dir"
+  start="$SECONDS"
+  set +e
+  (cd "$run_dir" && bash -c "$test_command")
+  code=$?
+  set -e
+  elapsed=$(( SECONDS - start ))
+  echo "Reviewer's run in $run_dir: \`$test_command\` exited $code after $(( elapsed / 60 ))m$(( elapsed % 60 ))s.$waited_note" >&2
+  exit "$code"
+fi
 
 # Taken after the wait, so content changed while waiting is not mistaken for
 # content changed by the run.

@@ -220,12 +220,38 @@ fi
 #   - branches carrying the ID of a ticket in in_progress/ or review/, which
 #     are in flight by definition
 #   - branches listed in long_lived_branches in .kerjaan/settings.md
-# A repo without git, or a move that is not a start, is left entirely alone.
+#   - branches of tickets whose merge is held for the owner (merge.sh land
+#     wrote "merge held for the owner" last): the owner has already been told,
+#     and only that ticket waits — every ticket that does not depend on it
+#     carries on. One that does depend on it, through blocked_by, is refused.
+# A repo without git, or a move that is not a start, is left entirely alone. A
+# ticket coming back from review or done — sent back by its reviewer, or by
+# merge.sh land because main moved — is not new work, so it is not a start.
+
+here="$(cd "$(dirname "$0")" && pwd)"
+# shellcheck source=lib.sh
+. "$here/lib.sh"
 
 unmerged=()
 if [ "$dest_status" = "in_progress" ] && [ "$current_status" != "in_progress" ] \
+  && [ "$current_status" != "review" ] && [ "$current_status" != "done" ] \
   && git rev-parse --git-dir > /dev/null 2>&1 \
   && git rev-parse --verify -q HEAD > /dev/null 2>&1; then
+
+  held_blockers=()
+  while IFS= read -r bid; do
+    [ -n "$bid" ] || continue
+    bfile="$(kerjaan_ticket_file "$board" "$bid" 2> /dev/null || true)"
+    [ "$(kerjaan_merge_state "$bfile")" = "held" ] && held_blockers+=("$bid")
+  done < <(awk '$0 == "---" { if (++fence == 2) exit; next }
+                fence == 1 && /^blocked_by:/ { print }' "$file" | grep -oE '[0-9]{12}' || true)
+  if [ "${#held_blockers[@]}" -gt 0 ]; then
+    echo "REFUSED: $id was not moved to in_progress." >&2
+    echo "It is blocked_by ${held_blockers[*]}, whose merge into main is held for the" >&2
+    echo "owner, so the work it depends on is not on main yet. It waits until the" >&2
+    echo "owner has settled that merge (see the Notes of ${held_blockers[*]})." >&2
+    exit 1
+  fi
 
   in_flight_ids=("$id")
   for st in in_progress review; do
@@ -259,6 +285,14 @@ if [ "$dest_status" = "in_progress" ] && [ "$current_status" != "in_progress" ] 
       done
     fi
     [ "$skip" -eq 1 ] && continue
+    bid="$(printf '%s' "$branch" | grep -oE '[0-9]{12}' | head -1 || true)"
+    if [ -n "$bid" ]; then
+      bfile="$(kerjaan_ticket_file "$board" "$bid" 2> /dev/null || true)"
+      if [ "$(kerjaan_merge_state "$bfile")" = "held" ]; then
+        echo "Note: $branch is not in HEAD, but its merge is held for the owner (ticket $bid); not waiting for it." >&2
+        continue
+      fi
+    fi
     unmerged+=("$branch")
   done < <(git for-each-ref --format='%(refname:short)' refs/heads)
 
@@ -305,8 +339,15 @@ if [ "$dest_status" = "review" ] && [ "$current_status" != "review" ]; then
     exit 1
   fi
   if git rev-parse --git-dir > /dev/null 2>&1; then
-    here="$(cd "$(dirname "$0")" && pwd)"
     "$here/explain.sh" gate "$id" || exit 1
+    # Work done on a branch of its own goes to review only once it holds all
+    # of main's code and the latest test run passed on exactly that content,
+    # so the reviewer judges what main will get (merge.sh). The commit it
+    # covers is recorded; merge.sh land merges that commit and nothing else.
+    if ! review_record="$("$here/merge.sh" check "$id" --gate)"; then
+      echo "REFUSED: $id was not moved to review; see above." >&2
+      exit 1
+    fi
   fi
 fi
 
@@ -399,6 +440,10 @@ append_note() {
     printf '%s\n' "$1" >> "$file"
   fi
 }
+
+if [ -n "${review_record:-}" ]; then
+  append_note "$review_record"
+fi
 
 if [ "${#unmerged[@]}" -gt 0 ]; then
   append_note "- $now: started while these branches held unmerged work, acknowledged with --ack-unmerged: ${unmerged[*]}"

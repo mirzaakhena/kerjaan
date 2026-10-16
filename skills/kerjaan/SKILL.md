@@ -28,6 +28,8 @@ K="${CLAUDE_PLUGIN_ROOT}/skills/kerjaan/scripts"      # always run from the repo
 "$K/ticket-size.sh" 260905160401                                   # size check alone, changes nothing
 "$K/test-run.sh" 260905160401                                      # run test_command, record it
 "$K/worktree.sh" add 260905160401 ../repo-topic                    # worktree for side-by-side work
+"$K/merge.sh" sync 260905160401                                    # in the worktree: bring main in
+"$K/merge.sh" land 260905160401                                    # passed review: merge into main
 "$K/worktree.sh" remove 260905160401                               # its teardown, then remove it
 "$K/explain.sh" changes 260905160401                               # files and lines the ticket wrote
 ls .kerjaan/*/"260905160401 "*.md                                  # find by ID; the folder is its status
@@ -68,9 +70,11 @@ holds a `.gitkeep` so empty folders survive in git.
 
 `update-ticket.sh` enforces a few gates: starting while other work sits
 unmerged (see "Into `in_progress`"), reaching `review` from anywhere but
-`in_progress`, and reaching it without the owner's explanation when the board
-asks for one. It enforces no other sequence. The rest of "The life of a ticket"
-is yours to keep.
+`in_progress`, reaching it without the owner's explanation when the board
+asks for one, and — for work on a branch of its own — reaching it before the
+branch holds all of main's code and has passed its tests in that state
+(`references/parallel-work.md`). It enforces no other sequence. The rest of
+"The life of a ticket" is yours to keep.
 
 ### Settings
 
@@ -403,7 +407,9 @@ kept separate.
 
 **Is it ready?** Mechanical. All four must hold:
 
-- `blocked_by` is empty, or every ID in it is in `done/`. A blocker sitting in
+- `blocked_by` is empty, or every ID in it is in `done/` — and, when it was
+  worked on a branch, landed on main: a blocker whose merge is held for the
+  owner is not finished yet. A blocker sitting in
   `cancel/` does not count as finished: tell the user, and ask whether the
   dependency is gone (drop it from `blocked_by`) or this ticket should be
   cancelled too.
@@ -476,8 +482,12 @@ itself, before it dispatches the worker.
 
 **The script refuses the move while other work sits unmerged.** If any local
 branch holds commits outside `HEAD` — other than branches of tickets in
-`in_progress` or `review`, this ticket's own, and `long_lived_branches` in
-`settings.md` — `update-ticket.sh` prints them and changes nothing. That is how
+`in_progress` or `review`, this ticket's own, `long_lived_branches` in
+`settings.md`, and branches whose merge `merge.sh land` held for the owner —
+`update-ticket.sh` prints them and changes nothing. A held branch is named but
+not waited for: only its own ticket waits for the owner, and a ticket that
+lists it in `blocked_by` is refused. A ticket coming back from `review` or
+`done` is not a start, and is never refused here. That is how
 a ticket that passed review on a branch nobody merged gets noticed: at the
 moment somebody is deciding what happens next. Put the list to the owner and
 let them decide each branch: merge it, delete it, add it to
@@ -498,8 +508,11 @@ One ticket at a time is normal. Two tickets in the same `order.md` group are
 declared independent and may run side by side in separate git worktrees — but
 a worktree checks out a second copy of `.kerjaan/`, which silently disagrees
 with the first, and the scripts refuse to run there. The foreman creates the
-worktrees with `worktree.sh` and gives each worker its own; their test runs
-take turns unless `parallel_tests` says otherwise. **Read
+worktrees with `worktree.sh` and gives each worker its own; their test runs,
+and the reviewers', take turns unless `parallel_tests` says otherwise. Each
+worker brings main into its branch and tests the merged state before review,
+and once a ticket passes, the foreman lands it on main with `merge.sh land`
+right away, one at a time, without asking the owner. **Read
 `references/parallel-work.md` before creating a worktree.**
 
 ### Tickets whose work is a decision
@@ -557,6 +570,12 @@ so the handover waits for one run, not two. Committing after the run changes
 nothing; editing a line of code after it does, and costs the reviewer its own
 run. Do not touch the code while it runs: a run that saw its content change is
 recorded as proving nothing.
+
+Work on a branch of its own brings main in first (`merge.sh sync`, in its
+worktree) and runs the checks on that merged state; the move to review is
+refused until the branch holds all of main's code and the latest run passed on
+exactly what is committed there (`references/parallel-work.md`, "Back into
+main").
 
 **Then the owner's explanation**, when `owner_explanation` in `settings.md` is
 `allow-to-skip` or `strict`. A worker cannot reach the owner, so it commits the

@@ -38,8 +38,8 @@ Settings for this board, read by the kerjaan skill, its reviewer, and
   owner can keep one ticket whole with `update-ticket.sh <id> --accept-size`.
 - `parallel_tests` — whether test runs from different worktrees of this repo
   may overlap. `false`, the default, makes `test-run.sh` wait its turn: one
-  run at a time across the whole repository, and a run that had to wait says
-  so in the line it records. Set `true` only when the tests share nothing
+  run at a time across the whole repository, reviewers' runs included, and a
+  run that had to wait says so in the line it records. Set `true` only when the tests share nothing
   between worktrees — no fixed port, local database, fixed temp path or
   cache — for instance because they choose those from `KERJAAN_SLOT`.
 - `worktree_setup` — a command run inside every worktree `worktree.sh add`

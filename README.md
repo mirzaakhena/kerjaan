@@ -162,9 +162,13 @@ $K/ticket-size.sh 260905160401            # is it too big? changes nothing
 $K/test-run.sh 260905160401
 $K/test-run.sh --check 260905160401 HEAD  # SAME / DIFFERENT / NO EVIDENCE
 
-# a worktree for working two tickets side by side, and removing it again
+# a worktree for working two tickets side by side, and bringing its work back
 $K/worktree.sh add 260905160401 ../repo-topic
-$K/worktree.sh remove 260905160401
+$K/merge.sh sync 260905160401             # in the worktree: merge main in, before review
+$K/merge.sh land 260905160401             # passed review: into main, one at a time
+$K/merge.sh resolution 260905160401       # what a re-review reads after main moved
+$K/worktree.sh remove 260905160401        # a worktree given up on
+$K/test-run.sh --review 260905160401      # the reviewer's run, queued with the rest
 
 # the owner's explanation, when settings.md asks for one
 $K/explain.sh changes 260905160401        # files and line ranges the ticket wrote
@@ -356,10 +360,24 @@ anything else you decide: merge it, delete it, or start anyway with
 `--ack-unmerged`, which records the branches in the new ticket. Claude never
 passes that flag on its own.
 
+Each change is tested on its own branch, which proves it alone; two changes
+that pass alone can break each other once merged, without git noticing. So a
+branch reaches main only after it was tested with all of main inside it. The
+worker merges main in (`merge.sh sync`), resolves any conflict itself, and
+tests that state; the move to review is refused until the branch holds all of
+main's code and its latest test run covers exactly what is committed. Once the
+reviewer passes it, the foreman lands it with `merge.sh land`, right away and
+without asking the owner, one merge at a time — and without running the tests
+again, since what lands is exactly what was tested. When main has moved in
+the meantime, the ticket goes back to its worker to merge again, and the
+reviewer looks briefly at only the conflict resolution. A merge that fails
+for any other reason holds that one ticket for the owner, with the reason in
+its Notes; everything else carries on.
+
 A worktree separates files, not the ports, local databases and caches a test
 suite uses, so test runs from different worktrees take turns: `test-run.sh`
-holds one lock for the whole repository, and a run that had to wait says so in
-the line it records. A board whose tests share nothing sets
+holds one lock for the whole repository, the reviewer's runs included, and a
+run that had to wait says so in the line it records. A board whose tests share nothing sets
 `parallel_tests: true`. Each worktree gets a slot number and its ticket ID in
 `KERJAAN_SLOT` and `KERJAAN_TICKET`, to name its own port or database by. The
 worktrees are made with `worktree.sh`, which runs `worktree_setup` from

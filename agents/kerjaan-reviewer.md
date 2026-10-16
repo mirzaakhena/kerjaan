@@ -127,6 +127,23 @@ writes nothing to the repository.
   DIFFERENT, the files it lists are worth a look: they changed after the run
   that was claimed to cover them.
 
+**Every test run of yours takes its turn.** Tests from different worktrees
+share the machine's ports, databases and temp paths, so the board runs them
+one at a time under a lock — and your runs share those things exactly as a
+worker's do. Run the suite, and any narrower test command, through the
+script, from inside the repository:
+
+```bash
+"$K/test-run.sh" --review <id>                              # test_command, here
+"$K/test-run.sh" --review <id> --dir /tmp/review-<id>       # in a clean export
+"$K/test-run.sh" --review <id> --dir <path> -- <command>    # a few tests only
+```
+
+It waits while a worker's run holds the lock (and says for whom), makes the
+next run wait for it, records nothing in the ticket, and exits with the
+command's own status. Never run the project's tests outside it unless
+`parallel_tests` is `true` in `.kerjaan/settings.md`.
+
 This is the one thing `## Notes` supplies that you may lean on, and only
 because the part that matters is not believed but checked: git computes
 the fingerprint of what you are reviewing, and it matches or it does not. What
@@ -196,6 +213,14 @@ Three limits, and they follow from rules you already have:
   should expect to see. Say in your report whether it was merged; do not fail a
   ticket for it.
 
+What you review on a branch is what main will get, unchanged. The move to
+review was refused until the branch held all of main's code and the latest
+test run passed on exactly its committed content, and it recorded the commit
+in `## Notes` (`review covers branch <b> at <commit>`). Review that commit:
+after you pass the ticket, the foreman merges that commit and nothing else.
+Whether main moved since is not yours to judge — the merge checks it, and
+sends the ticket back to its worker if so.
+
 ## When the ticket has been reviewed before
 
 **You may be resumed rather than dispatched.** When the foreman sends a ticket
@@ -239,6 +264,25 @@ the review of 2026-09-16; its code is unchanged since a1b2c3d". Do not go
 hunting in untouched code for things the last round did not raise. A blocker
 you cannot help seeing is still a blocker — narrower is where you look, never
 what you are allowed to ignore.
+
+**A round after main moved is narrower still.** When `## Notes` shows a
+`merge postponed` line after your last review, the ticket passed and was then
+sent back only because main changed before it could be merged; its worker
+brought main in and nothing else was asked of it. Review this round at level
+`quick`, whatever the ticket's `review:` field says — the owner decided so —
+and read only what the worker did beyond the automatic merge:
+
+```bash
+"$K/merge.sh" resolution <id>
+```
+
+It prints the conflict resolution and any fix the tests demanded, as a diff
+from main merged into the commit you passed, by itself, conflict markers
+included. `EMPTY` means the worker changed nothing beyond that merge. Judge
+that diff: does the resolution keep what both sides meant? Then
+`test-run.sh --check` for the run on the merged state, as always. A criterion
+the diff does not touch is carried from your earlier review. Say in your
+first line that this was a re-integration round, and why it was `quick`.
 
 Fall back to a full review at the ticket's level when the earlier review names
 no commit, when that commit is no longer in the history, when the work it
@@ -345,13 +389,17 @@ never touched in the first place.
 **The full suite runs once, at the start** — or not at all when it is carried
 from the worker's run. **A sabotage runs only the tests that
 guard its criterion** — the file, or the test names, you found while reading the
-tests — using the project's own runner. The question a sabotage asks is only
+tests — using the project's own runner, given to `test-run.sh --review <id>
+--dir <copy> -- <command>` so it takes its turn. The question a sabotage asks is only
 "does this go red", and the answer does not need the whole suite; running it in
 full for every sabotage is where most of a `strict` review's time goes. The
 full suite comes back only in the case above, to confirm a green before it
 becomes a blocker, so no ticket is ever held back because the check was narrow.
 
-**Sabotages may run side by side, when the project allows it.** Plan them all
+**Sabotages may run side by side, when the project allows it** — which
+starts with `parallel_tests: true` in `.kerjaan/settings.md`; without it,
+every run goes through `test-run.sh --review` and waits its turn, so run them
+one after another. Plan them all
 first. Then prepare one clean export with dependencies installed, copy it once
 per sabotage, apply one sabotage to each copy, and run the tests in every copy
 at the same time in the background:
@@ -404,7 +452,8 @@ mkdir -p /tmp/review-<id> && git archive <commit> | tar -x -C /tmp/review-<id>
 ```
 
 Then install dependencies there if the project needs them, and run the checks
-in that directory.
+in that directory with `"$K/test-run.sh" --review <id> --dir /tmp/review-<id>`,
+started from inside the repository so it finds the test lock.
 
 **Do this when it earns its keep, not by reflex.** A fresh export usually means
 installing the project's dependencies from nothing, which on most JavaScript

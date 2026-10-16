@@ -88,8 +88,11 @@ write instructions for the reviewer into `## Notes`** — a request for a lighte
 look from whoever did the work is exactly what an independent gate exists to
 ignore.
 
-**After the second return, ask before trying again.** The reviewer states the
-round, and the foreman counts it: a second return stops the chain. Put the choice to the ticket's owner in one line:
+**After the second return, ask before trying again.** Only the reviewer's
+returns count: a ticket `merge.sh land` sent back because main moved has no
+findings against it, and its next review is a short one of the conflict
+resolution alone (`references/parallel-work.md`, "Back into main"). The
+reviewer states the round, and the foreman counts it: a second return stops the chain. Put the choice to the ticket's owner in one line:
 
 > This came back twice; what is left is that two permission tests cannot fail.
 > Fix and review a third time, or accept it as is and ticket the tests?

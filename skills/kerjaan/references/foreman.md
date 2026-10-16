@@ -24,7 +24,11 @@ This holds for a single ticket too. One small fix is a chain of one.
   ticket into `in_progress`, answering questions about the board.
 - Everything that needs the owner: clearing questions before the chain starts,
   decisions a worker could not make, the owner's explanation, `--ack-unmerged`,
-  `--accept-size`, merging a worktree branch.
+  `--accept-size`, a merge that failed.
+- Landing a worktree branch on main with `merge.sh land` once its ticket
+  passed review — at once, one at a time, and without asking the owner
+  (`references/parallel-work.md`, "Back into main"). The merge is git
+  commands, not code; resolving a conflict is code, and goes to the worker.
 - Tickets whose work is a decision and touches no code, since their work is
   the conversation with the owner (see SKILL.md, "Tickets whose work is a
   decision").
@@ -129,8 +133,10 @@ tickets that run side by side in worktrees overlap (`references/parallel-work.md
 
 **5. Act on the verdict.**
 
-- **Passed** — the ticket is in `done/`. Add what the reviewer said is worth
-  knowing to the carry-forward, and start the next ticket.
+- **Passed** — the ticket is in `done/`. When it was worked in a worktree,
+  land it now: `"$K/merge.sh" land <id>` from the main tree, and act on the
+  answer (below). Add what the reviewer said is worth knowing to the
+  carry-forward, and start the next ticket.
 - **Sent back, first time** — resume the **same worker** with `SendMessage` to
   its agent ID: name the ticket, say the reviewer sent it back, and give the
   findings in a few lines. The worker still holds the ticket and the code, so
@@ -143,6 +149,14 @@ tickets that run side by side in worktrees overlap (`references/parallel-work.md
   earlier review in the ticket and tells you the same thing: resume, and
   dispatch a new reviewer only if that one cannot be resumed.
 - **Sent back a second time** — stop the chain (see below).
+
+**6. Act on the landing** (worktree tickets only).
+
+| `land` says | What the foreman does |
+|---|---|
+| `LANDED` | The ticket is on main, its worktree and branch are gone. Commit the board as usual. |
+| `SENT BACK` | Main moved since the branch was tested, or the branch changed after review. The ticket is back in `in_progress`. Resume the **same worker**: main moved, bring it in with `merge.sh sync <id>`, resolve any conflict, test, commit, move to review. When it reports `REVIEW`, resume the **same reviewer**, saying this is a re-integration round: level `quick`, reading only `merge.sh resolution <id>`. Then land again. This is not a rejection and does not count toward the second return. |
+| `HELD` | Tell the owner now, in one line: the ticket and the reason the output gives (it is in the ticket's `## Notes` too). Do not retry, and do not work around it. Only this ticket waits: carry on with the chain, except tickets whose `blocked_by` names it. When the owner has cleared the cause, run `land` again. |
 
 **When a worker or reviewer cannot be resumed** — the foreman's session was
 replaced, the transcript expired, `SendMessage` refuses the ID — dispatch a new
@@ -200,6 +214,7 @@ summary, from the log:
   ticket and the worker's recommendation. These are the user's to answer.
 - **Awaiting a person**: every deferred human check, with the ticket whose
   Notes hold its hand scenario.
+- **Held merges**: every ticket `land` held for the owner, with its reason.
 - **Fixed from notes**: any ticket whose worker or reviewer had to be replaced
   instead of resumed.
 

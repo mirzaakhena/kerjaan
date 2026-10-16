@@ -1,7 +1,8 @@
 # shellcheck shell=bash
 #
 # Shared pieces for the kerjaan scripts that deal with more than one working
-# copy of a repo at once. Sourced, never run:
+# copy of a repo at once, and with bringing their work back to main. Sourced,
+# never run:
 #
 #   . "$(dirname "$0")/lib.sh"
 #
@@ -10,6 +11,11 @@
 #   kerjaan_lock_acquire <name> <who>  wait for a named lock shared by every
 #   kerjaan_lock_release <name>        worktree of this repository, then hold it
 #   kerjaan_slot                       this worktree's slot number
+#   kerjaan_ticket_file <board> <id>   the ticket's path
+#   kerjaan_ticket_branch <id>         the branch carrying the ticket's ID
+#   kerjaan_tree_without_board <tree>  a tree with .kerjaan/ left out
+#   kerjaan_append_note <file> <note>  a line at the end of ## Notes
+#   kerjaan_merge_state <file>         held / postponed / landed (merge.sh)
 #
 # Why locks and slots live together: both are shared by every worktree of one
 # repository, so both are kept in git's common directory — the one `.git`
@@ -165,4 +171,70 @@ kerjaan_slot() {
   esac
   kerjaan_lock_release slots
   echo "$n"
+}
+
+# --- tickets, branches and merge records -------------------------------------
+# Used by merge.sh, and by update-ticket.sh at the two gates that depend on
+# where a ticket's branch stands: the move to review and the start of a ticket.
+
+# Prints the path of the ticket with <id> on the board <board>, or nothing.
+# Returns 2 when the ID is used by more than one ticket.
+kerjaan_ticket_file() {
+  local board="$1" id="$2" f found=""
+  for f in "$board"/*/"$id "*.md; do
+    [ -e "$f" ] || continue
+    [ -z "$found" ] || return 2
+    found="$f"
+  done
+  [ -z "$found" ] || printf '%s\n' "$found"
+}
+
+# Prints the local branch whose name carries <id> (the only link between a
+# branch and a ticket; see references/parallel-work.md), or nothing. Returns 2
+# when more than one branch carries it.
+kerjaan_ticket_branch() {
+  local branches
+  branches="$(git for-each-ref --format='%(refname:short)' refs/heads | grep -F "$1" || true)"
+  [ -n "$branches" ] || return 0
+  [ "$(printf '%s\n' "$branches" | wc -l | tr -d ' ')" -eq 1 ] || return 2
+  printf '%s\n' "$branches"
+}
+
+# Prints <tree> with `.kerjaan` dropped from its top level, as a tree ID. The
+# board always sits at the repository root, so one level is enough. Code is
+# compared this way everywhere, because board moves are committed on main all
+# the time and never change what the code does.
+kerjaan_tree_without_board() {
+  git ls-tree "$1" | awk -F '\t' '$2 != ".kerjaan"' | git mktree
+}
+
+# Appends <note> to the ticket <file>; Notes is always its last section. A
+# Notes section holding only "(none yet)" has that line replaced.
+kerjaan_append_note() {
+  local file="$1" note="$2" tmp
+  if [ "$(awk 'NF { last = $0 } END { print last }' "$file")" = "(none yet)" ]; then
+    tmp="$(mktemp)"
+    awk -v note="$note" '{ lines[NR] = $0; if (NF) lastnf = NR }
+      END { for (i = 1; i <= NR; i++) print (i == lastnf ? note : lines[i]) }' "$file" > "$tmp"
+    cat "$tmp" > "$file"
+    rm -f "$tmp"
+  else
+    printf '%s\n' "$note" >> "$file"
+  fi
+}
+
+# Prints where the ticket <file> stands with merge.sh land, from the last
+# record land wrote into its Notes: `held` (waiting for the owner),
+# `postponed` (sent back to be brought up to date), `landed`, or nothing when
+# land never ran on it. The records are fixed English lines whatever the
+# board's language, like test-run.sh's.
+kerjaan_merge_state() {
+  [ -f "$1" ] || return 0
+  grep -E '^- [0-9]{4}-[0-9]{2}-[0-9]{2} [0-9:]{8}: (merge held for the owner|merge postponed|landed on) ' "$1" \
+    | tail -1 \
+    | sed -E -e 's/^[^:]*:[0-9]{2}:[0-9]{2}: //' \
+        -e 's/^merge held for the owner .*/held/' \
+        -e 's/^merge postponed .*/postponed/' \
+        -e 's/^landed on .*/landed/' \
+    || true
 }

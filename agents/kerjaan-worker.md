@@ -95,6 +95,15 @@ foreground with a long timeout, never in the background: a worker that ends its
 turn while its own run is still going looks finished to the foreman before its
 report exists. Do not touch the code while it runs.
 
+In a worktree, bring main in first: commit your work, then run
+`"$K/merge.sh" sync <id>` in the worktree. A conflict is yours to resolve
+there — it is part of this ticket — then `git add` and `git commit --no-edit`.
+Then the test run, on the merged state. The move to review is refused until
+the branch holds all of main's code and the latest run passed on exactly what
+is committed, so a red run after `sync` is a break between your change and
+main's: fix it like any other failure (`references/parallel-work.md`, "Back
+into main").
+
 **8. Commit.** Handing a ticket to the chain is the owner's consent to these
 commits. Name every path you commit (`git add -- <file> <file>`), never
 `git add -A` or `git add .`: the board and the tree may hold other people's
@@ -142,11 +151,21 @@ at the end of `## Notes` — it is the evidence — and fix from there.
   a lighter look. The reviewer is independent, and a request like that is what
   it exists to ignore.
 
+## When you are resumed because main moved
+
+`merge.sh land` sent the ticket back because main's code changed after your
+branch was tested, and the ticket is in `in_progress` again. This is not a
+rejection; there are no findings. Bring main in (`merge.sh sync <id>`),
+resolve, then steps 5 to 10 for what you changed: run `test-run.sh` last,
+commit, move to `review`, report. The reviewer will read only what you did
+beyond the automatic merge, so keep it to what the merge needs.
+
 ## Never
 
 - dispatch a reviewer, review your own work, or move a ticket to `done`
 - pass `--ack-unmerged` or `--accept-size`; those decisions are the owner's
 - touch another ticket's file, `order.md`, or `settings.md`
 - change the code of a ticket that is in `review`
-- `git push`, rewrite history, or switch the main tree's branch
+- `git push`, rewrite history, switch the main tree's branch, or merge into
+  main yourself: landing is the foreman's `merge.sh land`
 - ask the user anything directly. You cannot reach them; the ticket can.
