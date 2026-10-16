@@ -6,7 +6,7 @@ labels: [sesi-a192c9e8, scripts, parallel]
 reporter: mirza
 assign_to: claude
 created: 2026-10-16 14:19:06
-updated: 2026-10-16 16:07:04
+updated: 2026-10-16 16:10:08
 related: [261016141914, 261016141915]
 blocked_by: []
 ---
@@ -53,6 +53,7 @@ yang jelas.
 - 2026-10-16 14:46:20 todo
 - 2026-10-16 15:46:25 a192c9e8-0bb5-4bbf-8d56-9831b23e62ec in_progress
 - 2026-10-16 16:07:04 a192c9e8-0bb5-4bbf-8d56-9831b23e62ec review
+- 2026-10-16 16:10:08 a192c9e8-0bb5-4bbf-8d56-9831b23e62ec done
 
 ## Notes
 - Berasal dari penilaian independen atas skill kerjaan di sesi Claude Code
@@ -112,3 +113,19 @@ yang jelas.
     dipindah/disegarkan dari main tree; itu yang dijaga uji kedua dan yang
     merah tanpa kunci.
 - 2026-10-16 16:06:51: test run — `node --test` exited 0 after 3m47s, on content fingerprint 067fc045df6622b488892fba733433822e589418 (the same before and after the run; .kerjaan/ left out).
+- 2026-10-16: Reviewed at level normal, round 1, at commit 4f24a0e (pekerjaan di cc7406a, langsung di main, tanpa worktree): perubahan dibaca baris demi baris terhadap setiap butir `Done when`, uji kunci dijalankan sendiri, dan untuk butir 2 penilai sengaja melangkah lebih jauh dari normal (merusak kunci di salinan terpisah) karena diminta menilai apakah butir itu benar-benar terbukti.
+  - Suite penuh tidak dijalankan ulang: `test-run.sh --check 261016141902 HEAD` menjawab SAME — isi yang ditinjau persis isi yang diuji pada 2026-10-16 16:06:51 (fingerprint 067fc045df6622b488892fba733433822e589418, `node --test` exit 0). Hasil itu dipakai sebagai satu-satunya putaran suite penuh.
+  - `node --test uji/kunci-papan.test.mjs` di working tree: 15 lulus, 0 gagal (53 detik).
+  - Proyek ini tidak punya `CLAUDE.md`/`AGENTS.md`; tidak ada aturan proyek tertulis yang diterapkan.
+  - Butir 1 (mulai bersamaan, keduanya hilang dari order.md) — terpenuhi. Seluruh `update-ticket.sh` kini berjalan di bawah kunci `board`, dari mencari tiket sampai menulis order.md; uji 8 putaran mulai bersamaan lulus.
+  - Butir 2 (hasil uji dua worktree selesai bersamaan, keduanya tercatat) — terpenuhi. Hasilnya benar: uji dua worktree mencatat kedua tiket tiga putaran berturut-turut. Ujinya sendiri lemah sebagai pengaman: penilai membuat `kerjaan_board_lock_try` langsung `return 0` di salinan `/tmp/review-261016141902` dan menjalankan dua uji hasil-uji tiga kali — uji "dua worktree" tetap hijau 3/3, sedangkan uji "tiket yang sama dipindah dari main tree saat itu" merah 3/3. Penyebabnya: dua tiket berbeda tidak pernah menulis berkas yang sama (penyegaran tanpa `--status` tidak menyentuh order.md), jadi tidak ada balapan yang bisa dijaga di situ. Balapan nyata untuk pencatatan hasil uji adalah dengan tiket yang sama, dan uji itu terbukti punya gigi, termasuk bahwa kunci benar-benar dipakai bersama antara worktree dan main tree. Ini catatan, bukan penghalang.
+  - Butir 3 (lewat batas waktu, pesan menyebut pemegang) — terpenuhi. Pesan "Gave up waiting for the … lock after Ns. It is held by …" beserta PID; diuji untuk kunci papan (update-ticket.sh dan test-run.sh) dan kunci uji, termasuk bahwa kunci pemegang tidak dihapus dan tidak ada yang berubah.
+  - Butir 4 (batas waktu bisa diatur, nilai bawaan tertulis di panduan) — terpenuhi. `lock_timeout` (120) dan `test_lock_timeout` (3600) dibaca dari settings.md, nilai tak sah jatuh ke bawaan, `0` tanpa batas; keduanya dijelaskan di `SETTINGS.md` dan `references/parallel-work.md`, dan ada uji yang mencocokkan angka bawaan skrip dengan panduan.
+  - Butir 5 (uji otomatis perpindahan bersamaan) — terpenuhi: `uji/kunci-papan.test.mjs` dan 3 uji baru di `uji/merge.test.mjs`.
+  - Catatan: `merge.sh land` menghitung path `$ticket` sebelum mengambil kunci papan, berbeda dengan `test-run.sh` yang mencari tiket ulang di dalam kunci. Tiket di tahap itu ada di done/ dan jarang dipindah bersamaan, jadi ini bukan temuan yang menghalangi.
+  - Tidak diverifikasi dengan menjalankan sesuatu: tidak ada; semua butir diperiksa lewat uji yang dijalankan atau hasil suite yang dibawa (SAME).
+
+### Suggested follow-up
+
+- **Uji "hasil uji dua worktree yang selesai bersamaan" tidak bisa merah.** Uji itu tetap lulus walaupun kunci papan dibuang, karena dua tiket berbeda tidak menulis berkas yang sama. Ia memberi rasa aman palsu bila dibaca sebagai pengaman kunci. Layak dijadikan tiket: ubah uji itu agar kedua worktree juga menyentuh berkas bersama (misalnya keduanya disegarkan dengan perpindahan yang menulis order.md), atau ganti namanya agar jelas ia hanya memeriksa hasil akhir, bukan kuncinya.
+- **`merge.sh land` mencatat ke path tiket yang dibaca sebelum kunci diambil.** Bila tiket dipindah folder di antara keduanya, catatan landed/held/postponed bisa gagal ditulis. Layak dijadikan tiket: cari tiket ulang di dalam kunci, seperti yang sudah dilakukan `test-run.sh`.
