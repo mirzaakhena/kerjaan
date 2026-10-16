@@ -1,9 +1,8 @@
 Batch penilaian skill (sesi a192c9e8). 261016141916 tidak ada di sini: tiket keputusan itu dijalankan langsung dari backlog di awal rantai, selama pemilik hadir.
 
 **Aturan antrean dan review.** Ketiganya tidak saling menunggu hasil; 261016141912 dan 261016141905 berbagi queue.sh, uji/queue.test.mjs, ordering-the-queue.md, kerjaan-planner.md dan SKILL.md, 261016141905 dan 261016141906 berbagi foreman.md, review.md dan kerjaan-worker.md, 261016141912 dan 261016141906 berbagi parallel-work.md, jadi 261016141912 digabung lebih dulu, lalu 261016141905 digabung sebelum 261016141906.
-<!-- lands-first: 261016141905, 261016141906 -->
+<!-- lands-first: 261016141906 -->
 
-- 261016141905 Syarat tiket siap dikerjakan hanya punya satu definisi
 - 261016141906 Putaran review dihitung sama oleh mandor, peninjau, dan hook
 
 **Aturan commit, jalan pintas pemilik, dan hook pengingat peninjau.** Ketiganya tidak saling menunggu hasil; 261016141907 dan 261016141908 berbagi SKILL.md, foreman.md, kerjaan-worker.md, merge.sh dan uji/merge.test.mjs, dan 261016141913 berbagi foreman.md dengan keduanya, jadi 261016141907 digabung lebih dulu, lalu 261016141908 digabung sebelum 261016141913.
