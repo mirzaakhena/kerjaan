@@ -6,7 +6,7 @@ labels: [paralel, antrean]
 reporter: mirza
 assign_to: claude
 created: 2026-10-16 12:24:02
-updated: 2026-10-16 13:03:56
+updated: 2026-10-16 13:04:17
 related: [261016095101]
 blocked_by: []
 ---
@@ -52,3 +52,4 @@ bila urutan penggabungannya tidak tertulis.
   - Kriteria 3 (panduan menjelaskan cara menulisnya): terpenuhi. Bagian baru "Saying which lands first" di `ordering-the-queue.md` memuat tabel frasa, variasi yang diizinkan, contoh, aturan per pasangan, dan contoh yang ditolak; sebuah uji membaca contoh-contoh panduan itu dan memastikan `check` menerimanya, sehingga panduan dan skrip tidak bisa berselisih diam-diam.
   - Catatan, tidak menghambat: catatan pekerja bahwa `merge.sh sync` membawa file papan ke worktree tidak terlihat lagi sekarang — `.kerjaan/` tidak ada di disk worktree, `git status` bersih, dan sparse checkout masih `!/.kerjaan/`. Isi `.kerjaan/` di riwayat cabang hanyalah bawaan penggabungan main, dan tidak ikut dalam sidik uji. Hal ini tentang `merge.sh`, bukan tentang tiket ini.
   - Tidak ada kriteria yang hanya dinilai dengan membaca: ketiganya dijaga oleh uji yang ikut dalam jalanan yang terbawa tadi.
+- 2026-10-16 13:04:17: landed on main as b519b9f5fa1f3bdaac4f0e7abe3a6f7fb9dcf57f, merging tiket-261016122402 at 3b1466f600776152239e358b783930fe94542ab8; tests carried from the run on this exact content, not run again.
