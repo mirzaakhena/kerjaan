@@ -6,7 +6,7 @@ labels: [viewer, ux, mandor]
 reporter: mirza
 assign_to: claude
 created: 2026-10-16 08:42:23
-updated: 2026-10-16 09:58:01
+updated: 2026-10-16 10:00:22
 related: [261016084201, 261011064201]
 blocked_by: [261016084201]
 ---
@@ -66,6 +66,7 @@ Usulan tampilan (pelaksana boleh mengubah rinciannya selama hasilnya sama):
 - 2026-10-16 08:42:23 todo
 - 2026-10-16 09:13:10 in_progress
 - 2026-10-16 09:58:01 review
+- 2026-10-16 10:00:22 done
 
 ## Notes
 - Temuan mandor 2026-10-16, dari sesi `4dbcf082-290a-4f65-845c-ee75fd3b3e9c`
@@ -210,3 +211,18 @@ Usulan tampilan (pelaksana boleh mengubah rinciannya selama hasilnya sama):
     Yang harus terlihat: hijau = sedang bekerja, kuning = diam, merah = berhenti
     sementara tiket masih menunggu; merah paling mencolok di kedua tema.
 - 2026-10-16 09:57:49: test run — `node --test` exited 0 after 0m22s, on content fingerprint 80a5ad64efbc10d3e37bebe1e3d902459c0d2330 (the same before and after the run; .kerjaan/ left out).
+- Review 2026-10-16 — Ditinjau pada tingkat normal, putaran 1, pada commit a4abd89 (kerja di 51bd223, langsung di `main`, tanpa cabang atau worktree terpisah): pemeriksaan proyek tidak dijalankan ulang karena hasil worker terbukti mencakup isi yang sama; setiap butir Done when dibuktikan dengan menjalankan sesuatu. Keputusan: lolos, pindah ke done.
+  - Pemeriksaan proyek: `test-run.sh --check 261016084202 HEAD` dan pada pohon kerja → SAME. `node --test` dari worker (2026-10-16 09:57:49, sidik 80a5ad64efbc10d3e37bebe1e3d902459c0d2330, keluar 0) dipakai, tidak diulang.
+  - `node --test viewer/uji/agen-papan.test.mjs` dijalankan sendiri untuk memastikan uji peramban sungguh berjalan (Chrome terpasang): 12 lulus, 0 dilewati.
+  - Butir 1–3 (kartu worker, berganti sendiri, reviewer di review): diuji di peramban sungguhan oleh uji "kartu: …" (baris ada sejak kartu digambar, langkah berganti < 6 dtk tanpa memuat ulang, fokus tetap). Juga dicoba pada catatan sungguhan (hanya baca): `readAgents` untuk repo ini menampilkan reviewer tiket ini sendiri, langkah yang sedang dijalankan, `ended: null`; nukitu-mockup 265 tiket terbaca dalam ≈ 1,1 dtk tanpa galat.
+  - Butir 4 (laci, ±15 langkah, jam, lama berjalan): uji laci 1280×800 dan 390×844 lulus; `api/agen/<ID>` mengembalikan langkah dengan jamnya.
+  - Butir 5: bagian yang bisa diotomatiskan terbukti — uji "penanda: …" membandingkan warna titik dengan `--agen-jalan`, `--agen-diam`, `--agen-berhenti` (tiga warna berbeda), merah berlatar dan tepi kartu merah hanya untuk yang berhenti. Kesan "paling mencolok" di tampilan nyata, terang/gelap: **menunggu mirza**; keputusan mirza 2026-10-16 ada di Notes dan skenario uji manual 1–7 di Notes bisa diikuti dan berakhir pada apa yang harus terlihat. Tidak menghalangi.
+  - Butir 6 (privasi): dicoba sendiri dengan catatan buatan berisi penanda rahasia di prompt, pikiran, teks, `input.command` (termasuk Bash tanpa description dan dengan description), hasil alat, `content` Write, `old_string`/`new_string` Edit, URL dan prompt WebFetch, pola Grep, masukan alat MCP, prompt Agent, dan langkah yang ditambahkan selagi halaman terbuka. Isi `api/papan`, `api/tiket/<ID>`, `api/agen/<ID>` dan `event: agen` di SSE digabung lalu dicari: tidak satu pun penanda rahasia keluar. Yang keluar hanya nama alat, `description`, dan nama berkas.
+  - Aturan jalur di `viewer/app.mjs`: `api/agen` hanya menerima ID 12 digit (`/^\d{12}$/`) dan ID itu hanya dipakai sebagai kunci peta, tidak pernah digabung ke jalur berkas. `/p/api/agen/..%2f..%2fetc` dan `/p/api/agen/../../etc/passwd` → 404.
+  - Butir 7: dicoba sendiri dengan baris bukan JSON, `null`, `[]`, `content` berupa teks, waktu rusak, meta rusak, catatan berisi sampah saja, catatan tanpa izin baca (chmod 0), meta dan catatan berupa folder: semua endpoint 200, tiket itu `agent: null`, tiket lain tetap tampil. Uji "catatan rusak …" di peramban juga lulus.
+  - Butir 8: lihat baris pertama (dibawa dari hasil worker, SAME).
+  - Uji dibaca untuk mencari pernyataan kosong: uji privasi, kartu, pembaruan langsung, dan penanda memeriksa isi dan warna yang sebenarnya, bukan sekadar tidak galat. Tidak ditemukan uji kosong.
+  - Catatan (tidak menghalangi):
+    - Berkas di luar proyek tampil hanya dengan nama berkasnya (mis. `/etc/x.txt` → `x.txt`); folder di luar proyek tidak terlihat. Sesuai maksud.
+    - `description` Bash ditulis oleh agen sendiri dan tampil apa adanya (dipotong 160 karakter). Request memang meminta keterangan langkah ditampilkan; bila agen menulis hal sensitif di keterangannya, itu akan terlihat.
+    - Batas yang sudah dicatat worker: hanya sesi Claude Code yang dimulai di folder proyek itu sendiri yang terbaca.
