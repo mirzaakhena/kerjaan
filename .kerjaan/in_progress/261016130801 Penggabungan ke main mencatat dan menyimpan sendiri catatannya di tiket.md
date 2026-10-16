@@ -6,7 +6,7 @@ labels: [paralel, mandor]
 reporter: mirza
 assign_to: claude
 created: 2026-10-16 13:08:01
-updated: 2026-10-16 13:08:28
+updated: 2026-10-16 13:54:35
 related: [261016101001, 261016122401]
 blocked_by: []
 ---
@@ -46,7 +46,10 @@ berikutnya bisa langsung berjalan.
 
 ## History
 - 2026-10-16 13:08:01 backlog
+- 2026-10-16 13:54:34 todo
+- 2026-10-16 13:54:35 in_progress
 
 ## Notes
 - 2026-10-16 Berasal dari saran reviewer 261016122401 dan pengamatan mandor
   saat menggabungkan 261016122402 dan 261016122401.
+- 2026-10-16 13:54:33: files estimated to change: `skills/kerjaan/references/parallel-work.md`, `skills/kerjaan/scripts/merge.sh`, `uji/merge.test.mjs`
