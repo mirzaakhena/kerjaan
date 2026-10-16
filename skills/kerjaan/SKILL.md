@@ -38,6 +38,7 @@ K="${CLAUDE_PLUGIN_ROOT}/skills/kerjaan/scripts"      # always run from the repo
 "$K/queue.sh" answer 260905160401 2 "<answer>"                     # the owner's answer to question 2
 "$K/queue.sh" check                                                # todo and order.md fit to work from?
 "$K/queue.sh" compare 260905160401                                 # estimate against what really changed
+"$K/release.sh" unreleased                                         # done tickets no release carries yet
 ls .kerjaan/*/"260905160401 "*.md                                  # find by ID; the folder is its status
 ```
 
@@ -670,7 +671,13 @@ knows the work better than any session after it will. Use that before the
 conversation ends, without waiting to be asked:
 
 1. Offer the reviewers' suggested follow-ups (`references/review.md`).
-2. Dispatch the planner for the next batch (`references/foreman.md`, "Filling
+2. Run `"$K/release.sh" unreleased`. When it lists tickets not marked
+   `(board only)`, name them to the owner and offer a release: until one is
+   made, whoever runs what the project ships does not have their work. A yes
+   makes the release a ticket like any other, through a worker; its release
+   commit names the ID of every ticket it carries. `NO RELEASE`, or only
+   board-only tickets: say nothing.
+3. Dispatch the planner for the next batch (`references/foreman.md`, "Filling
    the queue"), giving it what you now know: what just finished and the
    carry-forward — what the finished work made possible, cheaper, or urgent.
    Relay its proposal and questions to the owner.

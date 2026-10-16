@@ -184,6 +184,9 @@ $K/queue.sh answer 260905160401 1 "<answer>"
 $K/queue.sh check                         # todo and order.md ready? READY / NOT READY
 $K/queue.sh compare 260905160401          # estimate against what really changed
 
+# finished tickets that no release carries yet
+$K/release.sh unreleased                  # LAST RELEASE, then UNRELEASED: <n> and the tickets
+
 # the owner's explanation, when settings.md asks for one
 $K/explain.sh changes 260905160401        # files and line ranges the ticket wrote
 $K/explain.sh check 260905160401          # the explanation holds the owner's words
@@ -567,6 +570,34 @@ A checklist that only describes the happy path stays unblocked even at
 `strict`, which will verify that happy path thoroughly and pass. If an
 unvalidated input is what worries you, the fix is a criterion that says so —
 not a deeper review.
+
+## Releasing a new version
+
+A Claude Code session does not run this repository. It runs the copy of the
+plugin that `/plugin install` put on the machine, and `/plugin update`
+replaces that copy only when the `version` in `.claude-plugin/plugin.json` has
+changed. So a ticket that passed review and sits on main is in effect for
+nobody until a release carries it, and nothing fails to say so.
+
+**When to bump the version.** Whenever main holds finished tickets that change
+what the plugin ships — anything under `skills/`, `agents/`, `hooks/` or
+`viewer/` — release before expecting any session to behave differently. At the
+latest, release when a batch ends: the foreman runs `release.sh unreleased`
+once the board goes quiet, names the tickets no release carries, and offers
+one. Tickets that changed only the board (`.kerjaan/`) or only the tests
+(`uji/`) need no release; the script marks the board-only ones.
+
+- **patch** (1.12.0 → 1.12.1): fixes that change no rule a session follows;
+- **minor** (1.12.0 → 1.13.0): new behaviour, a new script, a new setting;
+- **major** (1.x → 2.0.0): existing boards or settings must be changed by hand.
+
+**How.** One commit that raises `version` in `.claude-plugin/plugin.json`
+(`marketplace.json` carries no version and stays as it is), with the message
+`Release x.y.z` followed by a summary in Indonesian of what changed, naming the
+ID of every ticket it carries. `release.sh` reads those IDs, together with
+what was already in `done/` at that commit, to tell released tickets from the
+rest. Then the owner pushes main, runs `/plugin update kerjaan`, and starts a
+new session: one that is already open keeps the copy it started with.
 
 ## Design principles
 
