@@ -6,7 +6,7 @@ labels: [sesi-a192c9e8, tests]
 reporter: mirza
 assign_to: claude
 created: 2026-10-16 14:19:08
-updated: 2026-10-16 17:31:44
+updated: 2026-10-16 18:22:13
 related: [261016141901, 261016141902, 261016141914]
 blocked_by: []
 ---
@@ -146,3 +146,21 @@ menjalankan suite tertulis dengan jelas.
     dibebani proses lain, untuk angka sesudah yang sebanding dan bukti hijau.
     Semua uji baru lulus di setiap run itu kecuali yang dicatat 17:12, yang
     sudah diperbaiki sebelum run 17:17.
+- 2026-10-16 18:21:52: test run — `node --test` exited 1 after 31m13s, on content fingerprint 4388e0508dd7014bbbe9769ebccc35863e1ae702 (the same before and after the run; .kerjaan/ left out).
+- 2026-10-16 18:24: run ulang setelah mandor menghentikan proses `yes` (17:46).
+  Dimulai 17:50, saat beban 1 menit turun di bawah 15. Hasilnya keluar 1:
+  315 dari 316 lulus, termasuk semua uji tiket ini. Uji kunci-papan dan merge
+  yang ber-batas waktu kali ini lulus. Yang gagal adalah
+  `viewer/uji/pindah.test.mjs:205` "tombol proyek rapi di layar lebar, di
+  ponsel, dan di mode gelap", setelah 1,5 detik, dengan
+  `ENOTEMPTY: directory not empty, rmdir '…/kerjaan-chrome-U0Q48i/Default/Cache/Cache_Data/index-dir'`
+  saat membersihkan profil Chrome. Setelah semua 316 hasil keluar, proses
+  `node viewer/uji/pindah.test.mjs` (PID 24885) tidak berhenti: diam 30 menit
+  dengan CPU 0% dan port localhost:62998 masih terbuka, tanpa proses Chrome
+  anak. Proses itu anak dari run ini sendiri, jadi dihentikan dengan `kill`
+  pada 18:21 supaya test-run.sh selesai dan mencatat hasilnya (31m13s, hampir
+  seluruhnya waktu tergantung). Saat itu sebuah suite Playwright dari proyek
+  lain (pencatat-keuangan) juga sedang menjalankan chrome-headless-shell, dengan
+  beban ~40. Itu masalah pembersihan di uji viewer, bukan dari tiket ini.
+  Sesuai arahan mandor, run tidak diulang lagi. Angka "sesudah" yang sebanding
+  dengan 238 detik masih belum ada: run ini habis ~30 menit karena tergantung.
