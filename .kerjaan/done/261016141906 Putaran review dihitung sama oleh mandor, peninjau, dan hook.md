@@ -6,7 +6,7 @@ labels: [sesi-a192c9e8, review]
 reporter: mirza
 assign_to: claude
 created: 2026-10-16 14:19:06
-updated: 2026-10-17 04:14:31
+updated: 2026-10-17 04:15:44
 related: [261016141913, 261011083001]
 blocked_by: []
 ---
@@ -59,6 +59,7 @@ papannya.
 - 2026-10-16 14:46:22 todo
 - 2026-10-17 04:04:57 a192c9e8-0bb5-4bbf-8d56-9831b23e62ec in_progress
 - 2026-10-17 04:14:31 a192c9e8-0bb5-4bbf-8d56-9831b23e62ec review
+- 2026-10-17 04:15:44 a192c9e8-0bb5-4bbf-8d56-9831b23e62ec done
 
 ## Notes
 - Berasal dari penilaian independen atas skill kerjaan di sesi Claude Code
@@ -128,3 +129,41 @@ papannya.
     merge.sh, "re-integration" di parallel-work.md, judul lama di
     kerjaan-worker.md -> uji satu nama merah.
 - 2026-10-17 04:14:25: test run — `node --test --test-timeout=900000 --test-force-exit` exited 0 after 2m22s, on content fingerprint d792558e49e9f33c477f8c59241254ad0c206d1d (the same before and after the run; .kerjaan/ left out).
+- 2026-10-17: Reviewed at level quick, round 1, at commit 6e2de09: passed.
+  Level quick (field `review:` kosong): pemeriksaan proyek dihitung sekali dan
+  perubahan dibaca baris demi baris terhadap `Done when`. Ini putaran 1, belum
+  pernah ditolak. Kerja ada di main langsung (tidak ada cabang/worktree
+  bernama 261016141906); kode di commit e9126c5, 6e2de09 hanya memindah tiket.
+  - Uji: `test-run.sh --check 261016141906` → SAME. Uji tidak dijalankan
+    ulang; dibawa dari run pengerja 2026-10-17 04:14:25 (`node --test
+    --test-timeout=900000 --test-force-exit`, exit 0) pada sidik isi
+    d792558e49e9f33c477f8c59241254ad0c206d1d.
+  - `explain.sh` tidak ada di repo ini dan tiket tidak punya `## Explanation`;
+    tidak ada yang diperiksa di situ.
+  - Kriteria 1 terpenuhi: kalimat "a round ends with one rejection by the
+    reviewer" ada di `references/review.md` (bagian baru "Rounds"),
+    `references/foreman.md` (daftar tugas mandor) dan
+    `agents/kerjaan-reviewer.md` ("Count the rounds"), juga di komentar
+    `on-ticket-review.sh`; uji dokumen memeriksa ketiganya.
+  - Kriteria 2 terpenuhi: "the review after a merge postponed", tanpa nomor
+    putaran, di review.md, foreman.md, parallel-work.md, kerjaan-reviewer.md,
+    kerjaan-worker.md, cara-kerja-reviewer.md, merge.sh dan pesan hook.
+  - Kriteria 3 terpenuhi: baris pembuka tetap berbahasa Inggris, identik di
+    review.md dan kerjaan-reviewer.md, dengan larangan menerjemahkan; uji
+    dokumen membandingkan keduanya.
+  - Kriteria 4 terpenuhi: peninjau diarahkan mencari baris tetap itu (dengan
+    atau tanpa tanggal di depan), mengenali pembuka lama berbahasa papan
+    ("Ditinjau pada level …") dan `## History`; hook menghitung penolakan
+    dari History `review`→`in_progress` dan baris yang berakhir `sent back`,
+    diambil yang terbesar. Uji baru mencakup kasus "How to reproduce" dan
+    papan Indonesia dengan Notes saja. Bagian peninjau dinilai dengan
+    membaca; bagian hook dicakup uji yang lulus.
+  - Kriteria 5 terpenuhi: `grep` atas `SENT BACK:`, "re-integration",
+    "reintegration", "main moved" di skills/, agents/, docs/, README, hooks/,
+    viewer/ hanya menyisakan "main moved" sebagai sebab (README:464,
+    kerjaan-reviewer.md:221, parallel-work.md:270/287, komentar merge.sh),
+    bukan nama peristiwa. `merge.sh land` kini mencetak `MERGE POSTPONED:`.
+  - Catatan (tidak menahan): README.md:546 masih menulis "after two returns";
+    lebih tepat "after two rejections", agar searah dengan definisi baru.
+    SKILL.md:644-646 ("A returned ticket … the second round") tidak salah,
+    tetapi tidak menyebut bahwa merge postponed bukan putaran.
