@@ -6,7 +6,7 @@ labels: [paralel, mandor, uji]
 reporter: mirza
 assign_to: claude
 created: 2026-10-16 10:10:01
-updated: 2026-10-16 10:24:38
+updated: 2026-10-16 10:56:12
 related: [261016095101, 261016101002]
 blocked_by: []
 ---
@@ -49,10 +49,12 @@ sudah tergabung dengan semua yang sudah ada di main.
 - [ ] Bila tiket disesuaikan ulang setelah review dan kodenya berubah, reviewer memeriksa ulang bagian itu sebelum tiket digabung
 - [ ] Dua penggabungan ke main tidak pernah berjalan berbarengan
 - [ ] Pemilik diberi tahu bila penggabungan otomatis gagal, beserta tiket dan alasannya; hanya tiket itu yang ditahan, dan tiket lain yang tidak bergantung padanya tetap berjalan
+- [ ] Uji yang dijalankan reviewer ikut antre di kunci uji yang sama dengan uji pengerja, sehingga keduanya tidak pernah berjalan berbarengan
 
 ## History
 - 2026-10-16 10:10:01 backlog
 - 2026-10-16 10:24:38 todo
+- 2026-10-16 10:56:12 in_progress
 
 ## Notes
 - 2026-10-16 Keputusan pemilik dalam diskusi kerja paralel: penyesuaian ke
@@ -61,3 +63,4 @@ sudah tergabung dengan semua yang sudah ada di main.
   Ini mengubah aturan sekarang bahwa penggabungan menunggu persetujuan pemilik.
 - 2026-10-16 Keputusan mirza sebelum rantai dimulai: dikerjakan berurutan (101002, 101001, 095101) karena ketiganya mengubah panduan yang sama; review `normal`; tidak ada pemeriksaan yang hanya bisa dilakukan manusia; setelah ketiganya done, mandor merilis 1.12.0.
 - 2026-10-16 Keputusan mirza: bila penggabungan otomatis gagal, hanya tiket itu yang menunggu pemilik; antrean tidak berhenti total.
+- 2026-10-16 Tambahan dari mandor, berasal dari tindak lanjut review 261016101002: reviewer masih menjalankan uji di luar kunci uji, sehingga ujinya bisa bertabrakan dengan uji pengerja di salinan lain. Kunci dan slot tersedia di skills/kerjaan/scripts/lib.sh; nama kunci lain (misalnya `merge`) bisa dipakai untuk penggabungan berurutan.
