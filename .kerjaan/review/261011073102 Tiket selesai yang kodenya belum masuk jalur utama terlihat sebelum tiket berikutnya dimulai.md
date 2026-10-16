@@ -6,7 +6,7 @@ labels: []
 reporter: mirza
 assign_to: claude
 created: 2026-10-11 07:31:49
-updated: 2026-10-16 14:13:45
+updated: 2026-10-16 14:13:51
 related: [261006121504]
 blocked_by: []
 ---
@@ -42,6 +42,7 @@ masuk jalur utama, tanpa harus menunggu ada yang memulai tiket baru.
 - 2026-10-11 07:31:49 backlog
 - 2026-10-16 13:54:34 todo
 - 2026-10-16 13:54:36 in_progress
+- 2026-10-16 14:13:51 review
 
 ## Notes
 - Berasal dari CATATAN-BERIKUTNYA.md butir 3.
@@ -58,3 +59,4 @@ masuk jalur utama, tanpa harus menunggu ada yang memulai tiket baru.
 - 2026-10-16 Diperiksa sendiri di Chrome headless (lebar 1280 dan ponsel 375, terang dan gelap; `GABUNG_SHOT=<awalan>` menyimpan gambarnya): tanda terbaca di keempatnya, tetap di dalam kartu, nama cabang panjang patah di dalam kartu tanpa gulir samping, hanya kartu done yang cabangnya belum digabung yang bertanda.
 - 2026-10-16 14:11:03: test run — `node --test` exited 0 after 2m12s, on content fingerprint a932eacce2c682104cde7207f71c5ee313d8d51b (the same before and after the run; .kerjaan/ left out). Waited 0m39s for the test lock first, held by another run (ticket 261016130801, slot 1, /Users/mirza/Workspace/kerjaan-catatan-gabung).
 - 2026-10-16 14:13:45: test run — `node --test` exited 0 after 2m27s, on content fingerprint 4060d88317cf0d23c98beff11ecf88b87969f9df (the same before and after the run; .kerjaan/ left out).
+- 2026-10-16 14:13:51: review covers branch tiket-261011073102 at 1b77e64d7475cc8bc27aa1b6d7d933948945b323, which holds main at e43b0a9a8c118563f0d4992fa22d6d3984f68aca (code outside .kerjaan/); the latest test run passed on exactly this content.
