@@ -6,7 +6,7 @@ labels: [sesi-a192c9e8, tests]
 reporter: mirza
 assign_to: claude
 created: 2026-10-16 14:19:08
-updated: 2026-10-16 20:05:23
+updated: 2026-10-16 20:05:31
 related: [261016141901, 261016141902, 261016141914]
 blocked_by: []
 ---
@@ -40,6 +40,7 @@ menjalankan suite tertulis dengan jelas.
 - 2026-10-16 14:19:08 backlog
 - 2026-10-16 14:46:21 todo
 - 2026-10-16 16:28:28 a192c9e8-0bb5-4bbf-8d56-9831b23e62ec in_progress
+- 2026-10-16 20:05:31 a192c9e8-0bb5-4bbf-8d56-9831b23e62ec review
 
 ## Notes
 - Berasal dari penilaian independen atas skill kerjaan di sesi Claude Code
@@ -173,9 +174,7 @@ menjalankan suite tertulis dengan jelas.
     `node --test --test-timeout=900000 --test-force-exit` (dari 261016183501).
     Beban 1 menit sekitar 22–33, dari Chrome milik proyek lain; tidak ada proses
     di atas 50% CPU saat run dimulai. Dari 45 uji tambahan, 34 dari tiket ini;
-    sisanya dari 261016183501 dan tiket lain yang masuk sejak itu. Uji baru
-    tiket ini menambah sekitar 20 detik bila dijalankan sendiri, terutama dari
-    uji kunci segar new-ticket.sh yang menunggu ~4 detik.
+    sisanya dari 261016183501 dan tiket lain yang masuk sejak itu.
   - README: karena test_command papan berubah oleh 261016183501, kalimat "It
     is also this board's own test_command" diganti. Sekarang README menyebut
     test_command itu sebagai run yang sama dengan dua pengaman (Node 22 atau
