@@ -1,6 +1,6 @@
 ---
 language: Bahasa Indonesia
-test_command: node --test
+test_command: node --test --test-timeout=120000 --test-force-exit
 long_lived_branches: []
 owner_explanation: off
 explanation_translation: false
