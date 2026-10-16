@@ -6,7 +6,7 @@ labels: [viewer]
 reporter: mirza
 assign_to: claude
 created: 2026-10-16 10:53:31
-updated: 2026-10-16 12:40:55
+updated: 2026-10-16 12:41:47
 related: [261006121501]
 blocked_by: []
 ---
@@ -37,6 +37,7 @@ tanpa harus kembali ke daftar proyek.
 - 2026-10-16 10:53:31 todo
 - 2026-10-16 12:29:44 in_progress
 - 2026-10-16 12:40:55 review
+- 2026-10-16 12:41:47 done
 
 ## Notes
 Keputusan awal yang diambil saat tiket dibuat (bisa diubah pemilik):
@@ -87,3 +88,14 @@ Keputusan awal yang diambil saat tiket dibuat (bisa diubah pemilik):
     (`.pindah-menu[hidden]` dan `z-index` daftar) ternyata tidak berpengaruh,
     jadi keduanya dihapus.
 - 2026-10-16 12:40:48: test run — `node --test` exited 0 after 1m27s, on content fingerprint d0490ed9e23b8354dba39ff4813ee55a4c827f19 (the same before and after the run; .kerjaan/ left out).
+- 2026-10-16 Review (reviewer): Ditinjau pada tingkat quick, putaran 1, pada commit 082910a (pindah ke review di 233423d): pemeriksaan proyek tidak dijalankan ulang karena sudah dijalankan pekerja pada isi yang sama persis, lalu perubahan dibaca terhadap setiap butir `Done when`.
+  - Pemeriksaan: `test-run.sh --check 261016105301 233423d` dan untuk pohon kerja menjawab SAME — `node --test` lulus (exit 0) pada 2026-10-16 12:40:48 dengan sidik isi d0490ed9e23b8354dba39ff4813ee55a4c827f19; hasil itu dipakai, tidak dijalankan ulang. Chrome terpasang di mesin ini, jadi tes peramban di `viewer/uji/pindah.test.mjs` tidak terlewati. Tidak ada worktree atau cabang untuk tiket ini; pekerjaan ada di main. Proyek ini tidak punya CLAUDE.md atau AGENTS.md.
+  - Butir 1 (tombol di dekat nama): terpenuhi — tombol ▾ `#pindah` tepat sesudah `#name` di `proyek.html`.
+  - Butir 2 (hanya proyek aktif, yang dibuka ditandai): terpenuhi — `switchList` menyaring yang diarsipkan lewat `loadArchived()`, dan proyek yang dibuka diberi `aria-current` dan label "dibuka".
+  - Butir 3 (klik membuka papan): terpenuhi — tiap baris adalah tautan ke `/<proyek>/`.
+  - Butir 4 (urut nama, tanda 1–9 lalu a, b, c…): terpenuhi — urut `localeCompare`, tanda dari `KEYS`.
+  - Butir 5 (tekan tanda langsung pindah): terpenuhi — pendengar `keydown` di `proyek.js` memakai `keyTarget` lalu membuka papan.
+  - Butir 6 (tidak saat mengetik, tidak mengganggu Cmd/Ctrl+1): terpenuhi menurut kode — `keyTarget` mengembalikan null bila ada Cmd/Ctrl/Alt/Shift atau saat mengetik di input teks, textarea, select, contenteditable, dan dalam kasus itu `preventDefault` tidak pernah dipanggil, jadi peramban tetap menangani Cmd+1. Bahwa Cmd+1 benar-benar berpindah tab di jendela Chrome sungguhan tidak dicoba, baik oleh pekerja maupun peninjau; dari kode, halaman tidak menyentuh tekanan itu sama sekali.
+  - Butir 7 (rapi di ponsel dan mode gelap): dinilai dengan membaca CSS (memakai variabel tema, aturan khusus `max-width: 480px`) ditambah tes peramban 375 px terang dan gelap di dalam run yang dipakai tadi. Tampilan tidak dilihat sendiri oleh peninjau.
+  - Catatan (tidak memblokir): menekan tanda proyek saat laci tiket sedang terbuka juga memindah proyek; ini wajar menurut butir 5, hanya disebut agar diketahui.
+  - Keputusan: semua butir terpenuhi; tiket pindah ke done.
