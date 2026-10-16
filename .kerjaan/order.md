@@ -1,9 +1,5 @@
 Batch penilaian skill (sesi a192c9e8). 261016141916 tidak ada di sini: tiket keputusan itu dijalankan langsung dari backlog di awal rantai, selama pemilik hadir.
 
-**Lalu rilis, penghapusan penjelasan pemilik, dan uji skrip papan, bersamaan.** Rilis membawa grup pertama dan empat tiket sebelumnya, penghapusan membuat tiket aturan sesudahnya tidak perlu mengurus fitur itu, dan uji ditulis atas perilaku yang sudah diperbaiki; 261016141903 dan 261016141904 berbagi SKILL.md, README.md dan foreman.md, dan ketiganya berbagi README.md, jadi 261016141903 digabung lebih dulu, lalu 261016141915 digabung sebelum 261016141904.
-
-- 261016141904 Fitur penjelasan pemilik dihapus dari kerjaan
-
 **Aturan antrean dan review.** Ketiganya tidak saling menunggu hasil; 261016141912 dan 261016141905 berbagi queue.sh, uji/queue.test.mjs, ordering-the-queue.md, kerjaan-planner.md dan SKILL.md, 261016141905 dan 261016141906 berbagi foreman.md, review.md dan kerjaan-worker.md, 261016141912 dan 261016141906 berbagi parallel-work.md, jadi 261016141912 digabung lebih dulu, lalu 261016141905 digabung sebelum 261016141906.
 
 - 261016141912 Urutan penggabungan ditulis dengan penanda tetap, bukan kalimat bebas
