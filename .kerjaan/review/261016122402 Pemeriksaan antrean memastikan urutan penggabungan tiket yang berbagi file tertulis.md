@@ -6,7 +6,7 @@ labels: [paralel, antrean]
 reporter: mirza
 assign_to: claude
 created: 2026-10-16 12:24:02
-updated: 2026-10-16 13:02:40
+updated: 2026-10-16 13:02:46
 related: [261016095101]
 blocked_by: []
 ---
@@ -34,6 +34,7 @@ bila urutan penggabungannya tidak tertulis.
 - 2026-10-16 12:24:02 backlog
 - 2026-10-16 12:38:09 todo
 - 2026-10-16 12:42:17 in_progress
+- 2026-10-16 13:02:46 review
 
 ## Notes
 - 2026-10-16 Berasal dari catatan reviewer 261016095101.
@@ -43,3 +44,4 @@ bila urutan penggabungannya tidak tertulis.
 - 2026-10-16 Juga diubah di luar perkiraan: `agents/kerjaan-planner.md` (langkah 3 menunjuk ke bentuk kalimat yang dikenali).
 - 2026-10-16 Uji mutasi (setiap file disalin dulu dan dipulihkan dari salinan; uji `check:` di `uji/queue.test.mjs` dijalankan untuk masing-masing): semua 21 mutasi membuat uji merah — urutan tidak diwajibkan sama sekali; kedua "lebih dulu" diterima; `lands_before` selalu gagal / selalu cocok; `lands_first` selalu gagal; batas digit sebelum ID dibuang; batas digit sesudah ID kedua dibuang (awalnya hijau, lalu ditambah kasus `<id>9`); batas huruf sesudah frasa dibuang ("firstly"); kata boleh di antara ID dan frasa; markup di sekitar ID tidak diizinkan; huruf besar-kecil dibedakan; tanpa `mendarat`; `lebih` diwajibkan; tanpa `dahulu`; tanpa bentuk Indonesia "sebelum"; spasi/tab ganda tidak dirapatkan (awalnya hijau, lalu ditambah kasus spasi ganda dan tab); pemeriksaan "menyebut keduanya" dibuang; frasa hilang dari tabel panduan; contoh order.md di kepala panduan, contoh kutipan Inggris, dan contoh kutipan Indonesia masing-masing diubah menjadi tidak dikenali (contoh kepala panduan awalnya tidak diuji; kini diuji utuh).
 - 2026-10-16 13:02:40: test run — `node --test` exited 0 after 1m34s, on content fingerprint 13a30ea9cea38fdf63b94d3a40581521abc25f9d (the same before and after the run; .kerjaan/ left out).
+- 2026-10-16 13:02:46: review covers branch tiket-261016122402 at 3b1466f600776152239e358b783930fe94542ab8, which holds main at f55109eec5c64cfc87d26368f2496804cb5b693a (code outside .kerjaan/); the latest test run passed on exactly this content.
