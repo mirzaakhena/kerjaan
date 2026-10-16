@@ -6,7 +6,7 @@ labels: [sesi-a192c9e8, hooks, review]
 reporter: mirza
 assign_to: claude
 created: 2026-10-16 14:19:07
-updated: 2026-10-17 05:17:33
+updated: 2026-10-17 05:19:20
 related: [261016141906]
 blocked_by: []
 ---
@@ -49,6 +49,7 @@ ingat sendiri.
 - 2026-10-16 14:46:23 todo
 - 2026-10-17 04:55:21 e97c38bb-2b6f-487d-a8b0-2fdab5809ee3 in_progress
 - 2026-10-17 05:17:33 e97c38bb-2b6f-487d-a8b0-2fdab5809ee3 review
+- 2026-10-17 05:19:20 e97c38bb-2b6f-487d-a8b0-2fdab5809ee3 done
 
 ## Notes
 - Berasal dari penilaian independen atas skill kerjaan di sesi Claude Code
@@ -128,3 +129,38 @@ ingat sendiri.
        decision` (tiket tetap di `in_progress`): tidak ada pesan "Worker
        finished" dan tidak ada peninjau yang diutus.
 - 2026-10-17 05:17:29: test run — `node --test --test-timeout=900000 --test-force-exit` exited 0 after 2m17s, on content fingerprint 1788158536774f3959adf7e1ff24818bca23b8b8 (the same before and after the run; .kerjaan/ left out).
+- 2026-10-17: Reviewed at level normal, round 1, at commit 87d6e14: passed.
+  Level normal di sini berarti: uji proyek tidak dijalankan ulang karena sudah
+  terbukti mencakup isi yang sama, uji hook dijalankan sendiri dan dibaca
+  apakah sungguh bisa gagal, dan hook dicoba langsung dengan papan contoh.
+  - Uji penuh: `test-run.sh --check 261016141913 87d6e14` menjawab SAME, jadi
+    run pengerja 2026-10-17 05:17:29 (exit 0, sidik
+    1788158536774f3959adf7e1ff24818bca23b8b8) dipakai, tidak diulang.
+  - Dijalankan sendiri: `node --test --test-force-exit uji/on-ticket-review.test.mjs`
+    lewat `test-run.sh --review` -> 95 lulus, 0 gagal.
+  - Butir 1: menunggu mirza, sesuai keputusan pemilik 2026-10-16 14:45:50.
+    Skenario tangan di Notes bisa diikuti dan berakhir pada hal yang terlihat;
+    pesan di langkah 4 sama persis dengan `systemMessage` yang dicetak hook.
+    Dicoba sendiri tanpa sesi sungguhan: di papan contoh, `update-ticket.sh
+    <id> --status='review'` sungguhan, hook dengan `agent_id` mencatat agen,
+    lalu hasil alat Agent dari agen itu -> "Worker finished: Ticket ...
+    entered review — dispatching a reviewer.", dan catatannya terhapus.
+  - Butir 2: terpenuhi. Agen yang tidak memindahkan tiket, agen lain, sesi
+    lain, peluncuran latar belakang, dan prompt biasa yang mengutip
+    `<task-id>` tidak memicu apa pun (uji khusus untuk masing-masing).
+  - Butir 3: terpenuhi. Sebelas cara menulis (`"review"`, `'review'`,
+    `=review`, `="review"`, `='review'`, spasi ganda, tab, sebelum `|`, `&&`,
+    `;`) dijalankan lewat `update-ticket.sh` sungguhan dan dikenali;
+    `--status reviewed`, `=reviewer`, dan `--title review` tidak.
+    `update-ticket.sh` kini menerima `--status=`, dan menolak nilai kosong.
+  - Butir 4: terpenuhi. Uji dibaca: tiap uji memeriksa isi pesan (instruksi
+    putaran, ID tiket, jalur berkas), bukan sekadar tidak gagal.
+  - Hook kini berjalan di setiap prompt: dicoba 10 prompt biasa -> tidak ada
+    keluaran, exit 0, tidak ada berkas dibuat, sekitar 27 ms per prompt.
+  - Catatan, tidak menghalangi: `update-ticket.sh` dan `SKILL.md` berubah di
+    luar perkiraan berkas; perubahan `update-ticket.sh` memang dibutuhkan
+    butir 3. `--title=` dengan nilai kosong diterima, padahal `--status=`
+    kosong ditolak. Catatan agen yang tidak pernah selesai tertinggal di
+    `$TMPDIR/kerjaan-review-hook`; kecil dan dibersihkan sistem.
+  - Butir 1 belum dibuktikan di sesi sungguhan dengan plugin terpasang; itu
+    menunggu skenario tangan pemilik.
