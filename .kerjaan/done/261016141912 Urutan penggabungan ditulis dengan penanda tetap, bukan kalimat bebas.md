@@ -6,7 +6,7 @@ labels: [sesi-a192c9e8, queue, parallel]
 reporter: mirza
 assign_to: claude
 created: 2026-10-16 14:19:07
-updated: 2026-10-17 03:19:25
+updated: 2026-10-17 03:20:45
 related: [261016122402]
 blocked_by: []
 ---
@@ -39,6 +39,7 @@ apa pun bahasa papannya.
 - 2026-10-16 14:46:21 todo
 - 2026-10-17 02:57:25 a192c9e8-0bb5-4bbf-8d56-9831b23e62ec in_progress
 - 2026-10-17 03:19:25 a192c9e8-0bb5-4bbf-8d56-9831b23e62ec review
+- 2026-10-17 03:20:45 a192c9e8-0bb5-4bbf-8d56-9831b23e62ec done
 
 ## Notes
 - Berasal dari penilaian independen atas skill kerjaan di sesi Claude Code
@@ -68,3 +69,29 @@ apa pun bahasa papannya.
   - `update-ticket.sh`, ID tidak dicabut dari baris → merah: 5 uji update-ticket lands-first dan uji integrasi di queue.test.
   - baris kosong tidak dibuang (`if (0) next`) → merah: "a lands-first line left naming nobody goes".
 - 2026-10-17 03:19:22: test run — `node --test --test-timeout=900000 --test-force-exit` exited 0 after 2m22s, on content fingerprint ef0b39a47fbb92527d17b55fc88f070f81a584de (the same before and after the run; .kerjaan/ left out).
+
+### Review 2026-10-17
+
+Reviewed at level normal, round 1, at commit 5856617 (pekerjaan di a784b9a, langsung di main, tanpa worktree): seluruh uji proyek tidak dijalankan ulang karena hasil pengerja sudah mencakup isi yang sama persis, lalu setiap kriteria diperiksa dengan membaca perubahan, membaca ujinya, dan menjalankan pemeriksaan antrean di papan ini.
+
+- `test-run.sh --check 261016141912 HEAD` → SAME: run 2026-10-17 03:19:22, `node --test --test-timeout=900000 --test-force-exit`, exit 0, fingerprint ef0b39a47fbb92527d17b55fc88f070f81a584de. Uji penuh dibawa dari run pengerja itu.
+- `queue.sh check` di papan ini → `READY` (exit 0), `order.md in step with todo`.
+- Tidak ada `CLAUDE.md`/`AGENTS.md` di repo ini; tidak ada aturan proyek tertulis yang diterapkan. `owner_explanation` tidak diatur, tidak ada `## Explanation`.
+
+Per kriteria:
+1. Terpenuhi. `references/ordering-the-queue.md`, "Saying which lands first", menjelaskan baris `<!-- lands-first: <id>, <id> -->`, arti urutannya, dan apa yang ditolak. Uji "the marker ordering-the-queue.md documents is the one check reads" menjalankan contoh di bagian itu terhadap `check`.
+2. Terpenuhi. Grup berbagi berkas tanpa baris → `the group has no line saying which lands first (write <!-- lands-first: <id> --> under its lead-in)`; baris yang tidak menyebut keduanya → `names neither ... (add one of them to it)`; baris tak terbaca, baris kedua, ID ganda, ID di luar grup masing-masing dilaporkan dengan nomor barisnya. Uji-ujinya memeriksa kode keluar dan pesan persisnya, bukan sekadar tidak gagal.
+3. Terpenuhi. `first_re`, `before_re`, `squeeze`, `lands_first`, `lands_before` dan pembacaan prosa pengantar dihapus dari `queue.sh`; `grep` di `skills/`, `agents/`, `hooks/`, `viewer/` tidak menemukan pencocok kalimat lain. Uji "the free wording ... is no longer read" memastikan kalimat lama (Inggris dan Indonesia) kini dinyatakan belum siap.
+4. Terpenuhi. Uji urutan di `uji/queue.test.mjs` ditulis ulang untuk penanda, ditambah uji pencabutan ID di `uji/update-ticket.test.mjs`; seluruh suite lulus (dibawa dari run pengerja, lihat di atas). Uji yang dibaca punya asersi yang bisa merah (kode keluar, pesan, isi order.md byte demi byte).
+5. Terpenuhi. Tiga grup berbagi berkas di `.kerjaan/order.md` kini punya baris penanda dengan urutan yang sama dengan kalimat lama; `queue.sh check` → `READY`.
+
+Bentuk daftar berkoma tetap dalam keputusan pemilik: pemilik memilih "satu baris tetap per grup, misalnya `<!-- lands-first: ID -->`", dan bentuk ini tetap satu baris tetap per grup, sama di semua bahasa; satu ID adalah persis contoh pemilik, dan daftar dibutuhkan untuk grup bertiga di papan ini.
+
+Catatan (tidak menahan):
+- Penanda hanya dikenali bila baris dimulai dengan `<!--`. Penanda yang ditulis di ujung kalimat pengantar (satu baris dengan prosa) tidak dibaca dan tidak dilaporkan sebagai tak terbaca; grupnya tetap dinyatakan belum siap dengan alasan "no line", jadi tidak ada yang lolos diam-diam, hanya pesannya kurang tepat.
+- Prosa pengantar grup pertama di order.md masih menyebut 261016141912 digabung lebih dulu; itu benar dan tidak dibaca lagi oleh `check`.
+- Klaim di Notes bahwa order.md lama dengan skrip baru memberi `NOT READY: 6 problem(s)` tidak diulang; uji "free wording is no longer read" mencakup perilaku yang sama.
+
+### Suggested follow-up
+
+- **Baris `<!-- lands-first: ... -->` tampil sebagai teks mentah di penampil papan.** `viewer/web/markdown.js` meng-escape HTML, jadi komentar yang tersembunyi di pratinjau markdown biasa terlihat di laci order.md. Layak jadi tiket: putuskan apakah baris itu disembunyikan atau ditampilkan khusus (misalnya sebagai "urutan gabung: A, B").
