@@ -215,6 +215,16 @@ body.proyek .bar .live { flex: none; }
 .card .id { font-family: var(--mono); font-size: 10.5px; }
 .card .rank { font-family: var(--mono); font-size: 10.5px; color: var(--todo); font-weight: 500; }
 .card .broken { color: var(--warn-ink); background: var(--warn-bg); border-radius: 4px; padding: 0 5px; }
+/* A done ticket whose branch is not merged into main yet: each branch name
+   in full (it is what gets typed next), kept whole on a line when it fits,
+   broken only when it is longer than the card is wide. */
+.card .belum-gabung {
+  margin-top: 5px; padding: 1px 6px; border-radius: 4px;
+  background: var(--warn-bg); color: var(--warn-ink);
+  font-size: 11.5px; line-height: 1.45; overflow-wrap: anywhere;
+}
+.card .belum-gabung .label { font-weight: 600; }
+.card .belum-gabung .cabang { display: inline-block; max-width: 100%; font-family: var(--mono); font-size: 10.5px; }
 /* The Done when row: one pill per item. Each pill is a slot whose drawn part
    takes three quarters of it, so the gaps narrow together with the pills: the
    row never needs more than the width it is given, and a long list narrows

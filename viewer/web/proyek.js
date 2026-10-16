@@ -108,13 +108,23 @@ $('clear').addEventListener('click', () => {
 
 // ---------- board ----------
 
+// A ticket in done whose branch still holds work outside main: its code is not
+// on main yet, whatever the column says. The server sends `unmerged` for done
+// tickets only.
+function unmergedLine(t) {
+  if (!t.unmerged?.length) return '';
+  const names = t.unmerged.map((b) => `<span class="cabang">${esc(b)}</span>`).join(', ');
+  const tip = `Kode tiket ini belum masuk jalur utama: cabang ${t.unmerged.join(', ')} punya perubahan yang belum digabung`;
+  return `<div class="belum-gabung" title="${esc(tip)}"><span class="label">belum digabung</span> ${names}</div>`;
+}
+
 function card(t, rank) {
   const labels = t.labels.map((l) => `<span class="tag">${esc(l)}</span>`).join('');
   const agent = AGENT_STATUSES.includes(t.status)
     ? `<div class="agen-slot" data-agen-for="${t.id}">${t.agent ? agentLine(t.agent, t.status, Date.now()) : ''}</div>`
     : '';
   return `<li><button class="card" data-id="${t.id}" aria-current="${t.id === state.openId}">
-    <div class="title">${esc(t.title)}</div>${agent}
+    <div class="title">${esc(t.title)}</div>${agent}${unmergedLine(t)}
     <div class="meta">
       ${rank ? `<span class="rank" title="Urutan di order.md">#${rank}</span>` : ''}
       <span class="id">${t.id}</span>
