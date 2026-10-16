@@ -6,7 +6,7 @@ labels: [viewer]
 reporter: mirza
 assign_to: claude
 created: 2026-10-16 12:54:01
-updated: 2026-10-16 13:18:55
+updated: 2026-10-16 13:20:30
 related: [261016105301]
 blocked_by: []
 ---
@@ -42,6 +42,7 @@ begitu juga pintasan papan ketik untuk berpindah proyek.
 - 2026-10-16 12:56:31 todo
 - 2026-10-16 12:56:32 in_progress
 - 2026-10-16 13:18:55 review
+- 2026-10-16 13:20:30 done
 
 ## Notes
 - 2026-10-16 Keputusan mirza, dengan gambar contoh berupa tiga kotak di
@@ -103,3 +104,50 @@ begitu juga pintasan papan ketik untuk berpindah proyek.
   "N proyek:" kadang tiba dalam dua potongan. Tesnya kini menunggu kedua
   baris (komit ca9db6f); 10 dari 10 hijau sesudahnya.
 - 2026-10-16 13:18:55: review covers branch tiket-261016125401 at ca9db6ff2210f0e60f216d62aa958c51d1dc9004, which holds main at 0732e4454e3adc36e6ae60d039f4c4f1b518c36a (code outside .kerjaan/); the latest test run passed on exactly this content.
+- 2026-10-16 Ditinjau pada level quick, putaran 1, di cabang
+  `tiket-261016125401` pada komit ca9db6f (worktree `kerjaan-tombol-proyek`,
+  belum digabung ke main; itu wajar, penggabungan dilakukan sesudah review):
+  pemeriksaan proyek dihitung sekali dan perubahan dibaca baris demi baris
+  terhadap kriteria.
+  - Pemeriksaan proyek: `node --test` tidak dijalankan ulang. Hasilnya
+    dibawa dari run pekerja 2026-10-16 13:18:43 (sidik
+    dfd9102a872821edefebc4a122c6a03b6fafb441, keluar 0);
+    `test-run.sh --check 261016125401 ca9db6f` menjawab SAME.
+  - Sedikit melewati quick: tes tampilan di `viewer/uji/pindah.test.mjs`
+    diam-diam lulus bila Chrome gagal dibuka (`if (!s) return;`), jadi run
+    yang dibawa belum membuktikan Chrome benar-benar jalan. Berkas itu saja
+    dijalankan lewat `test-run.sh --review ... -- node --test
+    viewer/uji/pindah.test.mjs`: 6 lulus, 0 dilewati, tiap tes peramban
+    2,6–4 detik, artinya Chrome sungguh berjalan.
+  - Kriteria 1 (tombol per proyek aktif, urut nama): terpenuhi —
+    `switchList` menyaring arsip dan mengurut nama; `drawSwitcher` membuat
+    satu tautan per proyek di `#proyek-tombol`; tes 1 dan 2 memeriksanya.
+  - Kriteria 2 (yang dibuka ditandai): terpenuhi — `aria-current="page"`
+    dengan warna, garis, latar dan tebal huruf berbeda; tes 2 membandingkan
+    gaya tiap tombol.
+  - Kriteria 3 (satu klik pindah): terpenuhi — tombol adalah tautan biasa ke
+    `/<proyek>/`; tes 2 mengklik `juliet` dan halaman pindah.
+  - Kriteria 4 (arsip tidak tampil): terpenuhi — filter arsip di
+    `switchList`, digambar ulang pada event `storage`; tes 1 dan 6.
+  - Kriteria 5 (panah dan daftar hilang): terpenuhi — tombol `#pindah`,
+    `#pindah-menu` dan gayanya dihapus; tidak ada sisa rujukan di `viewer/`
+    selain pemeriksaan ketiadaannya di tes 2.
+  - Kriteria 6 (pintasan papan ketik hilang): terpenuhi — `KEYS`,
+    `keyTarget` dan pendengarnya dihapus; tes 3 menekan 1–9 dan a–z dan
+    halaman tetap di `/delta/`.
+  - Kriteria 7 (deretan bisa digeser, halaman tidak melebar): terpenuhi —
+    `overflow-x: auto`, `min-width: 0`, baris sendiri di <= 640 px; tes 4
+    memeriksa layar lebar dan ponsel dengan 30 nama panjang.
+  - Kriteria 8 (rapi di layar lebar, ponsel, mode gelap): dinilai dari tes 5
+    (posisi, ukuran, warna per mode) dan pemeriksaan pekerja di Chrome
+    headless; penilaian "rapi" oleh mata manusia tidak dilakukan dalam
+    review quick ini.
+  - Komit ca9db6f mengubah `viewer/uji/server.test.mjs` di luar cakupan
+    tiket: tes kini menunggu baris alamat dan baris "N proyek:" sebelum
+    memeriksa. Perubahannya satu baris, hanya membuat tes yang
+    kadang-kadang gagal menjadi stabil, tidak mengubah kode program, dan
+    dicatat di Notes. Dapat diterima; bukan temuan.
+  - Catatan (tidak memblokir): tautan "Semua proyek" yang dulu ada di kaki
+    daftar ikut hilang; jalan ke beranda tetap ada lewat "kerjaan" di
+    kepala halaman. Proyek ini tidak punya `CLAUDE.md`/`AGENTS.md`.
+  - Keputusan: semua kriteria terpenuhi, pindah ke done.
