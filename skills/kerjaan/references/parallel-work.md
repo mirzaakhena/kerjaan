@@ -266,6 +266,17 @@ worktree (its teardown included) and deletes the branch.
 Commits that touch only `.kerjaan/` never count as main moving: the board is
 committed on main all the time, and a ticket changing folders changes no code.
 
+**Land commits its own notes.** Whatever `land` writes into the ticket —
+`landed on main`, `merge postponed` together with the move back to
+`in_progress`, `merge held for the owner` — goes into a commit of its own
+(`Board: <id> …`) right after, holding only that ticket's file. The main tree
+is left as clean as land found it, so the next landing runs straight on, and
+the history shows when each note was written. Anything else uncommitted in the
+main tree, staged or not, code or board, stays exactly as it was. The one case
+land leaves for a person: when the ticket's file itself already had
+uncommitted changes, the note is written but not committed, and the output
+says `NOTE NOT COMMITTED`.
+
 **3. When main moved, the ticket goes back — not the owner's problem.** Main
 moves under every ticket but the first to land. `land` then answers `SENT
 BACK` (exit 3), records why in `## Notes`, and moves the ticket to

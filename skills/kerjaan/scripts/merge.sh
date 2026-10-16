@@ -57,7 +57,8 @@ Usage: merge.sh sync <id>
   land        run from the main tree, for a ticket in done/: merge its branch
               into main, one merge at a time, then remove its worktree and
               branch. STALE sends the ticket back to in_progress; HELD keeps
-              it for the owner, with the reason in its Notes.
+              it for the owner, with the reason in its Notes. Each note it
+              writes in the ticket is committed at once, on its own.
   resolution  the diff between merging main into the commit reviewed last
               time and the branch now: the part a re-review has to read.
 USAGE
@@ -214,12 +215,53 @@ case "$cmd" in
       exit 0
     fi
 
+    # Every note land writes into the ticket is committed at once, in a commit
+    # of its own holding only the ticket's file, so land leaves the main tree
+    # as clean as it found it. A note left uncommitted would sit in the main
+    # tree until somebody noticed, and the next landing would have to work
+    # around it. Only the ticket's own file goes in (both of its paths when it
+    # moved): whatever else is uncommitted in the main tree — staged or not,
+    # code or board — stays exactly as it was. When the ticket's file itself
+    # already had uncommitted changes before land ran, the note cannot be
+    # committed without them, so it is left beside them and the output says so.
+    ticket_was_clean=0
+    if [ -z "$(git status --porcelain --untracked-files=all -- "$ticket")" ] \
+      && git ls-files --error-unmatch -- "$ticket" > /dev/null 2>&1; then
+      ticket_was_clean=1
+    fi
+    save_note() {
+      local now_file commit_log
+      local -a paths
+      if [ -z "$main" ]; then
+        echo "NOTE NOT COMMITTED: the main tree is on no branch; the note in ${ticket#"$main_tree"/} is left uncommitted."
+        return 0
+      fi
+      if [ "$ticket_was_clean" -ne 1 ]; then
+        echo "NOTE NOT COMMITTED: ${ticket#"$main_tree"/} already had uncommitted changes before land ran,"
+        echo "so its note is left uncommitted with them; commit them together."
+        return 0
+      fi
+      now_file="$(kerjaan_ticket_file "$board" "$id" || true)"
+      paths=("$ticket")
+      if [ -n "$now_file" ] && [ "$now_file" != "$ticket" ]; then
+        paths+=("$now_file")
+        git add -- "$now_file" > /dev/null 2>&1 || true
+      fi
+      if commit_log="$(git commit -q --only -m "$1" -- "${paths[@]}" 2>&1)"; then
+        echo "Note committed: $(git log -1 --format='%h %s')"
+      else
+        echo "WARNING: the note in the ticket could not be committed; commit it by hand:"
+        printf '%s\n' "$commit_log" | sed 's/^/  /'
+      fi
+    }
+
     # The owner is told through the ticket and through this output; the
     # ticket stays in done/, and the start gate in update-ticket.sh lets other
     # tickets go on past its branch.
     held() {
       kerjaan_append_note "$ticket" "- $(now): merge held for the owner — $1"
       (cd "$main_tree" && "$here/update-ticket.sh" "$id" > /dev/null 2>&1) || true
+      save_note "Board: $id merge held for the owner"
       echo "HELD: ticket $id was not merged into ${main:-main} and waits for the owner."
       echo "Reason: $1"
       echo "Only this ticket waits; tickets that do not depend on it carry on."
@@ -232,6 +274,7 @@ case "$cmd" in
       if ! (cd "$main_tree" && "$here/update-ticket.sh" "$id" --status in_progress > /dev/null); then
         held "it had to go back to in_progress ($1), but the move was refused"
       fi
+      save_note "Board: $id back to in_progress, merge postponed"
       echo "SENT BACK: ticket $id was not merged into $main, and is in in_progress again."
       echo "Reason: $1."
       echo "Its worker brings $main in (merge.sh sync $id), tests, commits and moves it to review."
@@ -290,6 +333,7 @@ case "$cmd" in
       kerjaan_append_note "$ticket" "- $(now): landed on $main as $landed, merging $branch at $tip; $carried."
       (cd "$main_tree" && "$here/update-ticket.sh" "$id" > /dev/null 2>&1) || true
       echo "LANDED: ticket $id is in $main as ${landed:0:12}; $carried."
+      save_note "Board: $id landed on $main as ${landed:0:12}"
     fi
     kerjaan_lock_release merge
 
