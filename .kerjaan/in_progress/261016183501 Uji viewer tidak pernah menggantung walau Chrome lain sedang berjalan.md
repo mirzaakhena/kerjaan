@@ -6,7 +6,7 @@ labels: [sesi-a192c9e8, tests, viewer]
 reporter: mirza
 assign_to: claude
 created: 2026-10-16 18:35:52
-updated: 2026-10-16 19:36:54
+updated: 2026-10-16 19:41:31
 related: [261016141915, 261016105301]
 blocked_by: []
 ---
@@ -45,11 +45,11 @@ berjalan, dan rangkaian uji kerjaan selalu selesai dalam waktu wajar, lulus
 atau gagal, tanpa pernah menggantung.
 
 ## Done when
-- [ ] Langkah di atas, diulang beberapa kali dengan Chrome lain berjalan, tidak lagi membuat uji viewer gagal karena folder profil
-- [ ] Kegagalan membersihkan folder profil Chrome tidak membuat uji gagal dan tidak meninggalkan proses yang terus hidup
-- [ ] Uji yang macet dihentikan oleh batas waktu dan dilaporkan gagal, sehingga rangkaian uji selalu selesai
-- [ ] Batas waktu itu tidak membuat uji yang sehat gagal di mesin yang sedang sibuk
-- [ ] Setelah rangkaian uji selesai, tidak ada proses uji atau Chrome sisa yang masih berjalan
+- [x] Langkah di atas, diulang beberapa kali dengan Chrome lain berjalan, tidak lagi membuat uji viewer gagal karena folder profil
+- [x] Kegagalan membersihkan folder profil Chrome tidak membuat uji gagal dan tidak meninggalkan proses yang terus hidup
+- [x] Uji yang macet dihentikan oleh batas waktu dan dilaporkan gagal, sehingga rangkaian uji selalu selesai
+- [x] Batas waktu itu tidak membuat uji yang sehat gagal di mesin yang sedang sibuk
+- [x] Setelah rangkaian uji selesai, tidak ada proses uji atau Chrome sisa yang masih berjalan
 
 ## History
 - 2026-10-16 18:35:52 a192c9e8-0bb5-4bbf-8d56-9831b23e62ec backlog
@@ -90,3 +90,5 @@ atau gagal, tanpa pernah menggantung.
 - Bukti merah (tiap penjaga dirusak lalu dipulihkan dari salinan): penghapusan profil tanpa try/catch → uji peramban 2 merah; bunuh hanya proses utama, bukan grupnya → uji 6 merah (uji 1 tetap hijau karena `shutDown` menunggu grupnya habis, dan pembantu yang tersisa memang habis dalam 5 detik setelah SIGKILL); tanpa penangan exit → uji 6 merah; tanpa penangan sinyal → uji 7 dan 8 merah; langkah tanpa batas waktu → uji 4 macet sampai berkasnya dibatalkan; tanpa penolakan saat sambungan putus → uji 5 merah; tanpa `setEmulatedMedia` → uji 3 merah (mesin sedang gelap). `uji/batas-waktu.test.mjs` pada salinan yang membuang `--test-force-exit` → uji 1 dan 3 merah; yang membuang `--test-timeout` → uji 1 dan 2 merah (2 tidak selesai dalam 60 detik). Retry `rm` (maxRetries) tidak punya uji yang bisa membuatnya merah secara pasti; jalur kegagalannya ditutup uji 2.
 - 2026-10-16 19:32:53: answered question: Batas waktu di test_command terlalu pendek untuk mesin yang sibuk: di Node 22 `--test-timeout` tidak hanya berlaku per uji, tetapi juga untuk tiap berkas uji secara utuh, dan berkas yang sehat butuh lebih dari 120 detik di bawah beban (uji/merge.test.mjs dan uji/queue.test.mjs sekitar 4 menit pada load 25 sampai 45, viewer/uji/gabung.test.mjs lebih dari 2 menit pada load 70 ke atas), sehingga dengan perintah sekarang butir 'Batas waktu itu tidak membuat uji yang sehat gagal di mesin yang sedang sibuk' tidak bisa dipenuhi dan run akhir 261016141915 juga akan gagal. Node 22 tidak punya batas terpisah untuk uji dan untuk berkas. Pengerja tidak boleh mengubah settings.md. Pilihan: (a) test_command menjadi `node --test --test-timeout=900000 --test-force-exit` (15 menit): rangkaian uji tetap selalu selesai, uji yang macet dilaporkan gagal paling lambat 15 menit, dan langkah Chrome di uji viewer sekarang sudah gagal sendiri dalam 30 detik; (b) `--test-timeout=600000` (10 menit): uji macet berhenti lebih cepat, sisa ruang di mesin sibuk sekitar 2 kali lipat saja; (c) tetap 120000 dan menerima bahwa berkas yang lambat gagal saat mesin sibuk (butir 4 dicoret). Saran: (a), karena berkas paling lambat yang terukur sekitar 4 menit dan beban di mesin ini sering naik di atas 60; 15 menit memberi ruang hampir 4 kali lipat dan tetap menjamin rangkaian uji berakhir. Setelah diputuskan, mandor mengubah settings.md lalu pengerja tinggal menjalankan test-run.sh; kode tidak perlu diubah karena uji/batas-waktu.test.mjs membaca perintah dari settings.md.
   answer, 2026-10-16 19:36:54: (a) Batas 15 menit per berkas uji: test_command menjadi node --test --test-timeout=900000 --test-force-exit, diubah mandor atas keputusan pemilik.
+- 2026-10-16 19:41:31: test run — `node --test --test-timeout=900000 --test-force-exit` exited 0 after 4m25s, on content fingerprint 129ffcafcfc32dee9c3973f76bc54caa928d91a4 (the same before and after the run; .kerjaan/ left out).
+- 2026-10-16 19:41:51: setelah jawaban #2 (test_command 900000 ms): kode di-commit (0737872), test-run.sh lulus 327/327 dalam 4m25s dengan Playwright sesi lain berjalan (load sekitar 28); sesudahnya 0 proses Chrome atau uji kerjaan tersisa. Butir 4 bertumpu pada pengukuran sebelumnya: berkas paling lambat sekitar 4 menit pada load 25 sampai 45, dan uji viewer 164 detik pada load sampai 133, jauh di bawah 15 menit.
