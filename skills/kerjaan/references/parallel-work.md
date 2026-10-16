@@ -5,8 +5,8 @@ ticket at a time is the normal way to work, and most boards never need
 anything here.
 
 Two tickets sitting in the same group in `order.md` have already been declared
-independent of each other, and that declaration is the licence to run them side
-by side — in separate git worktrees, so neither worker sees the other's
+able to run together, and that declaration is the licence to run them side by
+side — in separate git worktrees, so neither worker sees the other's
 half-finished files.
 
 Side by side means two `kerjaan-worker` subagents running at once, each sent
@@ -18,9 +18,30 @@ board commands from the main tree. Use the steps below rather than the Agent
 tool's own worktree option: that one does not keep `.kerjaan/` out of the
 checkout.
 
-**The group is the claim; the worktree is only the mechanism.** If two tickets
-would touch the same files, the answer is not a worktree, it is that they never
-belonged in one group.
+**The group is the claim; the worktree is only the mechanism.** The claim
+rests on two different questions (`references/ordering-the-queue.md`, "What
+may share a group"), and only one of them keeps tickets apart:
+
+- **One waits for the other's result** — it builds on what the other makes.
+  Then they never run together, whatever a worktree could isolate: the second
+  would be built on a guess about work that does not exist yet. If that turns
+  out mid-work, the answer is not a worktree, it is that they never belonged
+  in one group; the second waits.
+- **They only change the same files.** Then they may run together. Two
+  branches editing one file conflict when they meet, and resolving that is
+  ordinary work, done by the ticket that lands second when it brings main in
+  ("Back into main"). The lead-in has already named both tickets, the shared
+  files and which lands first, so the conflict is expected rather than found.
+  The foreman passes that to each worker (`Shares files with:` in its
+  prompt), and the one landing second knows from the start whose change it
+  will merge.
+
+Which files each ticket will change comes from its estimate, recorded by the
+planner; `"$K/queue.sh" overlap` shows which pairs share files and which files.
+The order in the lead-in is the plan, not a lock: landing still happens the
+moment a ticket passes review. If the ticket named second passes first, it
+lands first, and the other brings it in at its own sync — the same merge, the
+other way round.
 
 ```bash
 "$K/worktree.sh" add 260905160401 ../<repo>-<topic>      # from the main tree

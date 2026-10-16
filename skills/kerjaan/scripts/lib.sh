@@ -16,6 +16,10 @@
 #   kerjaan_tree_without_board <tree>  a tree with .kerjaan/ left out
 #   kerjaan_append_note <file> <note>  a line at the end of ## Notes
 #   kerjaan_merge_state <file>         held / postponed / landed (merge.sh)
+#   kerjaan_estimate <file>            the files a ticket is estimated to change
+#   kerjaan_open_questions <file>      the questions still waiting for the owner
+#   kerjaan_code_rev <id>              where the ticket's commits are read from
+#   kerjaan_changed_files <id> <rev>   files outside .kerjaan/ its commits changed
 #
 # Why locks and slots live together: both are shared by every worktree of one
 # repository, so both are kept in git's common directory — the one `.git`
@@ -237,4 +241,70 @@ kerjaan_merge_state() {
         -e 's/^merge postponed .*/postponed/' \
         -e 's/^landed on .*/landed/' \
     || true
+}
+
+# --- what the queue planner writes into a ticket ------------------------------
+# Used by queue.sh, and by update-ticket.sh at the gate into todo. Both records
+# are fixed English lines in ## Notes whatever the board's language, like
+# test-run.sh's, so a script can find them; the prose around them is the
+# board's own.
+#
+#   - 2026-10-16 11:40:00: files estimated to change: `src/a.js`, `docs/`
+#   - 2026-10-16 11:40:00: open question: <the question, in the board's language>
+#   - 2026-10-16 11:40:00: answered question: <the same question>
+#     answer, 2026-10-16 12:05:10: <the owner's answer>
+#
+# Lines inside fenced blocks are examples, not records, and are skipped.
+
+# Prints the body lines of ticket <file> that sit outside fenced blocks.
+kerjaan_unfenced_lines() {
+  awk '
+    !body { if ($0 == "---" && ++fm == 2) body = 1; next }
+    /^(```|~~~)/ { infence = !infence; next }
+    !infence { print }
+  ' "$1"
+}
+
+# Prints the latest estimate in ticket <file>, one path per line; a path ending
+# in "/" is a whole folder. Prints nothing when no estimate was recorded.
+kerjaan_estimate() {
+  [ -f "$1" ] || return 0
+  kerjaan_unfenced_lines "$1" \
+    | grep -E '^- [0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}: files estimated to change: ' \
+    | tail -1 | grep -oE '`[^`]+`' | tr -d '`' || true
+}
+
+# Prints the text of every open question in ticket <file>, one per line, in
+# the order written. A question the owner answered reads "answered question".
+kerjaan_open_questions() {
+  [ -f "$1" ] || return 0
+  kerjaan_unfenced_lines "$1" \
+    | sed -nE 's/^- [0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}: open question: //p'
+}
+
+# --- the code a ticket wrote ---------------------------------------------------
+# A ticket's commits are the ones whose message names its ID — the skill
+# requires that of every commit made for a ticket, and explain.sh reads them
+# the same way. Work on a branch carrying the ID that is not merged into HEAD
+# yet is read from that branch.
+
+# Prints the revision to read <id>'s commits from: HEAD, or refs/heads/<branch>.
+kerjaan_code_rev() {
+  local branch
+  while IFS= read -r branch; do
+    [ -n "$branch" ] || continue
+    if ! git merge-base --is-ancestor "refs/heads/$branch" HEAD 2> /dev/null; then
+      printf 'refs/heads/%s\n' "$branch"
+      return 0
+    fi
+  done < <(git for-each-ref --format='%(refname:short)' refs/heads | grep -F "$1" || true)
+  echo HEAD
+}
+
+# Prints, sorted, every file outside .kerjaan/ that a commit naming <id>
+# changed, read from <rev>.
+kerjaan_changed_files() {
+  git rev-parse --verify -q HEAD > /dev/null 2>&1 || return 0
+  git log --no-merges --format= --name-only -F --grep="$1" "$2" -- . ':(exclude).kerjaan' \
+    | sed '/^$/d' | sort -u
 }

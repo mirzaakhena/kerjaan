@@ -121,7 +121,8 @@ settings file needs editing:
 ```
 kerjaan/
 ├── skills/kerjaan/     the board: how tickets are written and moved
-├── agents/             kerjaan-worker, who executes one ticket,
+├── agents/             kerjaan-planner, who prepares the queue from the backlog,
+│                       kerjaan-worker, who executes one ticket,
 │                       and kerjaan-reviewer, the independent reviewer
 └── hooks/hooks.json    asks for that reviewer when a ticket enters review
 ```
@@ -169,6 +170,14 @@ $K/merge.sh land 260905160401             # passed review: into main, one at a t
 $K/merge.sh resolution 260905160401       # what a re-review reads after main moved
 $K/worktree.sh remove 260905160401        # a worktree given up on
 $K/test-run.sh --review 260905160401      # the reviewer's run, queued with the rest
+
+# the planner's tools for filling todo from the backlog
+$K/queue.sh estimate 260905160401 src/notify.py   # files the ticket is expected to change
+$K/queue.sh overlap                       # pairs of tickets whose estimates share files
+$K/queue.sh ask 260905160401 "<question>" # a numbered question for the owner
+$K/queue.sh answer 260905160401 1 "<answer>"
+$K/queue.sh check                         # todo and order.md ready? READY / NOT READY
+$K/queue.sh compare 260905160401          # estimate against what really changed
 
 # the owner's explanation, when settings.md asks for one
 $K/explain.sh changes 260905160401        # files and line ranges the ticket wrote
@@ -248,6 +257,20 @@ it is groundwork, or it is quick, or it sits next to work already in flight.
 Size is treated as a reason to split a ticket, never as a reason to defer it,
 because groundwork is almost always big and a board that defers by size buries
 exactly the work everything else is waiting for.
+
+**Who reads the backlog.** Ask "what can we work on today" and the session you
+talk to does not read the backlog itself: it sends `kerjaan-planner`, a
+subagent with a clean context, and keeps its own for the work in flight. The
+planner judges each ticket's readiness, splits the ones that are too big by
+outcome, writes down which files each ticket is expected to change, and
+proposes an order — which tickets may run together and why. Its questions,
+from every ticket, reach you in one message; each is numbered in its ticket,
+and a ticket with a question still open cannot be moved into `todo` at all.
+Once you approve, the planner writes your answers into the tickets, moves them
+into `todo` and writes `order.md`. Two tickets that only change the same files
+may run side by side, with the order they land in decided up front; a ticket
+that needs another's result never runs beside it. After a ticket is done,
+`queue.sh compare <id>` shows what was estimated against what really changed.
 
 How big is too big has a number: about 6 to 8 items in `Done when`. Past that
 the review gets duller, the result shows up an hour later instead of a quarter
@@ -335,9 +358,10 @@ one). Its tests run with `node --test` from the repo root.
 
 ## Two tickets at once
 
-Tickets sharing a group in `order.md` have already been declared independent,
-which is the licence to run them side by side in separate git worktrees, on
-branches whose names carry the ticket ID.
+Tickets sharing a group in `order.md` have already been declared able to run
+together — none waits for another's result, and any files they both change are
+named, with which lands first — which is the licence to run them side by side
+in separate git worktrees, on branches whose names carry the ticket ID.
 
 Nothing about that is written down. The ticket gains no `branch:` field — the
 ID is already in the branch name, and git's own `worktree list` is a registry

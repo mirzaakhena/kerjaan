@@ -32,6 +32,12 @@ K="${CLAUDE_PLUGIN_ROOT}/skills/kerjaan/scripts"      # always run from the repo
 "$K/merge.sh" land 260905160401                                    # passed review: merge into main
 "$K/worktree.sh" remove 260905160401                               # its teardown, then remove it
 "$K/explain.sh" changes 260905160401                               # files and lines the ticket wrote
+"$K/queue.sh" estimate 260905160401 src/notify.py docs/           # files the ticket is expected to change
+"$K/queue.sh" overlap                                              # tickets whose estimates share files
+"$K/queue.sh" ask 260905160401 "<question>"                        # a question for the owner, numbered
+"$K/queue.sh" answer 260905160401 2 "<answer>"                     # the owner's answer to question 2
+"$K/queue.sh" check                                                # todo and order.md fit to work from?
+"$K/queue.sh" compare 260905160401                                 # estimate against what really changed
 ls .kerjaan/*/"260905160401 "*.md                                  # find by ID; the folder is its status
 ```
 
@@ -273,7 +279,9 @@ The session the user talks to is the **foreman**. It keeps the board and talks
 to the owner; it never edits a ticket's code. Each ticket is executed by a
 `kerjaan-worker` subagent that starts from an empty context, reports briefly,
 and is resumed by the foreman if the reviewer sends the ticket back. Only the
-foreman dispatches reviewers.
+foreman dispatches reviewers. Filling `todo` from `backlog` goes to a
+`kerjaan-planner` subagent: it reads the backlog so the foreman does not, and
+its questions reach the owner through the foreman.
 
 This holds for one ticket as much as for a whole queue. A session that works
 tickets itself fills its context with every file and test run it touched, and
@@ -281,8 +289,9 @@ by the second or third ticket it is compacted; a foreman receives only
 reports, so the user hands over a queue once and every ticket still starts
 clean.
 
-**Read `references/foreman.md` before the first ticket goes to a worker** — it
-covers the questions asked at the start of a chain, the worker's prompt, what
+**Read `references/foreman.md` before the first ticket goes to a worker, and
+when the owner asks what can be worked on** — it covers filling the queue
+through the planner, the questions asked at the start of a chain, the worker's prompt, what
 to do with each report and verdict, when the chain stops itself, and the
 summary at the end.
 
@@ -385,15 +394,22 @@ When an existing ticket is split, the original keeps its ID and becomes the
 first piece; criteria that moved are struck through with a pointer to the
 ticket that took them.
 
-**The scripts warn; they never refuse.** `update-ticket.sh` and
+**The scripts warn about size; they never refuse it.** `update-ticket.sh` and
 `new-ticket.sh` count the items every time they touch a ticket in `backlog`,
 `todo` or `in_progress`, and when the count is over the limit they print a
 `WARNING` naming it. The ticket is saved as it is. `ticket-size.sh <id>` runs
 the same check alone, without changing anything. The limit is
 `done_when_limit` in `settings.md`; without it, 8.
 
+**Who splits.** When the planner fills the queue (`agents/kerjaan-planner.md`),
+splitting a ticket over the limit is its own power, granted by the owner: it
+splits by outcome before proposing the ticket, and the proposal shows the
+pieces. Outside that — a ticket written or edited in conversation — offer the
+owner the split and make it once they agree.
+
 **The owner may keep a ticket whole.** Some work really is one piece. When the
-owner says so for a given ticket, run `update-ticket.sh <id> --accept-size`:
+owner says so for a given ticket — including one the planner already split —
+run `update-ticket.sh <id> --accept-size`:
 it writes the decision into the ticket's `## Notes` (a line saying *size
 accepted by the owner*), and the warning is not repeated for that ticket.
 Like `--ack-unmerged`, never pass it on your own judgement — a warning you
@@ -415,11 +431,18 @@ kept separate.
   cancelled too.
 - `Done when` can be checked by a non-technical person. "The refactor is
   complete" is a feeling, not a criterion.
-- No decision is still waiting on the user.
+- No decision is still waiting on the user. A question recorded with
+  `queue.sh ask` and not yet answered makes `update-ticket.sh` refuse the move
+  into `todo`.
 - `type` and `priority` are filled in (`assign_to` may stay empty).
 - Its size is within the limit, or the owner has accepted it
-  (`ticket-size.sh <id>` prints nothing). A ticket that is too big gets a
-  split offered to the owner — never a quiet move onwards.
+  (`ticket-size.sh <id>` prints nothing). A ticket that is too big is split by
+  outcome first — never quietly moved onwards.
+- It carries an estimate of the files it will change (`queue.sh estimate`),
+  which is what decides whether it may run beside another ticket.
+
+`"$K/queue.sh" check <id>...` runs these checks on candidates; with no IDs it
+judges `todo` and `order.md` together.
 
 **Should it be next?** A judgement, and the user's. A ticket earns its place
 when it holds up other tickets, is groundwork the rest stands on, is small
@@ -427,16 +450,21 @@ enough to clear quickly, or belongs with something just finished or in flight.
 
 **Size is a reason to split, not to wait.** A ticket too big to start usually
 holds several outcomes in its `Request`; split by outcome, as "How big a
-ticket is" describes. When the size warning appears on a ticket you are about
-to move into `todo`, stop and offer the owner a split — name the count and
-sketch the pieces — and move it only once they have chosen: split it, or keep
-it whole with `--accept-size`.
+ticket is" describes. The planner does that before it proposes the ticket;
+the owner, seeing the pieces, may still keep it whole with `--accept-size`.
 
 **When the user asks for a move you would not have made**, name in one line the
 single check that failed, then do as they say:
 
 > This one is still `blocked_by` 260907135503, which is sitting in `todo`
 > itself — move it anyway?
+
+**Who fills it.** The planner (`kerjaan-planner`): the foreman dispatches it
+when the owner asks what can be worked on, relays its questions and proposal
+to the owner in one message, and resumes it with the answers and the approval.
+The planner then writes the answers into the tickets, moves them into `todo`
+and writes `order.md` — the foreman does none of that itself
+(`references/foreman.md`, "Filling the queue").
 
 **The order of the queue.** When `todo` holds several tickets and sequence
 matters, it is written in `.kerjaan/order.md`. `update-ticket.sh` keeps that
@@ -446,22 +474,24 @@ titles). **Read `references/ordering-the-queue.md` before writing or editing
 
 ### Into `in_progress`
 
-**Clear the whole queue first.** Before the first ticket leaves `todo`, read
-every ticket in `todo` as the person about to execute it: a line you would have
-to guess at, two possible readings, a criterion you could not check? Collect
-those questions from every ticket and ask them together, in one message. Write
-each answer back into its ticket (`Request`, `Done when`, or `## Notes`) and
-run `update-ticket.sh` on it — an answer left in the conversation is gone when
-the session ends. Asked this way the user gives one sitting and the queue can
-then run to the end; asked one ticket at a time, each question stalls the work
-after the user has left. A ticket joining `todo` later is swept before the next
-move out of `todo`; a question that surfaces mid-work is written into the
-ticket by the worker, and the foreman puts it to the owner.
+**Clear the whole queue first.** Every ticket in `todo` must be workable
+without another question: no line to guess at, no two readings, no criterion
+nobody could check. The planner clears that when it fills the queue — each
+question written into its ticket, put to the owner with all the others in one
+message, and the answer written back (`Request`, `Done when`, or `## Notes`) —
+so an answer never lives only in a conversation that ends. Asked this way the
+user gives one sitting and the queue can then run to the end; asked one ticket
+at a time, each question stalls the work after the user has left.
 
-The sweep includes size: run `ticket-size.sh` on every ticket in the queue,
-and for each one it warns about, put a proposed split in that same message.
-Starting a ticket the warning names, without the owner's word, is what the
-check exists to prevent; the warning `update-ticket.sh` prints on the move to
+Before the first ticket leaves `todo`, run `"$K/queue.sh" check`. `READY`
+means the sweep is done. A ticket it names — put in `todo` by hand, or edited
+since — goes to the planner before the chain starts. A question that surfaces
+mid-work is written into the ticket by the worker, and the foreman puts it to
+the owner.
+
+The sweep includes size: a ticket over the limit that nobody split or the
+owner kept whole is named by `check`. Starting it is what the size check
+exists to prevent; the warning `update-ticket.sh` prints on the move to
 `in_progress` comes too late to act on.
 
 The same message carries two more questions a chain needs settled up front
@@ -495,7 +525,7 @@ let them decide each branch: merge it, delete it, add it to
 `--ack-unmerged`; the script writes the branches into the ticket's `## Notes`,
 so the decision outlives the conversation.
 
-**Which ticket to take is already decided.** `order.md` is that decision: you
+**Which ticket to take is already decided.** `order.md` is that decision: the planner
 proposed it and the owner accepted or rearranged it when `todo` was filled.
 Take the first ticket in it — or any ticket in its first group — and start,
 without asking which one. With no `order.md`, take any ticket in `todo` whose
@@ -505,7 +535,9 @@ order no longer fits what the board now shows — the top ticket turned out to
 depend on one further down, say — and then name that one problem.
 
 One ticket at a time is normal. Two tickets in the same `order.md` group are
-declared independent and may run side by side in separate git worktrees — but
+declared able to run together — neither waits for the other's result, and any
+files they both change are named in the group's lead-in with which lands
+first — and may run side by side in separate git worktrees — but
 a worktree checks out a second copy of `.kerjaan/`, which silently disagrees
 with the first, and the scripts refuse to run there. The foreman creates the
 worktrees with `worktree.sh` and gives each worker its own; their test runs,
@@ -633,14 +665,17 @@ knows the work better than any session after it will. Use that before the
 conversation ends, without waiting to be asked:
 
 1. Offer the reviewers' suggested follow-ups (`references/review.md`).
-2. Read `backlog` with what you now know, and propose the next few candidates
-   for `todo`: which ones, in what order, and why — what the finished work made
-   possible, cheaper, or urgent. Follow `references/ordering-the-queue.md`.
+2. Dispatch the planner for the next batch (`references/foreman.md`, "Filling
+   the queue"), giving it what you now know: what just finished and the
+   carry-forward — what the finished work made possible, cheaper, or urgent.
+   Relay its proposal and questions to the owner.
 
-Propose; do not move. Filling `todo` from `backlog` is deciding what the next
-batch is, and that is the owner's call even when the reasoning looks obvious.
-Taking the next ticket out of a `todo` that is already ordered is not: that
-choice was made when the batch went in (see "Into `in_progress`").
+Nothing moves before the owner approves. Filling `todo` from `backlog` is
+deciding what the next batch is, and that is the owner's call even when the
+reasoning looks obvious; carrying the approved batch into `todo` is then the
+planner's. Taking the next ticket out of a `todo` that is already ordered is
+not the owner's call again: that choice was made when the batch went in (see
+"Into `in_progress`").
 
 ### Cancelling
 

@@ -16,8 +16,9 @@ That lives in one file, `.kerjaan/order.md`, covering `todo/` and nothing else.
 
 - 260905160401 Add the config loader
 
-**Then these two, in any order.** Neither touches the other's files, so two
-workers can take one each.
+**Then these two, side by side.** Neither needs the other's result; both change
+the menu file, so 260905160502 lands first and 260905160503 merges its menu
+entry in.
 
 - 260905160502 Import screen
 - 260905160503 Export screen
@@ -43,6 +44,33 @@ The format is four rules:
 - **A bullet is exactly `- <id> <title>` and nothing else.** Reasoning belongs
   in the lead-in. Keeping the line to that shape is what lets the script edit
   it safely.
+
+## What may share a group
+
+A group is a claim that its tickets can be worked at the same time, each in
+its own worktree (`references/parallel-work.md`). Two questions decide it, and
+they are not the same question:
+
+- **Does one wait for the other's result?** It builds on a screen the other
+  makes, reads a setting the other adds, or lists it in `blocked_by`. Then they
+  **never** share a group, however small the overlap: the one waited for goes
+  in an earlier group, the other after it. A chain counts too — A waits for B,
+  which waits for C, so A and C are apart as well.
+- **Do they only change the same files?** Then they **may** share a group. A
+  clash in a shared file is ordinary: the ticket that lands second brings the
+  first one's change in and resolves it, as every branch does when main moved
+  (`parallel-work.md`, "Back into main"). What makes it ordinary rather than a
+  surprise is that it is known in advance, so the lead-in says it: **both IDs,
+  the files they share, and which lands first.** Name first the one whose
+  change to those files the other is built around, or else the smaller one.
+
+Which files a ticket will change is not guessed from its title. Every ticket
+going into `todo` carries an estimate, recorded with `"$K/queue.sh" estimate
+<id> <path>...`, and `"$K/queue.sh" overlap` lists every pair whose estimates
+share files, with the files. `"$K/queue.sh" check` refuses a `todo` where a
+group holds a ticket together with one it waits for, where a ticket sits before
+one it waits for, or where two tickets of one group share files that their
+lead-in does not name them for.
 
 ## Why this is not the index that is banned in SKILL.md
 
@@ -79,6 +107,7 @@ diff <(for f in .kerjaan/todo/*.md; do [ -e "$f" ] && basename "$f" | cut -c1-12
 
 Silence means they agree. A line on the left is a ticket in `todo/` the order
 never mentions; a line on the right is an entry whose ticket has moved on.
+`"$K/queue.sh" check` reports both, along with the grouping rules above.
 
 ## Starting it, and refilling it
 
@@ -101,19 +130,26 @@ Refilling while one is pending means choosing what comes next without knowing
 whether the previous thing is done.
 
 All three empty is a different thing entirely: nothing is in flight, nothing is
-waiting on a verdict, and the board is genuinely between batches. Then propose
-a batch from `backlog` that passes both questions under "Into `todo`" in SKILL.md, with the order
-and the reasons, and let the user cut it down:
+waiting on a verdict, and the board is genuinely between batches. The same
+holds whenever the owner asks what can be worked on.
 
-> The board is empty — nothing in `todo`, `in_progress` or `review`. From the
-> backlog I would take 260905160401 first, since the other two read the
-> settings file it adds, then 260905160502 and 260905160503 in either order.
-> Move those three?
+**The planner does the refilling** (`agents/kerjaan-planner.md`), dispatched
+by the foreman (`references/foreman.md`, "Filling the queue"). It proposes a
+batch from `backlog` that passes both questions under "Into `todo`" in
+SKILL.md, with the order, the groups and the reasons, and the questions still
+open in each ticket; the foreman puts all of it to the owner in one message:
 
-Propose; do not move. Filling `todo` from `backlog` is deciding what the next
-batch is, and that stays the user's call even when the reasoning looks obvious.
-Once the user has accepted the batch and its order, `order.md` is their
-decision: picking up the next ticket from it needs no further asking.
+> From the backlog: 260905160401 first, since the other two read the settings
+> file it adds; then 260905160502 and 260905160503 side by side — both change
+> the menu file, and 260905160502 lands first. One question on 260905160503:
+> may an export overwrite a file of the same name? Move those three?
+
+Nothing moves before the owner approves. Filling `todo` from `backlog` is
+deciding what the next batch is, and that stays the owner's call even when the
+reasoning looks obvious. Once they have approved the batch and answered its
+questions, the planner writes the answers into the tickets, moves them into
+`todo` and writes this file, and `order.md` is the owner's decision: picking
+up the next ticket from it needs no further asking.
 
 The same holds whenever `todo` already has an `order.md`: the first ticket in
 it, or any ticket in its first group, is the next one to start. The file

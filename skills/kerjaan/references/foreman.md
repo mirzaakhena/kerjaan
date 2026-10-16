@@ -8,7 +8,9 @@ The main session never writes a ticket's code. It is the **foreman**: it keeps
 the board, talks to the owner, and hands each ticket to a `kerjaan-worker`
 subagent that starts from an empty context. When the worker reports, the
 foreman dispatches `kerjaan-reviewer`; when the verdict comes back, it either
-moves on or resumes the same worker to fix what was found.
+moves on or resumes the same worker to fix what was found. What goes into the
+queue in the first place is prepared by a third agent, `kerjaan-planner`, so
+that reading the backlog does not fill the foreman's context either.
 
 Why: a session that executes tickets itself fills its context with files,
 diffs and test output. By the second or third ticket it is compacted, and the
@@ -20,11 +22,13 @@ This holds for a single ticket too. One small fix is a chain of one.
 
 ## What stays with the foreman
 
-- Everything on the board: searching, creating, ordering, settings, moving a
-  ticket into `in_progress`, answering questions about the board.
-- Everything that needs the owner: clearing questions before the chain starts,
-  decisions a worker could not make, the owner's explanation, `--ack-unmerged`,
-  `--accept-size`, a merge that failed.
+- Everything on the board but filling the queue: searching, creating,
+  settings, moving a ticket into `in_progress`, answering questions about the
+  board.
+- Everything that needs the owner: relaying the planner's questions and
+  proposal, decisions a worker could not make, the owner's explanation,
+  `--ack-unmerged`, `--accept-size`, a merge that failed. Nobody else talks to
+  the owner.
 - Landing a worktree branch on main with `merge.sh land` once its ticket
   passed review — at once, one at a time, and without asking the owner
   (`references/parallel-work.md`, "Back into main"). The merge is git
@@ -37,6 +41,52 @@ This holds for a single ticket too. One small fix is a chain of one.
 The foreman never edits a ticket's code, not even a line it can see is wrong
 in a report. It sends the line back to the worker.
 
+What goes to `kerjaan-planner` instead: reading the backlog to say what is
+ready, splitting tickets that are too big, estimating the files each ticket
+will change, deciding which tickets may run together, writing the owner's
+answers into tickets, and — once the owner approved — moving tickets into
+`todo` and writing `order.md`.
+
+## Filling the queue
+
+When the owner asks what can be worked on — "what can we do today", "fill the
+queue", "what's next from the backlog" — or the board goes quiet (SKILL.md,
+"When the board goes quiet"), **do not read the backlog yourself.** Its
+tickets, and the code needed to judge them, are exactly the reading that would
+crowd out the tickets in flight. Dispatch the planner and take its report.
+
+**1. Dispatch** with `subagent_type` `kerjaan:kerjaan-planner` (or
+`kerjaan-planner` without the plugin namespace), in the background, and wait
+for its report. The prompt carries only what changes:
+
+```
+Repo: /path/to/repo
+Scripts: <kerjaan scripts folder>
+The owner asked: <their words: today's work, a theme, a number, tickets named>
+In flight: <tickets in in_progress / review, and their worktrees>
+Just finished: <tickets passed this session, with the carry-forward>
+```
+
+**2. Put its questions to the owner in one message**, together with the
+proposal: the order, which tickets run together and why, the splits it made,
+anything sharing files with work in flight. Every question is already in its
+ticket under a number (`#2`); keep the number with each answer. The owner
+answers, and approves the proposal, cuts it down or rearranges it.
+
+**3. Resume the same planner** with `SendMessage` to its agent ID: the
+answers, word for word with their ticket and number, and what the owner
+approved. It writes the answers into the tickets, moves the approved tickets
+to `todo`, writes `order.md`, checks both with `queue.sh check`, commits the
+board, and reports `QUEUED`. When an answer changed the proposal, it reports
+`CHANGED — needs the owner` instead and moves nothing: back to step 2 with only
+what changed. A planner that cannot be resumed is replaced by a new one, told
+that the questions are numbered in the tickets and which answers to write.
+
+The foreman moves no ticket into `todo` and writes no line of `order.md`
+during this; that is the planner's, by the owner's decision. Never pass on an
+approval the owner did not give: "looks fine" about the questions is not yes
+to the batch.
+
 ## Starting the chain
 
 **1. Settle what the chain covers.** The tickets the user named, or `todo` in
@@ -44,25 +94,30 @@ the order `order.md` gives (SKILL.md, "Into `in_progress`"). A ticket in
 `backlog` that the user names explicitly is the user's own move; take it.
 
 **2. Ask everything in one message**, before any worker starts — the user may
-leave once the chain runs:
+leave once the chain runs.
 
-- The questions from clearing the queue: every unclear line in every ticket
-  in the chain (SKILL.md, "Clear the whole queue first").
-- **Checks only a person can make.** Read every `Done when` in the chain for
-  criteria no worker or reviewer can settle on its own: how something looks on
-  a real phone, a day of real use, a call to a real customer. Name them, and
-  ask per item or for all of them: **deferred** (the work goes on; the worker
-  writes a hand scenario, the item is marked as awaiting the owner, and the
-  reviewer does not reject the ticket for it) or **holding** (the chain stops
-  at that ticket until the owner has checked it).
-- Unmerged branches the start gate will name, if any (`update-ticket.sh`
-  prints them; ask before the first move, not when it refuses).
-- **Tickets that are too big.** Run `ticket-size.sh <id>` on every ticket in
-  the chain. For each one it warns about, give the count and a proposed split
-  by outcome (SKILL.md, "How big a ticket is"), and ask: split it, or keep it
-  whole. Never start such a ticket without that answer. Keeping it whole is
-  recorded with `update-ticket.sh <id> --accept-size`; a split is done before
-  the chain starts, and the new pieces join the chain in its order.
+A queue the planner filled was cleared when it went in: its questions are
+answered in the tickets, too-big tickets are split, and the checks only a
+person can make were settled per ticket. Run `"$K/queue.sh" check` (with the
+IDs, for tickets the user named from `backlog`). `READY` means nothing about
+the tickets is left to ask. Whatever it names instead — a ticket the owner put
+in `todo` by hand, one named straight from `backlog`, one edited since — goes
+to the planner first (above, "Filling the queue"; the tickets are prepared
+where they stand), and its questions join this message. The foreman does not
+sweep the tickets itself.
+
+What remains for this message:
+
+- the planner's questions, if any (above);
+- **checks only a person can make** that a ticket's Notes do not settle yet:
+  **deferred** (the work goes on; the worker writes a hand scenario, the item
+  is marked as awaiting the owner, and the reviewer does not reject the ticket
+  for it) or **holding** (the chain stops at that ticket until the owner has
+  checked it);
+- unmerged branches the start gate will name, if any (`update-ticket.sh`
+  prints them; ask before the first move, not when it refuses);
+- a split the owner would rather undo: keeping a ticket whole is recorded with
+  `update-ticket.sh <id> --accept-size`, on the owner's word only.
 
 Write each answer into every ticket it touches — `## Notes`, dated, in the
 board's language — and run `update-ticket.sh` on each. A deferred human check
@@ -96,6 +151,7 @@ Repo: /path/to/repo
 Ticket: .kerjaan/in_progress/<id> <title>.md
 Scripts: <kerjaan scripts folder>
 Worktree: <path>            (only when working side by side)
+Shares files with: <id> (<files>), which lands <first | second>   (from order.md)
 Owner's answers for this chain: <e.g. human-only checks deferred>
 Carry-forward:
 - <component built in an earlier ticket, and where>
@@ -217,6 +273,9 @@ summary, from the log:
 - **Held merges**: every ticket `land` held for the owner, with its reason.
 - **Fixed from notes**: any ticket whose worker or reviewer had to be replaced
   instead of resumed.
+- **Estimates that missed**: for each ticket that passed and carries an
+  estimate, `"$K/queue.sh" compare <id>`; name the files it changed that
+  nobody estimated. Those are the clashes the next planning did not see coming.
 
 Then, if the board has gone quiet, carry on with SKILL.md, "When the board goes
 quiet".

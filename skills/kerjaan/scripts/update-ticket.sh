@@ -17,7 +17,8 @@
 #   update-ticket.sh <id|path> --accept-size         the owner keeps a ticket whole
 #                                                    although it is over the size limit
 #
-# A move to review is accepted only from in_progress, and only once the
+# A move to todo is refused while the ticket holds an open question for the
+# owner (queue.sh ask). A move to review is accepted only from in_progress, and only once the
 # owner's explanation is in place when settings.md asks for one (explain.sh).
 #
 # Every run ends with ticket-size.sh, which warns -- never refuses -- when the
@@ -231,6 +232,26 @@ fi
 here="$(cd "$(dirname "$0")" && pwd)"
 # shellcheck source=lib.sh
 . "$here/lib.sh"
+
+# --- the way into todo -------------------------------------------------------
+# `todo` means ready to be worked without asking anything more. A question the
+# owner has not answered yet, recorded with `queue.sh ask`, says the opposite,
+# and a ticket carrying one into the queue reaches a worker who finds out only
+# after the owner has gone. Refused, not warned: the queue is worked from when
+# nobody is watching.
+
+if [ "$dest_status" = "todo" ] && [ "$current_status" != "todo" ]; then
+  open_questions="$(kerjaan_open_questions "$file")"
+  if [ -n "$open_questions" ]; then
+    echo "REFUSED: $id was not moved to todo." >&2
+    echo "It still holds questions waiting for the owner:" >&2
+    printf '%s\n' "$open_questions" | awk '{ print "  " NR ". " $0 }' >&2
+    echo "Put them to the owner, record each answer with" >&2
+    echo "  $here/queue.sh answer $id <n> \"<answer>\"" >&2
+    echo "and move it again." >&2
+    exit 1
+  fi
+fi
 
 unmerged=()
 if [ "$dest_status" = "in_progress" ] && [ "$current_status" != "in_progress" ] \
