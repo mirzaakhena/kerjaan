@@ -31,6 +31,7 @@ const ASSETS = {
   'laci.js': 'text/javascript; charset=utf-8',
   'agen.js': 'text/javascript; charset=utf-8',
   'umum.js': 'text/javascript; charset=utf-8',
+  'arsip.js': 'text/javascript; charset=utf-8',
 };
 
 // Projects are found fresh on every request, so a board created after the
