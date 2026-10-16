@@ -148,6 +148,17 @@ summary is written from it. Never put it in `.kerjaan/`.
 The start gate may refuse over unmerged branches, and only you can put that to
 the owner.
 
+Then commit the start: the ticket's file, `order.md`, and every board change
+of your own still uncommitted — a ticket you cancelled or created, an answer
+you wrote in — one quoted pattern per ticket. It is the first of the ticket's
+three commits (SKILL.md, "Committing"); the worker's and the reviewer's
+follow, each made by them, so you commit nothing else for this ticket.
+
+```bash
+git add -A -- .kerjaan/order.md '.kerjaan/*/<id> *' ['.kerjaan/*/<other id> *' ...]
+git commit -m "<message>" -- .kerjaan/order.md '.kerjaan/*/<id> *' ['.kerjaan/*/<other id> *' ...]
+```
+
 **2. Dispatch the worker** with `subagent_type` `kerjaan:kerjaan-worker` (or
 `kerjaan-worker` when the skill is installed without the plugin namespace).
 Its fixed steps live in its definition; the prompt carries only what changes:
@@ -156,7 +167,8 @@ Its fixed steps live in its definition; the prompt carries only what changes:
 Repo: /path/to/repo
 Ticket: .kerjaan/in_progress/<id> <title>.md
 Scripts: <kerjaan scripts folder>
-Worktree: <path>            (only when working side by side)
+Worktree: <path>            (only when working side by side: code is committed
+                            on its branch there, the ticket's file in the main tree)
 Shares files with: <id> (<files>), which lands <first | second>   (from order.md)
 Owner's answers for this chain: <e.g. human-only checks deferred>
 Carry-forward:
@@ -194,7 +206,8 @@ tickets that run side by side in worktrees overlap (`references/parallel-work.md
 
 **5. Act on the verdict.**
 
-- **Passed** — the ticket is in `done/`. When it was worked in a worktree,
+- **Passed** — the ticket is in `done/`, and its reviewer committed the
+  verdict; there is nothing of it for you to commit. When it was worked in a worktree,
   land it now: `"$K/merge.sh" land <id>` from the main tree, and act on the
   answer (below). Add what the reviewer said is worth knowing to the
   carry-forward, and start the next ticket.
@@ -215,7 +228,7 @@ tickets that run side by side in worktrees overlap (`references/parallel-work.md
 
 | `land` says | What the foreman does |
 |---|---|
-| `LANDED` | The ticket is on main, its worktree and branch are gone. Land has already committed its own note in the ticket (`Note committed: …`), so there is nothing of it to commit by hand. Only when it says `NOTE NOT COMMITTED` — the ticket's file had uncommitted changes before land ran — commit that file once those changes are settled. |
+| `LANDED` | The ticket is on main, its worktree and branch are gone. Land has already committed its own note in the ticket (`Note committed: …`), so there is nothing of it to commit by hand. Only when it says `NOTE NOT COMMITTED` — the ticket's file had uncommitted changes before land ran, such as a verdict its reviewer did not commit — commit that file once those changes are settled. |
 | `MERGE POSTPONED` | A merge postponed: main changed since the branch was tested, or the branch changed after review. The ticket is back in `in_progress`. Resume the **same worker**: bring main in with `merge.sh sync <id>`, resolve any conflict, test, commit, move to review. When it reports `REVIEW`, resume the **same reviewer**, saying this is the review after a merge postponed: level `quick`, reading only `merge.sh resolution <id>`. Then land again. A merge postponed is not a rejection: it gets no round number and does not count toward the second rejection. |
 | `HELD` | Tell the owner now, in one line: the ticket and the reason the output gives (it is in the ticket's `## Notes` too). Do not retry, and do not work around it. Only this ticket waits: carry on with the chain, except tickets whose `blocked_by` names it. When the owner has cleared the cause, run `land` again. |
 
@@ -267,8 +280,10 @@ in its ticket; collect it for the summary.
 
 ## The summary
 
-When the chain ends — every ticket passed, or it stopped — give the user one
-summary, from the log:
+When the chain ends — every ticket passed, or it stopped — first commit any
+board change of your own still uncommitted, as in "One ticket, start to
+finish", step 1, without a started ticket. Then give the user one summary,
+from the log:
 
 - **Passed**: each ticket, and the round it passed in (a review after a merge
   postponed adds no round).

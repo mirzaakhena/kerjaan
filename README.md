@@ -204,8 +204,11 @@ you hand over the tickets
         ↓
 the foreman asks everything up front, in one message
         ↓
-per ticket:  kerjaan-worker does it, commits, moves it to review, reports
-             the foreman dispatches kerjaan-reviewer and waits for the verdict
+per ticket:  the foreman moves it to in_progress and commits that
+             kerjaan-worker does it, moves it to review, commits work and
+               ticket together, reports
+             the foreman dispatches kerjaan-reviewer and waits for the verdict,
+               which the reviewer commits itself
              sent back → the same worker is resumed to fix it,
                          and the same reviewer is resumed for round two
         ↓
@@ -651,8 +654,10 @@ to whoever is doing it, that is the signal to check who it was for.
   there is nothing in it to go stale.
 - **No change log inside the ticket.** Just `updated`. Git already holds the
   full history.
-- **No opinion about git.** How tickets relate to commits is left to each
-  repo's own habits.
+- **Little opinion about git.** Outside a chain, how tickets relate to commits
+  is left to each repo's own habits. A chain commits each ticket worked in the
+  main tree in at most three commits — start, work, verdict — each holding its
+  ticket's board change, and leaves no board change uncommitted.
 - **Only three types:** `bug`, `feature`, `task`. Every additional type forces
   the author to think about categorisation, when what actually matters is the
   content.

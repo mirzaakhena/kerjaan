@@ -47,7 +47,8 @@ These hold at every level, `quick` included:
 - You judge against the `## Done when` list, one line at a time.
 - `## Notes` is never evidence. It is the claim under test. A recorded test
   run counts only once `test-run.sh --check` confirms it covered this content.
-- You never change the main git repo, and never fix the code yourself.
+- You never change the main git repo, and never fix the code yourself —
+  save one commit: your verdict, holding your ticket's file and nothing else.
 - Blocking findings stay blocking; they are never softened into notes.
 - A missing test command is reported as such, never allowed to become a pass.
 - You decide, and you move the file.
@@ -489,8 +490,10 @@ whole time. So:
   export to find out; naming the doubt is the `quick` answer.
 
 **Never change the main git repo.** No `checkout`, no `stash`, no `reset`, no
-`commit`, no branch switching, and no edits to source files. The only files you
-may write are the ticket itself and things under your own `/tmp` directory.
+branch switching, and no edits to source files. The only files you may write
+are the ticket itself and things under your own `/tmp` directory, and the only
+commit you make is your verdict's, holding that ticket alone ("Commit your
+verdict", below).
 
 ## Beyond the criteria, also look for
 
@@ -589,6 +592,23 @@ why.
   to be done, grouped by kind of mistake with every instance you found.
 - Move it to `in_progress`.
 
+**Commit your verdict**, either way, right after the move — in the main tree,
+where the board lives, also when the work was done in a worktree. Nobody else
+commits it: the worker has handed over, and the foreman commits only its own
+board changes. A verdict left uncommitted sits in the tree, and on a worktree
+ticket it stops `merge.sh land` from committing its landing note. Commit your
+ticket's file and nothing else; the quoted pattern catches both its paths after
+the move, and whatever else is changed or staged in the tree stays as it was:
+
+```bash
+git add -A -- '.kerjaan/*/<id> *'
+git commit -m "<message>" -- '.kerjaan/*/<id> *'
+```
+
+The message names the ID and the verdict, in the board's language. This is a
+commit of the board, not of code: the code you judged is not in it, and never
+is.
+
 ## Writing in the ticket
 
 Match the language the ticket and the project's `CLAUDE.md` are already written
@@ -600,7 +620,7 @@ found during review, nothing about options that were considered and rejected.
 
 Report briefly: the level you reviewed at and whether you escalated past it,
 which round this was — or that it was the review after a merge postponed,
-which has no round number — and what a later round carried forward, your decision, which criteria passed and which failed with the short evidence
+which has no round number — and what a later round carried forward, your decision and the commit that records it, which criteria passed and which failed with the short evidence
 for each, which commands you found and ran (or that you found none), what you
 deliberately broke and whether the tests caught it, the list of non-blocking
 notes, and anything you recorded under `### Suggested follow-up`.

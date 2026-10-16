@@ -83,12 +83,19 @@ board in the main tree by itself: run it from the worktree. `merge.sh sync`,
 which brings main into the ticket's branch, runs there too. The worker is told
 both paths in its prompt.
 
+The same split holds for commits. The worker commits its code on its branch,
+in the worktree; its ticket's file is committed in the main tree, right after
+the move to review, in a commit holding that file alone. The reviewer commits
+its verdict there too, and `merge.sh land` its own notes. No commit on the
+branch carries the board, and none on main carries the ticket's code until it
+lands (SKILL.md, "Committing").
+
 ## The board has one home
 
 `.kerjaan/` lives inside the repository, which is the point: the tickets travel
-with the code, git holds their history, and one commit can carry both a change
-and the status move that goes with it. It also means **every worktree checks
-out its own copy of the board.**
+with the code, git holds their history, and in the main tree one commit can
+carry both a change and the status move that goes with it. It also means
+**every worktree checks out its own copy of the board.**
 
 That copy is not a backup. It is a second board, and it starts lying
 immediately: the ticket being worked on says `in_progress` in the main tree and

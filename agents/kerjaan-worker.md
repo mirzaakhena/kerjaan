@@ -100,7 +100,7 @@ foreground with a long timeout, never in the background: a worker that ends its
 turn while its own run is still going looks finished to the foreman before its
 report exists. Do not touch the code while it runs.
 
-In a worktree, bring main in first: commit your work, then run
+In a worktree, bring main in first: commit your work on your branch, then run
 `"$K/merge.sh" sync <id>` in the worktree. A conflict is yours to resolve
 there — it is part of this ticket — then `git add` and `git commit --no-edit`.
 Then the test run, on the merged state. The move to review is refused until
@@ -109,19 +109,42 @@ is committed, so a red run after `sync` is a break between your change and
 main's: fix it like any other failure (`references/parallel-work.md`, "Back
 into main").
 
-**8. Commit.** Handing a ticket to the chain is the owner's consent to these
-commits. Name every path you commit (`git add -- <file> <file>`), never
-`git add -A` or `git add .`: the board and the tree may hold other people's
-work. From `.kerjaan/` commit only your own ticket's file — both its paths,
-when it moved folders since the last commit, so the move is recorded whole.
-Put the ticket ID in the message.
-
-**9. Hand over.** Run `"$K/update-ticket.sh" <id> --status review`.
+**8. Hand over.** Run `"$K/update-ticket.sh" <id> --status review`.
 
 From this moment the ticket's code is not yours to touch. The hook will tell
 you so; it will not tell you to dispatch a reviewer, and you must not.
+Committing what is already written, next, is not touching it.
 
-**10. Report**, and end. Keep it short; the foreman reads every report and
+**9. Commit**, right after the move, so the commit that holds the work also
+says it is in review. Handing a ticket to the chain is the owner's consent to
+these commits. Name every path you commit, never `git add -A` or `git add .`
+on their own: the board and the tree may hold other people's work. From
+`.kerjaan/` commit only your own ticket's file; the quoted pattern catches both
+its paths after the move, so the move is recorded whole. Put the ticket ID in
+the message.
+
+In the main tree — no worktree — code and ticket go in one commit:
+
+```bash
+git add -A -- <files> '.kerjaan/*/<id> *'
+git commit -m "<message>" -- <files> '.kerjaan/*/<id> *'
+```
+
+In a worktree, there is no `.kerjaan/` to commit, so the two go to two places.
+Your code is already committed on your branch, in the worktree (step 7: the
+move to review is refused otherwise). The ticket's file is committed in the
+main tree, holding nothing else:
+
+```bash
+git -C <main tree> add -A -- '.kerjaan/*/<id> *'
+git -C <main tree> commit -m "<message>" -- '.kerjaan/*/<id> *'
+```
+
+**10. Report**, and end. A ticket you stop without moving it is committed
+too: its file alone, in the main tree, with the board-only form above, so the
+question and the Notes it rests on are not left uncommitted.
+
+Keep the report short; the foreman reads every report and
 keeps all of them for the whole chain:
 
 ```
@@ -144,7 +167,7 @@ at the end of `## Notes` — it is the evidence — and fix from there.
   findings by kind but cannot promise it found every place. Look for the same
   shape across everything the ticket touched.
 - Then steps 5 to 10 again: prove the new tests can go red, re-tick, run
-  `test-run.sh` last, commit, move to `review`, report.
+  `test-run.sh` last, move to `review`, commit, report.
 - Write nothing in `## Notes` addressed to the reviewer, such as a request for
   a lighter look. The reviewer is independent, and a request like that is what
   it exists to ignore.
@@ -155,7 +178,7 @@ at the end of `## Notes` — it is the evidence — and fix from there.
 branch was tested, and the ticket is in `in_progress` again. This is not a
 rejection and starts no new round; there are no findings. Bring main in (`merge.sh sync <id>`),
 resolve, then steps 5 to 10 for what you changed: run `test-run.sh` last,
-commit, move to `review`, report. The reviewer will read only what you did
+move to `review`, commit, report. The reviewer will read only what you did
 beyond the automatic merge, so keep it to what the merge needs.
 
 ## Never

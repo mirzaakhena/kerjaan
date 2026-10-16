@@ -640,7 +640,8 @@ ticket back to `in_progress` and finish it there.
 ### Out of `review`
 
 The reviewer decides and moves the ticket — to `done/`, or back to
-`in_progress/` with evidence. Whoever executed a ticket never marks their own
+`in_progress/` with evidence — and commits that verdict itself, its ticket's
+file alone ("Committing", below). Whoever executed a ticket never marks their own
 work `done`. A returned ticket goes back to **the same worker**, resumed from
 its transcript so it fixes without reading everything again, and the second
 round goes to the same reviewer the same way. **Read `references/foreman.md`
@@ -702,14 +703,52 @@ tickets' references need no attention.
 
 The board lives in git so that code and status travel together. Commit when
 the user or the project's own rules call for it — kerjaan does not change who
-decides that, except that handing tickets to workers is consent to the
-commits each worker makes for its own ticket — but when you commit work for a
-ticket, its files under `.kerjaan/` go in the same commit, and the message
+decides that, except that handing tickets to the chain is consent to the
+commits the chain makes for them, listed below — but when you commit work for
+a ticket, its files under `.kerjaan/` go in the same commit, and the message
 names the ticket ID. Code
 committed without the status move that goes with it leaves the history saying
-the work happened while the board says it had not started. A move with no code
-behind it — a verdict, a cancel, a new ticket — goes in the next commit, never
-left out.
+the work happened while the board says it had not started.
+
+**One ticket worked in the main tree is at most three commits**, each made by
+whoever made the change in it:
+
+1. **Start** — the foreman, right after moving the ticket to `in_progress`:
+   the ticket, `order.md`, and any board change of its own still uncommitted.
+2. **Work** — the worker, after its move to `review`: the code and the ticket
+   together, so the commit that holds the work also says it is in review.
+3. **Verdict** — the reviewer, after its move to `done` or back to
+   `in_progress`: its ticket's file and nothing else.
+
+A ticket sent back adds one work and one verdict commit per round. Nobody
+makes a commit for the board alone in between: a separate step only for
+recording a move is one more step to forget.
+
+**Every commit names its paths**, so nobody sweeps up other people's work:
+
+```bash
+git add -A -- <files> '.kerjaan/*/<id> *'
+git commit -m "<message>" -- <files> '.kerjaan/*/<id> *'
+```
+
+`<files>` are the code files, or nothing at all for a board-only commit. The
+quoted pattern is the ticket's own file wherever it is — both its old and its
+new path after a move, so the move is recorded whole — and one more pattern is
+added per ticket the commit carries. Whatever else is changed or staged in the
+tree stays exactly as it was.
+
+**Side by side**, a worktree holds no `.kerjaan/` (`references/parallel-work.md`,
+"The board has one home"), so code and ticket cannot share a commit. The
+worker commits its code on its branch, in its worktree, and its ticket's file
+in the main tree, right after the move to review; the reviewer's verdict and
+`merge.sh land`'s note are committed in the main tree as above. The branch
+and the board meet again when the branch lands.
+
+**A move with no code behind it** — a ticket created, moved to `backlog`,
+`todo` or `cancel`, an answer written in — goes in the next commit of
+whoever made it, never left out: the planner commits its own when it reports,
+and the foreman carries its own in the next start commit, or commits them
+before its summary when the chain ends.
 
 ## Answering questions about the board
 
