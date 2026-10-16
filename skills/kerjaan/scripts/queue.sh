@@ -87,15 +87,6 @@ ticket_of() {
 
 status_of() { basename "$(dirname "$1")"; }
 
-# Every question ever recorded in ticket <file>, numbered in the order asked,
-# answered ones included, so a number never shifts when another is answered:
-# "<n>\topen|answered\t<text>".
-questions_of() {
-  kerjaan_unfenced_lines "$1" \
-    | sed -nE 's/^- [0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}: (open|answered) question: /\1\t/p' \
-    | awk -F '\t' '{ print NR "\t" $1 "\t" substr($0, length($1) + 2) }'
-}
-
 # Refreshes `updated` the way every change to a ticket must.
 refresh() {
   "$here/update-ticket.sh" "$1" > /dev/null
@@ -260,7 +251,7 @@ if [ "$cmd" = "ask" ]; then
   [ -n "$q" ] || { echo "The question is empty." >&2; exit 2; }
   kerjaan_append_note "$file" "- $(now): open question: $q"
   refresh "$1"
-  echo "Recorded for $1 as question $(questions_of "$file" | wc -l | tr -d ' ')."
+  echo "Recorded for $1 as question $(kerjaan_questions "$file" | wc -l | tr -d ' ')."
   exit 0
 fi
 
@@ -271,7 +262,7 @@ if [ "$cmd" = "answer" ]; then
   case "$n" in '' | *[!0-9]* | 0) echo "'$n' is not a question number (1, 2, ...)." >&2; exit 2 ;; esac
   a="$(one_line "$3")"
   [ -n "$a" ] || { echo "The answer is empty." >&2; exit 2; }
-  state="$(questions_of "$file" | awk -F '\t' -v n="$n" '$1 == n { print $2 }')"
+  state="$(kerjaan_questions "$file" | awk -F '\t' -v n="$n" '$1 == n { print $2 }')"
   case "$state" in
     open) ;;
     answered) echo "Question $n of $1 is already answered." >&2; exit 2 ;;
@@ -305,7 +296,31 @@ fi
 # every ticket in order.md and no stale entry, no group holding a ticket
 # together with one it waits for (directly or through others), nothing placed
 # before what it waits for, and every two tickets of one group that share
-# files named in that group's lead-in, which says which lands first.
+# files named in that group's lead-in, which says which lands first in the
+# wording lands_first and lands_before below recognise.
+
+# Which of two tickets sharing files lands first, as the lead-in says it. The
+# wording is fixed so a planner can write it and this can find it, and it is
+# documented in references/ordering-the-queue.md ("Saying which lands first"):
+# the ID, then "lands first" — or "lands before <other ID>" — or the same in
+# Indonesian ("digabung lebih dulu", "digabung sebelum <other ID>"; "mendarat"
+# for "digabung", "dahulu" for "dulu", "lebih" optional). Backticks, bold or
+# italics around an ID are fine, letter case is not significant, and a lead-in
+# wrapped over several lines is one sentence here.
+first_re='lands first|(digabung|mendarat)( lebih)? (dulu|dahulu)'
+before_re='lands before|(digabung|mendarat)( lebih (dulu|dahulu))? sebelum'
+# The lead-in, on one line with single spaces. Fed to grep -q as a here-string,
+# not a pipe: under pipefail a writer cut off by grep's early exit would turn
+# a match into a failure.
+squeeze() { printf '%s\n' "$1" | tr '\t' ' ' | sed 's/  */ /g'; }
+# lands_first <lead-in> <id>
+lands_first() {
+  grep -Eiq "(^|[^0-9])$2[\`*_]* ($first_re)([^[:alpha:]]|\$)" <<< "$(squeeze "$1")"
+}
+# lands_before <lead-in> <id> <other id>
+lands_before() {
+  grep -Eiq "(^|[^0-9])$2[\`*_]* ($before_re) [\`*_]*$3([^0-9]|\$)" <<< "$(squeeze "$1")"
+}
 
 whole=0
 if [ "$#" -gt 0 ]; then
@@ -327,7 +342,7 @@ while IFS= read -r id; do
 
   while IFS=$'\t' read -r k state q; do
     [ "$state" = "open" ] && problem "open question $k: $q"
-  done < <(questions_of "$f")
+  done < <(kerjaan_questions "$f")
 
   [ -n "$(kerjaan_estimate "$f")" ] \
     || problem "no estimate of the files it will change (queue.sh estimate $id <path>...)"
@@ -437,11 +452,25 @@ if [ "$whole" -eq 1 ] && [ -f "$order" ]; then
       kerjaan_estimate "$fb" > "$tmpdir/eb"
       shared="$(shared_paths "$tmpdir/ea" "$tmpdir/eb" | paste -sd ',' - | sed 's/,/, /g')"
       [ -n "$shared" ] || continue
-      leadin="$(awk -F '\t' -v g="$ga" '$1 == g { print $2 }' "$tmpdir/leadins")"
+      leadin="$(awk -F '\t' -v g="$ga" '$1 == g { print substr($0, length($1) + 2) }' "$tmpdir/leadins")"
       case "$leadin" in
         *"$a"*"$b"* | *"$b"*"$a"*) ;;
-        *) problem "$a and $b share a group and the files $shared; its lead-in must name both and say which lands first" ;;
+        *)
+          problem "$a and $b share a group and the files $shared; its lead-in must name both and say which lands first"
+          continue
+          ;;
       esac
+      lands_before "$leadin" "$a" "$b" && continue
+      lands_before "$leadin" "$b" "$a" && continue
+      first_a=0; first_b=0
+      lands_first "$leadin" "$a" && first_a=1
+      lands_first "$leadin" "$b" && first_b=1
+      [ "$first_a" -ne "$first_b" ] && continue
+      if [ "$first_a" -eq 1 ]; then
+        problem "$a and $b share a group and the files $shared; its lead-in says both land first, so which one is unclear"
+      else
+        problem "$a and $b share a group and the files $shared; its lead-in names both but not which lands first (write \"<id> lands first\")"
+      fi
     done < "$tmpdir/groups"
   done < "$tmpdir/groups"
 

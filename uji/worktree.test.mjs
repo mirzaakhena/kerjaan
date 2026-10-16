@@ -361,8 +361,11 @@ test('perintah pembersihan berjalan setiap kali worktree dihapus, dengan tiket d
   assert.deepEqual(fs.readFileSync(log, 'utf8').trim().split('\n'), [`${A} 1 ${a.path}`, `${B} 2 ${b.path}`]);
   assert.equal(fs.existsSync(a.path), false);
   assert.equal(fs.existsSync(b.path), false);
-  // The branch is a decision about merging, not the script's.
+  // The branch is a decision about merging, not the script's, and both say so.
   assert.notEqual(git(r.root, 'branch', '--list', `tiket-${A}`), '');
+  assert.notEqual(git(r.root, 'branch', '--list', `tiket-${B}`), '');
+  assert.match(ra.err, new RegExp(`Branch tiket-${A} is kept; merge or delete it\\.`));
+  assert.match(rb.err, new RegExp(`Branch tiket-${B} is kept; merge or delete it\\.`));
 });
 
 test('pembersihan yang gagal, atau worktree yang belum bersih, menolak penghapusan', () => {

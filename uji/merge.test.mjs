@@ -559,7 +559,13 @@ test('hanya tiket di done yang digabung, dan hanya dari main tree', () => {
   const fromWorktree = run(mergeSh, wa, ['land', A]);
   assert.equal(fromWorktree.code, 1);
   assert.match(fromWorktree.err, /linked git worktree/);
-  assert.equal(run(mergeSh, r.root, ['land', A]).code, 0);
+  const land = run(mergeSh, r.root, ['land', A]);
+  assert.equal(land.code, 0, land.out + land.err);
+  // The branch is gone, and nothing on the way said it was kept.
+  assert.equal(git(r.root, 'branch', '--list', `tiket-${A}`).trim(), '');
+  assert.equal(fs.existsSync(wa), false);
+  assert.doesNotMatch(land.out + land.err, /kept/);
+  assert.match(land.out, new RegExp(`Branch tiket-${A} is merged into main and deleted\\.`));
 });
 
 // Holds a lock the way another live process would, and reports whether the
