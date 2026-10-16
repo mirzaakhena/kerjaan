@@ -1,11 +1,6 @@
 Ketiga tiket mengubah panduan yang sama (SKILL.md, parallel-work.md,
 foreman.md), jadi dikerjakan berurutan, tidak bersamaan.
 
-**Pertama.** Kunci uji dan kepemilikan data uji adalah dasar yang dipakai
-aturan penggabungan sesudahnya.
-
-- 261016101002 Uji dari beberapa worktree tidak saling bertabrakan
-
 **Kedua.** Uji dalam keadaan tergabung dan penggabungan otomatis berdiri di
 atas kunci uji.
 
