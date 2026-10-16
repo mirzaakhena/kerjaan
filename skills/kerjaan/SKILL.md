@@ -416,28 +416,38 @@ would rather not see is not the owner's decision.
 lands there too early, so it rots quietly unless two separate questions are
 kept separate.
 
-**Is it ready?** Mechanical. All four must hold:
+**Is it ready?** Mechanical, and one definition: what `"$K/queue.sh" check`
+tests, nothing more and nothing less. All five must hold:
 
-- `blocked_by` is empty, or every ID in it is in `done/` — and, when it was
-  worked on a branch, landed on main: a blocker whose merge is held for the
-  owner is not finished yet. A blocker sitting in
-  `cancel/` does not count as finished: tell the user, and ask whether the
-  dependency is gone (drop it from `blocked_by`) or this ticket should be
-  cancelled too.
-- `Done when` can be checked by a non-technical person. "The refactor is
-  complete" is a feeling, not a criterion.
-- No decision is still waiting on the user. A question recorded with
-  `queue.sh ask` and not yet answered makes `update-ticket.sh` refuse the move
-  into `todo`.
-- `type` and `priority` are filled in (`assign_to` may stay empty).
-- Its size is within the limit, or the owner has accepted it
+- **`type` and `priority` are filled in.** `assign_to` may stay empty.
+- **No question is still open.** A question recorded with `queue.sh ask` and
+  not yet answered with `queue.sh answer` also makes `update-ticket.sh` refuse
+  the move into `todo`. Every judgement a reader has to make goes through this
+  one: a `Done when` line a non-technical person could not check ("the
+  refactor is complete" is a feeling, not a criterion), two readings where the
+  wrong one means rework, a decision left in `## Notes` without an answer —
+  each is asked, numbered, and is no longer open once answered.
+- **Its size is within the limit, or the owner kept it whole**
   (`ticket-size.sh <id>` prints nothing). A ticket that is too big is split by
   outcome first — never quietly moved onwards.
-- It carries an estimate of the files it will change (`queue.sh estimate`),
-  which is what decides whether it may run beside another ticket.
+- **It carries an estimate of the files it will change** (`queue.sh estimate
+  <id> <path>...`), which decides whether it may run beside another ticket. A
+  ticket that changes no file of the project — a decision ticket, whose work
+  is the conversation with the owner — records exactly that with `queue.sh
+  estimate <id> --none`, never a made-up file.
+- **Every ticket in its `blocked_by` is finished or ahead of it.** Finished is
+  in `done/` and, when it was worked on a branch, landed on main: a blocker
+  whose merge is held for the owner is not finished yet. Ahead of it is in
+  flight (`in_progress` or `review`), or in `todo` in an earlier group of
+  `order.md` — the planner queues a blocker and the ticket waiting for it in
+  one batch on purpose, in that order. A blocker in `backlog` is ahead only
+  when it goes into `todo` in the same batch. One in `cancel/` is neither:
+  tell the user, and ask whether the dependency is gone (drop it from
+  `blocked_by`) or this ticket should be cancelled too.
 
-`"$K/queue.sh" check <id>...` runs these checks on candidates; with no IDs it
-judges `todo` and `order.md` together.
+`"$K/queue.sh" check <id>...` judges candidates by these five; with no IDs it
+judges `todo` and `order.md` together, including where each blocker in `todo`
+is placed. `READY` is the answer, and no list anywhere else overrides it.
 
 **Should it be next?** A judgement, and the user's. A ticket earns its place
 when it holds up other tickets, is groundwork the rest stands on, is small
@@ -451,8 +461,8 @@ the owner, seeing the pieces, may still keep it whole with `--accept-size`.
 **When the user asks for a move you would not have made**, name in one line the
 single check that failed, then do as they say:
 
-> This one is still `blocked_by` 260907135503, which is sitting in `todo`
-> itself — move it anyway?
+> This one is still `blocked_by` 260907135503, which is sitting in `backlog`
+> and is not part of this batch — move it anyway?
 
 **Who fills it.** The planner (`kerjaan-planner`): the foreman dispatches it
 when the owner asks what can be worked on, relays its questions and proposal
@@ -481,8 +491,9 @@ at a time, each question stalls the work after the user has left.
 Before the first ticket leaves `todo`, run `"$K/queue.sh" check`. `READY`
 means the sweep is done. A ticket it names — put in `todo` by hand, or edited
 since — goes to the planner before the chain starts. A question that surfaces
-mid-work is written into the ticket by the worker, and the foreman puts it to
-the owner.
+mid-work takes the same form as the planner's: the worker records it with
+`queue.sh ask`, numbered in its ticket, where `queue.sh check` shows it; the
+foreman puts it to the owner and records the answer with `queue.sh answer`.
 
 The sweep includes size: a ticket over the limit that nobody split or the
 owner kept whole is named by `check`. Starting it is what the size check
@@ -491,8 +502,8 @@ exists to prevent; the warning `update-ticket.sh` prints on the move to
 
 The same message carries two more questions a chain needs settled up front
 (`references/foreman.md`, "Starting the chain"): whether checks only a person
-can make are deferred or hold the chain, and any review level worth raising
-for a ticket that lands somewhere unforgiving.
+can make are deferred or hold the chain, and the review level the planner
+suggested for each ticket in its report.
 
 **Then move the ticket to `in_progress` before the first change to the repo** —
 even when you fully expect to finish in one sitting. Especially then. The board
@@ -523,8 +534,8 @@ so the decision outlives the conversation.
 **Which ticket to take is already decided.** `order.md` is that decision: the planner
 proposed it and the owner accepted or rearranged it when `todo` was filled.
 Take the first ticket in it — or any ticket in its first group — and start,
-without asking which one. With no `order.md`, take any ticket in `todo` whose
-`blocked_by` is clear. Asking again only reopens a choice the owner already
+without asking which one. With no `order.md`, take any ticket in `todo`: `check` has
+already refused a `todo` where one waits for another without an `order.md`. Asking again only reopens a choice the owner already
 made, and stalls the queue on someone who may have left. Ask only when the
 order no longer fits what the board now shows — the top ticket turned out to
 depend on one further down, say — and then name that one problem.
@@ -550,6 +561,10 @@ on, because the asking feels like preparation rather than work:
 
 - **Into `in_progress` before the first answer is written into the ticket.**
   Drafting in conversation is not yet work; writing it into the repo is.
+- **Its estimate is what it writes, or nothing.** The file where the
+  decision ends up (below) is estimated like any other; a ticket that changes
+  no file of the project at all records `queue.sh estimate <id> --none`, so
+  `check` can call it ready without a made-up file.
 - **`todo` → `review` is never right.** `update-ticket.sh` refuses any move into
   `review` that does not come from `in_progress`.
 - **Give it a criterion for where the decision ends up**: the README, a
@@ -605,8 +620,9 @@ exactly what is committed there (`references/parallel-work.md`, "Back into
 main").
 
 **Depth of review** comes from the `review` field. Leave it empty (`quick`)
-unless the ticket needs more; the level is the user's call, and suggesting a
-higher one is the foreman's, when it clears the queue. **Read
+unless the ticket needs more; the level is the user's call. Suggesting one is
+the planner's, which read the code: its report names a level per ticket, and
+the foreman puts those to the owner with the other questions. **Read
 `references/review.md`** whenever a ticket in the chain lands on money,
 authentication, permissions, unrecoverable data or anything a customer hits
 first.

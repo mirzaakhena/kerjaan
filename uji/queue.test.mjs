@@ -34,10 +34,10 @@ const gitEnv = {
 
 const items = (n) => Array.from({ length: n }, (_, i) => `- [ ] Butir ke-${i + 1}`).join('\n');
 
-function ticketText({ blockedBy = [], doneWhen = items(2), notes = '(none yet)' } = {}) {
+function ticketText({ blockedBy = [], doneWhen = items(2), notes = '(none yet)', type = 'feature', priority = 'medium' } = {}) {
   return `---
-type: feature
-priority: medium
+type: ${type}
+priority: ${priority}
 review: normal
 labels: []
 reporter: mirza
@@ -164,6 +164,67 @@ test('estimate: an example inside a fenced block is not a record', () => {
   const root = repo();
   add(root, A, { notes: '```\n- 2026-10-16 10:00:00: files estimated to change: `src/a.js`\n```' });
   assert.equal(q(root, 'estimate', A).code, 1);
+});
+
+// A decision ticket changes no file of the project. Its estimate says exactly
+// that, so check can call it ready without a file picked to satisfy it.
+test('estimate --none: recorded as its own fixed line, shown, and enough for check', () => {
+  const root = repo();
+  add(root, A);
+  const r = q(root, 'estimate', A, '--none');
+  assert.equal(r.code, 0, r.err);
+  assert.match(read(root, A), /^- \d{4}-\d\d-\d\d \d\d:\d\d:\d\d: files estimated to change: none$/m);
+  assert.doesNotMatch(read(root, A), /updated: 2026-10-16 20:00:00/);
+  const shown = q(root, 'estimate', A);
+  assert.equal(shown.code, 0, shown.err);
+  assert.match(shown.out, /none: 261016400001 changes no file of the project/);
+  const c = q(root, 'check', A);
+  assert.equal(c.code, 0, c.out);
+  assert.match(c.out, /\n  ready\nREADY\n$/);
+});
+
+test('estimate --none: refused beside paths, with nothing written', () => {
+  const root = repo();
+  add(root, A);
+  for (const args of [['--none', 'src/a.js'], ['src/a.js', '--none']]) {
+    const r = q(root, 'estimate', A, ...args);
+    assert.equal(r.code, 2, args.join(' '));
+  }
+  assert.doesNotMatch(read(root, A), /files estimated/);
+});
+
+test('estimate --none: the latest estimate counts both ways, and none shares files with nobody', () => {
+  const root = repo();
+  add(root, A); add(root, B);
+  q(root, 'estimate', A, 'src/a.js');
+  q(root, 'estimate', B, 'src/a.js');
+  assert.match(q(root, 'overlap').out, /261016400001 \(backlog\) and 261016400002 \(backlog\) share:\n  src\/a\.js/);
+  q(root, 'estimate', A, '--none');
+  const r = q(root, 'overlap', A, B);
+  assert.match(r.out, /No two of these tickets share a file/);
+  assert.doesNotMatch(r.err, /No estimate recorded/);
+  q(root, 'estimate', A, 'src/a.js');
+  assert.match(q(root, 'overlap').out, /share:\n  src\/a\.js/);
+});
+
+test('estimate --none: compare names every file its commits changed as not estimated', () => {
+  const root = repo();
+  add(root, A, { status: 'done' });
+  q(root, 'estimate', A, '--none');
+  commit(root, `${A}: kerja`, { 'src/c.js': 'c\n' });
+  const r = q(root, 'compare', A);
+  assert.equal(r.code, 0, r.out + r.err);
+  assert.equal(r.out, [
+    'Estimated and changed:', '  (none)',
+    'Estimated, not changed:', '  (none)',
+    'Changed, not estimated:', '  src/c.js', '',
+  ].join('\n'));
+  const quiet = repo();
+  add(quiet, A, { status: 'done' });
+  q(quiet, 'estimate', A, '--none');
+  const r2 = q(quiet, 'compare', A);
+  assert.equal(r2.code, 0, r2.out);
+  assert.match(r2.out, /Changed, not estimated:\n  \(none\)\n$/);
 });
 
 // --- overlap -------------------------------------------------------------------
@@ -368,6 +429,8 @@ test('check: names each kind of problem in a ticket', () => {
       add(root, B, { status: 'done', notes: '- 2026-10-16 10:00:00: merge held for the owner — konflik' });
     }, /blocked_by 261016400002, whose merge into main is held/],
     ['a blocker that does not exist', (root) => { readyTicket(root, A, { blockedBy: [B] }); }, /blocked_by 261016400002, which is no ticket/],
+    ['an empty type', (root) => { readyTicket(root, A, { type: '' }); }, /`type` is empty/],
+    ['an empty priority', (root) => { readyTicket(root, A, { priority: '' }); }, /`priority` is empty/],
   ];
   for (const [name, setup, expected] of cases) {
     const root = repo();
@@ -386,6 +449,12 @@ test('check: blockers that are finished, queued, or part of the same batch are f
   add(root, C, { status: 'todo' });
   readyTicket(root, D);
   assert.equal(q(root, 'check', A, D).code, 0);
+  for (const st of ['in_progress', 'review']) {
+    const r = repo();
+    readyTicket(r, A, { blockedBy: [B] });
+    add(r, B, { status: st });
+    assert.equal(q(r, 'check', A).code, 0, st);
+  }
   const root2 = repo();
   readyTicket(root2, A, { doneWhen: items(9) });
   run(root2, update, A, '--accept-size');
@@ -449,6 +518,49 @@ test('check: a ticket placed before the one it waits for; after it, it is fine',
   order(root, `**Dulu.** Fondasi.\n\n- ${B} Dua\n\n**Lalu.** Memakai hasilnya.\n\n- ${A} Satu\n`);
   r = q(root, 'check');
   assert.equal(r.code, 0, r.out);
+});
+
+test('check: a blocker in an earlier group of todo makes the ticket waiting for it ready, as a whole and by ID', () => {
+  const root = repo();
+  readyTicket(root, A, { status: 'todo', blockedBy: [B] });
+  readyTicket(root, B, { status: 'todo' });
+  order(root, `**Dulu.** Fondasi.\n\n- ${B} Dua\n\n**Lalu.** Memakai hasilnya.\n\n- ${A} Satu\n`);
+  let r = q(root, 'check');
+  assert.equal(r.code, 0, r.out);
+  assert.match(r.out, /261016400001 \(todo\) Tiket 261016400001\n  ready\n/);
+  r = q(root, 'check', A);
+  assert.equal(r.code, 0, r.out);
+});
+
+test('check: with no order.md, a ticket of todo waiting for another of todo is not ready', () => {
+  const root = repo();
+  readyTicket(root, A, { status: 'todo', blockedBy: [B] });
+  readyTicket(root, B, { status: 'todo' });
+  const r = q(root, 'check');
+  assert.equal(r.code, 1, r.out);
+  assert.match(r.out, /blocked_by 261016400002, which is in todo too, and no order\.md places it in an earlier group/);
+  assert.match(r.out, /NOT READY: 1 problem/);
+});
+
+// A worker's question takes the planner's numbered form, so the check that
+// judges todo shows it too, without holding todo up for it.
+test('check: questions open in tickets in flight are shown with their number, and do not count against todo', () => {
+  const root = todoBoard();
+  add(root, C, { status: 'in_progress' });
+  add(root, D, { status: 'review' });
+  q(root, 'ask', C, 'Yang pertama?');
+  q(root, 'answer', C, '1', 'Ya.');
+  q(root, 'ask', C, 'Tombol di kiri atau kanan? Saran: kanan.');
+  q(root, 'ask', D, 'Nama berkasnya?');
+  const r = q(root, 'check');
+  assert.equal(r.code, 0, r.out);
+  assert.match(r.out, /in flight, waiting for the owner \(not counted against todo\)\n  261016400003 \(in_progress\) question 2: Tombol di kiri atau kanan\? Saran: kanan\.\n  261016400004 \(review\) question 1: Nama berkasnya\?\n/);
+  assert.doesNotMatch(r.out, /Yang pertama/);
+  assert.match(r.out, /READY\n$/);
+  const one = q(root, 'check', C);
+  assert.match(one.out, /open question 2: Tombol di kiri atau kanan/);
+  const quiet = todoBoard();
+  assert.doesNotMatch(q(quiet, 'check').out, /in flight/);
 });
 
 // Two tickets of one group sharing files: the order they land in is said by
@@ -778,4 +890,82 @@ test('check: a ticket moved into todo inside a Claude Code session, and ordered,
   const r = q(root, 'check');
   assert.equal(r.code, 0, r.out);
   assert.match(r.out, /READY\n$/);
+});
+
+// --- one definition of ready, in every document --------------------------------------------------
+// The conditions are listed once, in SKILL.md "Into `todo`", one bullet per
+// kind of problem `check` names. The planner points at them by their number,
+// and the guides point at `check`; none keeps a list of its own to drift.
+
+const doc = (...p) => fs.readFileSync(path.join(here, '..', ...p), 'utf8');
+const numberWords = ['one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine'];
+
+function readyConditions() {
+  const skill = doc('skills', 'kerjaan', 'SKILL.md');
+  const section = skill.split('### Into `todo`')[1].split('\n### ')[0];
+  const m = section.match(/All (\w+) must hold:\n\n((?:- [\s\S]*?\n)+?)\n(?!- |  )/);
+  assert.ok(m, section);
+  const bullets = m[2].split('\n').filter((l) => l.startsWith('- '));
+  return { section, word: m[1], bullets };
+}
+
+test('docs: SKILL.md says as many conditions as it lists, and each is one kind check names', () => {
+  const { section, word, bullets } = readyConditions();
+  assert.equal(numberWords.indexOf(word) + 1, bullets.length, bullets.join('\n'));
+  assert.equal(bullets.length, 5);
+  // One bullet per kind: fields, questions, size, estimate, blockers.
+  const kinds = [/`type` and `priority`/, /question/, /size/, /estimate/, /`blocked_by`/];
+  kinds.forEach((k, i) => assert.match(bullets[i], k, bullets[i]));
+  assert.match(section, /queue\.sh" check`\ntests, nothing more and nothing less/);
+  // A blocker in an earlier group of todo is ahead, not a reason to wait.
+  assert.match(section, /in `todo` in an earlier group of\n\s*`order\.md`/);
+  assert.match(section, /estimate <id> --none/);
+});
+
+test('docs: the planner names the same number of conditions and points at the list instead of copying it', () => {
+  const { word, bullets } = readyConditions();
+  const planner = doc('agents', 'kerjaan-planner.md');
+  assert.match(planner, new RegExp(`the ${word} conditions of SKILL\\.md, "Into \`todo\`"`));
+  for (const w of numberWords.filter((x) => x !== word)) {
+    assert.doesNotMatch(planner, new RegExp(`the ${w} (checks|conditions)`, 'i'), w);
+  }
+  // No bullet's opening is restated, in the planner or in a guide.
+  const openings = bullets.map((b) => b.match(/^- \*\*(.+?)\*\*/)[1]);
+  const guides = {
+    planner,
+    'ordering-the-queue.md': doc('skills', 'kerjaan', 'references', 'ordering-the-queue.md'),
+    'foreman.md': doc('skills', 'kerjaan', 'references', 'foreman.md'),
+    'README.md': doc('README.md'),
+  };
+  for (const [name, text] of Object.entries(guides)) {
+    for (const o of openings) assert.ok(!text.includes(o), `${name} copies "${o}"`);
+    assert.doesNotMatch(text, /`type` and `priority`/, name);
+    assert.match(text, /queue\.sh"? check/, name);
+  }
+  assert.match(guides['ordering-the-queue.md'], /`check` is the one\ndefinition of ready, and this guide keeps no list of its own/);
+});
+
+test('docs: a worker records its questions with queue.sh ask, numbered like the planner\'s', () => {
+  const worker = doc('agents', 'kerjaan-worker.md');
+  const step = worker.split('**2. Find the decisions that are not yours.**')[1].split('**3. ')[0];
+  assert.match(step, /"\$K\/queue\.sh" ask <id>/);
+  assert.match(step, /is recorded with `queue\.sh ask` the same way/);
+  assert.doesNotMatch(step, /Write it into `## Notes`/);
+  assert.match(doc('skills', 'kerjaan', 'references', 'foreman.md'), /"\$K\/queue\.sh" answer <id> <n> "<answer>"`, then resume that worker/);
+});
+
+test('docs: the review level is suggested by the planner in its report and relayed by the foreman', () => {
+  const planner = doc('agents', 'kerjaan-planner.md');
+  assert.match(planner, /\*\*7\. Suggest a review level for each ticket\.\*\*/);
+  assert.match(planner.split('## The report')[1], /\nReview levels: <id>: <quick \| normal \| strict> — <reason>/);
+  const foreman = doc('skills', 'kerjaan', 'references', 'foreman.md');
+  assert.match(foreman, /the review level it suggests\nfor each ticket/);
+  assert.match(foreman, /the foreman relays it and adds none of its own/);
+  const review = doc('skills', 'kerjaan', 'references', 'review.md');
+  assert.match(review, /Suggesting one is the planner's/);
+  const skill = doc('skills', 'kerjaan', 'SKILL.md');
+  for (const text of [skill, review, foreman]) {
+    assert.doesNotMatch(text, /suggesting a\s+higher one is (the foreman's|yours)/);
+    assert.doesNotMatch(text, /any review level worth raising/);
+  }
 });

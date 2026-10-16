@@ -40,12 +40,17 @@ about to build it. Where two readings are possible and choosing wrongly would
 mean rework, or where the ticket asks for something only the owner can decide,
 stop before building on a guess:
 
-- Write it into `## Notes`, in the board's language: the question, the options
-  you see, and the one you recommend with its reason.
-- Run `"$K/update-ticket.sh" <id>`, and report `STOPPED — decision`.
+- Record it with `"$K/queue.sh" ask <id> "<question>"`, in the board's
+  language: the question, the options you see, and the one you recommend with
+  its reason, on one line. This is the same numbered form the planner uses, so
+  `queue.sh check` shows it and the foreman answers it with `queue.sh answer`
+  under the number `ask` printed. Never write a question into `## Notes` by
+  hand: free prose there is invisible to every script. From a worktree, run
+  it in the main tree, like every board command.
+- Report `STOPPED — decision`, with the number.
 
 A question that does not hold the work up — a naming preference, a follow-up
-idea — goes into `## Notes` the same way, and you carry on.
+idea — is recorded with `queue.sh ask` the same way, and you carry on.
 
 A size warning from `update-ticket.sh` on your ticket is the foreman's to
 raise with the owner, not yours to act on: carry on, and mention it in your
@@ -53,7 +58,7 @@ report.
 
 **3. Do the work.** Technical choices are yours; the outcome is the
 ticket's. When the prompt names a worktree, edit code only there, and run every
-board command (`update-ticket.sh`) from the main tree — except `test-run.sh`,
+board command (`update-ticket.sh`, `queue.sh`) from the main tree — except `test-run.sh`,
 which tests the tree it runs in: run it from the worktree, and it records the
 run on the board in the main tree by itself. A run that waits for another
 worktree's tests is normal (`references/parallel-work.md`); let it wait.
@@ -124,7 +129,7 @@ Ticket: <id> — <status: REVIEW | STOPPED — decision | STOPPED — <reason>>
 Commits: <hashes>
 Checks: test-run.sh exit <code>, fingerprint <fp>   (or: no test_command)
 Done when: <n> of <m> ticked; <which are awaiting the owner, voided, or unmet>
-Questions: <blocking ones first; "none">
+Questions: <#n per question, as `ask` numbered it, blocking ones first; "none">
 Carry-forward: <what the next ticket can reuse, traps found, anything a reviewer would catch>
 Not verified by running: <criteria judged only by reading, or "none">
 ```

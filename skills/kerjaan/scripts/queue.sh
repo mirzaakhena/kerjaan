@@ -17,6 +17,8 @@
 #   queue.sh estimate <id> [<path>...]   record the files and folders <id> is
 #                                        expected to change; with no paths,
 #                                        print the latest estimate
+#   queue.sh estimate <id> --none        record that <id> changes no file of
+#                                        the project: a decision ticket
 #   queue.sh overlap [<id>...]           pairs of tickets whose estimates share
 #                                        files, and the files they share
 #   queue.sh compare <id>                the estimate against what the ticket's
@@ -142,16 +144,23 @@ if [ "$cmd" = "estimate" ]; then
   id="$1"; shift
   file="$(ticket_of "$id")"
   if [ "$#" -eq 0 ]; then
-    est="$(kerjaan_estimate "$file")"
-    if [ -z "$est" ]; then
-      echo "No estimate recorded for $id." >&2
-      exit 1
-    fi
-    printf '%s\n' "$est"
+    case "$(kerjaan_estimate_kind "$file")" in
+      paths) kerjaan_estimate "$file" ;;
+      none) echo "(none: $id changes no file of the project)" ;;
+      *) echo "No estimate recorded for $id." >&2; exit 1 ;;
+    esac
+    exit 0
+  fi
+  if [ "$1" = "--none" ]; then
+    [ "$#" -eq 1 ] || { echo "--none stands alone: a ticket either changes these files or none." >&2; exit 2; }
+    kerjaan_append_note "$file" "- $(now): files estimated to change: none"
+    refresh "$id"
+    echo "Estimate recorded for $id: no file of the project changes."
     exit 0
   fi
   : > "$tmpdir/paths"
   for p in "$@"; do
+    [ "$p" != "--none" ] || { echo "--none stands alone: a ticket either changes these files or none." >&2; exit 2; }
     while case "$p" in ./*) true ;; *) false ;; esac; do p="${p#./}"; done
     case "$p" in
       '' | /* | .. | ../* | */.. | */../* | *'`'* | .kerjaan | .kerjaan/*)
@@ -187,7 +196,7 @@ if [ "$cmd" = "overlap" ]; then
     kerjaan_estimate "$f" > "$tmpdir/est.$id"
     if [ -s "$tmpdir/est.$id" ]; then
       printf '%s\t%s\n' "$id" "$(status_of "$f")" >> "$tmpdir/have"
-    elif [ "$#" -gt 0 ]; then
+    elif [ "$#" -gt 0 ] && [ "$(kerjaan_estimate_kind "$f")" != "none" ]; then
       echo "No estimate recorded for $id; it is left out." >&2
     fi
   done < "$tmpdir/ids"
@@ -220,12 +229,16 @@ if [ "$cmd" = "compare" ]; then
   git rev-parse --verify -q HEAD > /dev/null 2>&1 && rev="$(kerjaan_code_rev "$id")"
   kerjaan_changed_files "$id" "$rev" > "$tmpdir/changed"
   [ "$rev" = "HEAD" ] || echo "Read from ${rev#refs/heads/}, which is not merged into HEAD."
-  if [ ! -s "$tmpdir/est" ]; then
+  if [ ! -s "$tmpdir/est" ] && [ "$(kerjaan_estimate_kind "$file")" != "none" ]; then
     echo "No estimate was recorded for $id. Changed by its commits:"
     if [ -s "$tmpdir/changed" ]; then sed 's/^/  /' "$tmpdir/changed"; else echo "  (nothing)"; fi
     exit 1
   fi
-  awk -v outdir="$tmpdir" 'NR == FNR { est[++n] = $0; next }
+  # An estimate of "none" leaves est empty, and awk would then read the changed
+  # files as the estimate: every changed file is unestimated, so say that.
+  # A line holding a backquote stands in, since no estimated path may hold one.
+  [ -s "$tmpdir/est" ] || echo '`none`' > "$tmpdir/est"
+  awk -v outdir="$tmpdir" 'NR == FNR { if ($0 != "`none`") est[++n] = $0; next }
     {
       hit = 0
       for (i = 1; i <= n; i++) {
@@ -298,13 +311,20 @@ fi
 # ---------------------------------------------------------------------------
 # check
 # ---------------------------------------------------------------------------
-# Per ticket: no open question, an estimate, within the size limit (or kept
-# whole by the owner), and every ticket it waits for either finished — landed,
-# not held — or itself queued. With no IDs, todo is checked as a whole: also
-# every ticket in order.md and no stale entry, no group holding a ticket
-# together with one it waits for (directly or through others), nothing placed
-# before what it waits for, and every two tickets of one group that share
-# files ordered by that group's lands-first line.
+# This is the one definition of a ticket ready for todo. SKILL.md, "Into
+# `todo`", says the same conditions in words, one bullet per problem kind
+# below; every other document points here or there instead of listing them.
+# Per ticket: `type` and `priority` filled in, no open question, within the
+# size limit (or kept whole by the owner), an estimate (a list of files, or
+# none at all), and every ticket it waits for either finished — landed, not
+# held — or ahead of it: in flight, queued in todo, or a backlog ticket named
+# in the same batch. With no IDs, todo is checked as a whole: also every
+# ticket in order.md and no stale entry, a blocker in todo placed in an
+# earlier group (so, with no order.md, nothing in todo waits for another
+# ticket of todo), no group holding a ticket together with one it waits for
+# (directly or through others), and every two tickets of one group that share
+# files ordered by that group's lands-first line. Questions still open in
+# tickets in flight are shown too, without counting against todo.
 #
 # The lands-first line is the one fixed marker for which lands first, the same
 # on a board in any language, documented in references/ordering-the-queue.md
@@ -331,18 +351,32 @@ fi
 problems=0
 problem() { problems=$((problems + 1)); echo "  - $1"; }
 
+order="$board/order.md"
+
+# The value of frontmatter field <name> in ticket <file>, trimmed.
+field_of() {
+  awk -v k="$2" '$0 == "---" { if (++fence == 2) exit; next }
+    fence == 1 && index($0, k ":") == 1 {
+      v = substr($0, length(k) + 2); gsub(/^[ \t]+|[ \t]+$/, "", v); print v; exit
+    }' "$1"
+}
+
 while IFS= read -r id; do
   [ -n "$id" ] || continue
   f="$(ticket_of "$id")"
   echo "$id ($(status_of "$f")) $(basename "$f" .md | cut -c14-)"
   before="$problems"
 
+  for k in type priority; do
+    [ -n "$(field_of "$f" "$k")" ] || problem "\`$k\` is empty"
+  done
+
   while IFS=$'\t' read -r k state q; do
     [ "$state" = "open" ] && problem "open question $k: $q"
   done < <(kerjaan_questions "$f")
 
-  [ -n "$(kerjaan_estimate "$f")" ] \
-    || problem "no estimate of the files it will change (queue.sh estimate $id <path>...)"
+  [ -n "$(kerjaan_estimate_kind "$f")" ] \
+    || problem "no estimate of the files it will change (queue.sh estimate $id <path>..., or --none when it changes no file of the project)"
 
   if "$here/ticket-size.sh" "$f" 2>&1 > /dev/null | grep -q '^WARNING'; then
     problem "over the size limit: split it by outcome, or the owner keeps it whole (--accept-size)"
@@ -361,7 +395,12 @@ while IFS= read -r id; do
           || problem "blocked_by $b, whose merge into main is held for the owner"
         ;;
       cancel) problem "blocked_by $b, which was cancelled: ask the owner whether the dependency is gone" ;;
-      todo | in_progress | review) ;;
+      in_progress | review) ;;
+      todo)
+        # Its place ahead of this one is order.md's to give, judged below.
+        [ "$whole" -eq 1 ] && [ ! -f "$order" ] \
+          && problem "blocked_by $b, which is in todo too, and no order.md places it in an earlier group"
+        ;;
       backlog)
         grep -qx "$b" "$tmpdir/targets" \
           || problem "blocked_by $b, which is still in backlog and not part of this batch"
@@ -372,7 +411,21 @@ while IFS= read -r id; do
   [ "$problems" -gt "$before" ] || echo "  ready"
 done < "$tmpdir/targets"
 
-order="$board/order.md"
+# A question a worker recorded mid-work sits in a ticket in flight. It is not
+# todo's problem, but it is waiting for the same owner, so it is shown.
+if [ "$whole" -eq 1 ]; then
+  : > "$tmpdir/waiting"
+  while IFS= read -r id; do
+    f="$(ticket_of "$id")"
+    while IFS=$'\t' read -r k state q; do
+      [ "$state" = "open" ] && echo "  $id ($(status_of "$f")) question $k: $q" >> "$tmpdir/waiting"
+    done < <(kerjaan_questions "$f")
+  done < <(ids_in in_progress review)
+  if [ -s "$tmpdir/waiting" ]; then
+    echo "in flight, waiting for the owner (not counted against todo)"
+    cat "$tmpdir/waiting"
+  fi
+fi
 if [ "$whole" -eq 1 ] && [ -f "$order" ]; then
   echo "order.md"
   before="$problems"

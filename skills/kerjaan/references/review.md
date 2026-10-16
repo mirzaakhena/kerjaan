@@ -25,33 +25,38 @@ something does not add up. Every review records its level in `## Notes`.
 
 ### Suggesting a level
 
-The level is the user's call; suggesting a higher one is yours, because you
-just read the code and know whether it sits somewhere that punishes a mistake.
-Say so in one line, before the move, naming the reason rather than the level
-alone:
+The level is the owner's call. Suggesting one is the planner's
+(`agents/kerjaan-planner.md`), because it is the agent that reads the code a
+ticket will touch and knows whether it sits somewhere that punishes a
+mistake. Its report names a level for every ticket it proposes, with the
+reason rather than the level alone; the foreman, which never reads the code,
+puts those suggestions to the owner in the same message as the planner's
+questions, adds none of its own, and the planner writes the owner's choice
+into `review:`:
 
-> This touches the payment callback — want me to set `review: strict` so the
-> reviewer breaks the code on purpose and checks the tests actually catch it?
+> 260905160502 touches the payment callback — the planner suggests `review:
+> strict`, so the reviewer breaks the code on purpose and checks the tests
+> actually catch it. Agree?
 
-Offer it when the work landed on money, authentication, permissions, data that
-cannot be recovered, or anything a customer hits first — and equally when you
-are unsure your change is right. That last case is the most valuable and the
-easiest to skip.
+The planner suggests more than `quick` when the work lands on money,
+authentication, permissions, data that cannot be recovered, or anything a
+customer hits first — and equally when it is unsure the change can be got
+right. That last case is the most valuable and the easiest to skip.
 
-Then do what they say, and:
+Then the owner's answer stands, and:
 
-- **When the user has asked for speed, stop offering.** "Ini cuma mock", "buat
+- **When the owner has asked for speed, stop offering.** "Ini cuma mock", "buat
   MVP dulu", "yang penting jalan", "jangan lama-lama" settle it for the work
   that follows: use `quick` and say nothing further about levels.
 - **Ask once per ticket.** Declined is settled.
 - **Never raise the level silently.** A review that costs ten minutes when the
-  user expected one is a review they will start working around.
+  owner expected one is a review they will start working around.
 
 **A level cannot rescue a thin checklist.** The reviewer blocks on `Done when`
 and nothing else, so criteria that describe only the happy path pass even at
-`strict`. If what worries you is an input nobody validated or an error nobody
-handled, add a criterion saying so. Suggest the criterion first, the level
-second.
+`strict`. If what worries the planner is an input nobody validated or an error
+nobody handled, it asks for a criterion saying so. The criterion first, the
+level second.
 
 If you only realise after the move that a ticket needed a deeper look, edit the
 field and dispatch `kerjaan-reviewer` again by hand.

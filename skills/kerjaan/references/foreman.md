@@ -68,13 +68,16 @@ Just finished: <tickets passed this session, with the carry-forward>
 
 **2. Put its questions to the owner in one message**, together with the
 proposal: the order, which tickets run together and why, the splits it made,
-anything sharing files with work in flight. Every question is already in its
-ticket under a number (`#2`); keep the number with each answer. The owner
-answers, and approves the proposal, cuts it down or rearranges it.
+anything sharing files with work in flight, and the review level it suggests
+for each ticket with its reason. The level is the planner's suggestion because
+the planner read the code; the foreman relays it and adds none of its own.
+Every question is already in its ticket under a number (`#2`); keep the
+number with each answer. The owner answers, takes or changes the review
+levels, and approves the proposal, cuts it down or rearranges it.
 
 **3. Resume the same planner** with `SendMessage` to its agent ID: the
-answers, word for word with their ticket and number, and what the owner
-approved. It writes the answers into the tickets, moves the approved tickets
+answers, word for word with their ticket and number, the review levels the
+owner chose, and what the owner approved. It writes the answers into the tickets, moves the approved tickets
 to `todo`, writes `order.md`, checks both with `queue.sh check`, commits the
 board, and reports `QUEUED`. When an answer changed the proposal, it reports
 `CHANGED — needs the owner` instead and moves nothing: back to step 2 with only
@@ -107,7 +110,7 @@ sweep the tickets itself.
 
 What remains for this message:
 
-- the planner's questions, if any (above);
+- the planner's questions and its suggested review levels, if any (above);
 - **checks only a person can make** that a ticket's Notes do not settle yet:
   **deferred** (the work goes on; the worker writes a hand scenario, the item
   is marked as awaiting the owner, and the reviewer does not reject the ticket
@@ -119,7 +122,9 @@ What remains for this message:
   `update-ticket.sh <id> --accept-size`, on the owner's word only.
 
 Write each answer into every ticket it touches — `## Notes`, dated, in the
-board's language — and run `update-ticket.sh` on each. A deferred human check
+board's language — and run `update-ticket.sh` on each. An answer to a
+numbered question goes in with `"$K/queue.sh" answer <id> <n> "<answer>"`
+instead, whoever asked it. A deferred human check
 reads like:
 
 ```markdown
@@ -174,7 +179,7 @@ working.
 | Report | What the foreman does |
 |---|---|
 | `REVIEW` | The ticket is in `review/`. In the first round, dispatch `kerjaan-reviewer` and record its agent ID next to the worker's; in a later round, resume that reviewer (step 5). No hook message reaches you here: the worker made the move, so the hook spoke to the worker. |
-| `STOPPED — decision` | Stop the chain (see "When the chain stops"). |
+| `STOPPED — decision` | Stop the chain (see "When the chain stops"). The question is numbered in the ticket; `"$K/queue.sh" check <id>` shows it. |
 | anything else | Read why. If the ticket is groundwork for others, stop the chain. Otherwise note it, leave the ticket in `in_progress` with its Notes, and go on. |
 
 Add the report's carry-forward to the log, and the questions that did not stop
@@ -242,8 +247,10 @@ It grows by a few lines per ticket; that is the point.
 The chain stops itself, and reports to the user, in three cases:
 
 1. **A decision belongs to the user.** A worker reported `STOPPED — decision`
-   and wrote the question, the options and its recommendation into the ticket.
-   Or a human check is holding the chain.
+   and recorded the question, the options and its recommendation with
+   `queue.sh ask`. Put it to the owner with its number; record the answer with
+   `"$K/queue.sh" answer <id> <n> "<answer>"`, then resume that worker. Or a
+   human check is holding the chain.
 2. **The reviewer sent the same ticket back twice.** Put the choice to the
    owner as `references/review.md` describes: fix and review a third time, or
    accept it with a follow-up ticket.
@@ -264,8 +271,10 @@ summary, from the log:
 - **Passed**: each ticket, and the round it passed in.
 - **Stopped or left open**: each ticket and why — the decision it is waiting
   on, the findings that sent it back twice, the groundwork that failed.
-- **Questions**: every one the workers wrote, blocking first, each with its
-  ticket and the worker's recommendation. These are the user's to answer.
+- **Questions**: every one the workers recorded and nobody answered yet,
+  blocking first, each with its ticket, its number and the worker's
+  recommendation — `"$K/queue.sh" check <id>` on each ticket of the chain
+  lists them. These are the user's to answer, with `queue.sh answer`.
 - **Awaiting a person**: every deferred human check, with the ticket whose
   Notes hold its hand scenario.
 - **Held merges**: every ticket `land` held for the owner, with its reason.

@@ -47,20 +47,21 @@ Nothing else: no code, no `settings.md`, no ticket past `todo`, never
 **1. Read before judging.** The project's own rules (`CLAUDE.md`, `AGENTS.md`,
 whatever the repo keeps at its root), `.kerjaan/settings.md`, and in the
 kerjaan skill: `SKILL.md` ("Anatomy of a ticket", "How big a ticket is", "Into
-`todo`"), `references/ordering-the-queue.md`, and the opening of
-`references/parallel-work.md`. Then the board: what sits in `todo`,
+`todo`"), `references/ordering-the-queue.md`, the opening of
+`references/parallel-work.md`, and `references/review.md`, "How deeply a
+ticket gets reviewed". Then the board: what sits in `todo`,
 `in_progress` and `review`, `order.md`, and the titles in `backlog`.
 
 **2. Read each candidate in full**, as the worker who will build it. Readiness
-is the four checks of SKILL.md, "Into `todo`": `blocked_by` finished (landed,
-not held) or queued ahead of it, `Done when` checkable by someone
-non-technical, no decision waiting on the owner, `type` and `priority` filled
-in. A ticket whose `blocked_by` sits in `backlog` comes with its blocker or not
-at all.
+is the five conditions of SKILL.md, "Into `todo`" — the ones `"$K/queue.sh"
+check` tests, and no others; read them there rather than from memory. A
+ticket whose `blocked_by` sits in `backlog` comes with its blocker, in an
+earlier group, or not at all.
 
 **3. Record every question.** A line you would have to guess at, two readings
-where the wrong one means rework, a criterion you could not check, a decision
-someone left in `## Notes` without an answer: one question each, written in
+where the wrong one means rework, a `Done when` line a non-technical person
+could not check, a decision someone left in `## Notes` without an answer: one
+question each, written in
 the board's language with the options you see and the one you recommend.
 
 ```bash
@@ -91,6 +92,10 @@ name yet. A folder that holds half the project tells nobody anything.
 "$K/queue.sh" estimate <id> viewer/app.mjs viewer/web/beranda.js viewer/uji/
 ```
 
+A ticket that changes no file of the project — a decision whose answers live
+only in tickets — gets `"$K/queue.sh" estimate <id> --none`, never a file
+picked to satisfy `check`.
+
 Before the first estimate, look at how earlier ones went:
 `"$K/queue.sh" compare <id>` on a few tickets in `done/` that carry one shows
 what was estimated and not changed, and changed without being estimated. The
@@ -115,7 +120,15 @@ Then, for every pair in your proposal:
 A candidate that shares files with a ticket already in flight is fine; say so
 in the report, so the foreman tells that worker.
 
-**7. Report and end** (the shape is below). Change nothing beyond the tickets'
+**7. Suggest a review level for each ticket.** You read the code it will
+touch; the foreman never does. For each candidate, name the level from
+`references/review.md` you would give it (`quick`, `normal`, `strict`) and the
+reason in a few words: money, authentication, permissions, data that cannot
+be recovered, what a customer hits first, or a change you are unsure of earns
+more than `quick`. When `review:` is already filled in, say whether it fits. The suggestion goes in the report only — the field is the owner's
+to set.
+
+**8. Report and end** (the shape is below). Change nothing beyond the tickets'
 `## Notes`, the splits and the estimates: the proposal is the owner's to
 approve.
 
@@ -129,7 +142,8 @@ proposal as it stands, cut down, rearranged, or not at all.
 owner's words as relayed. Where an answer changes what the ticket asks for,
 carry it into `Request` or `Done when` too, and run `update-ticket.sh <id>`.
 An answer that widens a ticket is a reason to re-estimate it and to run
-`ticket-size.sh` again.
+`ticket-size.sh` again. A review level the owner chose goes into the ticket's
+`review:` field; one the owner did not answer stays as it was.
 
 **2. Stop if the proposal no longer stands.** An answer that raises a new
 question, makes a ticket wait for another, or changes a group the owner
@@ -146,10 +160,9 @@ of such a group goes one line with the IDs in the order they land,
 what `check` reads, never the prose ("Saying which lands first" in that
 reference).
 
-**4. Check it.** `"$K/queue.sh" check` judges `todo` and `order.md` together:
-no open question, an estimate and a fitting size on every ticket, nothing
-grouped with what it waits for or placed before it, every two tickets sharing
-files ordered by their group's lands-first line. Fix everything it names until it prints `READY`.
+**4. Check it.** `"$K/queue.sh" check` judges `todo` and `order.md` together,
+by the one definition of ready. Fix everything it names until it prints
+`READY`.
 
 **5. Commit the board.** Name every path: the tickets you moved (both their
 old and new paths), the tickets you split off, the ones you only wrote answers
@@ -171,6 +184,7 @@ Proposed order:
   <group, in order>: <id title>, <id title> — <the lead-in: why together or alone; shared files and which lands first>
 Questions for the owner (one message, every ticket):
   <id> #<n>: <question> — options; recommended: <choice>, because <reason>
+Review levels: <id>: <quick | normal | strict> — <reason>, ... (one per ticket)
 Splits made: <id> → <id>, <id> (by outcome: ...), or none
 Shares files with work in flight: <id> and <in-flight id>: <files>, or none
 Left in backlog: <id>: <one-line reason>, ...

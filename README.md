@@ -220,10 +220,11 @@ the session stays light until the queue is finished. It also holds for a
 single ticket, so there is one way of working, not two.
 
 **What you are asked at the start.** The open questions in every ticket of the
-queue, together; and, for checks only a person can make — how it looks on a
-real phone, a day of real use — whether they are deferred or should hold the
-queue. Deferred ones become a hand scenario in the ticket, marked as awaiting
-you, and the reviewer does not reject the ticket over them.
+queue, together, with the review level the planner suggests for each; and,
+for checks only a person can make — how it looks on a real phone, a day of
+real use — whether they are deferred or should hold the queue. Deferred ones
+become a hand scenario in the ticket, marked as awaiting you, and the reviewer
+does not reject the ticket over them.
 
 **What travels between tickets.** The worker's report ends with what the next
 ticket can reuse, the traps it hit, and anything a reviewer would catch. The
@@ -238,8 +239,8 @@ replaced and the old worker cannot be reached, a new one works from the
 ticket's notes, and the summary says so.
 
 **When it stops on its own.** A decision that is yours to make (the worker
-writes the question, the options and its recommendation into the ticket, and
-never guesses), the same ticket sent back twice, or a ticket the others build
+records the question, the options and its recommendation in the ticket,
+numbered the same way as the planner's questions, and never guesses), the same ticket sent back twice, or a ticket the others build
 on failing. A question that does not hold the work up is written into its
 ticket and waits for the summary.
 
@@ -253,10 +254,12 @@ The rules the foreman follows are in
 
 ## Choosing what is next
 
-`todo` means *ready*, and readiness is checked rather than assumed: nothing in
-`blocked_by` is still open, `Done when` can be verified by a non-technical
-person, no decision is still waiting on the user, and the obvious fields are
-filled in. On top of that it means *next* — the ticket is holding others up, or
+`todo` means *ready*, and readiness is checked rather than assumed: it is
+whatever `queue.sh check` says, and that one script is the definition the
+skill, the planner and the guides all point to (the conditions are spelled out
+once, in the skill's "Into `todo`"). A ticket waiting for another is ready once
+the other is finished or queued in an earlier group, and a decision ticket
+that changes no file says so instead of naming a made-up one. On top of that it means *next* — the ticket is holding others up, or
 it is groundwork, or it is quick, or it sits next to work already in flight.
 Size is treated as a reason to split a ticket, never as a reason to defer it,
 because groundwork is almost always big and a board that defers by size buries

@@ -20,6 +20,7 @@
 #   kerjaan_history_line <time> <st>   one ## History line, naming the session
 #   kerjaan_merge_state <file>         held / postponed / landed (merge.sh)
 #   kerjaan_estimate <file>            the files a ticket is estimated to change
+#   kerjaan_estimate_kind <file>       paths / none / nothing: was one recorded
 #   kerjaan_questions <file>           every question asked, numbered for answering
 #   kerjaan_code_rev <id>              where the ticket's commits are read from
 #   kerjaan_changed_files <id> <rev>   files outside .kerjaan/ its commits changed
@@ -376,6 +377,7 @@ kerjaan_merge_state() {
 # board's own.
 #
 #   - 2026-10-16 11:40:00: files estimated to change: `src/a.js`, `docs/`
+#   - 2026-10-16 11:40:00: files estimated to change: none
 #   - 2026-10-16 11:40:00: open question: <the question, in the board's language>
 #   - 2026-10-16 11:40:00: answered question: <the same question>
 #     answer, 2026-10-16 12:05:10: <the owner's answer>
@@ -398,6 +400,19 @@ kerjaan_estimate() {
   kerjaan_unfenced_lines "$1" \
     | grep -E '^- [0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}: files estimated to change: ' \
     | tail -1 | grep -oE '`[^`]+`' | tr -d '`' || true
+}
+
+# Prints what the latest estimate in ticket <file> is: "paths" for a list of
+# files, "none" for a ticket that changes no file of the project (a decision
+# ticket, whose work is the conversation with the owner), and nothing when no
+# estimate was recorded. kerjaan_estimate prints no path for "none", so such a
+# ticket shares files with nobody.
+kerjaan_estimate_kind() {
+  [ -f "$1" ] || return 0
+  kerjaan_unfenced_lines "$1" \
+    | grep -E '^- [0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}: files estimated to change: ' \
+    | tail -1 | sed -E -e 's/^.*: files estimated to change: //' -e 's/[ \t]+$//' \
+    | awk '$0 == "none" { print "none" } /`[^`]+`/ { print "paths" }' || true
 }
 
 # Prints every question ever recorded in ticket <file>, numbered in the order

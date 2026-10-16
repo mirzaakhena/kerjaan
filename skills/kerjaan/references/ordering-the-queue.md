@@ -56,7 +56,9 @@ they are not the same question:
   makes, reads a setting the other adds, or lists it in `blocked_by`. Then they
   **never** share a group, however small the overlap: the one waited for goes
   in an earlier group, the other after it. A chain counts too — A waits for B,
-  which waits for C, so A and C are apart as well.
+  which waits for C, so A and C are apart as well. Placed so, both are ready
+  for `todo` together: a blocker in an earlier group is ahead of the ticket
+  waiting for it, and `queue.sh check` reads it that way.
 - **Do they only change the same files?** Then they **may** share a group. A
   clash in a shared file is ordinary: the ticket that lands second brings the
   first one's change in and resolves it, as every branch does when main moved
@@ -189,9 +191,11 @@ holds whenever the owner asks what can be worked on.
 
 **The planner does the refilling** (`agents/kerjaan-planner.md`), dispatched
 by the foreman (`references/foreman.md`, "Filling the queue"). It proposes a
-batch from `backlog` that passes both questions under "Into `todo`" in
-SKILL.md, with the order, the groups and the reasons, and the questions still
-open in each ticket; the foreman puts all of it to the owner in one message:
+batch from `backlog` that is worth doing next and that `"$K/queue.sh" check`
+will call ready once its questions are answered — `check` is the one
+definition of ready, and this guide keeps no list of its own — with the order,
+the groups and the reasons, the questions still open in each ticket, and a
+review level for each; the foreman puts all of it to the owner in one message:
 
 > From the backlog: 260905160401 first, since the other two read the settings
 > file it adds; then 260905160502 and 260905160503 side by side — both change
