@@ -413,8 +413,7 @@ kerjaan_questions() {
 
 # --- the code a ticket wrote ---------------------------------------------------
 # A ticket's commits are the ones whose message names its ID — the skill
-# requires that of every commit made for a ticket, and explain.sh reads them
-# the same way. Work on a branch carrying the ID that is not merged into HEAD
+# requires that of every commit made for a ticket. Work on a branch carrying the ID that is not merged into HEAD
 # yet is read from that branch.
 
 # Prints the revision to read <id>'s commits from: HEAD, or refs/heads/<branch>.

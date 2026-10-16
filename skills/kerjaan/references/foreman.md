@@ -26,9 +26,8 @@ This holds for a single ticket too. One small fix is a chain of one.
   settings, moving a ticket into `in_progress`, answering questions about the
   board.
 - Everything that needs the owner: relaying the planner's questions and
-  proposal, decisions a worker could not make, the owner's explanation,
-  `--ack-unmerged`, `--accept-size`, a merge that failed. Nobody else talks to
-  the owner.
+  proposal, decisions a worker could not make, `--ack-unmerged`,
+  `--accept-size`, a merge that failed. Nobody else talks to the owner.
 - Landing a worktree branch on main with `merge.sh land` once its ticket
   passed review — at once, one at a time, and without asking the owner
   (`references/parallel-work.md`, "Back into main"). The merge is git
@@ -175,7 +174,6 @@ working.
 | Report | What the foreman does |
 |---|---|
 | `REVIEW` | The ticket is in `review/`. In the first round, dispatch `kerjaan-reviewer` and record its agent ID next to the worker's; in a later round, resume that reviewer (step 5). No hook message reaches you here: the worker made the move, so the hook spoke to the worker. |
-| `WAITING — explanation` | Hold the owner's explanation as `references/explanation.md` describes, then move the ticket to `review` yourself. That move is yours, so the hook speaks to you: it says to dispatch a reviewer in the first round, and to resume the earlier one in a later round. |
 | `STOPPED — decision` | Stop the chain (see "When the chain stops"). |
 | anything else | Read why. If the ticket is groundwork for others, stop the chain. Otherwise note it, leave the ticket in `in_progress` with its Notes, and go on. |
 
@@ -201,7 +199,7 @@ tickets that run side by side in worktrees overlap (`references/parallel-work.md
   one, saying the fix is in and at which commit. It still holds its first round
   and narrows the second by itself. The worker's report is your only cue here;
   the worker made the move, so no hook message reaches you. When you make the
-  move yourself instead (after an owner's explanation), the hook sees the
+  move yourself instead, the hook sees the
   earlier review in the ticket and tells you the same thing: resume, and
   dispatch a new reviewer only if that one cannot be resumed.
 - **Sent back a second time** — stop the chain (see below).

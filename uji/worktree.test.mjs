@@ -67,8 +67,6 @@ function settings({ testCommand = '', parallel, setup = '', teardown = '' } = {}
 language: Bahasa Indonesia
 test_command: ${testCommand}
 long_lived_branches: []
-owner_explanation: off
-explanation_translation: false
 ${parallel === undefined ? '' : `parallel_tests: ${parallel}\n`}worktree_setup: ${setup}
 worktree_teardown: ${teardown}
 ---

@@ -31,7 +31,6 @@ K="${CLAUDE_PLUGIN_ROOT}/skills/kerjaan/scripts"      # always run from the repo
 "$K/merge.sh" sync 260905160401                                    # in the worktree: bring main in
 "$K/merge.sh" land 260905160401                                    # passed review: merge into main
 "$K/worktree.sh" remove 260905160401                               # its teardown, then remove it
-"$K/explain.sh" changes 260905160401                               # files and lines the ticket wrote
 "$K/queue.sh" estimate 260905160401 src/notify.py docs/           # files the ticket is expected to change
 "$K/queue.sh" overlap                                              # tickets whose estimates share files
 "$K/queue.sh" ask 260905160401 "<question>"                        # a question for the owner, numbered
@@ -68,7 +67,7 @@ The rules that are broken most often, each explained further down:
 ├── done/         passed review
 ├── cancel/       abandoned
 ├── order.md      the order to pick `todo` up in — optional
-└── settings.md   language, test command, long-lived branches, explanation
+└── settings.md   language, test command, long-lived branches, limits
 ```
 
 The folder is the only thing that determines status. There is no `status`
@@ -77,8 +76,7 @@ holds a `.gitkeep` so empty folders survive in git.
 
 `update-ticket.sh` enforces a few gates: starting while other work sits
 unmerged (see "Into `in_progress`"), reaching `review` from anywhere but
-`in_progress`, reaching it without the owner's explanation when the board
-asks for one, and — for work on a branch of its own — reaching it before the
+`in_progress`, and — for work on a branch of its own — reaching it before the
 branch holds all of main's code and has passed its tests in that state
 (`references/parallel-work.md`). It enforces no other sequence. The rest of
 "The life of a ticket" is yours to keep.
@@ -87,8 +85,7 @@ branch holds all of main's code and has passed its tests in that state
 
 `.kerjaan/settings.md` holds what the board cannot guess: the language ticket
 prose is written in, the command that runs the project's checks (the reviewer
-runs it first), which branches live outside `HEAD` on purpose, whether the
-owner explains each ticket's code before review, how many `Done when`
+runs it first), which branches live outside `HEAD` on purpose, how many `Done when`
 items a ticket may hold before the scripts warn, and — for side-by-side work —
 whether tests from several worktrees may overlap and what runs when a worktree
 is created or removed. When it is
@@ -109,9 +106,7 @@ ls .kerjaan/in_progress/ .kerjaan/review/
 Anything there that this session did not put there is either stuck or
 forgotten. Tell the user before starting anything new: for `in_progress`, what
 the ticket is and whether to resume it — resuming means a new worker that starts
-from the ticket's `## Notes` — or that it is waiting for their
-explanation when it still holds `(waiting for the owner's explanation)`; for
-`review`, dispatch
+from the ticket's `## Notes`; for `review`, dispatch
 `kerjaan-reviewer` on it (see `references/review.md`, "Tickets stuck in
 `review/`"). A session that skips this starts new work on top of old, and the
 old stays stranded.
@@ -206,11 +201,6 @@ steps above now produce three replies") rather than restating the steps.
 About 6 to 8 items at most; more means the ticket should be split (see "How
 big a ticket is").
 
-**`## Explanation`** — only on a board that asks the owner to explain the code
-(`owner_explanation`), after `Done when` and before `History`. The owner's own words,
-inside a fenced block that the AI never writes in. See
-`references/explanation.md`.
-
 **`## History`** — always present, written only by the scripts: one line per
 status the ticket has entered, `- <time> <session-id> <status>` when the move
 was made inside a Claude Code session, `- <time> <status>` when it was not (a
@@ -272,8 +262,7 @@ executes the work, not baked into the ticket from the start.
 Structure is always English: folder names, frontmatter keys and values, and
 the headings — anything identical in every ticket. Prose follows the language
 the ticket's readers speak, as `language` in `settings.md` records — one per
-board, so nobody has to guess which tickets they can read. The one exception
-is the owner's explanation, written in whatever language the owner chooses. Far more than
+board, so nobody has to guess which tickets they can read. Far more than
 the language, the register matters: write so someone outside the technical
 team understands without follow-up questions.
 
@@ -615,15 +604,6 @@ refused until the branch holds all of main's code and the latest run passed on
 exactly what is committed there (`references/parallel-work.md`, "Back into
 main").
 
-**Then the owner's explanation**, when `owner_explanation` in `settings.md` is
-`allow-to-skip` or `strict`. A worker cannot reach the owner, so it commits the
-work with the placeholder and reports `WAITING — explanation`; the foreman
-takes over from there. It shows the owner
-`explain.sh changes <id>` and has them explain it in their own words.
-**Read `references/explanation.md` before asking** — the order of commits
-and what you may do with their text are exact, and `update-ticket.sh` checks
-both.
-
 **Depth of review** comes from the `review` field. Leave it empty (`quick`)
 unless the ticket needs more; the level is the user's call, and suggesting a
 higher one is the foreman's, when it clears the queue. **Read
@@ -635,8 +615,7 @@ first.
 and a hook sees the move. Inside the worker it says only to stop and report:
 a worker never dispatches a reviewer. When the worker's report reaches the
 foreman, the foreman dispatches `kerjaan-reviewer` — and when the foreman makes
-the move itself, after the owner's explanation, the hook tells it to do the
-same. The foreman waits for the verdict before the next worker starts. Nobody
+the move itself, the hook tells it to do the same. The foreman waits for the verdict before the next worker starts. Nobody
 performs the review but the reviewer. From this moment the ticket's code is
 untouchable: an edit made now, even to strengthen a test, is one the reviewer
 judges without knowing it happened. If something genuinely remains, move the
@@ -707,8 +686,7 @@ tickets' references need no attention.
 
 The board lives in git so that code and status travel together. Commit when
 the user or the project's own rules call for it — kerjaan does not change who
-decides that, except that turning `owner_explanation` on is consent to the
-commits its steps need, and handing tickets to workers is consent to the
+decides that, except that handing tickets to workers is consent to the
 commits each worker makes for its own ticket — but when you commit work for a
 ticket, its files under `.kerjaan/` go in the same commit, and the message
 names the ticket ID. Code

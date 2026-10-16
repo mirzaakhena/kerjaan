@@ -99,8 +99,6 @@ function repo({ testCommand = '', extra = '', status = 'todo' } = {}) {
 language: Bahasa Indonesia
 test_command: ${testCommand}
 long_lived_branches: []
-owner_explanation: off
-explanation_translation: false
 ${extra}---
 `);
   fs.writeFileSync(path.join(k, status, `${X} Tiket x.md`), ticket(status));

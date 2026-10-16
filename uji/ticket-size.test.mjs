@@ -74,8 +74,6 @@ const settingsWith = (line) => `---
 language: Bahasa Indonesia
 test_command:
 long_lived_branches: []
-owner_explanation: off
-explanation_translation: false
 ${line}
 ---
 

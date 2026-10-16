@@ -2,8 +2,6 @@
 language:
 test_command:
 long_lived_branches: []
-owner_explanation: off
-explanation_translation: false
 done_when_limit: 8
 parallel_tests: false
 lock_timeout:
@@ -26,14 +24,6 @@ Settings for this board, read by the kerjaan skill, its reviewer, and
   so starting a ticket is not refused because of them. Glob patterns work:
   `[develop, release/*]`. List the main branch too if work usually happens on
   another branch.
-- `owner_explanation` — whether the owner explains each ticket's code in their
-  own words before it goes to review: `off`, `allow-to-skip` (asked, and may
-  be declined on the record) or `strict` (required; the move to review is
-  refused without it). Anything but `off` also lets the AI make the commits
-  that step needs without asking. Tickets with no code are never asked.
-- `explanation_translation` — `true` lets the AI add a labelled translation
-  under an explanation written in a language other than `language`. The
-  explanation itself is never changed.
 - `done_when_limit` — how many items a ticket's `Done when` may hold before
   `update-ticket.sh` and `new-ticket.sh` warn that it should be split. Empty
   or missing means 8. The warning never stops a ticket being saved, and the

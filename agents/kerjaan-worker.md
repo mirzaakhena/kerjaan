@@ -111,14 +111,7 @@ work. From `.kerjaan/` commit only your own ticket's file — both its paths,
 when it moved folders since the last commit, so the move is recorded whole.
 Put the ticket ID in the message.
 
-**9. Hand over.**
-
-- `owner_explanation` is `off` (or the ticket changed no code): run
-  `"$K/update-ticket.sh" <id> --status review`.
-- `owner_explanation` is `allow-to-skip` or `strict`: the explanation needs the
-  owner, so do not move the ticket. Put the placeholder in, commit it with the
-  work as `$K/../references/explanation.md` describes (step 1), and report
-  `WAITING — explanation`; the foreman takes it from there.
+**9. Hand over.** Run `"$K/update-ticket.sh" <id> --status review`.
 
 From this moment the ticket's code is not yours to touch. The hook will tell
 you so; it will not tell you to dispatch a reviewer, and you must not.
@@ -127,7 +120,7 @@ you so; it will not tell you to dispatch a reviewer, and you must not.
 keeps all of them for the whole chain:
 
 ```
-Ticket: <id> — <status: REVIEW | STOPPED — decision | WAITING — explanation | STOPPED — <reason>>
+Ticket: <id> — <status: REVIEW | STOPPED — decision | STOPPED — <reason>>
 Commits: <hashes>
 Checks: test-run.sh exit <code>, fingerprint <fp>   (or: no test_command)
 Done when: <n> of <m> ticked; <which are awaiting the owner, voided, or unmet>

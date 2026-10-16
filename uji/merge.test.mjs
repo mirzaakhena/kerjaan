@@ -102,8 +102,6 @@ function repo() {
 language: Bahasa Indonesia
 test_command: echo "$KERJAAN_TICKET" >> ${JSON.stringify(runs)} && echo "mulai $KERJAAN_TICKET" >> ${JSON.stringify(urut)} && sh cek.sh && sleep $\{UJI_TIDUR:-0} && echo "akhir $KERJAAN_TICKET" >> ${JSON.stringify(urut)} && [ -z "$UJI_GAGAL" ]
 long_lived_branches: []
-owner_explanation: off
-explanation_translation: false
 ---
 `);
   fs.writeFileSync(path.join(k, 'in_progress', `${A} Tiket pertama.md`), ticket('Tiket pertama'));

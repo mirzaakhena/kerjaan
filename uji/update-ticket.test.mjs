@@ -71,8 +71,6 @@ function repo() {
 language: Bahasa Indonesia
 test_command:
 long_lived_branches: []
-owner_explanation: off
-explanation_translation: false
 ---
 `);
   fs.writeFileSync(path.join(root, '.kerjaan', 'todo', `${A} Judul lama.md`), ticketText);
@@ -373,3 +371,43 @@ test('a refresh, and a move to the status it already has, add no History line', 
   assert.equal(runWith(root, SESSION, A, '--status', 'todo').code, 0);
   assert.deepEqual(historyOf(ticketAt(root, 'todo')), ['- 2026-10-16 20:00:00 todo']);
 });
+
+// A ticket from the time boards could ask the owner to explain the code still
+// carries an `## Explanation` section between Done when and History, and its
+// board may still name `owner_explanation` in settings.md. Both are plain
+// text now: the ticket moves all the way to review like any other, the
+// section comes through byte for byte, and History still lands before Notes.
+const explanation = '## Explanation\n\n```text\nKodenya menambah satu tombol.\n## Notes\n- bukan catatan\n```\n\n';
+
+for (const [label, section, history] of [
+  ['an Explanation section, with History', explanation, '## History\n- 2026-10-16 20:00:00 todo\n\n'],
+  ['an Explanation section, from before History existed', explanation, ''],
+  ['code and no Explanation section', '', '## History\n- 2026-10-16 20:00:00 todo\n\n'],
+]) {
+  test(`a ticket with ${label} moves to review on a board still naming owner_explanation: strict`, () => {
+    const root = repo();
+    fs.writeFileSync(path.join(root, '.kerjaan', 'settings.md'), `---
+language: Bahasa Indonesia
+test_command:
+long_lived_branches: []
+owner_explanation: strict
+explanation_translation: true
+---
+`);
+    fs.writeFileSync(ticketAt(root, 'todo'), withSections('Sesuatu.', section + history, '## Notes\n(none yet)\n'));
+    // Code committed under the ticket's ID: the kind of ticket the old gate
+    // stopped, not one it waved through for having nothing to explain.
+    fs.writeFileSync(path.join(root, 'tombol.txt'), 'satu tombol\n');
+    git(root, 'add', '-A');
+    git(root, 'commit', '-q', '-m', `${A}: tiket lama`);
+    for (const dest of ['in_progress', 'review']) {
+      const r = runWith(root, undefined, A, '--status', dest);
+      assert.equal(r.code, 0, `${dest}: ${r.err}`);
+    }
+    const text = fs.readFileSync(ticketAt(root, 'review'), 'utf8');
+    const before = history ? '- 2026-10-16 20:00:00 todo\n' : '';
+    assert.ok(text.includes(`- [ ] Butir\n\n${section}## History\n${before}`), text);
+    assert.match(text, new RegExp(`- ${TIME} in_progress\\n- ${TIME} review\\n\\n## Notes\\n\\(none yet\\)\\n$`));
+    assert.equal(text.match(/^## History/gm).length, 1);
+  });
+}

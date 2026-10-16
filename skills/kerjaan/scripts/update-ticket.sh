@@ -18,8 +18,9 @@
 #                                                    although it is over the size limit
 #
 # A move to todo is refused while the ticket holds an open question for the
-# owner (queue.sh ask). A move to review is accepted only from in_progress, and only once the
-# owner's explanation is in place when settings.md asks for one (explain.sh).
+# owner (queue.sh ask). A move to review is accepted only from in_progress, and
+# for work on a branch of its own only once that branch holds all of main's
+# code and passed its tests in that state (merge.sh).
 #
 # Every run ends with ticket-size.sh, which warns -- never refuses -- when the
 # ticket's "Done when" list is longer than the board allows.
@@ -362,9 +363,6 @@ fi
 # which is easy to do on a ticket whose work is a conversation rather than
 # code: the answers get written down, and the ticket still says todo. Refused,
 # not warned, for the same reason as the unmerged-branch gate above.
-#
-# Then the owner's explanation, when the board asks for one: explain.sh reads
-# owner_explanation from settings.md and decides.
 
 if [ "$dest_status" = "review" ] && [ "$current_status" != "review" ]; then
   if [ "$current_status" != "in_progress" ]; then
@@ -376,7 +374,6 @@ if [ "$dest_status" = "review" ] && [ "$current_status" != "review" ]; then
     exit 1
   fi
   if git rev-parse --git-dir > /dev/null 2>&1; then
-    "$here/explain.sh" gate "$id" || exit 1
     # Work done on a branch of its own goes to review only once it holds all
     # of main's code and the latest test run passed on exactly that content,
     # so the reviewer judges what main will get (merge.sh). The commit it

@@ -33,7 +33,7 @@ there is no service to run, host, or pay for.
 ├── done/         passed review
 ├── cancel/       abandoned
 ├── order.md      the order to pick `todo` up in — optional
-└── settings.md   language, test command, long-lived branches, explanation,
+└── settings.md   language, test command, long-lived branches,
                   side-by-side tests and worktree setup
 ```
 
@@ -186,10 +186,6 @@ $K/queue.sh compare 260905160401          # estimate against what really changed
 
 # finished tickets that no release carries yet
 $K/release.sh unreleased                  # LAST RELEASE, then UNRELEASED: <n> and the tickets
-
-# the owner's explanation, when settings.md asks for one
-$K/explain.sh changes 260905160401        # files and line ranges the ticket wrote
-$K/explain.sh check 260905160401          # the explanation holds the owner's words
 
 # read the board — free-form, no script involved
 ls .kerjaan/in_progress/
@@ -511,27 +507,6 @@ Committing after the run does not break the match, because a commit does not
 change content. What is taken on trust is only that the run passed — the same
 trust a CI badge asks for. Code the reviewer changes itself, such as a
 deliberate break at `strict`, is always tested by the reviewer.
-
-### The owner explains the code first
-
-With `owner_explanation` set in `settings.md`, a ticket with code does not
-reach review until its owner has written, in their own words and any language,
-what the AI built. The point is to keep the owner involved: they should know
-what code went into their repo.
-
-The worker commits the work and stops there; the foreman then shows the files and line ranges from
-`explain.sh changes`, which reads them from git so nobody has to type them. The
-owner writes below the last line of the ticket. When something is misread,
-the AI answers with a clue, a file and a line to look at, rather than the
-answer, because an answer handed over is one that gets copied. Once the
-explanation is right, the AI moves it into the ticket's `## Explanation`
-section, inside a fenced block, in a commit of its own. `explain.sh check`
-proves that the move changed no word.
-
-`allow-to-skip` lets the owner decline, and the ticket records that they did.
-`strict` makes `update-ticket.sh` refuse the move to review until the
-explanation is there. A ticket with no code, such as a decision, is never
-asked. The full rules are in `skills/kerjaan/references/explanation.md`.
 
 ### How deep the review goes
 

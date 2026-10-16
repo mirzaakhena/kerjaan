@@ -74,8 +74,6 @@ function repo(testCommand, notes) {
 language: Bahasa Indonesia
 test_command: ${testCommand}
 long_lived_branches: []
-owner_explanation: off
-explanation_translation: false
 ---
 `);
   fs.writeFileSync(path.join(root, '.kerjaan', 'in_progress', `${A} Tiket.md`), ticketText(notes));
