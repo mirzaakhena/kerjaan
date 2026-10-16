@@ -6,7 +6,7 @@ labels: [sesi-a192c9e8, tests, viewer]
 reporter: mirza
 assign_to: claude
 created: 2026-10-16 18:35:52
-updated: 2026-10-16 19:41:51
+updated: 2026-10-16 19:43:33
 related: [261016141915, 261016105301]
 blocked_by: []
 ---
@@ -56,6 +56,7 @@ atau gagal, tanpa pernah menggantung.
 - 2026-10-16 18:43:00 a192c9e8-0bb5-4bbf-8d56-9831b23e62ec todo
 - 2026-10-16 18:43:39 a192c9e8-0bb5-4bbf-8d56-9831b23e62ec in_progress
 - 2026-10-16 19:41:51 a192c9e8-0bb5-4bbf-8d56-9831b23e62ec review
+- 2026-10-16 19:43:33 a192c9e8-0bb5-4bbf-8d56-9831b23e62ec done
 
 ## Notes
 - Berasal dari rantai batch penilaian skill di sesi Claude Code
@@ -93,3 +94,14 @@ atau gagal, tanpa pernah menggantung.
   answer, 2026-10-16 19:36:54: (a) Batas 15 menit per berkas uji: test_command menjadi node --test --test-timeout=900000 --test-force-exit, diubah mandor atas keputusan pemilik.
 - 2026-10-16 19:41:31: test run — `node --test --test-timeout=900000 --test-force-exit` exited 0 after 4m25s, on content fingerprint 129ffcafcfc32dee9c3973f76bc54caa928d91a4 (the same before and after the run; .kerjaan/ left out).
 - 2026-10-16 19:41:51: setelah jawaban #2 (test_command 900000 ms): kode di-commit (0737872), test-run.sh lulus 327/327 dalam 4m25s dengan Playwright sesi lain berjalan (load sekitar 28); sesudahnya 0 proses Chrome atau uji kerjaan tersisa. Butir 4 bertumpu pada pengukuran sebelumnya: berkas paling lambat sekitar 4 menit pada load 25 sampai 45, dan uji viewer 164 detik pada load sampai 133, jauh di bawah 15 menit.
+- 2026-10-16 19:45: Reviewed at level quick, round 1, at commit 0737872 (pekerjaan langsung di main, tanpa worktree): perintah uji papan tidak dijalankan ulang, karena `test-run.sh --check` menjawab SAME — isi yang diperiksa sama persis dengan run pengerja 2026-10-16 19:41:31 (`node --test --test-timeout=900000 --test-force-exit`, keluar 0, sidik 129ffcafcfc32dee9c3973f76bc54caa928d91a4). Perubahannya dibaca terhadap tiap butir Done when. Tidak ada `CLAUDE.md`/`AGENTS.md` di repo ini; `explain.sh check`: belum ada penjelasan, `owner_explanation: off`.
+  - Butir 1 (tidak gagal karena folder profil): terpenuhi menurut kode. `page.close()` di `viewer/uji/peramban.mjs` kini tidak pernah melempar: Chrome dihentikan sekelompok, penghapusan profil diulang, dan kegagalannya hanya dicatat di `leftover`. Uji `peramban.test.mjs` "profil yang tidak bisa dihapus" menjaga jalur ini. Pengulangan di bawah beban Chrome lain tidak saya ulangi; itu bertumpu pada pengukuran pengerja.
+  - Butir 2 (gagal hapus tidak menggagalkan uji, tidak meninggalkan proses): terpenuhi. Semua `finally` di `pindah`, `arsip`, `riwayat` kini `await page.close(); await v.close()`; `laci` dan `agen-papan` (lewat `browserTest`) sudah memakai `v.close()` dan kini aman karena `page.close()` tidak melempar. `gabung.test.mjs` tidak diubah dan tidak perlu.
+  - Butir 3 (uji macet dihentikan dan dilaporkan gagal): terpenuhi. `test_command` memuat `--test-timeout` dan `--test-force-exit` (keputusan pemilik #2); `uji/batas-waktu.test.mjs` menjalankan perintah itu dari settings.md pada berkas uji yang macet dan yang membiarkan server terbuka. Tiap langkah Chrome juga gagal sendiri setelah 30 detik.
+  - Butir 4 (batas waktu tidak menggagalkan uji sehat di mesin sibuk): terpenuhi menurut keputusan pemilik #2 (15 menit per berkas) dan pengukuran pengerja (berkas paling lambat sekitar 4 menit pada load 25 sampai 45). Hanya dibaca, tidak diukur ulang.
+  - Butir 5 (tidak ada proses uji atau Chrome sisa): terpenuhi untuk run yang lulus. Pada 19:43 `ps` tidak menunjukkan Chrome dari uji kerjaan. Ada 5 folder `kerjaan-chrome-*` di folder temp, semuanya dari 09:47 sampai 15:38, sebelum perbaikan ini.
+  - Catatan (tidak memblokir): ada dua proses `node` yatim yang masih hidup dan masih membuka port localhost: PID 44529 (`macet.test.mjs`, mulai 19:29:06) dan PID 46895 (`contoh.test.mjs` di `kerjaan-batas-fHSN7q`, mulai 19:31:07). Keduanya berasal dari percobaan dan uji rusak sengaja milik pengerja, bukan dari run akhir 19:37 sampai 19:41. Penyebabnya terbaca di `uji/batas-waktu.test.mjs`: bila perintah uji macet, `runCommand` hanya membunuh proses `node --test` induk dengan SIGKILL, sehingga proses berkas uji di bawahnya tertinggal. Ini hanya terjadi saat uji itu sendiri sudah merah. Klaim pengerja "0 proses tersisa" tidak berlaku untuk dua proses ini.
+
+### Suggested follow-up
+
+- **Uji batas waktu meninggalkan proses saat ia sendiri gagal.** Bila `test_command` suatu saat kehilangan `--test-timeout` atau `--test-force-exit`, `uji/batas-waktu.test.mjs` menyerah setelah 60 detik dan hanya mematikan proses `node --test` paling atas. Proses berkas uji buangan di bawahnya tetap hidup tanpa batas dan tetap membuka port, seperti dua proses yatim dari 19:29 dan 19:31 hari ini. Uji itu sebaiknya menjalankan perintah dalam grup prosesnya sendiri dan menghentikan seluruh grup, sama seperti `peramban.mjs` menghentikan Chrome.
