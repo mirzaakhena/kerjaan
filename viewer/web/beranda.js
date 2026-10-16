@@ -1,20 +1,12 @@
 import { STATUSES, statusName, statusColor, getJson } from './umum.js';
 import { esc } from './markdown.js';
-import { TABS, readArchived, splitProjects, readTab } from './arsip.js';
+import { TABS, splitProjects, readTab, ARCHIVED_KEY, loadArchived } from './arsip.js';
 
 const box = document.getElementById('projects');
 const tabs = document.getElementById('tabs');
 
 // Archived projects are remembered per browser. Storage can be missing or
 // refuse (a private window); archiving then lasts for this page only.
-const ARCHIVED_KEY = 'kerjaan.proyek-arsip';
-function loadArchived() {
-  try {
-    return readArchived(localStorage.getItem(ARCHIVED_KEY));
-  } catch {
-    return readArchived(null);
-  }
-}
 function saveArchived() {
   try {
     localStorage.setItem(ARCHIVED_KEY, JSON.stringify([...state.archived].sort()));

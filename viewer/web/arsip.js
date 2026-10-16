@@ -14,6 +14,17 @@ export function readArchived(stored) {
   return new Set();
 }
 
+// Where this browser keeps them. Storage can be missing or refuse (a private
+// window); nothing is archived then.
+export const ARCHIVED_KEY = 'kerjaan.proyek-arsip';
+export function loadArchived() {
+  try {
+    return readArchived(localStorage.getItem(ARCHIVED_KEY));
+  } catch {
+    return readArchived(null);
+  }
+}
+
 export function splitProjects(projects, archived) {
   return {
     aktif: projects.filter((p) => !archived.has(p.name)),

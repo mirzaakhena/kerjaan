@@ -87,6 +87,45 @@ button, input, select { font: inherit; color: inherit; }
 .bar h1 { font-size: 16px; font-weight: 600; margin: 0; white-space: nowrap; }
 .bar h1 a { color: var(--muted); font-weight: 500; }
 .bar h1 .sep { color: var(--faint); margin: 0 6px; }
+/* The project switcher next to the project's name. */
+.pindah { position: relative; display: inline-block; margin-left: 4px; }
+#pindah {
+  border: 1px solid transparent; background: none; border-radius: 6px; cursor: pointer;
+  min-width: 28px; min-height: 28px; padding: 0 6px; font-size: 15px; line-height: 1; color: var(--muted); vertical-align: middle;
+}
+#pindah:hover, #pindah[aria-expanded="true"] { border-color: var(--line); background: var(--sunk); color: var(--ink); }
+.pindah-menu {
+  position: absolute; top: calc(100% + 6px); left: 0;
+  width: max-content; min-width: 220px; max-width: min(360px, calc(100vw - 32px));
+  max-height: min(70vh, 480px); overflow-y: auto;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 10px; box-shadow: var(--shadow);
+  font: 14px/1.45 var(--sans); white-space: normal; padding: 4px;
+}
+.pindah-menu ul { list-style: none; margin: 0; padding: 0; }
+/* .bar h1 a would make these muted and medium; they are a list, not a crumb. */
+.pindah-menu li a { display: flex; align-items: center; gap: 10px; padding: 6px 8px; border-radius: 6px; color: var(--ink); font-weight: 400; }
+.pindah-menu .kaki a { color: var(--accent); font-weight: 400; }
+.pindah-menu li a:hover, .pindah-menu li a:focus-visible { background: var(--sunk); text-decoration: none; outline: none; }
+.pindah-menu li a[aria-current="page"] { background: var(--sunk); font-weight: 600; }
+.pindah-menu .n { min-width: 0; overflow-wrap: anywhere; }
+.pindah-menu kbd {
+  flex: none; width: 20px; height: 20px; display: inline-flex; align-items: center; justify-content: center;
+  font: 500 12px/1 var(--mono); color: var(--muted); border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px;
+}
+.pindah-menu kbd.none { visibility: hidden; }
+.pindah-menu .ini { margin-left: auto; font-size: 11.5px; font-weight: 400; color: var(--accent); }
+.pindah-menu .kosong { margin: 0; padding: 8px; color: var(--muted); }
+.pindah-menu .kaki {
+  display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+  margin-top: 4px; padding: 6px 8px 4px; border-top: 1px solid var(--line); font-size: 12px; color: var(--muted); font-weight: 400;
+}
+@media (hover: none) { .pindah-menu .kaki > span { display: none; } }
+/* On a phone the list spans the screen under the top bar, wherever the
+   project's name ends. */
+@media (max-width: 480px) {
+  .pindah { position: static; }
+  .pindah-menu { top: calc(100% + 4px); left: 8px; right: 8px; width: auto; min-width: 0; max-width: none; }
+}
 .live { margin-left: auto; font-size: 12px; color: var(--muted); display: flex; align-items: center; gap: 6px; }
 .live::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--faint); }
 .live.on::before { background: var(--done); }

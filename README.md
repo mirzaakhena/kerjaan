@@ -352,6 +352,12 @@ shown again, still showing how many tickets it holds; `cancel` starts hidden,
 and the browser remembers the choice. `todo`'s header opens `order.md` itself,
 reasons and all.
 
+The button beside the project's name lists the other active projects (those
+not archived in this browser), by name, each with a key: `1` to `9`, then `a`,
+`b`, `c`… On a board, pressing that key opens that project straight away,
+unless you are typing into a field; Cmd, Ctrl, Alt and Shift combinations are
+left to the browser.
+
 It only reads, needs Node 18 or newer and nothing else, and
 listens on `127.0.0.1` only. `--port` picks another port (`0` for any free
 one). Its tests run with `node --test` from the repo root.
