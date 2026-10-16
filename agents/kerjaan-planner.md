@@ -139,7 +139,9 @@ question instead of moving anything. The foreman takes it back to the owner.
 todo`, and write `order.md` as `references/ordering-the-queue.md` describes,
 keeping any ticket already in `todo` in its place unless the owner moved it.
 Each lead-in says why in one sentence, and, for two tickets in one group that
-share files, names both, the files, and which lands first.
+share files, names both, the files, and which lands first, in the fixed
+wording `check` recognises (`<id> lands first`, or `<id> digabung lebih dulu`
+on an Indonesian board; "Saying which lands first" in that reference).
 
 **4. Check it.** `"$K/queue.sh" check` judges `todo` and `order.md` together:
 no open question, an estimate and a fitting size on every ticket, nothing

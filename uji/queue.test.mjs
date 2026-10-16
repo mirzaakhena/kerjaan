@@ -447,6 +447,125 @@ test('check: two tickets of one group sharing files must both be named in its le
   assert.equal(r.code, 0, r.out);
 });
 
+test('check: a lead-in naming both tickets that share files but not which lands first is not ready, and says why', () => {
+  const root = repo();
+  add(root, A, { status: 'todo' }); add(root, B, { status: 'todo' });
+  q(root, 'estimate', A, 'src/a.js');
+  q(root, 'estimate', B, 'src/a.js');
+  const unordered = new RegExp(`${A} and ${B} share a group and the files src/a\\.js; its lead-in names both but not which lands first \\(write "<id> lands first"\\)`);
+
+  order(root, `**Bersama.** ${A} dan ${B} sama-sama mengubah src/a.js.\n\n- ${A} Satu\n- ${B} Dua\n`);
+  let r = q(root, 'check');
+  assert.equal(r.code, 1, r.out);
+  assert.match(r.out, unordered);
+  assert.match(r.out, /NOT READY: 1 problem/);
+
+  // The same group, once its lead-in says which lands first.
+  order(root, `**Bersama.** ${A} dan ${B} sama-sama mengubah src/a.js;\nbila dikerjakan bersamaan, ${A} digabung lebih dulu.\n\n- ${A} Satu\n- ${B} Dua\n`);
+  r = q(root, 'check');
+  assert.equal(r.code, 0, r.out);
+  assert.match(r.out, /in step with todo\nREADY/);
+});
+
+test('check: every documented way of saying which lands first is recognised, for either ticket', () => {
+  const root = repo();
+  add(root, A, { status: 'todo' }); add(root, B, { status: 'todo' });
+  q(root, 'estimate', A, 'src/a.js');
+  q(root, 'estimate', B, 'src/a.js');
+  const ready = [
+    `${A} and ${B} both change src/a.js, so ${A} lands first.`,
+    `${A} and ${B} both change src/a.js; ${B} lands first.`,
+    `${A} and ${B} both change src/a.js; ${B} lands before ${A}.`,
+    `${A} and ${B} both change src/a.js; ${A} lands before ${B}.`,
+    `${A} dan ${B} mengubah src/a.js; ${B} digabung lebih dulu.`,
+    `${A} dan ${B} mengubah src/a.js; ${A} digabung lebih dahulu.`,
+    `${A} dan ${B} mengubah src/a.js; ${A} digabung dulu.`,
+    `${A} dan ${B} mengubah src/a.js; ${B} mendarat lebih dulu.`,
+    `${A} dan ${B} mengubah src/a.js; ${A} mendarat dulu.`,
+    `${A} dan ${B} mengubah src/a.js; ${B} digabung sebelum ${A}.`,
+    `${A} dan ${B} mengubah src/a.js; ${A} mendarat lebih dulu sebelum ${B}.`,
+    // Markup around the ID, letter case, and a line break inside the phrase.
+    `${A} and ${B} both change src/a.js; \`${A}\` lands first.`,
+    `${A} and ${B} both change src/a.js; **${B}** Lands First.`,
+    `${A} and ${B} both change src/a.js; ${B} lands\nfirst.`,
+    `${A} and ${B} both change src/a.js; ${B}  lands \tfirst.`,
+    `${A} dan ${B} mengubah src/a.js; ${A} digabung  \nlebih dulu.`,
+    `${A} dan ${B} mengubah src/a.js; _${A}_ digabung sebelum \`${B}\`.`,
+  ];
+  for (const lead of ready) {
+    order(root, `**Bersama.** ${lead}\n\n- ${A} Satu\n- ${B} Dua\n`);
+    const r = q(root, 'check');
+    assert.equal(r.code, 0, `${lead}\n${r.out}`);
+  }
+
+  const notReady = [
+    [`${A} and ${B} both change src/a.js; one of them lands first.`, /names both but not which lands first/],
+    [`${A} and ${B} both change src/a.js; ${A}, the smaller, lands first.`, /names both but not which lands first/],
+    [`${A} and ${B} both change src/a.js; 9${A} lands first.`, /names both but not which lands first/],
+    [`${A} and ${B} both change src/a.js; ${A} lands firstly.`, /names both but not which lands first/],
+    [`${A} and ${B} both change src/a.js; ${A} lands before 9${B}.`, /names both but not which lands first/],
+    [`${A} and ${B} both change src/a.js; ${A} lands before ${B}9.`, /names both but not which lands first/],
+    [`${A} lands first, and ${B} lands first.`, /its lead-in says both land first, so which one is unclear/],
+  ];
+  for (const [lead, expected] of notReady) {
+    order(root, `**Bersama.** ${lead}\n\n- ${A} Satu\n- ${B} Dua\n`);
+    const r = q(root, 'check');
+    assert.equal(r.code, 1, `${lead}\n${r.out}`);
+    assert.match(r.out, expected, lead);
+  }
+});
+
+test('check: in a group of three sharing one file, every pair needs its order', () => {
+  const root = repo();
+  for (const id of [A, B, C]) { add(root, id, { status: 'todo' }); q(root, 'estimate', id, 'src/a.js'); }
+  const bullets = `- ${A} Satu\n- ${B} Dua\n- ${C} Tiga\n`;
+
+  order(root, `**Bersama.** ${A}, ${B} dan ${C} mengubah src/a.js; ${A} digabung lebih dulu.\n\n${bullets}`);
+  let r = q(root, 'check');
+  assert.equal(r.code, 1, r.out);
+  assert.match(r.out, new RegExp(`${B} and ${C} share a group and the files src/a\\.js; its lead-in names both but not which lands first`));
+  assert.match(r.out, /NOT READY: 1 problem/);
+
+  order(root, `**Bersama.** ${A}, ${B} dan ${C} mengubah src/a.js; ${A} digabung lebih dulu,\nlalu ${B} digabung sebelum ${C}.\n\n${bullets}`);
+  r = q(root, 'check');
+  assert.equal(r.code, 0, r.out);
+});
+
+test('check: the wording ordering-the-queue.md documents is the wording check recognises', () => {
+  const guide = fs.readFileSync(path.join(here, '..', 'skills', 'kerjaan', 'references', 'ordering-the-queue.md'), 'utf8');
+  const section = guide.split('## Saying which lands first')[1].split('\n## ')[0];
+  for (const phrase of ['lands first', 'lands before', 'digabung lebih dulu', 'digabung sebelum', 'mendarat', 'dahulu']) {
+    assert.ok(section.includes(phrase), phrase);
+  }
+  const root = repo();
+  add(root, A, { status: 'todo' }); add(root, B, { status: 'todo' });
+  q(root, 'estimate', A, 'src/a.js');
+  q(root, 'estimate', B, 'src/a.js');
+  // The examples in the guide, with their IDs swapped for these tickets.
+  const examples = [...section.matchAll(/^> (.*)$/gm)].map((m) => m[1]);
+  assert.ok(examples.length >= 2, section);
+  for (const ex of examples) {
+    const lead = ex.replaceAll('260905160502', A).replaceAll('260905160503', B);
+    order(root, `${lead}\n\n- ${A} Satu\n- ${B} Dua\n`);
+    const r = q(root, 'check');
+    assert.equal(r.code, 0, `${lead}\n${r.out}`);
+  }
+
+  // The example order.md at the head of the guide, as written there.
+  const example = guide.split('```markdown\n')[1].split('```')[0];
+  const ids = [...example.matchAll(/^- (\d{12}) /gm)].map((m) => m[1]);
+  assert.equal(ids.length, 4);
+  const whole = repo();
+  for (const id of ids) {
+    add(whole, id, { status: 'todo' });
+    q(whole, 'estimate', id, ['260905160502', '260905160503'].includes(id) ? 'src/menu.js' : `src/${id}.js`);
+  }
+  order(whole, example);
+  const r = q(whole, 'check');
+  assert.equal(r.code, 0, r.out);
+  assert.match(r.out, /in step with todo\nREADY/);
+});
+
 test('check: tickets in different groups may share files without a word', () => {
   const root = repo();
   add(root, A, { status: 'todo' }); add(root, B, { status: 'todo' });
