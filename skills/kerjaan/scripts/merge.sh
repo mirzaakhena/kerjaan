@@ -296,11 +296,14 @@ case "$cmd" in
     # Leftovers are removed outside the lock: a teardown may take minutes, and
     # the next ticket's merge need not wait for it.
     if git worktree list --porcelain | grep -qx "branch refs/heads/$branch"; then
-      "$here/worktree.sh" remove "$id" \
+      KERJAAN_BRANCH_DELETED_NEXT=1 "$here/worktree.sh" remove "$id" \
         || { echo "WARNING: the worktree of $branch was not removed; see above. Remove it, then: git branch -d $branch"; exit 0; }
     fi
-    git branch -d "$branch" > /dev/null 2>&1 \
-      || echo "WARNING: branch $branch could not be deleted; delete it once it is not needed."
+    if git branch -d "$branch" > /dev/null 2>&1; then
+      echo "Branch $branch is merged into $main and deleted."
+    else
+      echo "WARNING: branch $branch could not be deleted; delete it once it is not needed."
+    fi
     exit 0
     ;;
 

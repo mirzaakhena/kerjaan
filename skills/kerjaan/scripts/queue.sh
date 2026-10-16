@@ -87,15 +87,6 @@ ticket_of() {
 
 status_of() { basename "$(dirname "$1")"; }
 
-# Every question ever recorded in ticket <file>, numbered in the order asked,
-# answered ones included, so a number never shifts when another is answered:
-# "<n>\topen|answered\t<text>".
-questions_of() {
-  kerjaan_unfenced_lines "$1" \
-    | sed -nE 's/^- [0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}: (open|answered) question: /\1\t/p' \
-    | awk -F '\t' '{ print NR "\t" $1 "\t" substr($0, length($1) + 2) }'
-}
-
 # Refreshes `updated` the way every change to a ticket must.
 refresh() {
   "$here/update-ticket.sh" "$1" > /dev/null
@@ -260,7 +251,7 @@ if [ "$cmd" = "ask" ]; then
   [ -n "$q" ] || { echo "The question is empty." >&2; exit 2; }
   kerjaan_append_note "$file" "- $(now): open question: $q"
   refresh "$1"
-  echo "Recorded for $1 as question $(questions_of "$file" | wc -l | tr -d ' ')."
+  echo "Recorded for $1 as question $(kerjaan_questions "$file" | wc -l | tr -d ' ')."
   exit 0
 fi
 
@@ -271,7 +262,7 @@ if [ "$cmd" = "answer" ]; then
   case "$n" in '' | *[!0-9]* | 0) echo "'$n' is not a question number (1, 2, ...)." >&2; exit 2 ;; esac
   a="$(one_line "$3")"
   [ -n "$a" ] || { echo "The answer is empty." >&2; exit 2; }
-  state="$(questions_of "$file" | awk -F '\t' -v n="$n" '$1 == n { print $2 }')"
+  state="$(kerjaan_questions "$file" | awk -F '\t' -v n="$n" '$1 == n { print $2 }')"
   case "$state" in
     open) ;;
     answered) echo "Question $n of $1 is already answered." >&2; exit 2 ;;
@@ -327,7 +318,7 @@ while IFS= read -r id; do
 
   while IFS=$'\t' read -r k state q; do
     [ "$state" = "open" ] && problem "open question $k: $q"
-  done < <(questions_of "$f")
+  done < <(kerjaan_questions "$f")
 
   [ -n "$(kerjaan_estimate "$f")" ] \
     || problem "no estimate of the files it will change (queue.sh estimate $id <path>...)"

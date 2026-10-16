@@ -17,7 +17,7 @@
 #   kerjaan_append_note <file> <note>  a line at the end of ## Notes
 #   kerjaan_merge_state <file>         held / postponed / landed (merge.sh)
 #   kerjaan_estimate <file>            the files a ticket is estimated to change
-#   kerjaan_open_questions <file>      the questions still waiting for the owner
+#   kerjaan_questions <file>           every question asked, numbered for answering
 #   kerjaan_code_rev <id>              where the ticket's commits are read from
 #   kerjaan_changed_files <id> <rev>   files outside .kerjaan/ its commits changed
 #
@@ -274,12 +274,15 @@ kerjaan_estimate() {
     | tail -1 | grep -oE '`[^`]+`' | tr -d '`' || true
 }
 
-# Prints the text of every open question in ticket <file>, one per line, in
-# the order written. A question the owner answered reads "answered question".
-kerjaan_open_questions() {
+# Prints every question ever recorded in ticket <file>, numbered in the order
+# asked, answered ones included, so a number never shifts when another is
+# answered: "<n>\topen|answered\t<text>". That number is the one
+# `queue.sh answer` takes, so every message that lists questions uses it.
+kerjaan_questions() {
   [ -f "$1" ] || return 0
   kerjaan_unfenced_lines "$1" \
-    | sed -nE 's/^- [0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}: open question: //p'
+    | sed -nE 's/^- [0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}: (open|answered) question: /\1\t/p' \
+    | awk -F '\t' '{ print NR "\t" $1 "\t" substr($0, length($1) + 2) }'
 }
 
 # --- the code a ticket wrote ---------------------------------------------------

@@ -241,11 +241,12 @@ here="$(cd "$(dirname "$0")" && pwd)"
 # nobody is watching.
 
 if [ "$dest_status" = "todo" ] && [ "$current_status" != "todo" ]; then
-  open_questions="$(kerjaan_open_questions "$file")"
+  open_questions="$(kerjaan_questions "$file" | awk -F '\t' '$2 == "open"')"
   if [ -n "$open_questions" ]; then
     echo "REFUSED: $id was not moved to todo." >&2
     echo "It still holds questions waiting for the owner:" >&2
-    printf '%s\n' "$open_questions" | awk '{ print "  " NR ". " $0 }' >&2
+    # Numbered as `queue.sh answer` numbers them, answered ones counted too.
+    printf '%s\n' "$open_questions" | awk -F '\t' '{ print "  " $1 ". " $3 }' >&2
     echo "Put them to the owner, record each answer with" >&2
     echo "  $here/queue.sh answer $id <n> \"<answer>\"" >&2
     echo "and move it again." >&2
