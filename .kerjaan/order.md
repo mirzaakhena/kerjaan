@@ -2,7 +2,6 @@ Batch penilaian skill (sesi a192c9e8). 261016141916 tidak ada di sini: tiket kep
 
 **Lalu rilis, penghapusan penjelasan pemilik, dan uji skrip papan, bersamaan.** Rilis membawa grup pertama dan empat tiket sebelumnya, penghapusan membuat tiket aturan sesudahnya tidak perlu mengurus fitur itu, dan uji ditulis atas perilaku yang sudah diperbaiki; 261016141903 dan 261016141904 berbagi SKILL.md, README.md dan foreman.md, dan ketiganya berbagi README.md, jadi 261016141903 digabung lebih dulu, lalu 261016141915 digabung sebelum 261016141904.
 
-- 261016141903 Pekerjaan yang sudah masuk main sampai ke plugin yang terpasang
 - 261016141904 Fitur penjelasan pemilik dihapus dari kerjaan
 - 261016141915 Skrip yang paling sering mengubah papan punya uji sendiri
 
