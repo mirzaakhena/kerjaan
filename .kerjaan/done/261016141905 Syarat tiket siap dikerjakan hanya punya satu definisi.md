@@ -6,7 +6,7 @@ labels: [sesi-a192c9e8, skill, queue]
 reporter: mirza
 assign_to: claude
 created: 2026-10-16 14:19:06
-updated: 2026-10-17 04:02:54
+updated: 2026-10-17 04:04:23
 related: [261016141909]
 blocked_by: []
 ---
@@ -48,6 +48,7 @@ bentuk.
 - 2026-10-16 14:46:22 todo
 - 2026-10-17 03:21:10 a192c9e8-0bb5-4bbf-8d56-9831b23e62ec in_progress
 - 2026-10-17 04:02:54 a192c9e8-0bb5-4bbf-8d56-9831b23e62ec review
+- 2026-10-17 04:04:23 a192c9e8-0bb5-4bbf-8d56-9831b23e62ec done
 
 ## Notes
 - Berasal dari penilaian independen atas skill kerjaan di sesi Claude Code
@@ -95,3 +96,54 @@ bentuk.
     compare none tidak keluar 1; serta dokumen: "All five"→"four" di SKILL.md,
     "five"→"four" di penyusun, langkah tanya pengerja, baris `Review levels:`.
 - 2026-10-17 04:02:45: test run — `node --test --test-timeout=900000 --test-force-exit` exited 0 after 2m22s, on content fingerprint 4fd097b5cb1fa4d8cc3b0d8d08564d681ccbf94e (the same before and after the run; .kerjaan/ left out).
+- Review 2026-10-17 (reviewer independen): Ditinjau pada level quick (kolom
+  `review:` kosong), putaran 1, pada commit 616680f (kerja di 8829404, langsung
+  di main, tanpa worktree): pemeriksaan proyek dihitung sekali dan perubahannya
+  dibaca baris demi baris terhadap `Done when`. Tidak dinaikkan ke level lain.
+  - Uji: `test-run.sh --check 261016141905 HEAD` menjawab SAME — run pengerja
+    2026-10-17 04:02:45 (`node --test --test-timeout=900000 --test-force-exit`,
+    exit 0, fingerprint 4fd097b5cb1fa4d8cc3b0d8d08564d681ccbf94e) mencakup
+    persis isi ini, jadi tidak dijalankan ulang. Repo ini tidak punya
+    `CLAUDE.md`/`AGENTS.md`; `owner_explanation` tidak diatur.
+  - Syarat 1 (jumlah dan daftar sama): terpenuhi. SKILL.md "All five must
+    hold" + lima butir; penyusun antrean "the five conditions of SKILL.md"
+    tanpa menyalin. `git grep` tidak menemukan lagi "four checks/conditions".
+  - Syarat 2 (penghalang di grup lebih awal = siap): terpenuhi. queue.sh tidak
+    lagi menolak penghalang di todo saat ada order.md; urutan grup dinilai
+    pemeriksaan order.md yang sudah ada; ada uji per ID dan seluruh todo.
+  - Syarat 3 (panduan menunjuk ke `queue.sh check`): terpenuhi di
+    ordering-the-queue.md, foreman.md, README, penyusun antrean.
+  - Syarat 4 (pertanyaan pengerja bernomor dan terlihat): terpenuhi.
+    kerjaan-worker.md memakai `queue.sh ask`; `check` tanpa ID menampilkan
+    pertanyaan terbuka di in_progress/review tanpa dihitung masalah; diuji.
+  - Syarat 5 (usulan level dari penyusun antrean): terpenuhi. Langkah 7 dan
+    baris `Review levels:` di laporan penyusun; foreman.md, review.md, SKILL.md
+    menyatakan mandor hanya menyampaikan.
+  - Syarat 6 (tiket keputusan tanpa berkas): terpenuhi. `queue.sh estimate
+    <id> --none`, diterima `check`, diabaikan `overlap`, `compare` menaruh
+    semua berkas di "not estimated"; diuji.
+  - Catatan (tidak memblokir): uji dokumen di `uji/queue.test.mjs` (baris
+    896-971) campuran. Sebagian menguji aturannya: kata bilangan sama dengan
+    jumlah butir, satu butir per jenis masalah `check`, penyusun menyebut
+    bilangan yang sama, tidak ada pembuka butir atau "`type` and `priority`"
+    yang disalin ke panduan. Sebagian lagi membekukan kalimat, termasuk letak
+    pindah barisnya: "queue.sh\" check`\ntests, nothing more and nothing
+    less", "in `todo` in an earlier group of\n `order.md`", "`check` is the
+    one\ndefinition of ready, ...", "the review level it suggests\nfor each
+    ticket", "the foreman relays it and adds none of its own", "Suggesting one
+    is the planner's", "**7. Suggest a review level for each ticket.**",
+    "**2. Find the decisions that are not yours.**", dan kalimat jawaban di
+    foreman.md. Merapikan paragraf saja sudah membuat uji ini merah.
+
+### Suggested follow-up
+
+- **Uji dokumen di `uji/queue.test.mjs` membekukan kalimat, bukan hanya
+  aturannya.** Tiket 261016141909 (merampingkan SKILL.md) dan 261016141910
+  (merampingkan reviewer dan dokumennya) akan menulis ulang berkas yang sama;
+  setiap kalimat yang dipendekkan atau paragraf yang dirapikan akan membuat
+  uji "docs:" merah walau aturannya tetap benar. Yang diinginkan: uji hanya
+  memeriksa aturannya (jumlah syarat sama dengan butir, satu butir per jenis
+  masalah `check`, tidak ada daftar yang disalin, penyusun dan mandor
+  menyebut `queue.sh check`/`queue.sh ask`/`Review levels:`), dengan pencarian
+  yang tidak peka pindah baris, dan tanpa mengunci frasa atau nomor langkah.
+  Paling murah dikerjakan di dalam 261016141909/261016141910 sendiri.
