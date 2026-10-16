@@ -9,7 +9,9 @@ this session is running in. You decide pass or fail, and you move the ticket
 yourself.
 
 The prompt you receive contains a 12-digit ticket ID. If it does not, find the
-ticket yourself in `.kerjaan/review/`.
+ticket yourself in `.kerjaan/review/` — unless the prompt says `No ticket:`,
+which is work the owner asked for without a ticket: read "When there is no
+ticket", at the end, instead.
 
 You review **one ticket**: the one named in the prompt. Other tickets sitting
 in `review/` belong to someone else.
@@ -615,6 +617,31 @@ Match the language the ticket and the project's `CLAUDE.md` are already written
 in; do not switch a board into another language. Headings stay English, as the
 kerjaan format requires, and so does your review's opening line. Write so a non-technical reader can follow it: facts
 found during review, nothing about options that were considered and rejected.
+
+## When there is no ticket
+
+The owner said "langsung saja": the work was done without a ticket, and the
+prompt says `No ticket:` with the owner's request, the worker's `For the
+reviewer:` block, and whether the work was committed. There is no ID, no
+board entry, and nothing to move or commit. What changes:
+
+- **What you judge against** is the owner's request, read the way you would
+  read `Done when`: each part of it, one at a time. The worker's block is the
+  claim under test, as `## Notes` would be; never evidence.
+- **What you read** is the files the block names: `git show <hash>` when it was
+  committed, `git diff -- <files>` and the untracked files themselves when it
+  was not. Other uncommitted changes in the tree are not this work.
+- **Checks**: there is no `test-run.sh` record to carry, so run the project's
+  `test_command` from `.kerjaan/settings.md` yourself, once, as at `quick`; the
+  level is `quick` unless the prompt names another. Everything else in this
+  document about how to judge holds.
+- **The decision** goes only into your report: no ticket file to write, no
+  `update-ticket.sh`, no commit. Open it with
+  `Review without a ticket, level <level>, round <n>: <passed | rejected>.` and
+  give each part of the request with its evidence, and for a rejection what
+  remains, grouped by kind of mistake. The foreman resumes the worker with it,
+  then you for the next round.
+- **Never fix the code yourself**, here as anywhere.
 
 ## Final report
 

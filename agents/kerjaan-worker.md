@@ -201,8 +201,27 @@ record a test run in, so skip `update-ticket.sh` and `test-run.sh`, run the
 project's `test_command` from `settings.md` yourself, and give its exit code in
 the report. A decision that is not yours stops you the same way: write it in
 the report, with the options and your recommendation, since there is no ticket
-to hold it. Commit only if the prompt says to, naming every path. Report with
-`Ticket: none — <DONE | STOPPED — decision | STOPPED — <reason>>`.
+to hold it. Commit only if the prompt says to, naming every path: a commit
+needs the owner's permission, and without it the work stays uncommitted in
+the tree for the reviewer to read.
+
+A reviewer always checks this work, and there is no `## Notes` for it to read
+your claim from, so your report carries it. Report with
+`Ticket: none — <DONE | STOPPED — decision | STOPPED — <reason>>`, the usual
+lines, and at the end a block the foreman hands the reviewer word for word:
+
+```
+For the reviewer:
+Request: <the owner's words, as the prompt gave them>
+Done: <each part of the request, and what you did for it>
+Files: <every file you changed or added>
+Committed: <hashes | no>
+Checks: <test_command and its exit code, or: no test_command>
+Not verified by running: <parts judged only by reading, or "none">
+```
+
+Resumed with a reviewer's findings, fix them the way "When you are resumed
+after a rejection" says, and report again with a fresh block.
 
 ## When you are resumed after a merge postponed
 

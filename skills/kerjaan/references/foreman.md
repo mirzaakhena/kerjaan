@@ -42,6 +42,12 @@ This holds for a single ticket too. One small fix is a chain of one.
 The foreman never edits a ticket's code, not even a line it can see is wrong
 in a report. It sends the line back to the worker.
 
+What goes to `kerjaan-planner` instead: reading the backlog to say what is
+ready, splitting tickets that are too big, estimating the files each ticket
+will change, deciding which tickets may run together, writing the owner's
+answers into tickets, and — once the owner approved — moving tickets into
+`todo` and writing `order.md`.
+
 One exception, and only one: **a tiny change in text the owner asks for
 directly** — a typo, a word, a sentence of prose in a README, a guide or a
 comment. The foreman may make that itself, with no worker and no reviewer,
@@ -71,18 +77,35 @@ Carry-forward: <as for a ticket, if a chain is running>
 ```
 
 The worker builds it, runs the project's checks, commits the code naming its
-paths if the prompt says so, and reports; there is no board to move and no
-`test-run.sh` record, since both belong to a ticket. No reviewer follows unless the owner asks for
-one. The reason is the one this whole guide rests on: the foreman's context is
-the chain's, and work without a ticket fills it exactly as work with one does.
-Only a tiny change in text the owner asks for directly is the foreman's own
-(above).
+paths only if the prompt says so — a commit needs the owner's permission, here
+as anywhere — and reports; there is no board to move and no `test-run.sh`
+record, since both belong to a ticket. Its report ends in a `For the reviewer:`
+block: the request, what it did for each part of it, the files it changed, and
+the checks it ran with their exit codes. With no ticket, that block is the
+written record of the work.
 
-What goes to `kerjaan-planner` instead: reading the backlog to say what is
-ready, splitting tickets that are too big, estimating the files each ticket
-will change, deciding which tickets may run together, writing the owner's
-answers into tickets, and — once the owner approved — moving tickets into
-`todo` and writing `order.md`.
+**A reviewer always follows.** Skipping the ticket skips the board, not the
+check: dispatch `kerjaan-reviewer` once the worker reports `DONE`, with:
+
+```
+Repo: /path/to/repo
+No ticket: the owner asked for this directly — <their words, in full>
+Scripts: <kerjaan scripts folder>
+Worker's record: <the worker's `For the reviewer:` block, word for word>
+Committed: <the commit hashes | no: the work is uncommitted in the tree>
+```
+
+The reviewer judges the work against the owner's request, moves nothing and
+commits nothing, and reports `PASSED` or `REJECTED` with its findings.
+Rejected, resume the same worker with the findings and then the same reviewer,
+as for a ticket; a second rejection goes to the owner, as for a ticket
+(`references/review.md`). Tell the owner the outcome in one line.
+
+The reason is the one this whole guide rests on: the foreman's context is
+the chain's, and work without a ticket fills it exactly as work with one does;
+and work nobody independent has checked is no better for having been asked for
+in a hurry. Only a tiny change in text the owner asks for directly is the
+foreman's own, with no worker and no reviewer (above).
 
 ## Filling the queue
 

@@ -324,9 +324,10 @@ work is built on it. Start once they agree, or once they correct it.
 The exception is the user saying so: "no ticket for this", "langsung saja".
 That skips the ticket, not the worker: the code is still written by a
 `kerjaan-worker` the foreman dispatches, with the user's request in the prompt
-where a ticket's path would go (`references/foreman.md`, "Work without a
-ticket"). The reason the foreman keeps out of the code holds whether or not a
-ticket exists. Only a tiny change in text the owner asks for directly is the
+where a ticket's path would go, and a `kerjaan-reviewer` always checks it
+against that request (`references/foreman.md`, "Work without a ticket"). The
+reason the foreman keeps out of the code, and the reason for an independent
+check, hold whether or not a ticket exists. Only a tiny change in text the owner asks for directly is the
 foreman's own ("Who does the work").
 
 ### Creating
