@@ -45,7 +45,9 @@ The rules that are broken most often, each explained further down:
 
 1. **Work starts from a ticket** the user has seen — search first, create if none.
 2. **The main session never writes a ticket's code.** It is the foreman: every
-   ticket, even a single small one, goes to a `kerjaan-worker` subagent.
+   ticket, even a single small one, goes to a `kerjaan-worker` subagent — and
+   so does work the user asked for without a ticket. The one exception is a
+   tiny change in text or docs the owner asks for directly ("Who does the work").
 3. **Move a ticket to `in_progress` before the first change to the repo.**
 4. **Every change to a ticket goes through `update-ticket.sh`**, never a bare `mv`.
 5. **Before `review`, tick `Done when` line by line** against what the work produced.
@@ -284,6 +286,21 @@ by the second or third ticket it is compacted; a foreman receives only
 reports, so the user hands over a queue once and every ticket still starts
 clean.
 
+**The one exception: a tiny change in text the owner asks for directly.** A
+typo, a word, a sentence in a README or a guide — when the owner asks for it
+themselves, the foreman may make it itself, with no worker and no reviewer.
+Only text with no logic in it qualifies: prose, comments, documentation that
+no script parses and no test reads. Anything that touches a script, code,
+configuration, a test, or a file a test checks still goes to a worker, however
+small. The reason is cost: a worker and a reviewer each start from an empty
+context and read their way in, which for one word costs many times the change,
+while a change in prose has no behaviour for tests or a review to catch, and
+reading one file does not crowd the foreman's context. The foreman commits it
+on its own, naming the file, when commits are called for ("Committing",
+below), and says in one line what it changed. Asked for by the owner means
+just that: a slip the foreman notices in a report, or a word it would rather
+phrase differently, is not covered; that goes to a worker or into a ticket.
+
 **Read `references/foreman.md` before the first ticket goes to a worker, and
 when the owner asks what can be worked on** — it covers filling the queue
 through the planner, the questions asked at the start of a chain, the worker's prompt, what
@@ -305,6 +322,12 @@ catches a misunderstanding for the price of a sentence, instead of after the
 work is built on it. Start once they agree, or once they correct it.
 
 The exception is the user saying so: "no ticket for this", "langsung saja".
+That skips the ticket, not the worker: the code is still written by a
+`kerjaan-worker` the foreman dispatches, with the user's request in the prompt
+where a ticket's path would go (`references/foreman.md`, "Work without a
+ticket"). The reason the foreman keeps out of the code holds whether or not a
+ticket exists. Only a tiny change in text the owner asks for directly is the
+foreman's own ("Who does the work").
 
 ### Creating
 
@@ -652,12 +675,29 @@ instead.
 ### When the user says "mark it done"
 
 The user owns the board, so this is theirs to say, but "done" means passed
-review. Unless they explicitly want to skip review, tick `Done when` as above
-and move the ticket to `review`; tell them in one line that the reviewer will
-move it to `done`. If they do want to skip it — "langsung done saja", "no
-review needed" — move it to `done` and append to `## Notes`:
+review, and the path to it runs through the worker's checks whatever the
+ticket's status. The foreman does not tick `Done when` or move a ticket to
+`review` itself: ticking is the worker's, a move to `review` from `todo` is
+refused by `update-ticket.sh`, and a move that skipped `test-run.sh` leaves the
+reviewer nothing to trust. By where the ticket sits:
+
+- **`todo` or `in_progress`.** Move a `todo` ticket to `in_progress` (the start
+  gate applies as for any start), then dispatch a worker as for any ticket,
+  adding to its prompt: `The owner says this work is done: <their words>.` The
+  worker checks each `Done when` line against what the repo holds, finishes
+  what is missing, ticks, runs `test-run.sh`, moves the ticket to `review`, and
+  reports. A ticket already in `in_progress` with a worker of this chain on it
+  goes to that worker, resumed. Tell the user in one line that the reviewer
+  will move it to `done`.
+- **`review`.** It is already waiting for its reviewer; say so.
+
+If the user explicitly wants to skip review — "langsung done saja", "no
+review needed" — the path is the same up to `review`, so the checks are still
+run and recorded; then, when the worker reports `REVIEW`, the foreman moves the
+ticket to `done` instead of dispatching a reviewer, and appends to `## Notes`:
 `Moved to done by <owner> without review, <date>.` A `done` with no review
-behind it must say so.
+behind it must say so. A ticket worked in a worktree is then landed with
+`merge.sh land` like any other (`references/foreman.md`, step 5).
 
 ### When the board goes quiet
 

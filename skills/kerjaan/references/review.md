@@ -137,8 +137,13 @@ second one stops the chain. Put the choice to the ticket's owner in one line:
 
 If they accept: append to `## Notes` that the owner accepted the ticket over
 the named findings, create the follow-up ticket with `related: [<this ID>]`,
-and move this one to `done` yourself. If they want a third round, resume the
-same worker as before.
+and move this one to `done` yourself. From there it is a passed ticket: when it
+was worked in a worktree, land it with `"$K/merge.sh" land <id>` as for any
+ticket its reviewer passed (`references/foreman.md`, step 5). The owner
+accepted the findings, not a branch left beside main. Should `land` answer
+`MERGE POSTPONED`, the review after it reads only the resolution, as always,
+and does not reopen what the owner accepted. If they want a third round,
+resume the same worker as before.
 
 ## Follow-ups the reviewer suggests
 

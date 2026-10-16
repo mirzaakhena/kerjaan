@@ -858,3 +858,88 @@ test('di main tree tanpa cabang, catatan "ditahan" tidak di-commit ke HEAD yang 
   assert.equal(head(r), before);
   assert.match(notes(r, A), /merge held for the owner — the main tree is on no branch/);
 });
+
+// --- shortcuts the owner takes (261016141908) --------------------------------
+
+// The reviewer's rejection: the move back that a sent-back verdict makes.
+function rejectReview(r, id) {
+  const res = move(r, id, 'in_progress');
+  assert.equal(res.code, 0, res.err);
+}
+
+test('tiket yang diterima pemilik setelah dua penolakan digabung ke main seperti tiket yang lolos', () => {
+  const r = repo();
+  const wa = add(r, A);
+  work(wa, { 'pakai.txt': 'satu\ndua\n' });
+  assert.equal(run(testRun, wa, [A]).code, 0);
+  toReview(r, A);
+  rejectReview(r, A);
+  work(wa, { 'pakai.txt': 'satu\ndua\nsatu\n' }, 'perbaikan ronde 2');
+  assert.equal(run(testRun, wa, [A]).code, 0);
+  toReview(r, A);
+  rejectReview(r, A);
+  // The owner accepts it over the findings; the foreman moves it to done.
+  const accept = move(r, A, 'done');
+  assert.equal(accept.code, 0, accept.err);
+  assert.equal(where(r, A), 'done');
+
+  const land = run(mergeSh, r.root, ['land', A]);
+  assert.equal(land.code, 0, land.out + land.err);
+  assert.match(land.out, /LANDED: ticket 261016300001 is in main/);
+  assert.equal(show(r, 'HEAD', 'pakai.txt'), 'satu\ndua\nsatu\n');
+  assert.equal(git(r.root, 'branch', '--list', `tiket-${A}`).trim(), '');
+  assert.equal(fs.existsSync(wa), false);
+});
+
+test('tiket yang diterima pemilik saat main sudah bergerak ditunda, diperbarui, lalu tetap sampai di main', () => {
+  const r = repo();
+  const wa = add(r, A);
+  const wb = add(r, B);
+  work(wa, { 'pakai.txt': 'satu\ndua\n' });
+  assert.equal(run(testRun, wa, [A]).code, 0);
+  toReview(r, A);
+  rejectReview(r, A);
+  toReview(r, A);
+  rejectReview(r, A);
+  // Meanwhile B passes and lands: main's code moves.
+  work(wb, { 'pakai-b.txt': 'dua\n' });
+  assert.equal(run(testRun, wb, [B]).code, 0);
+  toReview(r, B);
+  passReview(r, B);
+  assert.equal(run(mergeSh, r.root, ['land', B]).code, 0);
+
+  assert.equal(move(r, A, 'done').code, 0);
+  const postponed = run(mergeSh, r.root, ['land', A]);
+  assert.equal(postponed.code, 3, postponed.out + postponed.err);
+  assert.equal(where(r, A), 'in_progress');
+  // The worker brings main in, tests, hands over; the review after the merge
+  // postponed passes it, and it lands.
+  assert.equal(run(mergeSh, wa, ['sync', A]).code, 0);
+  assert.equal(run(testRun, wa, [A]).code, 0);
+  toReview(r, A);
+  passReview(r, A);
+  const land = run(mergeSh, r.root, ['land', A]);
+  assert.equal(land.code, 0, land.out + land.err);
+  assert.equal(show(r, 'HEAD', 'pakai.txt'), 'satu\ndua\n');
+  assert.equal(show(r, 'HEAD', 'pakai-b.txt'), 'dua\n');
+});
+
+test('"tandai selesai" pada tiket di todo: ke review langsung ditolak, lewat in_progress dan uji diterima', () => {
+  const r = repo();
+  // The foreman's shortcut the guide used to give: tick and move to review.
+  const direct = move(r, C, 'review');
+  assert.equal(direct.code, 1);
+  assert.match(direct.err, /REFUSED: 261016300003 was not moved to review/);
+  assert.equal(where(r, C), 'todo');
+
+  // The path the guide gives now: start, the worker's checks, review, done.
+  // A and B are in in_progress too, with no branches, so the start is clean.
+  const start = move(r, C, 'in_progress');
+  assert.equal(start.code, 0, start.err);
+  const t = run(testRun, r.root, [C]);
+  assert.equal(t.code, 0, t.err);
+  toReview(r, C);
+  assert.match(notes(r, C), /test run — `.*` exited 0 after .*, on content fingerprint [0-9a-f]+/);
+  passReview(r, C);
+  assert.equal(where(r, C), 'done');
+});

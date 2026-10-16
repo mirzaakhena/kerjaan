@@ -42,6 +42,42 @@ This holds for a single ticket too. One small fix is a chain of one.
 The foreman never edits a ticket's code, not even a line it can see is wrong
 in a report. It sends the line back to the worker.
 
+One exception, and only one: **a tiny change in text the owner asks for
+directly** — a typo, a word, a sentence of prose in a README, a guide or a
+comment. The foreman may make that itself, with no worker and no reviewer,
+because a worker and a reviewer reading their way in from an empty context
+cost many times a one-word change, and prose has no behaviour for tests or a
+review to catch. It covers text with no logic in it only: anything that
+touches a script, code, configuration, a test, or a file a test reads or a
+script parses goes to a worker, however small. It covers the owner's own
+request only: a slip the foreman spots in a report is sent back, not fixed.
+Commit it, when the owner wants commits (SKILL.md, "Committing"), naming the
+file alone, and tell the owner in one line what changed (SKILL.md, "Who does
+the work").
+
+## Work without a ticket
+
+When the user says to skip the ticket — "langsung saja", "no ticket for
+this" — the ticket is skipped, not the worker. Dispatch `kerjaan-worker` as in
+"One ticket, start to finish", step 2, with the request where the ticket's path
+would go:
+
+```
+Repo: /path/to/repo
+No ticket: the owner asked for this directly — <their words, in full>
+Scripts: <kerjaan scripts folder>
+Commit: <yes, if the owner wants it committed | no>
+Carry-forward: <as for a ticket, if a chain is running>
+```
+
+The worker builds it, runs the project's checks, commits the code naming its
+paths if the prompt says so, and reports; there is no board to move and no
+`test-run.sh` record, since both belong to a ticket. No reviewer follows unless the owner asks for
+one. The reason is the one this whole guide rests on: the foreman's context is
+the chain's, and work without a ticket fills it exactly as work with one does.
+Only a tiny change in text the owner asks for directly is the foreman's own
+(above).
+
 What goes to `kerjaan-planner` instead: reading the backlog to say what is
 ready, splitting tickets that are too big, estimating the files each ticket
 will change, deciding which tickets may run together, writing the owner's
@@ -193,7 +229,7 @@ working.
 | Report | What the foreman does |
 |---|---|
 | `REVIEW` | The ticket is in `review/`. In the first round, dispatch `kerjaan-reviewer` and record its agent ID next to the worker's; in a later round, or after a merge postponed, resume that reviewer (steps 5 and 6). No hook message reaches you here: the worker made the move, so the hook spoke to the worker. |
-| `STOPPED — decision` | Stop the chain (see "When the chain stops"). The question is numbered in the ticket; `"$K/queue.sh" check <id>` shows it. |
+| `STOPPED — decision` | Stop the chain (see "When the chain stops"). The question is numbered in the ticket; `"$K/queue.sh" check <id>` shows it. Once the owner answers, resume that worker ("When the owner answers"). |
 | anything else | Read why. If the ticket is groundwork for others, stop the chain. Otherwise note it, leave the ticket in `in_progress` with its Notes, and go on. |
 
 Add the report's carry-forward to the log, and the questions that did not stop
@@ -223,6 +259,12 @@ tickets that run side by side in worktrees overlap (`references/parallel-work.md
   earlier review in the ticket and tells you the same thing: resume, and
   dispatch a new reviewer only if that one cannot be resumed.
 - **Sent back a second time** — the second rejection: stop the chain (see below).
+- **Accepted by the owner** after the second rejection (`references/review.md`)
+  — you move it to `done` yourself, and from there it is treated as passed:
+  when it was worked in a worktree, land it with `"$K/merge.sh" land <id>` and
+  act on the answer (step 6), exactly as for a ticket its reviewer passed. A
+  `done` ticket whose branch never reached main is work the board calls
+  finished and main does not have.
 
 **6. Act on the landing** (worktree tickets only).
 
@@ -264,8 +306,8 @@ The chain stops itself, and reports to the user, in three cases:
 1. **A decision belongs to the user.** A worker reported `STOPPED — decision`
    and recorded the question, the options and its recommendation with
    `queue.sh ask`. Put it to the owner with its number; record the answer with
-   `"$K/queue.sh" answer <id> <n> "<answer>"`, then resume that worker. Or a
-   human check is holding the chain.
+   `"$K/queue.sh" answer <id> <n> "<answer>"`, then resume that worker
+   ("When the owner answers", below). Or a human check is holding the chain.
 2. **The reviewer rejected the same ticket twice.** Put the choice to the
    owner as `references/review.md` describes: fix and review a third time, or
    accept it with a follow-up ticket.
@@ -277,6 +319,31 @@ The chain stops itself, and reports to the user, in three cases:
 
 A question that does not hold the work up never stops the chain. It is already
 in its ticket; collect it for the summary.
+
+### When the owner answers
+
+A ticket stopped on a decision is still in `in_progress`: the worker did not
+move it, and the start gate does not run again. To carry on:
+
+1. Record each answer with `"$K/queue.sh" answer <id> <n> "<answer>"`, word for
+   word, under the number the worker's report gave. `queue.sh check <id>` then
+   shows no open question for it. The answer is committed with the worker's
+   work, by the quoted pattern of its ticket; you commit nothing for it.
+2. Resume **the same worker** with `SendMessage` to its agent ID: name the
+   ticket, say the owner answered, and give each answer with its number. It
+   still holds the ticket and the code it read, so it picks up where it
+   stopped instead of starting over.
+3. Act on its report as on any other ("One ticket, start to finish", step 3):
+   `REVIEW` goes to a reviewer — dispatched new in the first round, the one
+   before resumed in a later round (step 5) — and the chain carries on from
+   this ticket with the next one after it.
+   Another `STOPPED — decision` goes round this again.
+
+A worker that cannot be resumed is replaced by a new one, dispatched as in
+step 2 of "One ticket, start to finish", told that its question was answered
+in `## Notes` under its number and that earlier work may already sit in the
+tree. Record the replacement in the log, as for any agent that could not be
+resumed.
 
 ## The summary
 

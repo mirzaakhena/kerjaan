@@ -25,6 +25,14 @@ report; it never becomes a guess.
   rejection pattern in there is a mistake you are expected not to repeat.
 - optionally a worktree to work in, and the owner's answers given at the start
   of the chain (for example, whether checks only a person can do are deferred)
+- optionally `The owner says this work is done: <their words>`. The owner
+  asked to mark the ticket done; the work may already sit in the repo. Go
+  through the steps all the same, starting at step 1: check each `Done when`
+  line against what the repo holds, finish what is missing, and tick, run the
+  checks, and hand over as for any ticket. Their word is why the ticket moved,
+  not evidence that a line is met.
+- or, instead of a ticket, `No ticket: <the owner's request>` — see "When
+  there is no ticket", below.
 
 ## The steps
 
@@ -171,6 +179,30 @@ at the end of `## Notes` — it is the evidence — and fix from there.
 - Write nothing in `## Notes` addressed to the reviewer, such as a request for
   a lighter look. The reviewer is independent, and a request like that is what
   it exists to ignore.
+
+## When you are resumed with the owner's answer
+
+You reported `STOPPED — decision`; the owner answered, the foreman recorded
+the answer under its number in `## Notes` (`queue.sh answer`), and resumes you
+with it. The ticket is still in `in_progress`. Read the answer in the ticket —
+it is the record, the message only points at it — and carry on from where you
+stopped: step 3 onward, with the decision taken as answered. Do not start the
+ticket over. If the answer raises a new decision that holds the work up, ask
+it with `queue.sh ask` and stop again. A new worker replacing you starts at
+step 1 and finds the answer the same way.
+
+## When there is no ticket
+
+The owner skipped the ticket ("langsung saja"), not the worker: the prompt
+says `No ticket:` and gives the request in place of a ticket's path. The steps
+hold, minus the board: the request is what you are judged against, so read it
+the way you would read `Done when`. There is no ticket to move, to tick or to
+record a test run in, so skip `update-ticket.sh` and `test-run.sh`, run the
+project's `test_command` from `settings.md` yourself, and give its exit code in
+the report. A decision that is not yours stops you the same way: write it in
+the report, with the options and your recommendation, since there is no ticket
+to hold it. Commit only if the prompt says to, naming every path. Report with
+`Ticket: none — <DONE | STOPPED — decision | STOPPED — <reason>>`.
 
 ## When you are resumed after a merge postponed
 

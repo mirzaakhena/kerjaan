@@ -16,8 +16,8 @@
 #      and the latest test run passed on exactly the branch's content
 #      (`check`, called by update-ticket.sh). The reviewer therefore judges
 #      what main will get.
-#   3. Once the reviewer has passed it, the foreman lands it (`land`), one
-#      ticket at a time. If main's code moved meanwhile, the ticket goes back
+#   3. Once the reviewer has passed it — or the owner accepted it over a
+#      second rejection — the foreman lands it (`land`), one ticket at a time. If main's code moved meanwhile, the ticket goes back
 #      to in_progress to be brought up to date and reviewed again; nothing
 #      untested reaches main. Anything else that stops the merge holds this one
 #      ticket for the owner, and every other ticket carries on.
@@ -210,7 +210,7 @@ case "$cmd" in
     cd "$main_tree"
     status="$(basename "$(dirname "$ticket")")"
     if [ "$status" != "done" ]; then
-      echo "REFUSED: $id is in $status/. Only a ticket the reviewer passed, in done/, lands on main." >&2
+      echo "REFUSED: $id is in $status/. Only a ticket in done/ lands on main: passed by its reviewer, or accepted by the owner." >&2
       exit 2
     fi
     if [ -z "$branch" ]; then
