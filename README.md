@@ -381,7 +381,10 @@ its own address (`/<project>/tiket/<id>`). The page follows the board as it
 changes, the ticket you are reading included. Any column can be hidden and
 shown again, still showing how many tickets it holds; `cancel` starts hidden,
 and the browser remembers the choice. `todo`'s header opens `order.md` itself,
-reasons and all.
+reasons and all. Under each group whose tickets share files, it shows which
+pairs share which files: read from the tickets' estimates every time the board
+is read, never written into `order.md`, and the same files `queue.sh overlap`
+names for that pair. Pairs across groups are not shown.
 
 Beside the project's name, every active project (those not archived in this
 browser) is a button, by name, the open one marked, so another board is one

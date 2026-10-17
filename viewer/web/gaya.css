@@ -369,6 +369,14 @@ body.proyek .bar .live { flex: none; }
 .md ul.riwayat .sesi { font-size: 11.5px; color: var(--muted); background: none; padding: 0; align-self: center; overflow-wrap: anywhere; user-select: all; }
 .md .missing { font-family: var(--mono); font-size: 12.5px; color: var(--cancel); text-decoration: underline dotted; }
 
+/* order.md: the files a group's tickets share, read from their estimates */
+.md .berkas-bersama { margin: 6px 0 14px; padding: 8px 12px; border-radius: 8px; background: var(--sunk); border-left: 3px solid var(--in_progress); font-size: 13px; }
+.md .berkas-bersama .judul { margin: 0 0 2px; font: 600 12.5px/1.4 var(--sans); text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+.md .berkas-bersama ul { margin: 2px 0; }
+.md .berkas-bersama p { margin: 4px 0; }
+.md .berkas-bersama code { background: var(--panel); }
+.md .berkas-bersama .asal { margin: 4px 0 0; font-size: 12px; color: var(--muted); }
+
 /* ---------- narrow screens: one status at a time ---------- */
 @media (max-width: 860px) {
   body.proyek { display: block; height: auto; }
