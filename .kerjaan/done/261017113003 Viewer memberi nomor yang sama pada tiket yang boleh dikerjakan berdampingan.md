@@ -6,7 +6,7 @@ labels: [sesi-8e6130e0, order-md, viewer]
 reporter: mirza
 assign_to: claude
 created: 2026-10-17 11:30:54
-updated: 2026-10-17 20:05:29
+updated: 2026-10-17 20:05:48
 related: [261017113001, 261017113002, 261017113004]
 blocked_by: [261017113001, 261017113002]
 ---
@@ -54,3 +54,4 @@ Nomor di kartu menunjukkan urutan kelompok di order.md: tiket dalam satu kelompo
   - Kriteria 5 (aturan sama dengan pemeriksaan antrean): kelompok dibaca oleh `readOrderGroups` yang sudah diuji setara dengan check; aturan "sudah dimulai" sama dengan queue.sh baris 615–625 (ada tiket di in_progress/review). Uji baru menjalankan `queue.sh check` pada empat keadaan papan dan membandingkan kelompok bertanda/tidak dengan barisnya.
   - Catatan: tidak ada. Teks Indonesia lama di proyek.js ("belum digabung", "rusak") bukan bagian tiket ini.
   - Tidak diverifikasi dengan menjalankan sesuatu oleh peninjau: kelima kriteria dinilai dari membaca diff dan uji, dengan satu-satunya bukti jalan berupa run uji pekerja yang dibawa lewat SAME. Sabotase yang dilaporkan pekerja tidak diulang.
+- 2026-10-17 20:05:48: landed on main as 581e004faf4a337c1fbc9e1999c56e6de87f3d38, merging tiket-261017113003 at 2c5988940656f809f16b5fc5423f79e27ff82a2e; tests carried from the run on this exact content, not run again.
