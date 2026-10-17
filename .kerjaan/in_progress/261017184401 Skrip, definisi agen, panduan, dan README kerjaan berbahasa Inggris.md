@@ -6,7 +6,7 @@ labels: [sesi-8e6130e0]
 reporter: mirza
 assign_to: claude
 created: 2026-10-17 18:44:41
-updated: 2026-10-17 19:05:11
+updated: 2026-10-17 21:14:07
 related: [261017175101, 261017184402]
 blocked_by: [261017175101]
 ---
@@ -28,6 +28,7 @@ Skrip papan, definisi agen, panduan, README, dan uji skill sepenuhnya berbahasa 
 ## History
 - 2026-10-17 18:44:41 8e6130e0-0828-4d64-b383-ba0d1c9f4b02 backlog
 - 2026-10-17 18:45:42 8e6130e0-0828-4d64-b383-ba0d1c9f4b02 todo
+- 2026-10-17 21:14:07 8e6130e0-0828-4d64-b383-ba0d1c9f4b02 in_progress
 
 ## Notes
 - 2026-10-17: dipecah dari 261017175101 atas jawaban pemilik (sesi 8e6130e0-0828-4d64-b383-ba0d1c9f4b02). Keputusan pemilik di tiket asal: #2 "Hapus, lalu ukur" (kalimat contoh Indonesia di deskripsi dan uji pemicu dihapus, lalu uji pemicu diulang); #3 "Hapus" (docs/cara-kerja-reviewer.md dihapus). Isi papan repo ini tetap berbahasa Indonesia.
