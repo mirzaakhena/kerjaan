@@ -387,7 +387,13 @@ without a restart.
 project's kanban instead of the front page.
 
 A project opens as a kanban: one column per status, `todo` in the order
-`order.md` gives, the other columns most recently touched first. Cards can be
+`order.md` gives, the other columns most recently touched first. A card
+listed in `order.md` shows its group's number: tickets of one group share it,
+since they may run side by side (not that they are running now), tickets in
+`in_progress` and `review` keep it until they are done, and once every ticket
+of the first group is done the next group is #1. The cards of a group with a
+`<!-- wait-for-owner -->` line say they wait for the owner's go-ahead until a
+ticket of it is in flight, the rule `queue.sh check` uses. Cards can be
 filtered by type, priority, label and words in the title, and the filter lives
 in the address, so a filtered view can be bookmarked. A card opens the ticket
 itself, rendered, with every ticket it names one click away; each ticket has

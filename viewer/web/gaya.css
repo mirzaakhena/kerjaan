@@ -214,6 +214,7 @@ body.proyek .bar .live { flex: none; }
 .card .meta { display: flex; flex-wrap: wrap; gap: 4px 6px; align-items: center; margin-top: 6px; font-size: 11px; color: var(--muted); }
 .card .id { font-family: var(--mono); font-size: 10.5px; }
 .card .rank { font-family: var(--mono); font-size: 10.5px; color: var(--todo); font-weight: 500; }
+.card .owner-wait { color: var(--warn-ink); background: var(--warn-bg); border-radius: 4px; padding: 0 5px; }
 .card .broken { color: var(--warn-ink); background: var(--warn-bg); border-radius: 4px; padding: 0 5px; }
 /* A done ticket whose branch is not merged into main yet: each branch name
    in full (it is what gets typed next), kept whole on a line when it fits,

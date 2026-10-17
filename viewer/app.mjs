@@ -114,6 +114,7 @@ async function boardSummary(project, claudeDir) {
     statuses: STATUSES,
     hasOrder: data.hasOrder,
     order: data.order,
+    places: data.places,
     tickets: data.tickets.map(({ body, meta, ...t }) => {
       const a = AGENT_STATUSES.includes(t.status) && agents.get(t.id);
       if (a) t.agent = summary(a);
