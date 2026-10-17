@@ -431,39 +431,43 @@ if [ "$dest" != "$file" ]; then
 fi
 
 # --- keep the ordering file in step ----------------------------------------
-# `.kerjaan/order.md` lists the tickets sitting in `todo/` in the order they
-# should be picked up. Two ways of breaking it raise no error at all: leaving a
-# ticket listed there after it has moved on, and renaming a ticket so the file
-# spells its title the old way. Both are exactly the silent half-action this
-# script exists to make impossible, so they are bound into the same command.
+# `.kerjaan/order.md` lists the tickets still being worked on — in `todo/`,
+# `in_progress/` and `review/` — in the order they are picked up, with which
+# lands first (references/ordering-the-queue.md). Two ways of breaking it raise
+# no error at all: leaving a ticket listed there after it has finished, and
+# renaming a ticket so the file spells its title the old way. Both are exactly
+# the silent half-action this script exists to make impossible, so they are
+# bound into the same command.
+#
+# A ticket's line stays while it is worked on and reviewed: two tickets of one
+# group running side by side need the lands-first line most exactly then. It
+# goes when the ticket leaves the work for good — done, cancelled, or back to
+# backlog.
 #
 # A board that has never written an order file is left completely alone.
 
 order="$board/order.md"
 
-if [ -f "$order" ] && [ "$current_status" = "todo" ] && [ "$dest_status" != "todo" ]; then
-  if grep -q "^- $id " "$order"; then
+active() { case "$1" in todo | in_progress | review) return 0 ;; esac; return 1; }
+
+if [ -f "$order" ] && active "$current_status" && ! active "$dest_status"; then
+  if grep -qE "^- $id( |\$)" "$order"; then
     otmp="$(mktemp)"
-    # Drops the ticket's bullet, then drops any group left with no bullets at
-    # all — a lead-in sentence introducing nothing is worse than no group.
-    # A block runs from its bold opening line to the next one, so a lead-in
-    # wrapped over two lines stays whole. Treating every non-bullet line as a
-    # new block would cut such a sentence in half and throw away the first
-    # line, which is the one carrying the reasoning.
+    # Drops the ticket's line, then drops any group left with no ticket at
+    # all — a lead-in introducing nothing is worse than no group. A block runs
+    # from its bold lead-in to the next one.
     #
-    # Only a block that actually held a bullet is a group. Prose that merely
-    # starts in bold — a note at the head of the file, a paragraph between two
-    # groups — never had one, so emptiness says nothing about it and it is
-    # printed untouched. Without that distinction every such paragraph
-    # disappears the first time any ticket leaves `todo`, silently, which is
-    # the one failure this file cannot afford: what it carries is the
-    # reasoning, and nothing else records it.
+    # Only a block that actually held a ticket line is a group. The goal line
+    # at the top (`**Tujuan.**` or `**Goal.**`) is never one: it is printed
+    # as it stands, whatever comes under it. Any other bold line that never
+    # held a ticket is outside the grammar, and is left exactly as written for
+    # queue.sh check to report by its line number — this script never deletes
+    # what it does not understand.
     #
     # The ticket's ID also comes off its group's lands-first line
-    # (`<!-- lands-first: <id>, <id> -->`, references/ordering-the-queue.md),
-    # keeping the others in their order; a line left naming nobody goes. A
-    # line in any other shape is left exactly as written for queue.sh check
-    # to report.
+    # (`<!-- lands-first: <id>, <id> -->`), keeping the others in their order;
+    # a line left naming nobody goes. A line in any other shape is left
+    # exactly as written for queue.sh check to report.
     awk -v id="$id" '
       function flush(   i) {
         if (started && (kept || !had_bullet)) { for (i = 0; i < n; i++) print buf[i] }
@@ -482,10 +486,11 @@ if [ -f "$order" ] && [ "$current_status" = "todo" ] && [ "$dest_status" != "tod
       }
       BEGIN { n = 0; kept = 0; had_bullet = 0; started = 0 }
       {
+        if ($0 ~ /^\*\*(Tujuan|Goal)\.\*\*/) { flush(); started = 0; print; next }
         if ($0 ~ /^\*\*/) { flush(); started = 1 }
         if ($0 ~ /^- /) {
           had_bullet = 1
-          if (index($0, "- " id " ") == 1) { next }
+          if ($0 == "- " id || index($0, "- " id " ") == 1) { next }
           kept = 1
         }
         if ($0 ~ /^[ \t]*<!--[ \t]*lands-first:/ && index($0, id)) {
@@ -498,20 +503,22 @@ if [ -f "$order" ] && [ "$current_status" = "todo" ] && [ "$dest_status" != "tod
     ' "$order" > "$otmp"
     cat "$otmp" > "$order"
     rm -f "$otmp"
-  else
+  elif [ "$current_status" = "todo" ]; then
     echo "Note: $id was not listed in $order — check whether that file is still true." >&2
   fi
-elif [ -f "$order" ] && [ "$current_status" = "todo" ] && [ "$title_given" -eq 1 ]; then
+elif [ -f "$order" ] && [ "$title_given" -eq 1 ]; then
   otmp="$(mktemp)"
   # The title goes through the environment, not -v, so backslashes survive.
+  # Only this ticket's own line changes, whatever folder the ticket is in.
   KERJAAN_TITLE="$dest_title" awk -v id="$id" '
-    { if (index($0, "- " id " ") == 1) { print "- " id " " ENVIRON["KERJAAN_TITLE"] } else { print } }
+    { if ($0 == "- " id || index($0, "- " id " ") == 1) { print "- " id " " ENVIRON["KERJAAN_TITLE"] } else { print } }
   ' "$order" > "$otmp"
   cat "$otmp" > "$order"
   rm -f "$otmp"
 fi
 
-if [ -f "$order" ] && [ "$dest_status" = "todo" ] && [ "$current_status" != "todo" ]; then
+if [ -f "$order" ] && [ "$dest_status" = "todo" ] && [ "$current_status" != "todo" ] \
+    && ! grep -qE "^- $id( |\$)" "$order"; then
   echo "Note: $id now sits in todo/ and needs a place in $order." >&2
 fi
 

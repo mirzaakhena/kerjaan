@@ -82,11 +82,11 @@ const SAMPLE = [
   '',
 ].join('\n');
 
-// The ids queue.sh check reads as listed: with todo empty, it names each
-// listed one as "not in todo", in the order of the file.
+// The ids queue.sh check reads as listed: with no ticket on the board, it
+// names each listed one as stale, in the order of the file.
 function queueReads(board) {
   const r = spawnSync('bash', [queue, 'check'], { cwd: path.dirname(board), encoding: 'utf8' });
-  const ids = [...r.stdout.matchAll(/order\.md lists (\d{12}), which is not in todo/g)].map((m) => m[1]);
+  const ids = [...r.stdout.matchAll(/order\.md lists (\d{12}), which is not in todo, in_progress or review/g)].map((m) => m[1]);
   assert.ok(r.stdout.includes('order.md'), `queue.sh check membaca order.md:\n${r.stdout}${r.stderr}`);
   return [...new Set(ids)];
 }
@@ -96,6 +96,30 @@ test('viewer dan queue.sh check membaca daftar ID yang sama dari satu order.md c
   const viewer = readOrder(board);
   assert.deepEqual(viewer, [ID.c, ID.a, ID.b, ID.d], 'yang dibaca viewer');
   assert.deepEqual(queueReads(board), viewer, 'queue.sh check membaca daftar yang sama');
+});
+
+// order.md also lists the tickets in flight (in_progress, review), which keep
+// their line until they finish. The viewer ranks todo only, in the order
+// check reads, so a ticket in flight above them takes no rank from todo.
+test('order.md yang juga mendaftar tiket berjalan: viewer dan queue.sh check membaca urutan todo yang sama', () => {
+  const root = tempRoot();
+  const board = makeBoard(root, 'p', {
+    [`in_progress/${ID.a} Satu.md`]: ticket(),
+    [`review/${ID.b} Dua.md`]: ticket(),
+    [`todo/${ID.c} Tiga.md`]: ticket(),
+    [`todo/${ID.d} Empat.md`]: ticket(),
+    [`todo/${ID.e} Lima.md`]: ticket(),
+    'order.md': `**Tujuan.** Satu batch.\n\n**Pertama, berdampingan.** Keduanya mengubah menu.\n<!-- lands-first: ${ID.a} -->\n\n- ${ID.a} Satu\n- ${ID.b} Dua\n- ${ID.d} Empat\n\n**Lalu.** Sesudah menu.\n\n- ${ID.c} Tiga\n- ${ID.e} Lima\n`,
+  });
+  const viewer = readOrder(board);
+  assert.deepEqual(viewer, [ID.a, ID.b, ID.d, ID.c, ID.e]);
+  // check reads the same groups: it calls the board ready, so nothing listed is
+  // stale and every todo ticket has its place; the todo ones, in that order.
+  const r = spawnSync('bash', [queue, 'check'], { cwd: root + '/p', encoding: 'utf8' });
+  assert.match(r.stdout, /\norder\.md\n  in step with todo\n/, r.stdout);
+  assert.doesNotMatch(r.stdout, /order\.md lists|has no place|order\.md line/, r.stdout);
+  const inTodo = new Set([ID.c, ID.d, ID.e]);
+  assert.deepEqual(viewer.filter((id) => inTodo.has(id)), [ID.d, ID.c, ID.e]);
 });
 
 // ---------- in a real browser ----------
@@ -141,6 +165,17 @@ browserTest('kalimat tebal, kalimat biasa, dan lands-first tidak memberi lencana
     [ID.c, '#1'], [ID.a, '#2'], [ID.e, '#3'], [ID.b, '#4'],
     [ID.d, null], [ID.f, null], [ID.g, null],
   ]);
+});
+
+browserTest('tiket berjalan yang masih tercantum di order.md tidak memakan nomor todo', {
+  ...todo(ID.c, 'Tiga'),
+  ...todo(ID.d, 'Empat'),
+  ...todo(ID.e, 'Lima', { priority: 'high' }),
+  [`in_progress/${ID.a} Satu.md`]: ticket(),
+  [`review/${ID.b} Dua.md`]: ticket(),
+  'order.md': `**Tujuan.** Satu batch.\n\n**Pertama, berdampingan.**\n<!-- lands-first: ${ID.a} -->\n\n- ${ID.a} Satu\n- ${ID.b} Dua\n- ${ID.d} Empat\n\n**Lalu.**\n\n- ${ID.c} Tiga\n`,
+}, async (v, page) => {
+  assert.deepEqual(await page.eval(todoColumn), [[ID.d, '#1'], [ID.c, '#2'], [ID.e, null]]);
 });
 
 browserTest('order.md tanpa baris daftar: todo menurut prioritas lalu ID, tautan "urut order.md" membuka berkasnya', {

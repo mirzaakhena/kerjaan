@@ -472,7 +472,7 @@ function todoBoard() {
 
 test('check: todo in step with order.md is READY', () => {
   const root = todoBoard();
-  order(root, `**Bebas.** Tidak saling menunggu.\n\n- ${A} Satu\n- ${B} Dua\n`);
+  order(root, `**Bebas.** Tidak saling menunggu.\n\n- ${A} Tiket ${A}\n- ${B} Tiket ${B}\n`);
   const r = q(root, 'check');
   assert.equal(r.code, 0, r.out);
   assert.match(r.out, /order\.md\n  in step with todo\nREADY/);
@@ -480,7 +480,7 @@ test('check: todo in step with order.md is READY', () => {
 
 test('check: a ticket missing from order.md, and an entry whose ticket left todo', () => {
   const root = todoBoard();
-  order(root, `**Pertama.** Alasan.\n\n- ${A} Satu\n- ${C} Hilang\n`);
+  order(root, `**Pertama.** Alasan.\n\n- ${A} Tiket ${A}\n- ${C} Tiket ${C}\n`);
   const r = q(root, 'check');
   assert.equal(r.code, 1);
   assert.match(r.out, /261016400002 is in todo but has no place in order\.md/);
@@ -491,7 +491,7 @@ test('check: a ticket never shares a group with one it waits for, directly or th
   const direct = repo();
   readyTicket(direct, A, { status: 'todo', blockedBy: [B] });
   readyTicket(direct, B, { status: 'todo' });
-  order(direct, `**Bersama.** Salah.\n\n- ${A} Satu\n- ${B} Dua\n`);
+  order(direct, `**Bersama.** Salah.\n\n- ${A} Tiket ${A}\n- ${B} Tiket ${B}\n`);
   let r = q(direct, 'check');
   assert.equal(r.code, 1);
   assert.match(r.out, /261016400001 and 261016400002 share a group, but 261016400001 waits for the result of 261016400002/);
@@ -501,7 +501,7 @@ test('check: a ticket never shares a group with one it waits for, directly or th
   readyTicket(chain, A, { status: 'todo', blockedBy: [C] });
   readyTicket(chain, B, { status: 'todo' });
   add(chain, C, { status: 'in_progress', blockedBy: [B] });
-  order(chain, `**Bersama.** Salah.\n\n- ${A} Satu\n- ${B} Dua\n`);
+  order(chain, `**Bersama.** Salah.\n\n- ${A} Tiket ${A}\n- ${B} Tiket ${B}\n`);
   r = q(chain, 'check');
   assert.equal(r.code, 1);
   assert.match(r.out, /261016400001 waits for the result of 261016400002/);
@@ -511,11 +511,11 @@ test('check: a ticket placed before the one it waits for; after it, it is fine',
   const root = repo();
   readyTicket(root, A, { status: 'todo', blockedBy: [B] });
   readyTicket(root, B, { status: 'todo' });
-  order(root, `**Dulu.** Salah.\n\n- ${A} Satu\n\n**Lalu.** Salah.\n\n- ${B} Dua\n`);
+  order(root, `**Dulu.** Salah.\n\n- ${A} Tiket ${A}\n\n**Lalu.** Salah.\n\n- ${B} Tiket ${B}\n`);
   let r = q(root, 'check');
   assert.equal(r.code, 1);
   assert.match(r.out, /261016400001 is placed before 261016400002, which it waits for/);
-  order(root, `**Dulu.** Fondasi.\n\n- ${B} Dua\n\n**Lalu.** Memakai hasilnya.\n\n- ${A} Satu\n`);
+  order(root, `**Dulu.** Fondasi.\n\n- ${B} Tiket ${B}\n\n**Lalu.** Memakai hasilnya.\n\n- ${A} Tiket ${A}\n`);
   r = q(root, 'check');
   assert.equal(r.code, 0, r.out);
 });
@@ -524,7 +524,7 @@ test('check: a blocker in an earlier group of todo makes the ticket waiting for 
   const root = repo();
   readyTicket(root, A, { status: 'todo', blockedBy: [B] });
   readyTicket(root, B, { status: 'todo' });
-  order(root, `**Dulu.** Fondasi.\n\n- ${B} Dua\n\n**Lalu.** Memakai hasilnya.\n\n- ${A} Satu\n`);
+  order(root, `**Dulu.** Fondasi.\n\n- ${B} Tiket ${B}\n\n**Lalu.** Memakai hasilnya.\n\n- ${A} Tiket ${A}\n`);
   let r = q(root, 'check');
   assert.equal(r.code, 0, r.out);
   assert.match(r.out, /261016400001 \(todo\) Tiket 261016400001\n  ready\n/);
@@ -577,7 +577,7 @@ const noLine = new RegExp(`${A} and ${B} share a group and the files src/web/b\\
 
 test('check: two tickets of one group sharing files, with no lands-first line, are not ready, and it says why', () => {
   const root = sharingPair();
-  order(root, `**Bersama.** ${A} dan ${B} sama-sama mengubah src/web/b.js.\n\n- ${A} Satu\n- ${B} Dua\n`);
+  order(root, `**Bersama.** ${A} dan ${B} sama-sama mengubah src/web/b.js.\n\n- ${A} Tiket ${A}\n- ${B} Tiket ${B}\n`);
   const r = q(root, 'check');
   assert.equal(r.code, 1, r.out);
   assert.match(r.out, noLine);
@@ -593,7 +593,7 @@ test('check: the free wording that used to say which lands first is no longer re
     `${A} dan ${B} mengubah src/web/b.js; ${A} mendarat dahulu.`,
     `${A} dan ${B} mengubah src/web/b.js; ${B} digabung sebelum ${A}.`,
   ]) {
-    order(root, `**Bersama.** ${lead}\n\n- ${A} Satu\n- ${B} Dua\n`);
+    order(root, `**Bersama.** ${lead}\n\n- ${A} Tiket ${A}\n- ${B} Tiket ${B}\n`);
     const r = q(root, 'check');
     assert.equal(r.code, 1, `${lead}\n${r.out}`);
     assert.match(r.out, noLine, lead);
@@ -611,7 +611,7 @@ test('check: a lands-first line naming either ticket, or both in either order, m
     `<!--lands-first:${B},${A}-->`,
     `  <!--   lands-first:   ${A} ,  ${B}   -->  `,
   ]) {
-    order(root, `**Bersama.** Keduanya mengubah src/web/b.js.\n${line}\n\n- ${A} Satu\n- ${B} Dua\n`);
+    order(root, `**Bersama.** Keduanya mengubah src/web/b.js.\n${line}\n\n- ${A} Tiket ${A}\n- ${B} Tiket ${B}\n`);
     const r = q(root, 'check');
     assert.equal(r.code, 0, `${line}\n${r.out}`);
     assert.match(r.out, /in step with todo\nREADY/);
@@ -622,11 +622,10 @@ test('check: the lands-first line counts anywhere inside its group, and only the
   const root = sharingPair();
   const mark = `<!-- lands-first: ${A} -->`;
   for (const text of [
-    `**Bersama.** Alasan yang\nterbungkus dua baris.\n${mark}\n\n- ${A} Satu\n- ${B} Dua\n`,
-    `**Bersama.** Alasan.\n\n${mark}\n\n- ${A} Satu\n- ${B} Dua\n`,
-    `**Bersama.** Alasan.\n\n- ${A} Satu\n- ${B} Dua\n${mark}\n`,
-    // Group zero: bullets with no bold line above them.
-    `${mark}\n- ${A} Satu\n- ${B} Dua\n`,
+    `**Bersama.** Alasan.\n${mark}\n\n- ${A} Tiket ${A}\n- ${B} Tiket ${B}\n`,
+    `**Bersama.** Alasan.\n\n${mark}\n\n- ${A} Tiket ${A}\n- ${B} Tiket ${B}\n`,
+    `**Bersama.** Alasan.\n\n- ${A} Tiket ${A}\n- ${B} Tiket ${B}\n${mark}\n`,
+    `**Tujuan.** Satu batch.\n\n**Bersama.** Alasan.\n\n- ${A} Tiket ${A}\n${mark}\n- ${B} Tiket ${B}\n`,
   ]) {
     order(root, text);
     const r = q(root, 'check');
@@ -634,7 +633,7 @@ test('check: the lands-first line counts anywhere inside its group, and only the
   }
   // In the group above, it settles nothing here, and names tickets not in its own group.
   add(root, C, { status: 'todo' }); q(root, 'estimate', C, 'src/c.js');
-  order(root, `**Dulu.**\n${mark}\n\n- ${C} Tiga\n\n**Bersama.**\n\n- ${A} Satu\n- ${B} Dua\n`);
+  order(root, `**Dulu.**\n${mark}\n\n- ${C} Tiket ${C}\n\n**Bersama.**\n\n- ${A} Tiket ${A}\n- ${B} Tiket ${B}\n`);
   const r = q(root, 'check');
   assert.equal(r.code, 1, r.out);
   assert.match(r.out, new RegExp(`order\\.md line 2 names ${A}, which is not a ticket of its group`));
@@ -660,7 +659,7 @@ test('check: a lands-first line that cannot be read is reported with its line an
     `<!-- lands-first: ${A} --> lalu ${B}`,
     `<!-- lands-first: \`${A}\` -->`,
   ]) {
-    order(root, `**Bersama.** Alasan.\n${line}\n\n- ${A} Satu\n- ${B} Dua\n`);
+    order(root, `**Bersama.** Alasan.\n${line}\n\n- ${A} Tiket ${A}\n- ${B} Tiket ${B}\n`);
     const r = q(root, 'check');
     assert.equal(r.code, 1, `${line}\n${r.out}`);
     assert.match(r.out, /order\.md line 2 is not a lands-first line check can read: write it as <!-- lands-first: <id>, <id> -->, the IDs in the order they land/, line);
@@ -670,7 +669,7 @@ test('check: a lands-first line that cannot be read is reported with its line an
 
 test('check: a second lands-first line in a group, and an ID named twice, are reported', () => {
   const root = sharingPair();
-  order(root, `**Bersama.**\n<!-- lands-first: ${A} -->\n<!-- lands-first: ${B} -->\n\n- ${A} Satu\n- ${B} Dua\n`);
+  order(root, `**Bersama.**\n<!-- lands-first: ${A} -->\n<!-- lands-first: ${B} -->\n\n- ${A} Tiket ${A}\n- ${B} Tiket ${B}\n`);
   let r = q(root, 'check');
   assert.equal(r.code, 1, r.out);
   assert.match(r.out, /order\.md line 3 is a second lands-first line in its group: write one, with every ID in the order they land/);
@@ -679,11 +678,11 @@ test('check: a second lands-first line in a group, and an ID named twice, are re
   // One line in each of two groups is not a second line.
   add(root, C, { status: 'todo' }); add(root, D, { status: 'todo' });
   q(root, 'estimate', C, 'src/c.js'); q(root, 'estimate', D, 'src/c.js');
-  order(root, `**Satu.**\n<!-- lands-first: ${A} -->\n\n- ${A} Satu\n- ${B} Dua\n\n**Dua.**\n<!-- lands-first: ${D} -->\n\n- ${C} Tiga\n- ${D} Empat\n`);
+  order(root, `**Satu.**\n<!-- lands-first: ${A} -->\n\n- ${A} Tiket ${A}\n- ${B} Tiket ${B}\n\n**Dua.**\n<!-- lands-first: ${D} -->\n\n- ${C} Tiket ${C}\n- ${D} Tiket ${D}\n`);
   r = q(root, 'check');
   assert.equal(r.code, 0, r.out);
 
-  order(root, `**Satu.**\n<!-- lands-first: ${A}, ${B}, ${A} -->\n\n- ${A} Satu\n- ${B} Dua\n\n**Dua.**\n<!-- lands-first: ${D} -->\n\n- ${C} Tiga\n- ${D} Empat\n`);
+  order(root, `**Satu.**\n<!-- lands-first: ${A}, ${B}, ${A} -->\n\n- ${A} Tiket ${A}\n- ${B} Tiket ${B}\n\n**Dua.**\n<!-- lands-first: ${D} -->\n\n- ${C} Tiket ${C}\n- ${D} Tiket ${D}\n`);
   r = q(root, 'check');
   assert.equal(r.code, 1, r.out);
   assert.match(r.out, new RegExp(`order\\.md line 2 names ${A} twice`));
@@ -693,7 +692,7 @@ test('check: a second lands-first line in a group, and an ID named twice, are re
 test('check: in a group of three sharing one file, the line settles each pair or says which one it leaves open', () => {
   const root = repo();
   for (const id of [A, B, C]) { add(root, id, { status: 'todo' }); q(root, 'estimate', id, 'src/a.js'); }
-  const bullets = `- ${A} Satu\n- ${B} Dua\n- ${C} Tiga\n`;
+  const bullets = `- ${A} Tiket ${A}\n- ${B} Tiket ${B}\n- ${C} Tiket ${C}\n`;
 
   // One ID settles that ticket against each of the others, not the others between them.
   order(root, `**Bersama.**\n<!-- lands-first: ${A} -->\n\n${bullets}`);
@@ -714,21 +713,193 @@ test('check: in a group of three sharing one file, the line settles each pair or
   assert.match(r.out, /NOT READY: 3 problem/);
 });
 
-test('check: a ticket leaving todo comes off the lands-first line, and the rest of the group stays ready', () => {
+// A ticket's line stays in order.md while it is worked on and reviewed, so
+// two tickets of one group running side by side keep their lands-first line;
+// it goes, with its ID on that line, once the ticket is done, cancelled or
+// back in backlog.
+test('check: tickets of one group in flight side by side stay listed, with their lands-first line, until they finish', () => {
   const root = repo();
   for (const id of [A, B, C]) { readyTicket(root, id, { status: 'todo' }); q(root, 'estimate', id, 'src/a.js'); }
-  order(root, `**Bersama.**\n<!-- lands-first: ${A}, ${B}, ${C} -->\n\n- ${A} Satu\n- ${B} Dua\n- ${C} Tiga\n`);
+  const start = `**Tujuan.** Satu batch.\n\n**Bersama.** Ketiganya tidak saling menunggu.\n<!-- lands-first: ${A}, ${B}, ${C} -->\n\n- ${A} Tiket ${A}\n- ${B} Tiket ${B}\n- ${C} Tiket ${C}\n`;
+  order(root, start);
   git(root, 'add', '-A'); git(root, 'commit', '-q', '-m', 'papan');
   assert.equal(q(root, 'check').code, 0);
-  for (const [id, line] of [[B, `<!-- lands-first: ${A}, ${C} -->`], [A, `<!-- lands-first: ${C} -->`]]) {
-    const r = run(root, update, id, '--status', 'in_progress');
+  const orderText = () => fs.readFileSync(path.join(root, '.kerjaan', 'order.md'), 'utf8');
+
+  // Started, side by side, then one in review: nothing in order.md changes, and nothing is stale.
+  for (const [id, st] of [[A, 'in_progress'], [B, 'in_progress'], [A, 'review']]) {
+    const r = run(root, update, id, '--status', st);
     assert.equal(r.code, 0, r.err);
-    const text = fs.readFileSync(path.join(root, '.kerjaan', 'order.md'), 'utf8');
+    assert.equal(orderText(), start, `${id} ${st}`);
+    const c = q(root, 'check');
+    assert.equal(c.code, 0, `${id} ${st}\n${c.out}`);
+    assert.doesNotMatch(c.out, /which is not in/);
+  }
+  // The pair in flight is still judged: without the line, which lands first is open again.
+  order(root, start.replace(/<!--.*-->\n/, ''));
+  let c = q(root, 'check');
+  assert.equal(c.code, 1, c.out);
+  assert.match(c.out, new RegExp(`${A} and ${B} share a group and the files src/a\\.js; the group has no line saying which lands first`));
+  order(root, start);
+
+  // Finished one by one: the line goes, the ID comes off the lands-first line, and the last takes the group with it.
+  for (const [id, st, line] of [[A, 'done', `<!-- lands-first: ${B}, ${C} -->`], [C, 'cancel', `<!-- lands-first: ${B} -->`]]) {
+    const r = run(root, update, id, '--status', st);
+    assert.equal(r.code, 0, r.err);
+    const text = orderText();
     assert.ok(text.includes(`\n${line}\n`), text);
     assert.doesNotMatch(text, new RegExp(`- ${id} `));
-    const c = q(root, 'check');
+    c = q(root, 'check');
     assert.equal(c.code, 0, c.out);
   }
+  assert.equal(run(root, update, B, '--status', 'backlog').code, 0);
+  assert.equal(orderText(), '**Tujuan.** Satu batch.\n\n');
+});
+
+// --- check, the grammar of order.md ---------------------------------------------------------
+// Every line is one of five: a goal line at the top, a bold lead-in on one
+// line, a lands-first line, a ticket line, or a blank line. Any other is
+// reported by its number and nothing is rewritten.
+
+function grammarBoard() {
+  const root = repo();
+  readyTicket(root, A, { status: 'todo' });
+  readyTicket(root, B, { status: 'todo' });
+  return root;
+}
+const lineA = `- ${A} Tiket ${A}`;
+const lineB = `- ${B} Tiket ${B}`;
+
+test('check: a free paragraph, a lead-in wrapped over two lines, or a ticket under no lead-in is reported by its line number', () => {
+  const root = grammarBoard();
+  const none = 'is none of the lines order.md holds \\(a goal line, a lead-in, a lands-first line, a ticket line, a blank line\\)';
+  for (const [text, ln, what, n = 1] of [
+    [`Catatan bebas di kepala berkas.\n\n**Bersama.**\n\n${lineA}\n${lineB}\n`, 1, none],
+    [`**Dulu.**\n\n${lineA}\n\nSudah selesai: ${C}.\n\n**Lalu.**\n\n${lineB}\n`, 5, none],
+    [`**Bersama.**\n\n${lineA}\n${lineB}\nCatatan di bawah tiket.\n`, 5, none],
+    [`# Urutan\n\n**Bersama.**\n\n${lineA}\n${lineB}\n`, 1, none],
+    [`**Bersama.**\n\n${lineA}\n${lineB}\n  - ${C} Menjorok\n`, 5, none],
+    [`**Bersama.**\n\n${lineA}\n${lineB}\n* ${C} Bintang\n`, 5, none],
+    [`**Bersama.** Alasan yang\nterbungkus dua baris.\n\n${lineA}\n${lineB}\n`, 2, 'continues the lead-in of line 1: a lead-in is one sentence on one line'],
+    [`**Bersama.** Alasan yang\nterbungkus\ntiga baris.\n\n${lineA}\n${lineB}\n`, 3, 'continues the lead-in of line 1', 2],
+    [`**Bersama, alasan yang\nterbungkus.**\n\n${lineA}\n${lineB}\n`, 1, 'opens a bold lead-in that does not close on the same line: write the lead-in as one line', 2],
+    [`${lineA}\n\n**Lalu.**\n\n${lineB}\n`, 1, `lists ${A} under no lead-in: put it in a group, below a bold lead-in`],
+    [`**Tujuan.** Satu batch.\n${lineA}\n\n**Lalu.**\n\n${lineB}\n`, 2, `lists ${A} under no lead-in`],
+    [`**Kosong.** Tidak ada tiketnya.\n\n**Bersama.**\n\n${lineA}\n${lineB}\n`, 1, 'is a lead-in with no ticket under it: give it its tickets, or remove it'],
+    [`**Bersama.**\n\n${lineA}\n${lineB}\n\n**Penutup.** Tanpa tiket.\n`, 6, 'is a lead-in with no ticket under it'],
+    [`<!-- lands-first: ${A} -->\n**Bersama.**\n\n${lineA}\n${lineB}\n`, 1, 'is a lands-first line outside any group: put it under the lead-in of its group'],
+    [`**Bersama.**\n\n${lineA}\n${lineB}\n${lineA}\n`, 5, `lists ${A} again, after line 3: one line per ticket`],
+  ]) {
+    order(root, text);
+    const r = q(root, 'check');
+    assert.equal(r.code, 1, `${text}\n${r.out}`);
+    assert.match(r.out, new RegExp(`  - order\\.md line ${ln} ${what}`), `${text}\n${r.out}`);
+    assert.match(r.out, new RegExp(`NOT READY: ${n} problem`), `${text}\n${r.out}`);
+    assert.equal(fs.readFileSync(path.join(root, '.kerjaan', 'order.md'), 'utf8'), text, 'check rewrites nothing');
+  }
+});
+
+test('check: one goal line at the top is accepted, as Tujuan or Goal; a second one, or one below the top, is reported by its line number', () => {
+  const root = grammarBoard();
+  const body = `**Bersama.** Tidak saling menunggu.\n\n${lineA}\n${lineB}\n`;
+  for (const head of ['**Tujuan.** Aplikasi tersambung ke server.\n\n', '**Goal.** The app talks to the server.\n\n', '\n**Tujuan.** Diawali baris kosong.\n', '**Tujuan.**\n\n', '']) {
+    order(root, head + body);
+    const r = q(root, 'check');
+    assert.equal(r.code, 0, `${head}\n${r.out}`);
+    assert.match(r.out, /in step with todo\nREADY/);
+  }
+  for (const [text, ln, what] of [
+    [`**Tujuan.** Satu.\n**Tujuan.** Dua.\n\n${body}`, 2, 'is a second goal line: order.md holds one, on its first line'],
+    [`**Tujuan.** Satu.\n\n${body}\n**Goal.** Two.\n`, 8, 'is a second goal line'],
+    [`${body}\n**Tujuan.** Di bawah.\n`, 6, 'is a goal line below the top: it goes on the first line, above every group'],
+    [`Pengantar.\n**Tujuan.** Di bawah.\n\n${body}`, 2, 'is a goal line below the top'],
+  ]) {
+    order(root, text);
+    const r = q(root, 'check');
+    assert.equal(r.code, 1, `${text}\n${r.out}`);
+    assert.match(r.out, new RegExp(`order\\.md line ${ln} ${what}`), `${text}\n${r.out}`);
+  }
+});
+
+test('check: a title on a ticket line that differs from its ticket is NOT READY, for a ticket in todo or in flight; a rename by script keeps it in step', () => {
+  const root = grammarBoard();
+  add(root, C, { status: 'in_progress' });
+  const text = (a, c) => `**Dulu.**\n\n- ${C} ${c}\n\n**Lalu.**\n\n- ${A} ${a}\n${lineB}\n`;
+  order(root, text(`Tiket ${A}`, `Tiket ${C}`));
+  assert.equal(q(root, 'check').code, 0);
+  for (const [a, c, ln, id, given] of [
+    ['Judul diubah tangan', `Tiket ${C}`, 7, A, 'Judul diubah tangan'],
+    [`Tiket ${A}`, 'Judul lama', 3, C, 'Judul lama'],
+    ['', `Tiket ${C}`, 7, A, ''],
+  ]) {
+    order(root, text(a, c).replace(`- ${A} \n`, `- ${A}\n`));
+    const r = q(root, 'check');
+    assert.equal(r.code, 1, r.out);
+    assert.match(r.out, new RegExp(`order\\.md line ${ln} gives ${id} the title "${given}", but its ticket is titled "Tiket ${id}": copy the ticket's title \\(update-ticket\\.sh --title renames both\\)`), r.out);
+    assert.match(r.out, /NOT READY: 1 problem/);
+  }
+  // Trailing spaces are not a different title.
+  order(root, text(`Tiket ${A}  `, `Tiket ${C}`));
+  assert.equal(q(root, 'check').code, 0);
+
+  order(root, text(`Tiket ${A}`, `Tiket ${C}`));
+  git(root, 'add', '-A'); git(root, 'commit', '-q', '-m', 'papan');
+  for (const id of [A, C]) assert.equal(run(root, update, id, '--title', `Nama baru ${id}`).code, 0);
+  assert.equal(fs.readFileSync(path.join(root, '.kerjaan', 'order.md'), 'utf8'), text(`Nama baru ${A}`, `Nama baru ${C}`));
+  const r = q(root, 'check');
+  assert.equal(r.code, 0, r.out);
+});
+
+// A real order.md from another board (nukitu-mockup, 17 Oct 2026): half of it
+// free paragraphs — a status that went stale within hours, the tickets
+// already done, a worker's steps, the tickets kept in backlog, a dependency
+// written only in a lead-in. The old file is refused line by line; its
+// rewrite in the grammar, with that dependency in blocked_by, is ready.
+const real = (name) => fs.readFileSync(path.join(here, 'order-nyata', name), 'utf8');
+
+function realBoard() {
+  const root = repo();
+  const text = real('baru.md');
+  const F1 = '261017065501';
+  add(root, F1, { status: 'done', title: 'Mitra melihat dan mengubah data diri, domisili, dan foto profilnya dari aplikasi Flutter dengan akun sungguhan di server' });
+  const blocked = {
+    261017065502: [F1],
+    261017073005: ['261017073004'],
+    261017073006: ['261017073005', '261017065505'],
+    261009225715: ['261017073006', '261017065505'],
+    261017073007: ['261017073006', '261017065505'],
+    261017073008: ['261017073006'],
+    261017073009: ['261017073008'],
+  };
+  for (const m of text.matchAll(/^- (\d{12}) (.+)$/gm)) {
+    readyTicket(root, m[1], { status: 'todo', title: m[2], blockedBy: blocked[m[1]] || [] });
+  }
+  return root;
+}
+
+test('check: a real order.md full of free paragraphs is refused line by line; its rewrite in the grammar is ready', () => {
+  const root = realBoard();
+  const old = real('lama.md');
+  order(root, old);
+  let r = q(root, 'check');
+  assert.equal(r.code, 1, r.out);
+  const reported = [...r.out.matchAll(/order\.md line (\d+) (?:is none of the lines|continues the lead-in|is a lead-in with no ticket)/g)].map((m) => Number(m[1]));
+  // Every line of the four paragraphs at the head, the worker's steps (a bold
+  // lead-in introducing no ticket, wrapped), the backlog list, and the second
+  // line of every wrapped lead-in.
+  const lines = old.split('\n');
+  const free = lines.flatMap((l, i) => (l.trim() && !/^\*\*/.test(l) && !/^- \d{12} /.test(l) ? [i + 1] : []));
+  assert.ok(free.length >= 36, `${free.length} baris bebas`);
+  for (const ln of [...free, 24]) assert.ok(reported.includes(ln), `baris ${ln} (${lines[ln - 1]}) tidak dilaporkan:\n${r.out}`);
+  assert.equal(reported.length, free.length + 1, r.out);
+  assert.deepEqual(reported, [...reported].sort((x, y) => x - y), 'top to bottom, by line number');
+  // The lead-in naming F6, bayar and F7 as waiting is backed by their blocked_by, which check reads.
+  order(root, real('baru.md'));
+  r = q(root, 'check');
+  assert.equal(r.code, 0, r.out);
+  assert.match(r.out, /order\.md\n  in step with todo\nREADY/);
+  // Its lead-ins are one line each, and it names no file to change.
+  assert.doesNotMatch(real('baru.md'), /\.dart|\.mjs|`/);
 });
 
 test('check: the marker ordering-the-queue.md documents is the one check reads', () => {
@@ -746,9 +917,10 @@ test('check: the marker ordering-the-queue.md documents is the one check reads',
   q(root, 'estimate', B, 'src/a.js');
   // The examples in the section, with their IDs swapped for these tickets.
   const examples = [...section.matchAll(/```markdown\n([\s\S]*?)```/g)].map((m) => m[1]);
-  assert.ok(examples.length >= 2, section);
+  assert.ok(examples.length >= 1, section);
   for (const ex of examples) {
-    const text = ex.replaceAll('260905160502', A).replaceAll('260905160503', B);
+    const text = ex.replaceAll('260905160502', A).replaceAll('260905160503', B)
+      .replace(/^- (\d{12}) .*$/gm, (m, id) => `- ${id} Tiket ${id}`);
     order(root, text);
     const r = q(root, 'check');
     assert.equal(r.code, 0, `${text}\n${r.out}`);
@@ -756,11 +928,13 @@ test('check: the marker ordering-the-queue.md documents is the one check reads',
 
   // The example order.md at the head of the guide, as written there.
   const example = guide.split('```markdown\n')[1].split('```')[0];
-  const ids = [...example.matchAll(/^- (\d{12}) /gm)].map((m) => m[1]);
+  const lines = [...example.matchAll(/^- (\d{12}) (.+)$/gm)];
+  const ids = lines.map((m) => m[1]);
   assert.equal(ids.length, 4);
+  assert.match(example, /^\*\*Goal\.\*\* /, 'the example opens with its goal line');
   const whole = repo();
-  for (const id of ids) {
-    add(whole, id, { status: 'todo' });
+  for (const [, id, title] of lines) {
+    add(whole, id, { status: 'todo', title });
     q(whole, 'estimate', id, ['260905160502', '260905160503'].includes(id) ? 'src/menu.js' : `src/${id}.js`);
   }
   order(whole, example);
@@ -774,7 +948,7 @@ test('check: tickets in different groups may share files without a word', () => 
   add(root, A, { status: 'todo' }); add(root, B, { status: 'todo' });
   q(root, 'estimate', A, 'src/a.js');
   q(root, 'estimate', B, 'src/a.js');
-  order(root, `**Dulu.**\n\n- ${A} Satu\n\n**Lalu.**\n\n- ${B} Dua\n`);
+  order(root, `**Dulu.**\n\n- ${A} Tiket ${A}\n\n**Lalu.**\n\n- ${B} Tiket ${B}\n`);
   assert.equal(q(root, 'check').code, 0);
 });
 
@@ -943,6 +1117,54 @@ test('docs: the planner names the same number of conditions and points at the li
     assert.match(text, /queue\.sh"? check/, name);
   }
   assert.match(guides['ordering-the-queue.md'], /`check` is the one\ndefinition of ready, and this guide keeps no list of its own/);
+});
+
+// The grammar of order.md, said once in the guide and pointed at by the
+// planner and the README: the five lines, a lead-in that lists no files, and
+// where everything that used to be written around the groups goes now.
+test('docs: the guide, the planner and the README describe the grammar, a lead-in without files, and where free notes go', () => {
+  const ws = (t) => t.replace(/\s+/g, ' ');
+  const guide = ws(doc('skills', 'kerjaan', 'references', 'ordering-the-queue.md'));
+  const planner = ws(doc('agents', 'kerjaan-planner.md'));
+  const readme = ws(doc('README.md'));
+  for (const [name, text] of [['guide', guide], ['README', readme]]) {
+    for (const phrase of ['**Goal.**', '**Tujuan.**', '<!-- lands-first:', '`in_progress/`', '`NOT READY`', 'blank line']) {
+      assert.ok(text.includes(phrase), `${name}: ${phrase}`);
+    }
+    assert.match(text, /one line/, name);
+  }
+  assert.ok(guide.includes('## The lines it may hold'));
+  const where = ws(doc('skills', 'kerjaan', 'references', 'ordering-the-queue.md').split('## Where everything else goes')[1].split('\n## ')[0]);
+  for (const re of [/worker[^.]*`## Notes`/, /backlog[^.]*`## Notes`/, /Status[^.]*written nowhere/, /dependency[^.]*`blocked_by`/]) {
+    assert.match(where, re);
+  }
+  assert.match(readme, /steps a worker must take into that ticket's Notes, why a ticket stays in backlog into that ticket's Notes, status nowhere at all/);
+  assert.match(readme, /dependency a lead-in names into `blocked_by`/);
+  assert.match(planner, /a goal line for the batch, one-line lead-ins with no list of files/);
+  assert.match(planner, /a step a worker must take goes into that ticket's `## Notes`, why a ticket stays in backlog into that ticket's `## Notes`, and status nowhere/);
+  assert.match(planner, /dependency you would name in a lead-in goes into `blocked_by`/);
+  // A lead-in no longer carries the shared files.
+  for (const [name, text] of [['guide', guide], ['planner', planner], ['README', readme]]) {
+    for (const old of ['the files they share, and which lands first', 'shared files and which lands first', 'any files they both change are named']) {
+      assert.ok(!text.includes(old), `${name}: ${old}`);
+    }
+  }
+});
+
+test('docs: the complete example in the guide, the planner and the README is one check calls READY', () => {
+  for (const file of [['skills', 'kerjaan', 'references', 'ordering-the-queue.md'], ['agents', 'kerjaan-planner.md'], ['README.md']]) {
+    const example = [...doc(...file).matchAll(/```markdown\n([\s\S]*?)```/g)].map((m) => m[1]).find((t) => t.startsWith('**Goal.**'));
+    assert.ok(example, `${file.at(-1)} has a complete example opening with its goal line`);
+    const root = repo();
+    for (const [, id, title] of example.matchAll(/^- (\d{12}) (.+)$/gm)) {
+      add(root, id, { status: 'todo', title });
+      q(root, 'estimate', id, ['260905160502', '260905160503'].includes(id) ? 'src/menu.js' : `src/${id}.js`);
+    }
+    order(root, example);
+    const r = q(root, 'check');
+    assert.equal(r.code, 0, `${file.at(-1)}\n${example}\n${r.out}`);
+    assert.match(r.out, /in step with todo\nREADY/);
+  }
 });
 
 test('docs: a worker records its questions with queue.sh ask, numbered like the planner\'s', () => {

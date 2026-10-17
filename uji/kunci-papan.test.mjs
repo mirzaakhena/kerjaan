@@ -170,18 +170,20 @@ async function whileHeld(r, name, start, look, ms = 1500) {
 // ---------------------------------------------------------------------------
 // Moves started at the same moment
 
-test('dua tiket dari grup yang sama dimulai bersamaan berulang kali, dan keduanya selalu hilang dari order.md', async () => {
+// A ticket's line leaves order.md when it finishes, not when it starts, so the
+// race is two tickets of one group finishing at the same moment.
+test('dua tiket dari grup yang sama diselesaikan bersamaan berulang kali, dan keduanya selalu hilang dari order.md', async () => {
   for (let round = 1; round <= 8; round++) {
     const r = repo();
     const both = await Promise.all([
-      runAsync(update, r.root, [X, '--status', 'in_progress']),
-      runAsync(update, r.root, [Y, '--status', 'in_progress']),
+      runAsync(update, r.root, [X, '--status', 'done']),
+      runAsync(update, r.root, [Y, '--status', 'done']),
     ]);
     for (const res of both) assert.equal(res.code, 0, res.err);
-    assert.equal(statusOf(r, X), 'in_progress');
-    assert.equal(statusOf(r, Y), 'in_progress');
+    assert.equal(statusOf(r, X), 'done');
+    assert.equal(statusOf(r, Y), 'done');
     assert.equal(order(r), `**Grup dua.**\n- ${Z} Tiket z\n`, `round ${round}`);
-    for (const id of [X, Y]) assert.match(read(r, id), /\n- [\d-]+ [\d:]+ (\S+ )?in_progress\n/);
+    for (const id of [X, Y]) assert.match(read(r, id), /\n- [\d-]+ [\d:]+ (\S+ )?done\n/);
   }
 });
 
@@ -189,12 +191,12 @@ test('pindah status menunggu kunci papan: selama dipegang, tiket dan order.md be
   const r = repo();
   const before = { ticket: read(r, X), order: order(r) };
   const { seen, res } = await whileHeld(r, 'board',
-    () => runAsync(update, r.root, [X, '--status', 'in_progress']),
+    () => runAsync(update, r.root, [X, '--status', 'cancel']),
     () => ({ status: statusOf(r, X), ticket: read(r, X), order: order(r) }));
   assert.deepEqual(seen, { done: false, status: 'todo', ...before });
   assert.equal(res.code, 0, res.err);
   assert.match(res.err, /Waiting for the board lock, held by uji yang memegang kunci/);
-  assert.equal(statusOf(r, X), 'in_progress');
+  assert.equal(statusOf(r, X), 'cancel');
   assert.doesNotMatch(order(r), new RegExp(`^- ${X} `, 'm'));
 });
 

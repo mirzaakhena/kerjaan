@@ -256,8 +256,8 @@ never — name the doubt in the ticket instead.
 **Never change the main git repo.** No `checkout`, `stash`, `reset`, branch
 switch or edit to source files. You write only the ticket and your own `/tmp`
 directories, and the only
-commit you make is your verdict's, holding that ticket alone ("Commit your
-verdict", below).
+commit you make is your verdict's, holding that ticket and `order.md` alone
+("Commit your verdict").
 
 ## Beyond the criteria
 
@@ -322,12 +322,12 @@ by kind of mistake with every instance. Move it to `in_progress`.
 **Commit your verdict**, either way, right after the move — in the main tree,
 where the board lives, also for a worktree ticket. Nobody else commits it, and
 a verdict left uncommitted stops `merge.sh land` from committing its landing
-note. Commit your ticket's file and nothing else; the quoted pattern catches
-both its paths after the move:
+note. Commit your ticket's file and `order.md`, which `done` changes, and
+nothing else (no `order.md` on the board: leave it out):
 
 ```bash
-git add -A -- '.kerjaan/*/<id> *'
-git commit -m "<message>" -- '.kerjaan/*/<id> *'
+git add -A -- '.kerjaan/*/<id> *' .kerjaan/order.md
+git commit -m "<message>" -- '.kerjaan/*/<id> *' .kerjaan/order.md
 ```
 
 The message names the ID and the verdict, in the board's language.

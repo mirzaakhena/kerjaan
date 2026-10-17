@@ -4,17 +4,19 @@ Read this when `todo` holds more than one ticket and the order they are picked
 up in matters.
 
 A folder has no order, and `blocked_by` covers only the hard case. Which
-ticket to take first, which two can run side by side, and why, lives in one
-file, `.kerjaan/order.md`, covering `todo/` and nothing else.
+ticket to take first, which two can run side by side, and which of those
+lands in main first lives in one file, `.kerjaan/order.md`. It covers every
+ticket still being worked on — in `todo/`, `in_progress/` and `review/` — and
+nothing else.
 
 ```markdown
+**Goal.** Customers can move their data in and out of the app on their own.
+
 **First, on its own.** Everything below reads the settings file it introduces.
 
 - 260905160401 Add the config loader
 
-**Then these two, side by side.** Neither needs the other's result; both change
-the menu file, so 260905160502 lands first and 260905160503 merges its menu
-entry in.
+**Then these two, side by side.** Neither needs the other's result.
 <!-- lands-first: 260905160502 -->
 
 - 260905160502 Import screen
@@ -25,19 +27,52 @@ entry in.
 - 260905161001 The nightly summary mail
 ```
 
-The format is four rules:
+## The lines it may hold
 
-- **Order is position on the page**, top to bottom. Nothing is numbered, so
-  nothing needs renumbering when the top is taken.
-- **A group is tickets that may run in any order**, including at the same time.
-  One bullet on its own means that ticket stands alone.
-- **The bold lead-in says why, in one sentence** — the part that lives nowhere
-  else on the board. The group runs from one bold lead-in to the next; a bold
-  paragraph that introduces no ticket is ordinary prose, left alone.
-- **A bullet is exactly `- <id> <title>` and nothing else**, so the script can
-  edit it safely. Reasoning belongs in the lead-in. Only bullets are read as
-  the order — by `queue.sh check`, the scripts and the viewer alike — so an ID
-  named in a lead-in or any other prose is safe: it never takes a place.
+Every line of the file is one of five, and `"$K/queue.sh" check` refuses any
+other by its line number, rewriting nothing:
+
+| Line | Shape | Where |
+|---|---|---|
+| goal line | `**Goal.** <one sentence>` (`**Tujuan.**` on a board written in Indonesian) | at most one, as the first line; no ticket under it |
+| lead-in | `**<bold>** <the reason, one sentence>`, on one line | opens a group; at least one ticket line under it |
+| lands-first line | `<!-- lands-first: <id>, <id> -->` | inside a group, at most one per group |
+| ticket line | `- <id> <title>` | inside a group |
+| blank line | | anywhere |
+
+- **Order is position on the page**, top to bottom; nothing is numbered.
+- **A group is tickets that may run in any order**, including at the same time,
+  from its lead-in to the next one.
+- **The goal says what the batch is for**, for whoever refills the queue.
+- **The lead-in says why, in one sentence on one line**: why here, why
+  together or alone. It lists no files: those are in each ticket's estimate.
+- **The ID is the ticket; the title is a label for people.** It must read
+  exactly as the ticket's title: one edited by hand makes `check` say
+  `NOT READY`, by line number. `update-ticket.sh --title` renames both.
+
+Only ticket lines are read as the order — by `check`, the scripts and the
+viewer alike — so an ID named in a lead-in never takes a place.
+
+## Where everything else goes
+
+What used to be written around the groups goes elsewhere:
+
+- **Steps a worker must take** for a ticket go into that ticket's `## Notes`.
+- **Why a ticket stays in backlog** — left out of the batch, excluded from its
+  goal — goes into that ticket's `## Notes`.
+- **Status** — what is done, what is being worked on — is written nowhere:
+  the folders say it, and a sentence saying it is stale within hours.
+- **A dependency** named in a lead-in ("must be final before 260905161001") is
+  also in `blocked_by` of every ticket that waits. `check` reads `blocked_by`,
+  never the lead-in.
+
+## While tickets are worked on
+
+A ticket's line stays while it is in `todo`, `in_progress` or `review`, and
+goes when it is `done`, cancelled, or back in `backlog`: two tickets running
+side by side keep their lands-first line while they need it. `update-ticket.sh` does the removal, and with it takes
+the ID off the group's lands-first line and drops a group left with no ticket,
+lead-in included. The goal line stays until someone rewrites it.
 
 ## What may share a group
 
@@ -54,22 +89,23 @@ they are not the same question:
 - **Do they only change the same files?** Then they **may** share a group. A
   clash in a shared file is ordinary: the ticket that lands second brings the
   first one's change in and resolves it (`parallel-work.md`, "Back into
-  main"). The lead-in says it in advance: **both IDs, the files they share, and
-  which lands first** — the last also on the group's lands-first line ("Saying
-  which lands first", below). Put first the one whose change to those files
-  the other is built around, or else the smaller one.
+  main"). Which of them lands first is said in advance, on the group's
+  lands-first line ("Saying which lands first", below). Put first the one
+  whose change to those files the other is built around, or else the smaller
+  one. The lead-in gives the reason in one sentence and lists no files: which
+  files they share is in their estimates, and `overlap` prints it.
 
 Which files a ticket will change comes from its estimate (`"$K/queue.sh"
 estimate <id> <path>...`), not its title; `"$K/queue.sh" overlap` lists every
-pair whose estimates share files. `"$K/queue.sh" check` refuses a `todo` where a
+pair whose estimates share files. `"$K/queue.sh" check` refuses an `order.md` where a
 group holds a ticket together with one it waits for, where a ticket sits before
 one it waits for, or where two tickets of one group share files and the
 group's lands-first line does not say which of them lands first.
 
 ## Saying which lands first
 
-The lead-in says it in prose, for people. What `queue.sh check` reads is one
-fixed line in the group, the same in any language:
+What `queue.sh check` reads is one fixed line in the group, the same in any
+language, and nothing else: the lead-in is never read for it.
 
 ```
 <!-- lands-first: <id> -->
@@ -82,15 +118,7 @@ naming one is enough; with three or more sharing files, list every ticket
 whose order matters.
 
 ```markdown
-**Then these two, side by side.** Both change the menu file, so 260905160502 lands first and 260905160503 merges its menu entry in.
-<!-- lands-first: 260905160502 -->
-
-- 260905160502 Import screen
-- 260905160503 Export screen
-```
-
-```markdown
-**Dua tiket ini bersamaan.** 260905160502 dan 260905160503 sama-sama mengubah berkas menu; bila dikerjakan bersamaan, 260905160502 digabung ke main lebih dulu.
+**Dua tiket ini bersamaan.** Keduanya tidak saling menunggu hasil.
 <!-- lands-first: 260905160502, 260905160503 -->
 
 - 260905160502 Layar impor
@@ -105,19 +133,19 @@ first: ... -->`, an ID in backticks, IDs without commas), a second line in one
 group, an ID listed twice or not in the group, and names a pair sharing files
 that no line orders.
 
-`update-ticket.sh` keeps the line in step: a ticket leaving `todo` comes off
-it, the others keep their order, and a line left naming nobody goes.
+`update-ticket.sh` keeps the line in step: a ticket that is done, cancelled
+or back in `backlog` comes off it, the others keep their order, and a line
+left naming nobody goes. A ticket in `in_progress` or `review` stays on it.
 
 ## Why this is not a banned index
 
 `order.md` holds what exists nowhere else — the sequence, the parallelism and
-the reasons — and is kept in step: `update-ticket.sh` removes a ticket's line
-when it leaves `todo` (with the group's lead-in once its last ticket is gone)
-and rewrites the title on a rename. A ticket promoted *into* `todo` needs a
-place only a human can choose, so the script says so on stderr.
-`"$K/queue.sh" check` names a ticket in `todo/` the file never lists and an
-entry whose ticket has moved on. A title edited by hand is the one drift
-nothing reports.
+the reasons — and is kept in step by `update-ticket.sh` ("While tickets are
+worked on"), which also rewrites the title on a rename. A ticket promoted
+*into* `todo` needs a place only a human can choose, so the script says so.
+`check` names a ticket in `todo/` the file never lists, an entry whose ticket
+has finished, a title differing from its ticket's, and every line outside the
+grammar.
 
 ## Starting it, and refilling it
 
@@ -125,7 +153,9 @@ Write the file the first time ordering actually matters, and not before.
 
 **Refill when `todo`, `in_progress` and `review` are all three empty**, not
 when `todo` alone runs dry: a ticket in `review/` can still come straight back,
-and choosing what comes next before it is settled is choosing blind.
+and choosing what comes next before it is settled is choosing blind. By
+then every ticket line is gone and the goal line, if any, is the last batch's:
+the refill writes the file anew, goal included.
 
 The planner does the refilling (`references/foreman.md`, "Filling the queue"):
 a batch `"$K/queue.sh" check` will call ready once its questions are answered —
