@@ -1,0 +1,73 @@
+---
+type: bug
+priority: medium
+review: normal
+labels: [sesi-8e6130e0, viewer]
+reporter: mirza
+assign_to: claude
+created: 2026-10-17 15:58:20
+updated: 2026-10-17 18:04:50
+related: [261016084202]
+blocked_by: []
+---
+
+## Background
+Laci tiket di viewer punya panel "langkah terakhir worker" yang menunjukkan apa yang sedang dikerjakan agen. Hampir semua baris di panel itu hanya bertuliskan "Bash —": waktu dan nama alat ada, tetapi tidak ada keterangan apa pun. Di satu worker proyek nukitu-mockup, dari 47 perintah yang dijalankan tidak satu pun punya keterangan. Panel itu jadi tidak berguna justru untuk langkah yang paling sering.
+
+Penyebabnya dua. Agen kerjaan (pengerja, peninjau, penyusun antrean) tidak diminta menulis keterangan singkat saat menjalankan perintah, padahal Claude Code menyediakan tempatnya. Viewer sengaja tidak pernah menampilkan isi perintah, karena perintah bisa memuat rahasia, jadi tanpa keterangan yang tersisa hanya tanda pisah.
+
+## How to reproduce
+1. Jalankan satu tiket lewat rantai mandor di proyek mana pun
+2. Buka papan di viewer dan buka laci tiket yang sedang dikerjakan
+3. Lihat daftar langkah terakhir worker
+
+Baris Bash tampil tanpa keterangan, hanya "—".
+
+## Request
+Setiap langkah di panel aktivitas punya keterangan yang bisa dibaca. Agen kerjaan menulis keterangan singkat dalam bahasa papan setiap kali menjalankan perintah. Bila keterangan tetap tidak ada, viewer menampilkan nama program yang dijalankan saja (misalnya "cat" atau "node --test"), tanpa argumen apa pun, sehingga isi perintah tetap tidak pernah terlihat.
+
+## Done when
+- [ ] Langkah di reproduksi di atas menampilkan keterangan singkat dalam bahasa papan pada hampir setiap baris Bash, bukan "—" — menunggu mirza: skenario tangan di Notes
+- [x] Panduan pengerja, peninjau, dan penyusun antrean masing-masing meminta keterangan itu dalam satu kalimat, tanpa menambah aturan lain
+- [x] Langkah Bash tanpa keterangan menampilkan nama program saja, dan tidak pernah argumen, nama berkas, isi variabel, atau teks lain dari perintahnya
+- [x] Perintah yang memuat rahasia (misalnya token di argumen atau variabel lingkungan di depan perintah) tetap tidak memperlihatkan rahasia itu di panel
+
+## History
+- 2026-10-17 15:58:20 8e6130e0-0828-4d64-b383-ba0d1c9f4b02 backlog
+- 2026-10-17 16:01:22 8e6130e0-0828-4d64-b383-ba0d1c9f4b02 todo
+- 2026-10-17 17:47:40 8e6130e0-0828-4d64-b383-ba0d1c9f4b02 in_progress
+- 2026-10-17 18:04:50 8e6130e0-0828-4d64-b383-ba0d1c9f4b02 review
+
+## Notes
+- 2026-10-17: lahir dari pertanyaan pemilik di sesi 8e6130e0-0828-4d64-b383-ba0d1c9f4b02 (`claude --resume 8e6130e0-0828-4d64-b383-ba0d1c9f4b02`) sambil melihat tangkapan layar panel aktivitas nukitu-mockup. Pemilik setuju kedua lapis: aturan keterangan di definisi agen, dan cadangan nama program di viewer (melonggarkan aturan "tidak ada isi perintah" sebatas nama program). Pemilik khawatir soal tambahan context: tambahannya sekitar 5-10 token per perintah dan satu kalimat per definisi agen; cadangan di viewer tidak menambah context agen sama sekali. Pemilik minta tiket ini langsung masuk todo.
+- 2026-10-17 15:59:14: files estimated to change: `agents/kerjaan-planner.md`, `agents/kerjaan-reviewer.md`, `agents/kerjaan-worker.md`, `viewer/agen.mjs`, `viewer/uji/agen.test.mjs`
+- 2026-10-17 15:59:14: answered question: Butir Done when 1 (keterangan muncul di hampir setiap baris Bash pada reproduksi) baru bisa dicek setelah definisi agen yang baru ikut rilis dan dipakai satu rantai nyata; agen yang sedang dipakai mandor datang dari plugin terpasang 1.15.0. Pilihan: (a) ditunda: peninjau memeriksa kalimat di ketiga definisi agen dan cadangan nama program di viewer, pemilik melihat panelnya pada rantai pertama setelah rilis, dan rantai jalan terus; (b) menahan rantai sampai pemilik melihatnya. Saran: (a), karena tidak ada tiket lain yang bergantung pada butir ini dan pengecekannya memang hanya mungkin setelah rilis.
+  answer, 2026-10-17 16:01:21: Pemilik: "Ditunda". (a) ditunda: peninjau memeriksa kalimat di ketiga definisi agen dan cadangan nama program di viewer, pemilik melihat panelnya pada rantai pertama setelah rilis, dan rantai jalan terus.
+- 2026-10-17: hasil pengerjaan (worker).
+  - Viewer: `stepLabel` di `viewer/agen.mjs` tetap satu-satunya tempat keterangan dibuat. Langkah Bash tanpa `description` kini memakai `programName`: perintah dipecah seperti shell (kutip, `\`, `$(...)`, backtick, `;` `&&` `||` `|` baris baru, komentar), penetapan variabel di depan dilewati, `cd <folder>` di depan dilewati (bila hanya `cd`, tampil "cd"), dari nama program hanya bagian setelah `/` terakhir, dan nama yang bukan kata polos (variabel, substitusi, frasa berkutip) tidak menampilkan apa pun. Komentar kepala modul diganti ke aturan baru.
+  - Keputusan: contoh "node --test" di Request dibaca sebagai "node". Butir Done when 3 melarang argumen, dan `--test` adalah argumen.
+  - Keputusan: program yang dipanggil lewat path tampil dengan nama berkasnya saja (`"$K/test-run.sh" ...` menjadi "test-run.sh"). Berkas itu memang nama programnya, dan foldernya dibuang.
+  - Definisi agen: satu kalimat yang sama di worker (langkah 3), reviewer (setelah blok `$K`), dan planner (setelah pembuka). Supaya batas kata tetap terpenuhi setelah 261017113001 masuk, kalimat lain di file yang sama dipadatkan tanpa mengubah aturan. Kalimat definisi ronde di reviewer ("a round ends with one rejection by the reviewer") tetap utuh karena diuji kata per kata. Kalimat worker "Your code is already committed on your branch, in the worktree" juga tetap utuh karena diuji. Totalnya +20 kata terhadap main. Pada percobaan penggabungan dengan cabang 261017113001 di klon sementara, penggabungan berjalan tanpa konflik, totalnya sekitar 17995 dari 18000, reviewer 2994 dari 3000, dan uji batas kata lulus.
+  - Uji baru: `viewer/uji/agen.test.mjs` (satu kasus per bentuk perintah, masing-masing dengan rahasia yang tidak boleh bocor, dan satu uji lewat catatan agen sungguhan) serta `uji/bash-description.test.mjs` (kalimat ada tepat sekali di tiap definisi).
+  - Diukur pada catatan Claude Code nyata di mesin ini: dari 3060 langkah Bash tanpa keterangan, 3046 mendapat nama program (sed, grep, python3, cat, git, ...) dan 14 kosong (program berupa variabel atau substitusi).
+  - Sabotase, satu per penjaga; berkas disalin lalu dipulihkan dari salinan:
+    - Cadangan Bash dihapus: uji 6, 7, dan 8 merah.
+    - Cadangan diganti seluruh perintah: uji 6, 7, dan 8 merah.
+    - Penetapan variabel tidak dilewati: uji 7 dan 8 merah.
+    - Pemeriksaan nama polos dihapus: uji 7 merah.
+    - Nama folder tidak dibuang: uji 7 merah.
+    - Substitusi tidak dikenali: uji 7 merah.
+    - `cd` tidak dilewati: uji 7 merah.
+    - Komentar tidak dilewati: uji 7 merah.
+    - Pemisah perintah tidak dikenali: uji 7 merah.
+    - Kutip tunggal, kutip ganda, dan backslash masing-masing dimatikan: uji 7 merah. Kutip tunggal awalnya tetap hijau, lalu kasus `A='RAHASIA b' node` dan `A=RAHASIA\ b node` ditambahkan.
+    - Kalimat dirusak di worker, reviewer, dan planner masing-masing: uji yang sesuai di `uji/bash-description.test.mjs` merah.
+  - Skenario tangan untuk Done when 1:
+    1. Pasang rilis kerjaan berikutnya, yang memuat definisi agen dari tiket ini.
+    2. Jalankan satu tiket lewat rantai mandor di proyek mana pun.
+    3. Buka papan di viewer, lalu buka laci tiket yang sedang dikerjakan.
+    4. Lihat daftar langkah terakhir worker. Hampir setiap baris Bash berisi keterangan singkat dalam bahasa papan. Baris tanpa keterangan hanya menampilkan nama program, misalnya "git", dan tidak pernah tanda "—" bila programnya terbaca.
+- 2026-10-17 17:56:23: test run — `node --test --test-timeout=900000 --test-force-exit` exited 1 after 2m33s, on content fingerprint 1899f7f9ae09864a43683c8a06d924302ee36914 (the same before and after the run; .kerjaan/ left out).
+- 2026-10-17 18:01:53: test run — `node --test --test-timeout=900000 --test-force-exit` exited 1 after 2m47s, on content fingerprint ee6fd6eb849cd40ec68ea0e2295031a0197b6094 (the same before and after the run; .kerjaan/ left out). Waited 0m47s for the test lock first, held by another run (ticket 261017113001, slot 1, /Users/mirza/Workspace/kerjaan-order-tata-bahasa).
+- 2026-10-17 18:04:46: test run — `node --test --test-timeout=900000 --test-force-exit` exited 0 after 2m31s, on content fingerprint 895645f3c8f344ed59467c3281287faab29040f9 (the same before and after the run; .kerjaan/ left out).
+- 2026-10-17 18:04:50: review covers branch tiket-261017155801 at a94071275d8bb14b3bd9f2555c38fb93aa7b05ab, which holds main at 7eb507886afb995280765e76fbc9f4bda79a98aa (code outside .kerjaan/); the latest test run passed on exactly this content.
