@@ -6,7 +6,7 @@ labels: [sesi-a192c9e8, skill, token]
 reporter: mirza
 assign_to: claude
 created: 2026-10-11 07:31:49
-updated: 2026-10-17 07:03:11
+updated: 2026-10-17 07:04:41
 related: [261016141909]
 blocked_by: []
 ---
@@ -59,6 +59,7 @@ deskripsi sekarang.
 - 2026-10-16 14:46:25 todo
 - 2026-10-17 06:45:54 e97c38bb-2b6f-487d-a8b0-2fdab5809ee3 in_progress
 - 2026-10-17 07:03:11 e97c38bb-2b6f-487d-a8b0-2fdab5809ee3 review
+- 2026-10-17 07:04:41 e97c38bb-2b6f-487d-a8b0-2fdab5809ee3 done
 
 ## Notes
 - Berasal dari CATATAN-BERIKUTNYA.md butir 1. Uji pemicu bisa memakai
@@ -110,3 +111,50 @@ deskripsi sekarang.
   - Berkas di luar estimasi: `README.md` (paragraf cara mengulang uji pemicu
     di "Running the tests") dan `uji/pemicu.test.mjs`.
 - 2026-10-17 07:03:07: test run — `node --test --test-timeout=900000 --test-force-exit` exited 0 after 2m13s, on content fingerprint 05b21f0726fbb18ba41445097ad37c96b88d7509 (the same before and after the run; .kerjaan/ left out).
+- 2026-10-17: Reviewed at level normal, round 1, at commit 6a3ae4b: passed.
+  Level normal di sini berarti: uji proyek dihitung dari jalan pengerja
+  (diperiksa git, isinya sama), setiap butir Done when dibuktikan dengan
+  memeriksa berkas hasil yang tersimpan dan kodenya, dan uji barunya dibaca
+  untuk memastikan tidak kosong. Uji pemicu penuh lewat `claude -p` sengaja
+  tidak dijalankan ulang (memakai kuota; batas pemilik sudah terpakai).
+  - Uji proyek: `test-run.sh --check 261011073101 6a3ae4b` menjawab SAME;
+    jalan 2026-10-17 07:03:07 (`node --test --test-timeout=900000
+    --test-force-exit`, exit 0, fingerprint
+    05b21f0726fbb18ba41445097ad37c96b88d7509) dipakai, tidak diulang.
+  - Butir 1 (kumpulan kalimat): `uji/pemicu/kalimat.json` berisi 40 kalimat,
+    24 harus dan 16 tidak boleh, Indonesia dan Inggris di kedua sisi.
+  - Butir 2 (pembanding lama): `deskripsi-lama.txt` sama persis dengan
+    deskripsi di SKILL.md sebelum commit ini, dan `hasil-lama.json` dijalankan
+    dengan deskripsi itu: 71/72 dan 0/48.
+  - Butir 3 (lebih pendek): dihitung ulang dengan `wc -w`: 159 menjadi 131,
+    sesuai Notes. Frontmatter SKILL.md tetap YAML yang sah.
+  - Butir 4 (antrean): keenam kalimat antrean, termasuk "kerjakan tiket
+    berikutnya" dan "work the queue", memanggil skill 3/3 di `hasil-baru.json`.
+  - Butir 5 (tanpa papan): "review kode ini" dan "sudah done" ada dengan
+    `repo: kosong`, dan `jalankan.mjs` membuat repo itu tanpa `.kerjaan/`.
+    Di hasil baru keduanya 0/3.
+  - Butir 6 (tidak lebih buruk): baru 72/72 dan 0/48, lama 71/72 dan 0/48.
+  - Butir 7: dicoret dengan benar, karena ada deskripsi lebih pendek yang lolos.
+  - Kecocokan berkas hasil: deskripsi di `hasil-baru.json` sama persis dengan
+    SKILL.md. Ketiga berkas hasil memakai hash `kalimat.json` yang sekarang
+    (c350419c93870cff), dan setiap entri cocok dengan kalimatnya (id,
+    kalimat, repo, harus, kelompok). Ringkasan sama dengan hitungan per jalan.
+    Tidak ada jalan yang `waktu-habis`, dan pada jalan yang ditulis skill
+    selalu termuat.
+  - Penilaian "terpanggil": dihitung hanya bila panggilan Skill pertama
+    adalah `kerjaan:kerjaan`. Sesi dihentikan setelah panggilan itu, setelah
+    empat panggilan alat tanpa Skill, atau bila sesi selesai sendiri. Jalan
+    positif tidak dihitung gagal karena dihentikan terlalu cepat (penghentian
+    datang setelah Skill dipanggil). Jalan negatif yang memanggil skill lain
+    (`code-review`) dihitung tidak memanggil, dan itu benar.
+  - `uji/pemicu.test.mjs` dibaca: pernyataannya benar-benar bergantung pada
+    berkas hasil, SKILL.md, dan `kalimat.json`, dan tidak ada yang kosong.
+  Catatan, tidak memblokir:
+  - Jalan yang tidak memanggil Skill dalam empat panggilan alat pertama
+    dicatat "tidak". Pemanggilan yang terlambat tidak akan terlihat. Batas ini
+    sama untuk deskripsi lama dan baru, jadi perbandingannya tetap adil.
+    Tetapi untuk kalimat yang tidak boleh memanggil, hasilnya bisa sedikit
+    terlalu baik.
+  - Hasil diukur pada satu model (claude-opus-5-5[1m]) dan satu versi Claude
+    Code (2.1.302). Model lain bisa memicu skill dengan cara lain.
+  - Background menyebut sekitar 190 kata. Hitungan nyata deskripsi lama 159.
