@@ -329,8 +329,8 @@ one ticket cannot start until another finishes. Softer sequencing lives in
 ```
 
 The file has a fixed grammar: every line is a goal line at the top (at most
-one; `**Tujuan.**` on a board written in Indonesian), a bold lead-in on one
-line, a lands-first line, a ticket line `- <id> <title>`, or a blank line.
+one, `**Goal.**` in any language), a bold lead-in on one line, a lands-first
+line, a ticket line `- <id> <title>`, or a blank line.
 `queue.sh check` refuses any other line by its number, and rewrites nothing.
 Order is position on the page; tickets sharing a group can run side by side;
 the lead-in gives the reason in one sentence, without listing files — which

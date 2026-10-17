@@ -196,7 +196,7 @@ const moveTo = (root, from, to) => fs.renameSync(ticketAt(root, from), ticketAt(
 for (const dest of ['in_progress', 'review']) {
   test(`starting or reviewing a ticket keeps its line: todo, then ${dest}`, () => {
     const root = repo();
-    const text = `**Tujuan.** Satu batch.\n\n**Grup satu.** Alasan.\n<!-- lands-first: ${A}, ${B} -->\n\n- ${A} Judul lama\n- ${B} Lain\n`;
+    const text = `**Goal.** One batch.\n\n**Group one.** The reason.\n<!-- lands-first: ${A}, ${B} -->\n\n- ${A} Judul lama\n- ${B} Other\n`;
     writeOrder(root, text);
     if (dest === 'review') moveTo(root, 'todo', 'in_progress');
     else assert.equal(run(root, A, '--status', dest).code, 0);
@@ -214,37 +214,37 @@ for (const [from, dest] of [
   test(`leaving ${from} for ${dest} drops only this ticket's line; the group keeps the rest`, () => {
     const root = repo();
     if (from !== 'todo') moveTo(root, 'todo', from);
-    writeOrder(root, `**Tujuan.** Satu batch.\n\n**Grup satu.** Alasan.\n\n- ${A} Judul lama\n- ${B} Lain\n`);
+    writeOrder(root, `**Goal.** One batch.\n\n**Group one.** The reason.\n\n- ${A} Judul lama\n- ${B} Other\n`);
     const r = run(root, A, '--status', dest);
     assert.equal(r.code, 0, r.err);
-    assert.equal(readOrder(root), `**Tujuan.** Satu batch.\n\n**Grup satu.** Alasan.\n\n- ${B} Lain\n`);
+    assert.equal(readOrder(root), `**Goal.** One batch.\n\n**Group one.** The reason.\n\n- ${B} Other\n`);
   });
 }
 
 test('a group left with no ticket goes whole; the goal line and the other groups stay', () => {
   const root = repo();
   writeOrder(root, [
-    '**Tujuan.** Satu batch.',
+    '**Goal.** One batch.',
     '',
-    '**Grup satu.** Alasan.',
+    '**Group one.** The reason.',
     '',
     `- ${A} Judul lama`,
     '',
-    '**Grup dua.** Alasan lain.',
+    '**Group two.** Another reason.',
     '',
-    `- ${B} Lain`,
+    `- ${B} Other`,
     '',
   ].join('\n'));
   assert.equal(run(root, A, '--status', 'backlog').code, 0);
-  assert.equal(readOrder(root), `**Tujuan.** Satu batch.\n\n**Grup dua.** Alasan lain.\n\n- ${B} Lain\n`);
+  assert.equal(readOrder(root), `**Goal.** One batch.\n\n**Group two.** Another reason.\n\n- ${B} Other\n`);
 });
 
 test('the goal line is never dropped: not when the last group empties, nor when a ticket line sits right under it', () => {
   for (const [before, after] of [
-    [`**Tujuan.** Satu batch.\n\n**Grup satu.**\n\n- ${A} Judul lama\n`, '**Tujuan.** Satu batch.\n\n'],
-    [`**Goal.** One batch.\n\n**Grup satu.**\n- ${A} Judul lama\n`, '**Goal.** One batch.\n\n'],
-    [`**Tujuan.** Satu batch.\n- ${A} Judul lama\n\n**Grup dua.**\n- ${B} Lain\n`, `**Tujuan.** Satu batch.\n\n**Grup dua.**\n- ${B} Lain\n`],
-    [`**Tujuan.**\n- ${A} Judul lama\n`, '**Tujuan.**\n'],
+    [`**Goal.** One batch.\n\n**Group one.**\n\n- ${A} Judul lama\n`, '**Goal.** One batch.\n\n'],
+    [`**Goal.** One batch.\n\n**Group one.**\n- ${A} Judul lama\n`, '**Goal.** One batch.\n\n'],
+    [`**Goal.** One batch.\n- ${A} Judul lama\n\n**Group two.**\n- ${B} Other\n`, `**Goal.** One batch.\n\n**Group two.**\n- ${B} Other\n`],
+    [`**Goal.**\n- ${A} Judul lama\n`, '**Goal.**\n'],
   ]) {
     const root = repo();
     writeOrder(root, before);
@@ -255,24 +255,24 @@ test('the goal line is never dropped: not when the last group empties, nor when 
 
 test('a ticket line with no title is still this ticket\'s line', () => {
   const root = repo();
-  writeOrder(root, `**Grup satu.**\n- ${A}\n- ${B} Lain\n`);
+  writeOrder(root, `**Group one.**\n- ${A}\n- ${B} Other\n`);
   assert.equal(run(root, A, '--status', 'done').code, 0);
-  assert.equal(readOrder(root), `**Grup satu.**\n- ${B} Lain\n`);
+  assert.equal(readOrder(root), `**Group one.**\n- ${B} Other\n`);
 });
 
 test('bold prose that never held a ticket is left for check to report, even when the group beside it empties', () => {
   const root = repo();
-  writeOrder(root, `**Catatan.** Ini bukan grup.\n\n**Grup satu.**\n- ${A} Judul lama\n\n**Penutup.** Juga bukan grup.\n`);
+  writeOrder(root, `**A note.** Not a group.\n\n**Group one.**\n- ${A} Judul lama\n\n**Closing.** Not a group either.\n`);
   assert.equal(run(root, A, '--status', 'cancel').code, 0);
-  assert.equal(readOrder(root), `**Catatan.** Ini bukan grup.\n\n**Penutup.** Juga bukan grup.\n`);
+  assert.equal(readOrder(root), `**A note.** Not a group.\n\n**Closing.** Not a group either.\n`);
 });
 
 test('a ticket line that only starts with the same digits is not this ticket', () => {
   const root = repo();
   const longer = `${A}9`;
-  writeOrder(root, `**Grup satu.**\n- ${longer} Mirip\n- ${A} Judul lama\n`);
+  writeOrder(root, `**Group one.**\n- ${longer} Similar\n- ${A} Judul lama\n`);
   assert.equal(run(root, A, '--status', 'backlog').code, 0);
-  assert.equal(readOrder(root), `**Grup satu.**\n- ${longer} Mirip\n`);
+  assert.equal(readOrder(root), `**Group one.**\n- ${longer} Similar\n`);
 });
 
 // The group's lands-first line (references/ordering-the-queue.md) loses the
@@ -286,10 +286,10 @@ for (const [before, after] of [
 ]) {
   test(`finishing takes the ticket off its lands-first line, the rest in order: ${before}`, () => {
     const root = repo();
-    writeOrder(root, `**Grup satu.** Alasan.\n${before}\n\n- ${A} Judul lama\n- ${B} Lain\n- ${C} Ketiga\n`);
+    writeOrder(root, `**Group one.** The reason.\n${before}\n\n- ${A} Judul lama\n- ${B} Other\n- ${C} Third\n`);
     const r = run(root, A, '--status', 'done');
     assert.equal(r.code, 0, r.err);
-    assert.equal(readOrder(root), `**Grup satu.** Alasan.\n${after}\n\n- ${B} Lain\n- ${C} Ketiga\n`);
+    assert.equal(readOrder(root), `**Group one.** The reason.\n${after}\n\n- ${B} Other\n- ${C} Third\n`);
   });
 }
 
@@ -383,7 +383,7 @@ test('renaming and leaving todo at once drops the bullet rather than renaming it
 test('a ticket finishing from in_progress without a line in order.md leaves it as it was, with no note', () => {
   const root = repo();
   moveTo(root, 'todo', 'in_progress');
-  const text = `**Grup satu.**\n- ${B} Lain\n`;
+  const text = `**Group one.**\n- ${B} Other\n`;
   writeOrder(root, text);
   const r = run(root, A, '--status', 'done');
   assert.equal(r.code, 0, r.err);
@@ -405,10 +405,10 @@ for (const st of ['in_progress', 'review']) {
   test(`renaming a ticket in ${st} rewrites its line too`, () => {
     const root = repo();
     moveTo(root, 'todo', st);
-    writeOrder(root, `**Grup satu.** Alasan.\n\n- ${A} Judul lama\n- ${B} Lain\n`);
-    assert.equal(run(root, A, '--title', 'Judul baru').code, 0);
-    assert.ok(fs.existsSync(ticketAt(root, st, 'Judul baru')));
-    assert.equal(readOrder(root), `**Grup satu.** Alasan.\n\n- ${A} Judul baru\n- ${B} Lain\n`);
+    writeOrder(root, `**Group one.** The reason.\n\n- ${A} Judul lama\n- ${B} Other\n`);
+    assert.equal(run(root, A, '--title', 'New title').code, 0);
+    assert.ok(fs.existsSync(ticketAt(root, st, 'New title')));
+    assert.equal(readOrder(root), `**Group one.** The reason.\n\n- ${A} New title\n- ${B} Other\n`);
   });
 }
 

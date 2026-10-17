@@ -434,7 +434,7 @@ if [ "$whole" -eq 1 ] && [ -f "$order" ]; then
     }
     BEGIN { printf "" > gl; printf "" > ml; printf "" > bl; printf "" > tl; printf "" > xl; cont = 0 }
     /^[ \t\r]*$/ { cont = 0; next }
-    /^\*\*(Tujuan|Goal)\.\*\*/ {
+    /^\*\*Goal\.\*\*/ {
       if (goal) bad(NR, "is a second goal line: order.md holds one, on its first line")
       else if (seen) bad(NR, "is a goal line below the top: it goes on the first line, above every group")
       goal = NR; seen = 1; cont = 0; next

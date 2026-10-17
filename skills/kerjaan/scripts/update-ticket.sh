@@ -458,11 +458,11 @@ if [ -f "$order" ] && active "$current_status" && ! active "$dest_status"; then
     # from its bold lead-in to the next one.
     #
     # Only a block that actually held a ticket line is a group. The goal line
-    # at the top (`**Tujuan.**` or `**Goal.**`) is never one: it is printed
-    # as it stands, whatever comes under it. Any other bold line that never
-    # held a ticket is outside the grammar, and is left exactly as written for
-    # queue.sh check to report by its line number — this script never deletes
-    # what it does not understand.
+    # at the top (`**Goal.**`, the same on a board in any language) is never
+    # one: it is printed as it stands, whatever comes under it. Any other bold
+    # line that never held a ticket is outside the grammar, and is left exactly
+    # as written for queue.sh check to report by its line number — this script
+    # never deletes what it does not understand.
     #
     # The ticket's ID also comes off its group's lands-first line
     # (`<!-- lands-first: <id>, <id> -->`), keeping the others in their order;
@@ -486,7 +486,7 @@ if [ -f "$order" ] && active "$current_status" && ! active "$dest_status"; then
       }
       BEGIN { n = 0; kept = 0; had_bullet = 0; started = 0 }
       {
-        if ($0 ~ /^\*\*(Tujuan|Goal)\.\*\*/) { flush(); started = 0; print; next }
+        if ($0 ~ /^\*\*Goal\.\*\*/) { flush(); started = 0; print; next }
         if ($0 ~ /^\*\*/) { flush(); started = 1 }
         if ($0 ~ /^- /) {
           had_bullet = 1

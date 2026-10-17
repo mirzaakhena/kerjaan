@@ -34,7 +34,7 @@ other by its line number, rewriting nothing:
 
 | Line | Shape | Where |
 |---|---|---|
-| goal line | `**Goal.** <one sentence>` (`**Tujuan.**` on a board written in Indonesian) | at most one, as the first line; no ticket under it |
+| goal line | `**Goal.** <one sentence>` — the same word on a board in any language | at most one, as the first line; no ticket under it |
 | lead-in | `**<bold>** <the reason, one sentence>`, on one line | opens a group; at least one ticket line under it |
 | lands-first line | `<!-- lands-first: <id>, <id> -->` | inside a group, at most one per group |
 | ticket line | `- <id> <title>` | inside a group |

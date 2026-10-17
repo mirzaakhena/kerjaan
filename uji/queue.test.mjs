@@ -625,7 +625,7 @@ test('check: the lands-first line counts anywhere inside its group, and only the
     `**Bersama.** Alasan.\n${mark}\n\n- ${A} Tiket ${A}\n- ${B} Tiket ${B}\n`,
     `**Bersama.** Alasan.\n\n${mark}\n\n- ${A} Tiket ${A}\n- ${B} Tiket ${B}\n`,
     `**Bersama.** Alasan.\n\n- ${A} Tiket ${A}\n- ${B} Tiket ${B}\n${mark}\n`,
-    `**Tujuan.** Satu batch.\n\n**Bersama.** Alasan.\n\n- ${A} Tiket ${A}\n${mark}\n- ${B} Tiket ${B}\n`,
+    `**Goal.** One batch.\n\n**Together.** The reason.\n\n- ${A} Tiket ${A}\n${mark}\n- ${B} Tiket ${B}\n`,
   ]) {
     order(root, text);
     const r = q(root, 'check');
@@ -720,7 +720,7 @@ test('check: in a group of three sharing one file, the line settles each pair or
 test('check: tickets of one group in flight side by side stay listed, with their lands-first line, until they finish', () => {
   const root = repo();
   for (const id of [A, B, C]) { readyTicket(root, id, { status: 'todo' }); q(root, 'estimate', id, 'src/a.js'); }
-  const start = `**Tujuan.** Satu batch.\n\n**Bersama.** Ketiganya tidak saling menunggu.\n<!-- lands-first: ${A}, ${B}, ${C} -->\n\n- ${A} Tiket ${A}\n- ${B} Tiket ${B}\n- ${C} Tiket ${C}\n`;
+  const start = `**Goal.** One batch.\n\n**Together.** None of the three waits for another.\n<!-- lands-first: ${A}, ${B}, ${C} -->\n\n- ${A} Tiket ${A}\n- ${B} Tiket ${B}\n- ${C} Tiket ${C}\n`;
   order(root, start);
   git(root, 'add', '-A'); git(root, 'commit', '-q', '-m', 'papan');
   assert.equal(q(root, 'check').code, 0);
@@ -753,7 +753,7 @@ test('check: tickets of one group in flight side by side stay listed, with their
     assert.equal(c.code, 0, c.out);
   }
   assert.equal(run(root, update, B, '--status', 'backlog').code, 0);
-  assert.equal(orderText(), '**Tujuan.** Satu batch.\n\n');
+  assert.equal(orderText(), '**Goal.** One batch.\n\n');
 });
 
 // --- check, the grammar of order.md ---------------------------------------------------------
@@ -774,21 +774,21 @@ test('check: a free paragraph, a lead-in wrapped over two lines, or a ticket und
   const root = grammarBoard();
   const none = 'is none of the lines order.md holds \\(a goal line, a lead-in, a lands-first line, a ticket line, a blank line\\)';
   for (const [text, ln, what, n = 1] of [
-    [`Catatan bebas di kepala berkas.\n\n**Bersama.**\n\n${lineA}\n${lineB}\n`, 1, none],
-    [`**Dulu.**\n\n${lineA}\n\nSudah selesai: ${C}.\n\n**Lalu.**\n\n${lineB}\n`, 5, none],
-    [`**Bersama.**\n\n${lineA}\n${lineB}\nCatatan di bawah tiket.\n`, 5, none],
-    [`# Urutan\n\n**Bersama.**\n\n${lineA}\n${lineB}\n`, 1, none],
-    [`**Bersama.**\n\n${lineA}\n${lineB}\n  - ${C} Menjorok\n`, 5, none],
-    [`**Bersama.**\n\n${lineA}\n${lineB}\n* ${C} Bintang\n`, 5, none],
-    [`**Bersama.** Alasan yang\nterbungkus dua baris.\n\n${lineA}\n${lineB}\n`, 2, 'continues the lead-in of line 1: a lead-in is one sentence on one line'],
-    [`**Bersama.** Alasan yang\nterbungkus\ntiga baris.\n\n${lineA}\n${lineB}\n`, 3, 'continues the lead-in of line 1', 2],
-    [`**Bersama, alasan yang\nterbungkus.**\n\n${lineA}\n${lineB}\n`, 1, 'opens a bold lead-in that does not close on the same line: write the lead-in as one line', 2],
-    [`${lineA}\n\n**Lalu.**\n\n${lineB}\n`, 1, `lists ${A} under no lead-in: put it in a group, below a bold lead-in`],
-    [`**Tujuan.** Satu batch.\n${lineA}\n\n**Lalu.**\n\n${lineB}\n`, 2, `lists ${A} under no lead-in`],
-    [`**Kosong.** Tidak ada tiketnya.\n\n**Bersama.**\n\n${lineA}\n${lineB}\n`, 1, 'is a lead-in with no ticket under it: give it its tickets, or remove it'],
-    [`**Bersama.**\n\n${lineA}\n${lineB}\n\n**Penutup.** Tanpa tiket.\n`, 6, 'is a lead-in with no ticket under it'],
-    [`<!-- lands-first: ${A} -->\n**Bersama.**\n\n${lineA}\n${lineB}\n`, 1, 'is a lands-first line outside any group: put it under the lead-in of its group'],
-    [`**Bersama.**\n\n${lineA}\n${lineB}\n${lineA}\n`, 5, `lists ${A} again, after line 3: one line per ticket`],
+    [`A free note at the head of the file.\n\n**Together.**\n\n${lineA}\n${lineB}\n`, 1, none],
+    [`**First.**\n\n${lineA}\n\nAlready done: ${C}.\n\n**Then.**\n\n${lineB}\n`, 5, none],
+    [`**Together.**\n\n${lineA}\n${lineB}\nA note under the tickets.\n`, 5, none],
+    [`# Order\n\n**Together.**\n\n${lineA}\n${lineB}\n`, 1, none],
+    [`**Together.**\n\n${lineA}\n${lineB}\n  - ${C} Indented\n`, 5, none],
+    [`**Together.**\n\n${lineA}\n${lineB}\n* ${C} Star\n`, 5, none],
+    [`**Together.** A reason\nwrapped over two lines.\n\n${lineA}\n${lineB}\n`, 2, 'continues the lead-in of line 1: a lead-in is one sentence on one line'],
+    [`**Together.** A reason\nwrapped\nover three lines.\n\n${lineA}\n${lineB}\n`, 3, 'continues the lead-in of line 1', 2],
+    [`**Together, a reason\nwrapped.**\n\n${lineA}\n${lineB}\n`, 1, 'opens a bold lead-in that does not close on the same line: write the lead-in as one line', 2],
+    [`${lineA}\n\n**Then.**\n\n${lineB}\n`, 1, `lists ${A} under no lead-in: put it in a group, below a bold lead-in`],
+    [`**Goal.** One batch.\n${lineA}\n\n**Then.**\n\n${lineB}\n`, 2, `lists ${A} under no lead-in`],
+    [`**Empty.** It has no ticket.\n\n**Together.**\n\n${lineA}\n${lineB}\n`, 1, 'is a lead-in with no ticket under it: give it its tickets, or remove it'],
+    [`**Together.**\n\n${lineA}\n${lineB}\n\n**Closing.** No ticket.\n`, 6, 'is a lead-in with no ticket under it'],
+    [`<!-- lands-first: ${A} -->\n**Together.**\n\n${lineA}\n${lineB}\n`, 1, 'is a lands-first line outside any group: put it under the lead-in of its group'],
+    [`**Together.**\n\n${lineA}\n${lineB}\n${lineA}\n`, 5, `lists ${A} again, after line 3: one line per ticket`],
   ]) {
     order(root, text);
     const r = q(root, 'check');
@@ -799,20 +799,22 @@ test('check: a free paragraph, a lead-in wrapped over two lines, or a ticket und
   }
 });
 
-test('check: one goal line at the top is accepted, as Tujuan or Goal; a second one, or one below the top, is reported by its line number', () => {
+test('check: one goal line at the top is accepted, written only as Goal; a second one, or one below the top, is reported by its line number', () => {
   const root = grammarBoard();
-  const body = `**Bersama.** Tidak saling menunggu.\n\n${lineA}\n${lineB}\n`;
-  for (const head of ['**Tujuan.** Aplikasi tersambung ke server.\n\n', '**Goal.** The app talks to the server.\n\n', '\n**Tujuan.** Diawali baris kosong.\n', '**Tujuan.**\n\n', '']) {
+  const body = `**Together.** Neither waits for the other.\n\n${lineA}\n${lineB}\n`;
+  for (const head of ['**Goal.** The app talks to the server.\n\n', '\n**Goal.** After a blank line.\n', '**Goal.**\n\n', '']) {
     order(root, head + body);
     const r = q(root, 'check');
     assert.equal(r.code, 0, `${head}\n${r.out}`);
     assert.match(r.out, /in step with todo\nREADY/);
   }
   for (const [text, ln, what] of [
-    [`**Tujuan.** Satu.\n**Tujuan.** Dua.\n\n${body}`, 2, 'is a second goal line: order.md holds one, on its first line'],
-    [`**Tujuan.** Satu.\n\n${body}\n**Goal.** Two.\n`, 8, 'is a second goal line'],
-    [`${body}\n**Tujuan.** Di bawah.\n`, 6, 'is a goal line below the top: it goes on the first line, above every group'],
-    [`Pengantar.\n**Tujuan.** Di bawah.\n\n${body}`, 2, 'is a goal line below the top'],
+    [`**Goal.** One.\n**Goal.** Two.\n\n${body}`, 2, 'is a second goal line: order.md holds one, on its first line'],
+    [`**Goal.** One.\n\n${body}\n**Goal.** Two.\n`, 8, 'is a second goal line'],
+    [`${body}\n**Goal.** Below.\n`, 6, 'is a goal line below the top: it goes on the first line, above every group'],
+    [`An introduction.\n**Goal.** Below.\n\n${body}`, 2, 'is a goal line below the top'],
+    // The word is English on a board in any language: any other is a lead-in with no ticket.
+    [`**Tujuan.** One batch.\n\n${body}`, 1, 'is a lead-in with no ticket under it'],
   ]) {
     order(root, text);
     const r = q(root, 'check');
@@ -824,12 +826,12 @@ test('check: one goal line at the top is accepted, as Tujuan or Goal; a second o
 test('check: a title on a ticket line that differs from its ticket is NOT READY, for a ticket in todo or in flight; a rename by script keeps it in step', () => {
   const root = grammarBoard();
   add(root, C, { status: 'in_progress' });
-  const text = (a, c) => `**Dulu.**\n\n- ${C} ${c}\n\n**Lalu.**\n\n- ${A} ${a}\n${lineB}\n`;
+  const text = (a, c) => `**First.**\n\n- ${C} ${c}\n\n**Then.**\n\n- ${A} ${a}\n${lineB}\n`;
   order(root, text(`Tiket ${A}`, `Tiket ${C}`));
   assert.equal(q(root, 'check').code, 0);
   for (const [a, c, ln, id, given] of [
-    ['Judul diubah tangan', `Tiket ${C}`, 7, A, 'Judul diubah tangan'],
-    [`Tiket ${A}`, 'Judul lama', 3, C, 'Judul lama'],
+    ['Title edited by hand', `Tiket ${C}`, 7, A, 'Title edited by hand'],
+    [`Tiket ${A}`, 'Old title', 3, C, 'Old title'],
     ['', `Tiket ${C}`, 7, A, ''],
   ]) {
     order(root, text(a, c).replace(`- ${A} \n`, `- ${A}\n`));
@@ -844,8 +846,8 @@ test('check: a title on a ticket line that differs from its ticket is NOT READY,
 
   order(root, text(`Tiket ${A}`, `Tiket ${C}`));
   git(root, 'add', '-A'); git(root, 'commit', '-q', '-m', 'papan');
-  for (const id of [A, C]) assert.equal(run(root, update, id, '--title', `Nama baru ${id}`).code, 0);
-  assert.equal(fs.readFileSync(path.join(root, '.kerjaan', 'order.md'), 'utf8'), text(`Nama baru ${A}`, `Nama baru ${C}`));
+  for (const id of [A, C]) assert.equal(run(root, update, id, '--title', `New name ${id}`).code, 0);
+  assert.equal(fs.readFileSync(path.join(root, '.kerjaan', 'order.md'), 'utf8'), text(`New name ${A}`, `New name ${C}`));
   const r = q(root, 'check');
   assert.equal(r.code, 0, r.out);
 });
@@ -853,13 +855,14 @@ test('check: a title on a ticket line that differs from its ticket is NOT READY,
 // A real order.md from another board (nukitu-mockup, 17 Oct 2026): half of it
 // free paragraphs — a status that went stale within hours, the tickets
 // already done, a worker's steps, the tickets kept in backlog, a dependency
-// written only in a lead-in. The old file is refused line by line; its
-// rewrite in the grammar, with that dependency in blocked_by, is ready.
-const real = (name) => fs.readFileSync(path.join(here, 'order-nyata', name), 'utf8');
+// written only in a lead-in. The old file, kept as it was written, is refused
+// line by line; its rewrite in the grammar (in English, titles included),
+// with that dependency in blocked_by, is ready.
+const real = (name) => fs.readFileSync(path.join(here, 'real-order', name), 'utf8');
 
 function realBoard() {
   const root = repo();
-  const text = real('baru.md');
+  const text = real('rewritten.md');
   const F1 = '261017065501';
   add(root, F1, { status: 'done', title: 'Mitra melihat dan mengubah data diri, domisili, dan foto profilnya dari aplikasi Flutter dengan akun sungguhan di server' });
   const blocked = {
@@ -879,7 +882,7 @@ function realBoard() {
 
 test('check: a real order.md full of free paragraphs is refused line by line; its rewrite in the grammar is ready', () => {
   const root = realBoard();
-  const old = real('lama.md');
+  const old = real('old.md');
   order(root, old);
   let r = q(root, 'check');
   assert.equal(r.code, 1, r.out);
@@ -889,17 +892,17 @@ test('check: a real order.md full of free paragraphs is refused line by line; it
   // line of every wrapped lead-in.
   const lines = old.split('\n');
   const free = lines.flatMap((l, i) => (l.trim() && !/^\*\*/.test(l) && !/^- \d{12} /.test(l) ? [i + 1] : []));
-  assert.ok(free.length >= 36, `${free.length} baris bebas`);
-  for (const ln of [...free, 24]) assert.ok(reported.includes(ln), `baris ${ln} (${lines[ln - 1]}) tidak dilaporkan:\n${r.out}`);
+  assert.ok(free.length >= 36, `${free.length} free lines`);
+  for (const ln of [...free, 24]) assert.ok(reported.includes(ln), `line ${ln} (${lines[ln - 1]}) not reported:\n${r.out}`);
   assert.equal(reported.length, free.length + 1, r.out);
   assert.deepEqual(reported, [...reported].sort((x, y) => x - y), 'top to bottom, by line number');
   // The lead-in naming F6, bayar and F7 as waiting is backed by their blocked_by, which check reads.
-  order(root, real('baru.md'));
+  order(root, real('rewritten.md'));
   r = q(root, 'check');
   assert.equal(r.code, 0, r.out);
   assert.match(r.out, /order\.md\n  in step with todo\nREADY/);
   // Its lead-ins are one line each, and it names no file to change.
-  assert.doesNotMatch(real('baru.md'), /\.dart|\.mjs|`/);
+  assert.doesNotMatch(real('rewritten.md'), /\.dart|\.mjs|`/);
 });
 
 test('check: the marker ordering-the-queue.md documents is the one check reads', () => {
@@ -948,7 +951,7 @@ test('check: tickets in different groups may share files without a word', () => 
   add(root, A, { status: 'todo' }); add(root, B, { status: 'todo' });
   q(root, 'estimate', A, 'src/a.js');
   q(root, 'estimate', B, 'src/a.js');
-  order(root, `**Dulu.**\n\n- ${A} Tiket ${A}\n\n**Lalu.**\n\n- ${B} Tiket ${B}\n`);
+  order(root, `**First.**\n\n- ${A} Tiket ${A}\n\n**Then.**\n\n- ${B} Tiket ${B}\n`);
   assert.equal(q(root, 'check').code, 0);
 });
 
@@ -1128,7 +1131,7 @@ test('docs: the guide, the planner and the README describe the grammar, a lead-i
   const planner = ws(doc('agents', 'kerjaan-planner.md'));
   const readme = ws(doc('README.md'));
   for (const [name, text] of [['guide', guide], ['README', readme]]) {
-    for (const phrase of ['**Goal.**', '**Tujuan.**', '<!-- lands-first:', '`in_progress/`', '`NOT READY`', 'blank line']) {
+    for (const phrase of ['**Goal.**', 'in any language', '<!-- lands-first:', '`in_progress/`', '`NOT READY`', 'blank line']) {
       assert.ok(text.includes(phrase), `${name}: ${phrase}`);
     }
     assert.match(text, /one line/, name);

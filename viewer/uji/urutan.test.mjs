@@ -101,15 +101,15 @@ test('viewer dan queue.sh check membaca daftar ID yang sama dari satu order.md c
 // order.md also lists the tickets in flight (in_progress, review), which keep
 // their line until they finish. The viewer ranks todo only, in the order
 // check reads, so a ticket in flight above them takes no rank from todo.
-test('order.md yang juga mendaftar tiket berjalan: viewer dan queue.sh check membaca urutan todo yang sama', () => {
+test('an order.md that also lists tickets in flight: the viewer and queue.sh check read the same todo order', () => {
   const root = tempRoot();
   const board = makeBoard(root, 'p', {
-    [`in_progress/${ID.a} Satu.md`]: ticket(),
-    [`review/${ID.b} Dua.md`]: ticket(),
-    [`todo/${ID.c} Tiga.md`]: ticket(),
-    [`todo/${ID.d} Empat.md`]: ticket(),
-    [`todo/${ID.e} Lima.md`]: ticket(),
-    'order.md': `**Tujuan.** Satu batch.\n\n**Pertama, berdampingan.** Keduanya mengubah menu.\n<!-- lands-first: ${ID.a} -->\n\n- ${ID.a} Satu\n- ${ID.b} Dua\n- ${ID.d} Empat\n\n**Lalu.** Sesudah menu.\n\n- ${ID.c} Tiga\n- ${ID.e} Lima\n`,
+    [`in_progress/${ID.a} One.md`]: ticket(),
+    [`review/${ID.b} Two.md`]: ticket(),
+    [`todo/${ID.c} Three.md`]: ticket(),
+    [`todo/${ID.d} Four.md`]: ticket(),
+    [`todo/${ID.e} Five.md`]: ticket(),
+    'order.md': `**Goal.** One batch.\n\n**First, side by side.** Both change the menu.\n<!-- lands-first: ${ID.a} -->\n\n- ${ID.a} One\n- ${ID.b} Two\n- ${ID.d} Four\n\n**Then.** After the menu.\n\n- ${ID.c} Three\n- ${ID.e} Five\n`,
   });
   const viewer = readOrder(board);
   assert.deepEqual(viewer, [ID.a, ID.b, ID.d, ID.c, ID.e]);
@@ -145,7 +145,7 @@ const todo = (id, title, o) => ({ [`todo/${id} ${title}.md`]: ticket(o) });
 browserTest('langkah di tiket: B hanya disebut di kalimat, A didaftar — A #1 di atas, B di bawahnya tanpa lencana', {
   ...todo(ID.a, 'Satu', { priority: 'low' }),
   ...todo(ID.b, 'Dua', { priority: 'high' }),
-  'order.md': `Tiket ${ID.b} sengaja belum diurutkan.\n\n- ${ID.a} Satu\n`,
+  'order.md': `Tiket ${ID.b} sengaja belum diurutkan.\n\n- ${ID.a} One\n`,
 }, async (v, page) => {
   assert.deepEqual(await page.eval(todoColumn), [[ID.a, '#1'], [ID.b, null]]);
 });
@@ -153,12 +153,12 @@ browserTest('langkah di tiket: B hanya disebut di kalimat, A didaftar — A #1 d
 browserTest('kalimat tebal, kalimat biasa, dan lands-first tidak memberi lencana; beberapa kelompok diurut dari atas ke bawah', {
   ...todo(ID.a, 'Satu'),
   ...todo(ID.b, 'Dua'),
-  ...todo(ID.c, 'Tiga'),
-  ...todo(ID.d, 'Empat', { priority: 'high' }),
-  ...todo(ID.e, 'Lima', { priority: 'low' }),
+  ...todo(ID.c, 'Three'),
+  ...todo(ID.d, 'Four', { priority: 'high' }),
+  ...todo(ID.e, 'Five', { priority: 'low' }),
   ...todo(ID.f, 'Enam'),
   ...todo(ID.g, 'Tujuh'),
-  'order.md': `Sudah dibahas: ${ID.f}.\n\n**Pertama, setelah ${ID.g}.**\n\n- ${ID.c} Tiga\n\n**Lalu dua ini.**\n<!-- lands-first: ${ID.e}, ${ID.a} -->\n\n- ${ID.a} Satu\n- ${ID.e} Lima\n\n**Terakhir.** Tanpa ${ID.d}.\n\n- ${ID.b} Dua\n`,
+  'order.md': `Sudah dibahas: ${ID.f}.\n\n**Pertama, setelah ${ID.g}.**\n\n- ${ID.c} Three\n\n**Lalu dua ini.**\n<!-- lands-first: ${ID.e}, ${ID.a} -->\n\n- ${ID.a} One\n- ${ID.e} Five\n\n**Terakhir.** Tanpa ${ID.d}.\n\n- ${ID.b} Two\n`,
 }, async (v, page) => {
   // The rest by priority, then id: d (high) before f, g (medium).
   assert.deepEqual(await page.eval(todoColumn), [
@@ -167,13 +167,13 @@ browserTest('kalimat tebal, kalimat biasa, dan lands-first tidak memberi lencana
   ]);
 });
 
-browserTest('tiket berjalan yang masih tercantum di order.md tidak memakan nomor todo', {
-  ...todo(ID.c, 'Tiga'),
-  ...todo(ID.d, 'Empat'),
-  ...todo(ID.e, 'Lima', { priority: 'high' }),
-  [`in_progress/${ID.a} Satu.md`]: ticket(),
-  [`review/${ID.b} Dua.md`]: ticket(),
-  'order.md': `**Tujuan.** Satu batch.\n\n**Pertama, berdampingan.**\n<!-- lands-first: ${ID.a} -->\n\n- ${ID.a} Satu\n- ${ID.b} Dua\n- ${ID.d} Empat\n\n**Lalu.**\n\n- ${ID.c} Tiga\n`,
+browserTest('tickets in flight still listed in order.md take no todo rank', {
+  ...todo(ID.c, 'Three'),
+  ...todo(ID.d, 'Four'),
+  ...todo(ID.e, 'Five', { priority: 'high' }),
+  [`in_progress/${ID.a} One.md`]: ticket(),
+  [`review/${ID.b} Two.md`]: ticket(),
+  'order.md': `**Goal.** One batch.\n\n**First, side by side.**\n<!-- lands-first: ${ID.a} -->\n\n- ${ID.a} One\n- ${ID.b} Two\n- ${ID.d} Four\n\n**Then.**\n\n- ${ID.c} Three\n`,
 }, async (v, page) => {
   assert.deepEqual(await page.eval(todoColumn), [[ID.d, '#1'], [ID.c, '#2'], [ID.e, null]]);
 });

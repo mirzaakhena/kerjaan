@@ -172,7 +172,7 @@ async function whileHeld(r, name, start, look, ms = 1500) {
 
 // A ticket's line leaves order.md when it finishes, not when it starts, so the
 // race is two tickets of one group finishing at the same moment.
-test('dua tiket dari grup yang sama diselesaikan bersamaan berulang kali, dan keduanya selalu hilang dari order.md', async () => {
+test('two tickets of one group finished at the same moment, again and again, both always leave order.md', async () => {
   for (let round = 1; round <= 8; round++) {
     const r = repo();
     const both = await Promise.all([
