@@ -397,7 +397,7 @@ ticket of it is in flight, the rule `queue.sh check` uses. Cards can be
 filtered by type, priority, label and words in the title, and the filter lives
 in the address, so a filtered view can be bookmarked. A card opens the ticket
 itself, rendered, with every ticket it names one click away; each ticket has
-its own address (`/<project>/tiket/<id>`). The page follows the board as it
+its own address (`/<project>/ticket/<id>`). The page follows the board as it
 changes, the ticket you are reading included. Any column can be hidden and
 shown again, still showing how many tickets it holds; `cancel` starts hidden,
 and the browser remembers the choice. `todo`'s header opens `order.md` itself,
@@ -411,8 +411,8 @@ browser) is a button, by name, the open one marked, so another board is one
 click away. When they do not fit on one line the row scrolls sideways; on a
 phone it gets a line of its own under the name.
 
-A card in `done` whose code is not on the main line yet says so: "belum
-digabung", with the name of every branch that carries its ID and holds
+A card in `done` whose code is not on the main line yet says so: "not
+merged", with the name of every branch that carries its ID and holds
 commits outside `HEAD` — the same rule `update-ticket.sh` applies when it
 refuses to start the next ticket, so the board shows beforehand what that
 refusal would name. A merge held for the owner is marked too, since its code
@@ -628,7 +628,7 @@ node --test
 ```
 
 That one command runs the whole suite: every `*.test.mjs` under `uji/` (the
-scripts in `skills/kerjaan/scripts/`) and `viewer/uji/` (the viewer). This
+scripts in `skills/kerjaan/scripts/`) and `viewer/tests/` (the viewer). This
 board's own `test_command`, which `test-run.sh` runs before a ticket goes to
 review, is the same run with two guards added (Node 22 or newer):
 `node --test --test-timeout=900000 --test-force-exit`, so that a test which

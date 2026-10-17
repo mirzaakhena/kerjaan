@@ -79,7 +79,7 @@ export function readTicket(board, status, file) {
 // number on a card comes from orderPlaces). Only a list line
 // `- <id> <title>` is a place, read with the rule queue.sh check uses
 // (references/ordering-the-queue.md); an id named in a lead-in, in prose or
-// on a lands-first line is never one. viewer/uji/urutan.test.mjs holds the two
+// on a lands-first line is never one. viewer/tests/order.test.mjs holds the two
 // readers to the same list.
 export function readOrder(board) {
   const text = readOrderText(board);

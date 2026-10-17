@@ -13,7 +13,7 @@
 //
 // Tickets in progress and in review also show what their Claude Code agent is
 // doing, read from the logs under $CLAUDE_CONFIG_DIR (default ~/.claude)/projects;
-// see agen.mjs. Without those logs the board looks as it always did.
+// see agents.mjs. Without those logs the board looks as it always did.
 //
 // Read-only: it never writes to any board. No dependencies beyond Node 18+.
 
@@ -32,13 +32,13 @@ const option = (name) => {
 
 const scan = option('--scan');
 if (!scan) {
-  console.error('Pakai: node viewer/server.mjs --scan <folder> [--project <nama>] [--port 4321] [--lan] [--open]');
-  console.error('  <folder>  folder yang subfoldernya dipindai mencari .kerjaan/');
+  console.error('Usage: node viewer/server.mjs --scan <folder> [--project <name>] [--port 4321] [--lan] [--open]');
+  console.error('  <folder>  the folder whose subfolders are searched for .kerjaan/');
   process.exit(1);
 }
 const root = path.resolve(scan.replace(/^~(?=$|\/)/, os.homedir()));
 if (!fs.existsSync(root) || !fs.statSync(root).isDirectory()) {
-  console.error(`Folder tidak ditemukan: ${root}`);
+  console.error(`Folder not found: ${root}`);
   process.exit(1);
 }
 const port = Number(option('--port') ?? 4321);
@@ -48,7 +48,7 @@ const lan = args.includes('--lan');
 const server = createViewer({ root });
 server.on('error', (err) => {
   if (err.code === 'EADDRINUSE') {
-    console.error(`Porta ${port} sudah dipakai. Pilih yang lain dengan --port <angka>, atau --port 0 untuk acak.`);
+    console.error(`Port ${port} is already in use. Pick another with --port <number>, or --port 0 for any free one.`);
   } else {
     console.error(err.message);
   }
@@ -62,7 +62,7 @@ server.listen(port, lan ? '0.0.0.0' : '127.0.0.1', () => {
   console.log(`kerjaan viewer: ${address}`);
   if (lan) for (const line of lanLines(at)) console.log(line);
   const projects = findProjects(root);
-  console.log(`memindai ${root} — ${projects.length} proyek: ${projects.map((p) => p.name).join(', ') || '(belum ada)'}`);
+  console.log(`scanning ${root} — ${projects.length} project${projects.length === 1 ? '' : 's'}: ${projects.map((p) => p.name).join(', ') || '(none yet)'}`);
   if (args.includes('--open')) {
     const opener = process.platform === 'darwin' ? 'open' : process.platform === 'win32' ? 'start' : 'xdg-open';
     spawn(opener, [address], { stdio: 'ignore', detached: true, shell: process.platform === 'win32' }).unref();

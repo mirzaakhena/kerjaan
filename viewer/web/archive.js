@@ -1,7 +1,7 @@
 // Which projects this browser has archived, and the home page split into the
 // active and archived tabs. Pure, so the tests run it in Node.
 
-export const TABS = ['aktif', 'arsip'];
+export const TABS = ['active', 'archived'];
 
 // Nothing remembered yet, or something unreadable, means nothing archived.
 export function readArchived(stored) {
@@ -16,7 +16,7 @@ export function readArchived(stored) {
 
 // Where this browser keeps them. Storage can be missing or refuse (a private
 // window); nothing is archived then.
-export const ARCHIVED_KEY = 'kerjaan.proyek-arsip';
+export const ARCHIVED_KEY = 'kerjaan.archived-projects';
 export function loadArchived() {
   try {
     return readArchived(localStorage.getItem(ARCHIVED_KEY));
@@ -27,10 +27,10 @@ export function loadArchived() {
 
 export function splitProjects(projects, archived) {
   return {
-    aktif: projects.filter((p) => !archived.has(p.name)),
-    arsip: projects.filter((p) => archived.has(p.name)),
+    active: projects.filter((p) => !archived.has(p.name)),
+    archived: projects.filter((p) => archived.has(p.name)),
   };
 }
 
-// The tab lives in the address (#arsip), so a reload or a shared link keeps it.
-export const readTab = (hash) => (hash === '#arsip' ? 'arsip' : 'aktif');
+// The tab lives in the address (#archived), so a reload or a shared link keeps it.
+export const readTab = (hash) => (hash === '#archived' ? 'archived' : 'active');

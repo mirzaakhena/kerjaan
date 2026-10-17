@@ -10,8 +10,8 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { readOrderGroups, readEstimate, sharedPaths, sharedInGroups, readBoard } from '../../skills/kerjaan/scripts/board.mjs';
-import { ticket, makeBoard, tempRoot, startViewer } from './bantu.mjs';
-import { openBrowser, chromePath } from './peramban.mjs';
+import { ticket, makeBoard, tempRoot, startViewer } from './helpers.mjs';
+import { openBrowser, chromePath } from './browser.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const queue = path.join(here, '..', '..', 'skills', 'kerjaan', 'scripts', 'queue.sh');
@@ -27,20 +27,20 @@ const todo = (id, ...notes) => ({ [`todo/${id} T${id.slice(-1)}.md`]: withNotes(
 
 // ---------- the pieces ----------
 
-test('kelompok order.md: dari satu kalimat tebal ke berikutnya, hanya baris `- <id>` yang tempat', () => {
+test('order.md groups: from one bold lead-in to the next, only `- <id>` lines are places', () => {
   const text = [
-    `- ${ID.g} Di atas kalimat tebal pertama`,
+    `- ${ID.g} Above the first bold lead-in`,
     '',
-    `**Pertama, ${ID.f} disebut.**`,
+    `**First, ${ID.f} named.**`,
     '',
-    `- ${ID.a} Satu`,
-    `  - ${ID.e} Menjorok`,
-    `- ${ID.b} Dua`,
-    `- ${ID.a} Lagi`,
+    `- ${ID.a} One`,
+    `  - ${ID.e} Indented`,
+    `- ${ID.b} Two`,
+    `- ${ID.a} Again`,
     '',
-    '**Kosong.** Tanpa baris daftar.',
+    '**Empty.** No list lines.',
     '',
-    '**Terakhir.**',
+    '**Last.**',
     `- ${ID.c}`,
   ].join('\n');
   assert.deepEqual(readOrderGroups(text), [
@@ -51,18 +51,18 @@ test('kelompok order.md: dari satu kalimat tebal ke berikutnya, hanya baris `- <
   assert.deepEqual(readOrderGroups(''), []);
 });
 
-test('perkiraan: catatan terakhir menang, contoh dalam pagar diabaikan, none dan tidak ada dibedakan', () => {
+test('estimates: the last record wins, examples in a fence are ignored, none and missing told apart', () => {
   assert.equal(readEstimate('## Notes\n(none yet)'), null);
   assert.deepEqual(readEstimate(`## Notes\n${est('a.js', 'docs/')}`), ['a.js', 'docs/']);
-  assert.deepEqual(readEstimate(`## Notes\n${est('a.js')}\n${est('b.js')}`), ['b.js'], 'yang terakhir');
-  assert.deepEqual(readEstimate(`## Notes\n${est('a.js')}\n${est()}`), [], 'terakhir: none');
-  assert.deepEqual(readEstimate(`## Notes\n${est('a.js')}\n\`\`\`\n${est('contoh.js')}\n\`\`\``), ['a.js'], 'contoh berpagar');
-  assert.equal(readEstimate(`  ${est('a.js')}`), null, 'menjorok bukan catatan');
+  assert.deepEqual(readEstimate(`## Notes\n${est('a.js')}\n${est('b.js')}`), ['b.js'], 'the last one');
+  assert.deepEqual(readEstimate(`## Notes\n${est('a.js')}\n${est()}`), [], 'last: none');
+  assert.deepEqual(readEstimate(`## Notes\n${est('a.js')}\n\`\`\`\n${est('example.js')}\n\`\`\``), ['a.js'], 'a fenced example');
+  assert.equal(readEstimate(`  ${est('a.js')}`), null, 'indented is no record');
 });
 
-test('berkas bersama: sama persis, atau folder dan isinya (yang lebih sempit yang disebut)', () => {
+test('shared files: exactly the same, or a folder and what is in it (the narrower one named)', () => {
   assert.deepEqual(sharedPaths(['a.js', 'b.js'], ['b.js', 'c.js']), ['b.js']);
-  assert.deepEqual(sharedPaths(['src/'], ['src/x.js', 'srcx.js', 'lain.js']), ['src/x.js']);
+  assert.deepEqual(sharedPaths(['src/'], ['src/x.js', 'srcx.js', 'other.js']), ['src/x.js']);
   assert.deepEqual(sharedPaths(['src/x.js'], ['src/']), ['src/x.js']);
   assert.deepEqual(sharedPaths(['src/'], ['src/']), ['src/']);
   assert.deepEqual(sharedPaths(['a.js'], []), []);
@@ -80,29 +80,29 @@ const CASES = {
   ...todo(ID.b, est('src/', 'docs/a.md')),
   ...todo(ID.c, est('README.md', 'docs/a.md')),
   ...todo(ID.d),
-  ...todo(ID.e, est('lain.js', 'docs/')),
+  ...todo(ID.e, est('other.js', 'docs/')),
   ...todo(ID.f, est()),
-  [`backlog/${ID.g} Backlog.md`]: withNotes(est('README.md', 'lain.js')),
+  [`backlog/${ID.g} Backlog.md`]: withNotes(est('README.md', 'other.js')),
   'order.md': [
-    `**Tiga berdampingan.**`,
+    `**Three side by side.**`,
     `<!-- lands-first: ${ID.a}, ${ID.b}, ${ID.c} -->`,
     '',
-    `- ${ID.a} Satu`,
-    `- ${ID.b} Dua`,
-    `- ${ID.c} Tiga`,
-    `- ${ID.d} Empat tanpa perkiraan`,
+    `- ${ID.a} One`,
+    `- ${ID.b} Two`,
+    `- ${ID.c} Three`,
+    `- ${ID.d} Four without an estimate`,
     '',
-    '**Lalu, tanpa berkas bersama.**',
+    '**Then, without shared files.**',
     '',
-    `- ${ID.e} Lima`,
-    `- ${ID.f} Enam, none`,
+    `- ${ID.e} Five`,
+    `- ${ID.f} Six, none`,
     '',
   ].join('\n'),
 };
 
 const sharedOf = (board) => sharedInGroups(fs.readFileSync(path.join(board, 'order.md'), 'utf8'), readBoard(board).tickets);
 
-test('setiap pasangan satu kelompok yang berbagi berkas ditampilkan; antar-kelompok, backlog, none, dan tanpa perkiraan tidak', () => {
+test('every pair in a group that shares files is shown; across groups, backlog, none and no estimate are not', () => {
   const board = makeBoard(tempRoot(), 'p', CASES);
   assert.deepEqual(sharedOf(board), [{
     start: 0,
@@ -116,13 +116,13 @@ test('setiap pasangan satu kelompok yang berbagi berkas ditampilkan; antar-kelom
   }]);
 });
 
-test('kelompok tanpa berkas bersama, atau hanya dengan tiket tanpa perkiraan, tidak menghasilkan apa pun', () => {
+test('a group without shared files, or only with tickets without an estimate, gives nothing', () => {
   const board = makeBoard(tempRoot(), 'p', {
     ...todo(ID.a, est('a.js')),
     ...todo(ID.b, est('b.js')),
     ...todo(ID.c),
     ...todo(ID.d, est()),
-    'order.md': `**Satu.**\n\n- ${ID.a}\n- ${ID.b}\n- ${ID.c}\n- ${ID.d}\n`,
+    'order.md': `**One.**\n\n- ${ID.a}\n- ${ID.b}\n- ${ID.c}\n- ${ID.d}\n`,
   });
   assert.deepEqual(sharedOf(board), []);
 });
@@ -136,7 +136,7 @@ function overlapSays(board, a, b) {
   return r.stdout.split('\n').slice(1).filter((l) => l.startsWith('  ')).map((l) => l.trim()).sort();
 }
 
-test('untuk setiap dua tiket satu kelompok, berkasnya sama dengan yang disebut queue.sh overlap', () => {
+test('for every two tickets of one group, the files are the ones queue.sh overlap names', () => {
   const board = makeBoard(tempRoot(), 'p', CASES);
   const shown = new Map(sharedOf(board).flatMap((g) => g.pairs.map((p) => [`${p.a} ${p.b}`, p.files])));
   const groups = readOrderGroups(fs.readFileSync(path.join(board, 'order.md'), 'utf8'));
@@ -145,12 +145,12 @@ test('untuk setiap dua tiket satu kelompok, berkasnya sama dengan yang disebut q
     for (const a of g.ids) {
       for (const b of g.ids) {
         if (!(a < b)) continue;
-        assert.deepEqual(shown.get(`${a} ${b}`) || [], overlapSays(board, a, b), `${a} dan ${b}`);
+        assert.deepEqual(shown.get(`${a} ${b}`) || [], overlapSays(board, a, b), `${a} and ${b}`);
         compared++;
       }
     }
   }
-  assert.equal(compared, 7, 'enam pasangan di kelompok pertama, satu di kelompok kedua');
+  assert.equal(compared, 7, 'six pairs in the first group, one in the second');
 });
 
 // ---------- through the server ----------
@@ -160,27 +160,27 @@ const setEstimate = (board, file, ...paths) => {
   fs.writeFileSync(f, fs.readFileSync(f, 'utf8').replace(/\n$/, `\n${est(...paths)}\n`));
 };
 
-test('api/urutan membawa berkas bersama, dan perubahan perkiraan langsung terlihat tanpa menyentuh order.md', async () => {
+test('api/order carries the shared files, and a changed estimate shows at once without touching order.md', async () => {
   const root = tempRoot();
   const board = makeBoard(root, 'alpha', {
     ...todo(ID.a, est('a.js', 'b.js')),
     ...todo(ID.b, est('b.js')),
-    'order.md': `**Berdua.**\n\n- ${ID.a}\n- ${ID.b}\n`,
+    'order.md': `**Together.**\n\n- ${ID.a}\n- ${ID.b}\n`,
   });
   const order = fs.readFileSync(path.join(board, 'order.md'), 'utf8');
   const v = await startViewer(root);
   try {
-    const first = await (await v.get('/alpha/api/urutan')).json();
+    const first = await (await v.get('/alpha/api/order')).json();
     assert.equal(first.text, order);
     assert.deepEqual(first.shared, [{ start: 0, end: 5, pairs: [{ a: ID.a, b: ID.b, files: ['b.js'] }], unestimated: [] }]);
 
     setEstimate(board, `todo/${ID.b} T2.md`, 'a.js', 'c.js');
-    const second = await (await v.get('/alpha/api/urutan')).json();
+    const second = await (await v.get('/alpha/api/order')).json();
     assert.deepEqual(second.shared[0].pairs, [{ a: ID.a, b: ID.b, files: ['a.js'] }]);
 
     setEstimate(board, `todo/${ID.b} T2.md`, 'c.js');
-    assert.deepEqual((await (await v.get('/alpha/api/urutan')).json()).shared, [], 'tidak lagi berbagi');
-    assert.equal(fs.readFileSync(path.join(board, 'order.md'), 'utf8'), order, 'order.md tidak disentuh');
+    assert.deepEqual((await (await v.get('/alpha/api/order')).json()).shared, [], 'no longer sharing');
+    assert.equal(fs.readFileSync(path.join(board, 'order.md'), 'utf8'), order, 'order.md untouched');
   } finally {
     await v.close();
   }
@@ -190,61 +190,61 @@ test('api/urutan membawa berkas bersama, dan perubahan perkiraan langsung terlih
 
 // Each box in the drawer: the text of the group lead-in just before it, its
 // pair lines, and whether its ticket IDs are links.
-const boxes = `() => [...document.querySelectorAll('#drawer-body .berkas-bersama')].map((box) => {
+const boxes = `() => [...document.querySelectorAll('#drawer-body .shared-files')].map((box) => {
   let prev = box.previousElementSibling;
   while (prev && !prev.querySelector('strong')) prev = prev.previousElementSibling;
   return {
     after: prev?.querySelector('strong')?.textContent || null,
     pairs: [...box.querySelectorAll('li')].map((li) => li.textContent.trim()),
-    links: [...box.querySelectorAll('li a.tiket')].map((a) => a.dataset.id),
-    unestimated: box.textContent.includes('Belum ada perkiraan berkas'),
+    links: [...box.querySelectorAll('li a.ticket')].map((a) => a.dataset.id),
+    unestimated: box.textContent.includes('No file estimate yet'),
   };
 })`;
 
-test('di laci order.md: kotak berkas bersama di bawah kelompoknya, ikut berubah saat perkiraan berubah, Tutup menutup laci', { skip: chromePath() ? false : 'Chrome tidak terpasang' }, async () => {
+test('in the order.md drawer: a shared-files box under its group, changing as the estimates change, Close closing the drawer', { skip: chromePath() ? false : 'Chrome is not installed' }, async () => {
   const root = tempRoot();
   const board = makeBoard(root, 'alpha', CASES);
   const v = await startViewer(root);
   const page = await openBrowser();
   try {
     await page.size(1280, 800);
-    await page.goto(`${v.base}/alpha/urutan`);
-    await page.until(`() => document.querySelectorAll('#drawer-body .berkas-bersama').length > 0`);
+    await page.goto(`${v.base}/alpha/order`);
+    await page.until(`() => document.querySelectorAll('#drawer-body .shared-files').length > 0`);
     assert.deepEqual(await page.eval(boxes), [{
-      after: 'Tiga berdampingan.',
+      after: 'Three side by side.',
       pairs: [
-        `${ID.a} dan ${ID.b}: src/app.mjs, src/board.mjs`,
-        `${ID.a} dan ${ID.c}: README.md`,
-        `${ID.b} dan ${ID.c}: docs/a.md`,
+        `${ID.a} and ${ID.b}: src/app.mjs, src/board.mjs`,
+        `${ID.a} and ${ID.c}: README.md`,
+        `${ID.b} and ${ID.c}: docs/a.md`,
       ],
       links: [ID.a, ID.b, ID.a, ID.c, ID.b, ID.c],
       unestimated: true,
     }]);
     // The box sits before the next group's lead-in, and order.md is all there.
     assert.equal(await page.eval(`() => {
-      const box = document.querySelector('#drawer-body .berkas-bersama');
+      const box = document.querySelector('#drawer-body .shared-files');
       let n = box.nextElementSibling;
       return n?.querySelector('strong')?.textContent || null;
-    }`), 'Lalu, tanpa berkas bersama.');
-    assert.equal(await page.eval(`() => document.querySelectorAll('#drawer-body > ul li').length`), 6, 'semua baris daftar order.md tetap tampil');
+    }`), 'Then, without shared files.');
+    assert.equal(await page.eval(`() => document.querySelectorAll('#drawer-body > ul li').length`), 6, 'every list line of order.md still shown');
 
     // The second group comes to share a file: its own box appears, live.
-    setEstimate(board, `todo/${ID.f} T6.md`, 'lain.js');
-    await page.until(`() => document.querySelectorAll('#drawer-body .berkas-bersama').length === 2`);
+    setEstimate(board, `todo/${ID.f} T6.md`, 'other.js');
+    await page.until(`() => document.querySelectorAll('#drawer-body .shared-files').length === 2`);
     const after = await page.eval(boxes);
-    assert.deepEqual(after[1], { after: 'Lalu, tanpa berkas bersama.', pairs: [`${ID.e} dan ${ID.f}: lain.js`], links: [ID.e, ID.f], unestimated: false });
+    assert.deepEqual(after[1], { after: 'Then, without shared files.', pairs: [`${ID.e} and ${ID.f}: other.js`], links: [ID.e, ID.f], unestimated: false });
 
     // And stops sharing: the box goes again.
     setEstimate(board, `todo/${ID.f} T6.md`);
-    await page.until(`() => document.querySelectorAll('#drawer-body .berkas-bersama').length === 1`);
+    await page.until(`() => document.querySelectorAll('#drawer-body .shared-files').length === 1`);
 
     // A ticket link in the box opens that ticket; back returns to order.md.
-    await page.eval(`() => document.querySelector('#drawer-body .berkas-bersama a.tiket').click()`);
-    await page.until(`() => location.pathname === '/alpha/tiket/${ID.a}' && document.querySelector('#drawer-head .mono')?.textContent !== '.kerjaan/order.md'`);
+    await page.eval(`() => document.querySelector('#drawer-body .shared-files a.ticket').click()`);
+    await page.until(`() => location.pathname === '/alpha/ticket/${ID.a}' && document.querySelector('#drawer-head .mono')?.textContent !== '.kerjaan/order.md'`);
     await page.eval(`() => history.back()`);
-    await page.until(`() => location.pathname === '/alpha/urutan' && document.querySelectorAll('#drawer-body .berkas-bersama').length === 1`);
+    await page.until(`() => location.pathname === '/alpha/order' && document.querySelectorAll('#drawer-body .shared-files').length === 1`);
 
-    // Tutup closes the drawer and leaves the kanban.
+    // Close closes the drawer and leaves the kanban.
     await page.eval(`() => document.querySelector('#drawer [data-close]').click()`);
     await page.until(`() => document.getElementById('drawer').hidden && location.pathname === '/alpha/'`);
   } finally {

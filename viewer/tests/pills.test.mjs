@@ -1,31 +1,31 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readDoneWhen, readTicket } from '../../skills/kerjaan/scripts/board.mjs';
-import { pills, pillSummary } from '../web/pil.js';
-import { ticket, makeBoard, tempRoot } from './bantu.mjs';
+import { pills, pillSummary } from '../web/pills.js';
+import { ticket, makeBoard, tempRoot } from './helpers.mjs';
 
-const keadaan = (items) => items.map((i) => (i.struck ? '-' : i.done ? 'x' : '_')).join('');
-const kelas = (html) => [...html.matchAll(/class="pil( [a-z]+)?"/g)].map((m) => (m[1] || '').trim() || 'open');
+const states = (items) => items.map((i) => (i.struck ? '-' : i.done ? 'x' : '_')).join('');
+const classes = (html) => [...html.matchAll(/class="pill( [a-z]+)?"/g)].map((m) => (m[1] || '').trim() || 'open');
 
-test('Done when: butir tingkat atas, berurutan, tercentang atau belum', () => {
+test('Done when: top-level items, in order, ticked or not', () => {
   const body = '## Done when\n- [x] a\n- [ ] b\n- [X] c\n- [ ] d';
-  assert.equal(keadaan(readDoneWhen(body)), 'x_x_');
+  assert.equal(states(readDoneWhen(body)), 'x_x_');
 });
 
-test('Done when: hanya di bawah judulnya; kotak di bagian lain tidak dihitung', () => {
-  const body = '## Background\n- [x] bukan\n\n## Done when\n- [ ] a\n\n## Notes\n- [x] bukan juga';
-  assert.equal(keadaan(readDoneWhen(body)), '_');
+test('Done when: only under its heading; boxes in other sections are not counted', () => {
+  const body = '## Background\n- [x] not this\n\n## Done when\n- [ ] a\n\n## Notes\n- [x] nor this';
+  assert.equal(states(readDoneWhen(body)), '_');
   assert.deepEqual(readDoneWhen('## Background\n- [x] a\n\n## Notes\n- [ ] b'), []);
   assert.deepEqual(readDoneWhen('## Done when\n\n## Notes\n- [ ] b'), []);
 });
 
-test('Done when: blok berpagar dan baris menjorok tidak dihitung', () => {
-  const body = '## Done when\n- [ ] a\n```\n- [x] dalam pagar\n```\n~~~\n- [x] pagar lain\n~~~\n  - [x] anak butir\n- [x] b';
-  assert.equal(keadaan(readDoneWhen(body)), '_x');
+test('Done when: fenced blocks and indented lines are not counted', () => {
+  const body = '## Done when\n- [ ] a\n```\n- [x] in a fence\n```\n~~~\n- [x] another fence\n~~~\n  - [x] a child item\n- [x] b';
+  assert.equal(states(readDoneWhen(body)), '_x');
 });
 
-test('Done when: butir yang dicoret ditandai, tercentang atau tidak', () => {
-  const body = '## Done when\n- [x] a\n- [ ] ~~b~~ dipindah ke 260101000009\n- [x] ~~c~~ dibatalkan\n- [ ] d ~~sebagian~~';
+test('Done when: struck items are marked, ticked or not', () => {
+  const body = '## Done when\n- [x] a\n- [ ] ~~b~~ moved to 260101000009\n- [x] ~~c~~ cancelled\n- [ ] d ~~partly~~';
   assert.deepEqual(readDoneWhen(body), [
     { done: true, struck: false },
     { done: false, struck: true },
@@ -34,53 +34,53 @@ test('Done when: butir yang dicoret ditandai, tercentang atau tidak', () => {
   ]);
 });
 
-test('checks menghitung butir Done when yang tidak dicoret', () => {
+test('checks counts the Done when items not struck', () => {
   const root = tempRoot();
   const board = makeBoard(root, 'p', {
-    'todo/260101000001 A.md': ticket({ body: '## Done when\n- [x] a\n- [ ] ~~b~~\n- [x] ~~c~~\n- [ ] d\n\n## Notes\n- [x] bukan' }),
+    'todo/260101000001 A.md': ticket({ body: '## Done when\n- [x] a\n- [ ] ~~b~~\n- [x] ~~c~~\n- [ ] d\n\n## Notes\n- [x] not this' }),
   });
   const t = readTicket(board, 'todo', '260101000001 A.md');
-  assert.equal(keadaan(t.doneWhen), 'x--_');
+  assert.equal(states(t.doneWhen), 'x--_');
   assert.deepEqual(t.checks, [1, 2]);
 });
 
-test('pil: satu per butir, urut, terisi / bergaris tepi / dicoret', () => {
+test('pills: one per item, in order, filled / outlined / struck', () => {
   const items = readDoneWhen('## Done when\n- [x] a\n- [x] b\n- [ ] c\n- [ ] ~~d~~\n- [x] ~~e~~\n- [x] f\n- [ ] g');
-  assert.deepEqual(kelas(pills(items)), ['done', 'done', 'open', 'struck', 'struck', 'done', 'open']);
+  assert.deepEqual(classes(pills(items)), ['done', 'done', 'open', 'struck', 'struck', 'done', 'open']);
 });
 
-test('pil: banyak butir tetap satu pil per butir', () => {
+test('pills: many items still one pill per item', () => {
   const items = Array.from({ length: 20 }, (_, i) => ({ done: i % 3 !== 2, struck: false }));
   const html = pills(items);
-  assert.equal(kelas(html).length, 20);
-  assert.match(html, /aria-label="14 dari 20 selesai"/);
+  assert.equal(classes(html).length, 20);
+  assert.match(html, /aria-label="14 of 20 done"/);
 });
 
-test('pil: tanpa Done when tidak ada deretan', () => {
+test('pills: no Done when, no row', () => {
   assert.equal(pills([]), '');
   assert.equal(pills(undefined), '');
 });
 
-test('pil: tooltip dan pembaca layar menyebut jumlah yang sama', () => {
+test('pills: the tooltip and screen readers give the same count', () => {
   const items = [{ done: true, struck: false }, { done: false, struck: false }, { done: false, struck: true }];
   const html = pills(items, { className: 'progress' });
   assert.match(html, /^<span class="pills progress" role="img" /);
-  assert.match(html, /aria-label="1 dari 2 selesai, 1 dicoret"/);
-  assert.match(html, /title="1 dari 2 selesai, 1 dicoret"/);
+  assert.match(html, /aria-label="1 of 2 done, 1 struck out"/);
+  assert.match(html, /title="1 of 2 done, 1 struck out"/);
 });
 
-test('ringkasan jumlah', () => {
+test('the summary of counts', () => {
   const p = (s) => [...s].map((c) => ({ done: c === 'x', struck: c === '-' }));
-  assert.equal(pillSummary(p('xxxxx___')), '5 dari 8 selesai');
-  assert.equal(pillSummary(p('xxx')), '3 dari 3 selesai');
-  assert.equal(pillSummary(p('___')), '0 dari 3 selesai');
-  assert.equal(pillSummary(p('x-_')), '1 dari 2 selesai, 1 dicoret');
-  assert.equal(pillSummary(p('--')), '2 butir dicoret');
+  assert.equal(pillSummary(p('xxxxx___')), '5 of 8 done');
+  assert.equal(pillSummary(p('xxx')), '3 of 3 done');
+  assert.equal(pillSummary(p('___')), '0 of 3 done');
+  assert.equal(pillSummary(p('x-_')), '1 of 2 done, 1 struck out');
+  assert.equal(pillSummary(p('--')), '2 items struck out');
 });
 
-test('kartu menggambar deretan pil, bukan angka x/y', async () => {
+test('a card draws the row of pills, not an x/y number', async () => {
   const fs = await import('node:fs');
-  const src = fs.readFileSync(new URL('../web/proyek.js', import.meta.url), 'utf8');
+  const src = fs.readFileSync(new URL('../web/project.js', import.meta.url), 'utf8');
   const card = src.slice(src.indexOf('function card('), src.indexOf('function drawBoard('));
   assert.match(card, /pills\(t\.doneWhen/);
   assert.doesNotMatch(card, /\$\{done\}\/\$\{total\}/);

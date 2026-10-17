@@ -1,13 +1,13 @@
-import { STATUSES, statusName, statusColor, getJson, liveIndicator } from './umum.js';
+import { STATUSES, statusName, statusColor, getJson, liveIndicator } from './common.js';
 import { render, esc } from './markdown.js';
-import { readFilter, writeFilter, matches, columnOrder, choices, FILTER_KEYS, readHidden } from './saring.js';
-import { pills } from './pil.js';
-import { drawerHead, drawerFacts, drawerAgent, agentHeadHtml, agentBodyHtml } from './laci.js';
-import { agentLine, AGENT_STATUSES } from './agen.js';
-import { ARCHIVED_KEY, loadArchived } from './arsip.js';
-import { switchList } from './pindah.js';
+import { readFilter, writeFilter, matches, columnOrder, choices, FILTER_KEYS, readHidden } from './filter.js';
+import { pills } from './pills.js';
+import { drawerHead, drawerFacts, drawerAgent, agentHeadHtml, agentBodyHtml } from './drawer.js';
+import { agentLine, AGENT_STATUSES } from './agent.js';
+import { ARCHIVED_KEY, loadArchived } from './archive.js';
+import { switchList } from './switcher.js';
 
-// The page lives at /<project>/, /<project>/tiket/<id> and /<project>/urutan
+// The page lives at /<project>/, /<project>/ticket/<id> and /<project>/order
 // (order.md); everything it asks the server for is under /<project>/.
 const project = decodeURIComponent(location.pathname.split('/')[1]);
 const base = `/${encodeURIComponent(project)}/`;
@@ -17,11 +17,11 @@ const $ = (id) => document.getElementById(id);
 const PAGE = 60;
 
 // What the drawer holds when it shows order.md rather than a ticket.
-const ORDER = 'urutan';
+const ORDER = 'order';
 
 // Hidden columns are remembered per browser. Storage can be missing or refuse
 // (a private window); the page then simply starts from the default each time.
-const HIDDEN_KEY = 'kerjaan.kolom-tersembunyi';
+const HIDDEN_KEY = 'kerjaan.hidden-columns';
 function loadHidden() {
   try {
     return readHidden(localStorage.getItem(HIDDEN_KEY));
@@ -54,17 +54,17 @@ document.title = `${project} — kerjaan`;
 $('name').textContent = project;
 
 const idFromPath = () =>
-  location.pathname.match(/\/tiket\/(\d{12})$/)?.[1] || (location.pathname.endsWith(`/${ORDER}`) ? ORDER : null);
-const ticketHref = (id) => `${base}tiket/${id}${writeFilter(state.filter)}`;
+  location.pathname.match(/\/ticket\/(\d{12})$/)?.[1] || (location.pathname.endsWith(`/${ORDER}`) ? ORDER : null);
+const ticketHref = (id) => `${base}ticket/${id}${writeFilter(state.filter)}`;
 const lookup = (id) => state.byId.get(id) || null;
 
 // ---------- loading ----------
 
 async function load() {
   try {
-    state.board = await getJson(`${base}api/papan`);
+    state.board = await getJson(`${base}api/board`);
   } catch {
-    $('board').innerHTML = '<div class="empty">Papan proyek ini tidak bisa dibaca. Server masih menyala?</div>';
+    $('board').innerHTML = '<div class="empty">This project\'s board cannot be read. Is the server still running?</div>';
     return;
   }
   state.byId = new Map();
@@ -86,9 +86,9 @@ function drawFilters() {
     sel.innerHTML = `<option value="">${all}</option>${opts.join('')}`;
     sel.value = current;
   };
-  fill('type', 'Semua tipe', c.type);
-  fill('priority', 'Semua prioritas', c.priority);
-  fill('label', 'Semua label', c.label);
+  fill('type', 'All types', c.type);
+  fill('priority', 'All priorities', c.priority);
+  fill('label', 'All labels', c.label);
   if (document.activeElement !== form.elements.q) form.elements.q.value = state.filter.q;
 }
 
@@ -113,9 +113,9 @@ $('clear').addEventListener('click', () => {
 // tickets only.
 function unmergedLine(t) {
   if (!t.unmerged?.length) return '';
-  const names = t.unmerged.map((b) => `<span class="cabang">${esc(b)}</span>`).join(', ');
-  const tip = `Kode tiket ini belum masuk jalur utama: cabang ${t.unmerged.join(', ')} punya perubahan yang belum digabung`;
-  return `<div class="belum-gabung" title="${esc(tip)}"><span class="label">belum digabung</span> ${names}</div>`;
+  const names = t.unmerged.map((b) => `<span class="branch">${esc(b)}</span>`).join(', ');
+  const tip = `This ticket's code is not on the main line yet: branch ${t.unmerged.join(', ')} holds changes not merged`;
+  return `<div class="unmerged" title="${esc(tip)}"><span class="label">not merged</span> ${names}</div>`;
 }
 
 // A card's place in order.md: its group's number, shared by the tickets that
@@ -132,20 +132,22 @@ function placeBadge(place) {
 function card(t, place) {
   const labels = t.labels.map((l) => `<span class="tag">${esc(l)}</span>`).join('');
   const agent = AGENT_STATUSES.includes(t.status)
-    ? `<div class="agen-slot" data-agen-for="${t.id}">${t.agent ? agentLine(t.agent, t.status, Date.now()) : ''}</div>`
+    ? `<div class="agent-slot" data-agent-for="${t.id}">${t.agent ? agentLine(t.agent, t.status, Date.now()) : ''}</div>`
     : '';
   return `<li><button class="card" data-id="${t.id}" aria-current="${t.id === state.openId}">
     <div class="title">${esc(t.title)}</div>${agent}${unmergedLine(t)}
     <div class="meta">
       ${placeBadge(place)}
       <span class="id">${t.id}</span>
-      ${t.broken ? '<span class="broken" title="Berkas ini tidak punya frontmatter">rusak</span>' : ''}
+      ${t.broken ? '<span class="broken" title="This file has no frontmatter">broken</span>' : ''}
       ${t.type ? `<span class="tag type-${esc(t.type)}">${esc(t.type)}</span>` : ''}
       ${t.priority ? `<span class="prio ${esc(t.priority)}">${esc(t.priority)}</span>` : ''}
       ${labels}
       ${pills(t.doneWhen, { className: 'progress' })}
     </div></button></li>`;
 }
+
+const tickets = (n) => `${n} ${n === 1 ? 'ticket' : 'tickets'}`;
 
 function drawBoard() {
   const { board, filter } = state;
@@ -155,14 +157,14 @@ function drawBoard() {
   const places = board.places || {};
   const filtering = FILTER_KEYS.some((k) => filter[k]);
 
-  $('shown').textContent = filtering ? `${shown.length} dari ${board.tickets.length} tiket` : `${board.tickets.length} tiket`;
+  $('shown').textContent = filtering ? `${shown.length} of ${tickets(board.tickets.length)}` : tickets(board.tickets.length);
   $('clear').hidden = !filtering;
 
   const visible = STATUSES.filter((s) => !state.hidden.has(s));
-  $('cols').innerHTML = `<span class="lead">Kolom</span>${STATUSES.map((s) => {
+  $('cols').innerHTML = `<span class="lead">Columns</span>${STATUSES.map((s) => {
     const n = shown.filter((t) => t.status === s).length;
     const on = !state.hidden.has(s);
-    return `<button type="button" data-col="${s}" style="--c:${statusColor(s)}" aria-pressed="${on}" title="${on ? 'Sembunyikan' : 'Tampilkan'} kolom ${statusName(s)}">${statusName(s)} <b>${n}</b></button>`;
+    return `<button type="button" data-col="${s}" style="--c:${statusColor(s)}" aria-pressed="${on}" title="${on ? 'Hide' : 'Show'} the ${statusName(s)} column">${statusName(s)} <b>${n}</b></button>`;
   }).join('')}`;
   $('board').style.setProperty('--cols', Math.max(visible.length, 1));
   $('board').classList.toggle('all-hidden', visible.length === 0);
@@ -177,13 +179,13 @@ function drawBoard() {
     const limit = state.expanded.has(s) ? all.length : PAGE;
     const cards = all.slice(0, limit).map((t) => card(t, places[t.id])).join('');
     const note = s === 'todo' && board.hasOrder
-      ? `<a class="note" href="${base}${ORDER}${writeFilter(filter)}" data-order title="Buka order.md: urutan dan alasannya">urut order.md</a>`
+      ? `<a class="note" href="${base}${ORDER}${writeFilter(filter)}" data-order title="Open order.md: the order and the reasons for it">by order.md</a>`
       : '';
-    const more = all.length > limit ? `<button class="more" data-more="${s}">Tampilkan ${all.length - limit} lagi</button>` : '';
+    const more = all.length > limit ? `<button class="more" data-more="${s}">Show ${all.length - limit} more</button>` : '';
     return `<section class="col${s === state.picked ? ' picked' : ''}${state.hidden.has(s) ? ' hidden-col' : ''}" style="--c:${statusColor(s)}" aria-label="${statusName(s)}">
       <header>${statusName(s)} <span class="n">${all.length}</span>${note}</header>
-      <ul class="cards">${cards || '<li class="none">Tidak ada</li>'}</ul>${more}</section>`;
-  }).join('') + '<div class="empty none-visible">Semua kolom disembunyikan. Pilih kolom di atas untuk menampilkannya.</div>';
+      <ul class="cards">${cards || '<li class="none">None</li>'}</ul>${more}</section>`;
+  }).join('') + '<div class="empty none-visible">Every column is hidden. Pick a column above to show it.</div>';
 }
 
 $('cols').addEventListener('click', (e) => {
@@ -254,17 +256,17 @@ async function showOrder({ keepScroll = false } = {}) {
     <div class="top">
       <span class="status-pill" style="--c:${statusColor('todo')}">todo</span>
       <span class="mono">.kerjaan/order.md</span>
-      <button class="close" data-close aria-label="Tutup order.md">Tutup</button>
+      <button class="close" data-close aria-label="Close order.md">Close</button>
     </div>
-    <h2>Urutan pengambilan todo</h2>`;
+    <h2>The order todo is taken in</h2>`;
   let text, shared;
   try {
-    ({ text, shared = [] } = await getJson(`${base}api/urutan`));
+    ({ text, shared = [] } = await getJson(`${base}api/order`));
   } catch (err) {
     if (state.openId !== ORDER) return;
     body.innerHTML = err.status === 404
-      ? '<p class="notice">Papan ini tidak punya order.md.</p>'
-      : '<p class="notice">order.md tidak bisa dibaca sekarang.</p>';
+      ? '<p class="notice">This board has no order.md.</p>'
+      : '<p class="notice">order.md cannot be read right now.</p>';
     return;
   }
   if (state.openId !== ORDER) return;
@@ -286,12 +288,12 @@ function orderHtml(text, shared) {
     if (g.end <= at) continue;
     html += render(lines.slice(at, g.end).join('\n'), opts);
     at = g.end;
-    const md = g.pairs.map((p) => `- ${p.a} dan ${p.b}: ${p.files.map((f) => `\`${f}\``).join(', ')}`);
-    if (g.unestimated.length) md.push('', `Belum ada perkiraan berkas: ${g.unestimated.join(', ')}.`);
-    html += `<aside class="berkas-bersama" aria-label="Berkas yang dibagi di kelompok ini">
-      <p class="judul">Berkas yang dibagi di kelompok ini</p>
+    const md = g.pairs.map((p) => `- ${p.a} and ${p.b}: ${p.files.map((f) => `\`${f}\``).join(', ')}`);
+    if (g.unestimated.length) md.push('', `No file estimate yet: ${g.unestimated.join(', ')}.`);
+    html += `<aside class="shared-files" aria-label="Files shared in this group">
+      <p class="heading">Files shared in this group</p>
       ${render(md.join('\n'), opts)}
-      <p class="asal">Dari perkiraan berkas di tiket. Tiket yang berbagi berkas digabung ke main bergantian.</p>
+      <p class="source">From the file estimates in the tickets. Tickets that share files are merged into main one after another.</p>
     </aside>`;
   }
   return html + render(lines.slice(at).join('\n'), opts);
@@ -305,7 +307,7 @@ const drawerCtx = { lookup, href: ticketHref, statusName, statusColor };
 function showFullTitle() {
   const drawer = $('drawer');
   const h2 = drawer.querySelector('#drawer-head h2');
-  const full = drawer.querySelector('#drawer-body .judul-penuh');
+  const full = drawer.querySelector('#drawer-body .full-title');
   if (!h2 || !full) return;
   const folded = drawer.classList.contains('scrolled');
   drawer.classList.remove('scrolled');
@@ -334,14 +336,14 @@ async function showTicket(id, { keepScroll = false } = {}) {
 
   let files;
   try {
-    files = await getJson(`${base}api/tiket/${id}`);
+    files = await getJson(`${base}api/ticket/${id}`);
   } catch (err) {
     if (state.openId !== id) return;
     drawer.classList.remove('scrolled');
-    $('drawer-head').innerHTML = `<div class="top"><span class="mono">${id}</span><button class="close" data-close>Tutup</button></div>`;
+    $('drawer-head').innerHTML = `<div class="top"><span class="mono">${id}</span><button class="close" data-close>Close</button></div>`;
     body.innerHTML = err.status === 404
-      ? '<p class="notice">Tiket ini tidak ada (lagi) di papan.</p>'
-      : '<p class="notice">Tiket ini tidak bisa dibaca sekarang.</p>';
+      ? '<p class="notice">This ticket is not on the board (any more).</p>'
+      : '<p class="notice">This ticket cannot be read right now.</p>';
     return;
   }
   if (state.openId !== id) return;
@@ -358,7 +360,7 @@ async function showTicket(id, { keepScroll = false } = {}) {
 
 $('drawer').addEventListener('click', (e) => {
   if (e.target.closest('[data-close]')) return close();
-  const a = e.target.closest('a.tiket');
+  const a = e.target.closest('a.ticket');
   if (a && !e.metaKey && !e.ctrlKey && !e.shiftKey) {
     e.preventDefault();
     open(a.dataset.id);
@@ -380,7 +382,7 @@ window.addEventListener('popstate', () => {
 // ---------- agents ----------
 
 // Refills the agent slots on the cards and in the drawer. Run every second, so
-// "12 dtk lalu" counts on and a silent agent turns quiet without any event; a
+// "12 s ago" counts on and a silent agent turns quiet without any event; a
 // slot is only written when what it shows has changed.
 function fill(el, html) {
   if (el && el.dataset.shown !== html) {
@@ -390,22 +392,22 @@ function fill(el, html) {
 }
 function refreshAgents() {
   const now = Date.now();
-  for (const slot of document.querySelectorAll('[data-agen-for]')) {
-    const t = lookup(slot.dataset.agenFor);
+  for (const slot of document.querySelectorAll('[data-agent-for]')) {
+    const t = lookup(slot.dataset.agentFor);
     fill(slot, t?.agent ? agentLine(t.agent, t.status, now) : '');
   }
   const t = state.openId && state.openId !== ORDER ? lookup(state.openId) : null;
   if (!t) return;
   const ctx = { ...drawerCtx, now: () => now };
-  const head = document.querySelector('#drawer-head [data-agen-head]');
-  const body = document.querySelector('#drawer-body [data-agen-body]');
+  const head = document.querySelector('#drawer-head [data-agent-head]');
+  const body = document.querySelector('#drawer-body [data-agent-body]');
   fill(head, agentHeadHtml(t, state.openAgent, ctx));
   fill(body, agentBodyHtml(t, state.openAgent, ctx, { open: state.stepsOpen }));
 }
 setInterval(refreshAgents, 1000);
 
 $('drawer-body').addEventListener('toggle', (e) => {
-  if (e.target.matches?.('details.agen-langkah')) state.stepsOpen = e.target.open;
+  if (e.target.matches?.('details.agent-steps')) state.stepsOpen = e.target.open;
 }, true);
 
 // The server says an agent moved: `data` holds each active ticket's agent,
@@ -423,7 +425,7 @@ async function agentsMoved(data) {
   const mark = (x) => (x ? `${x.lastAt}|${x.ended}|${x.step?.at}` : '');
   if (t && mark(t.agent) !== mark(state.openAgent)) {
     try {
-      const got = await getJson(`${base}api/agen/${id}`);
+      const got = await getJson(`${base}api/agent/${id}`);
       if (state.openId === id) state.openAgent = got.agent;
     } catch {
       // keeps the steps it had
@@ -441,7 +443,7 @@ const switcher = { projects: null };
 const projectHref = (name) => `/${encodeURIComponent(name)}/`;
 
 function drawSwitcher() {
-  const nav = $('proyek-tombol');
+  const nav = $('project-buttons');
   // Until the list is read, or when it cannot be, the bar shows no buttons;
   // the page itself is unaffected.
   const items = switcher.projects ? switchList(switcher.projects, loadArchived(), project) : [];
@@ -453,7 +455,7 @@ function drawSwitcher() {
 // The open project's button is brought into view when the row has scrolled.
 // Asked again once the fonts arrive, since they change every button's width.
 function showCurrent() {
-  const nav = $('proyek-tombol');
+  const nav = $('project-buttons');
   const here = nav.querySelector('[aria-current="page"]');
   if (!here || nav.scrollWidth <= nav.clientWidth) return;
   const left = here.offsetLeft; // the nav is the buttons' offset parent
@@ -468,7 +470,7 @@ document.fonts?.addEventListener('loadingdone', showCurrent);
 
 async function loadProjects() {
   try {
-    switcher.projects = await getJson('/api/proyek');
+    switcher.projects = await getJson('/api/projects');
   } catch {
     // keeps the list it had
   }
@@ -484,7 +486,7 @@ loadProjects();
 
 const source = new EventSource(`${base}events`);
 liveIndicator($('live'), source);
-source.addEventListener('agen', (e) => {
+source.addEventListener('agent', (e) => {
   let data;
   try { data = JSON.parse(e.data); } catch { return; }
   agentsMoved(data);

@@ -50,9 +50,9 @@ function inline(text, opts) {
 
 function ticketLink(id, opts, explicit) {
   const t = opts.ticket?.(id);
-  if (!t) return explicit ? `<span class="missing" title="Tidak ada tiket dengan ID ini di papan">[[${id}]]</span>` : id;
+  if (!t) return explicit ? `<span class="missing" title="No ticket with this ID on the board">[[${id}]]</span>` : id;
   const title = esc(t.title);
-  return `<a class="tiket" data-id="${id}" href="${esc(opts.href ? opts.href(id) : '#' + id)}" title="${title} (${esc(t.status)})">${id}${explicit ? `<span class="t">${title}</span>` : ''}</a>`;
+  return `<a class="ticket" data-id="${id}" href="${esc(opts.href ? opts.href(id) : '#' + id)}" title="${title} (${esc(t.status)})">${id}${explicit ? `<span class="t">${title}</span>` : ''}</a>`;
 }
 
 const ITEM = /^( *)([-*+]|\d+[.)])\s+(.*)$/;
@@ -110,7 +110,7 @@ export function render(md, opts = {}) {
     if (section === 'History' && HISTORY.test(line)) {
       const rows = [];
       while (i < lines.length && HISTORY.test(lines[i])) { rows.push(lines[i].match(HISTORY)); i++; }
-      out.push(`<ul class="riwayat">${rows.map(historyRow).join('')}</ul>`);
+      out.push(`<ul class="history">${rows.map(historyRow).join('')}</ul>`);
       continue;
     }
 
@@ -159,10 +159,10 @@ export function render(md, opts = {}) {
 function historyRow([, time, session, status]) {
   const known = STATUS_WORDS.includes(status);
   const st = `<span class="status${known ? ` s-${status}` : ''}">${esc(status.replace('_', ' '))}</span>`;
-  const sesi = session
-    ? `<code class="sesi" title="Sesi Claude Code yang memindahkan tiket ini. Buka lagi: claude --resume ${esc(session)}">${esc(session)}</code>`
-    : '<span class="sesi kosong"></span>';
-  return `<li><span class="waktu">${esc(time)}</span>${st}${sesi}</li>`;
+  const sessionCell = session
+    ? `<code class="session" title="The Claude Code session that moved this ticket. Open it again: claude --resume ${esc(session)}">${esc(session)}</code>`
+    : '<span class="session blank"></span>';
+  return `<li><span class="time">${esc(time)}</span>${st}${sessionCell}</li>`;
 }
 
 // A list runs until a line that is neither an item nor indented under one.
@@ -201,7 +201,7 @@ function list(lines, start, opts) {
     const text = inline(task ? task[2] : own, opts).replace(/\n/g, ' ');
     if (task) {
       const done = task[1] !== ' ';
-      return `<li class="task${done ? ' done' : ''}"><span class="box" aria-label="${done ? 'tercentang' : 'belum'}">${done ? '✓' : ''}</span><div>${text}${subHtml}</div></li>`;
+      return `<li class="task${done ? ' done' : ''}"><span class="box" aria-label="${done ? 'done' : 'open'}">${done ? '✓' : ''}</span><div>${text}${subHtml}</div></li>`;
     }
     return `<li>${text}${subHtml}</li>`;
   });

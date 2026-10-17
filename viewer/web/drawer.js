@@ -10,11 +10,11 @@
 //
 // A ticket in progress or in review also shows its agent: one line in the
 // fixed head, and its last steps first thing in the scrolling part. Both sit
-// in slots the page refills as the agent works (see agen.js).
+// in slots the page refills as the agent works (see agent.js).
 
 import { esc } from './markdown.js';
-import { pills } from './pil.js';
-import { agentLine, agentSteps, AGENT_STATUSES } from './agen.js';
+import { pills } from './pills.js';
+import { agentLine, agentSteps, AGENT_STATUSES } from './agent.js';
 
 const nowOf = (ctx) => (ctx.now ? ctx.now() : Date.now());
 
@@ -31,21 +31,21 @@ export function drawerHead(t, ctx) {
     <div class="top">
       <span class="status-pill" style="--c:${ctx.statusColor(t.status)}">${ctx.statusName(t.status)}</span>
       <span class="mono">${t.id}</span>
-      <button class="close" data-close aria-label="Tutup tiket">Tutup</button>
+      <button class="close" data-close aria-label="Close ticket">Close</button>
     </div>
-    <h2 class="judul" title="${esc(t.title)}">${esc(t.title)}</h2>
-    <div class="sekilas">
-      <span class="tag${t.type ? ` type-${esc(t.type)}` : ''}" title="Tipe">${esc(t.type) || '—'}</span>
-      ${t.priority ? `<span class="prio ${esc(t.priority)}" title="Prioritas">${esc(t.priority)}</span>` : '<span class="muted" title="Prioritas">—</span>'}
-      <span class="review" title="Tingkat review"><span class="muted">review</span> ${esc(t.review) || '<span class="muted">quick</span>'}</span>
-      ${items.length ? `<span class="kemajuan">${pills(items, { className: 'progress' })}${count}</span>` : ''}
+    <h2 class="title" title="${esc(t.title)}">${esc(t.title)}</h2>
+    <div class="glance">
+      <span class="tag${t.type ? ` type-${esc(t.type)}` : ''}" title="Type">${esc(t.type) || '—'}</span>
+      ${t.priority ? `<span class="prio ${esc(t.priority)}" title="Priority">${esc(t.priority)}</span>` : '<span class="muted" title="Priority">—</span>'}
+      <span class="review" title="Review level"><span class="muted">review</span> ${esc(t.review) || '<span class="muted">quick</span>'}</span>
+      ${items.length ? `<span class="done-when">${pills(items, { className: 'progress' })}${count}</span>` : ''}
     </div>${AGENT_STATUSES.includes(t.status) ? `
-    <div class="agen-baris" data-agen-head>${agentHeadHtml(t, t.agent, ctx)}</div>` : ''}`;
+    <div class="agent-row" data-agent-head>${agentHeadHtml(t, t.agent, ctx)}</div>` : ''}`;
 }
 
 // The agent's last steps, first in the scrolling part; folded unless `open`.
 export function drawerAgent(t, ctx, { open = false } = {}) {
-  return AGENT_STATUSES.includes(t.status) ? `<div class="agen-blok" data-agen-body>${agentBodyHtml(t, t.agent, ctx, { open })}</div>` : '';
+  return AGENT_STATUSES.includes(t.status) ? `<div class="agent-block" data-agent-body>${agentBodyHtml(t, t.agent, ctx, { open })}</div>` : '';
 }
 
 const refLinks = (ids, ctx) =>
@@ -53,8 +53,8 @@ const refLinks = (ids, ctx) =>
     ? ids.map((id) => {
         const t = ctx.lookup(id);
         return t
-          ? `<a class="tiket ref" href="${ctx.href(id)}" data-id="${id}"><span class="mono">${id}</span> <span class="t">${esc(t.title)}</span></a> <span class="muted">· ${ctx.statusName(t.status)}</span>`
-          : `<span class="missing" title="Tidak ada tiket dengan ID ini di papan">${esc(id)}</span>`;
+          ? `<a class="ticket ref" href="${ctx.href(id)}" data-id="${id}"><span class="mono">${id}</span> <span class="t">${esc(t.title)}</span></a> <span class="muted">· ${ctx.statusName(t.status)}</span>`
+          : `<span class="missing" title="No ticket with this ID on the board">${esc(id)}</span>`;
       }).join('<br>')
     : '<span class="muted">—</span>';
 
@@ -63,16 +63,16 @@ const refLinks = (ids, ctx) =>
 export function drawerFacts(t, ctx, { dup = [] } = {}) {
   const pair = (name, value, wide = false) => `<div class="fact${wide ? ' wide' : ''}"><dt>${name}</dt><dd>${value}</dd></div>`;
   return `
-    <p class="judul-penuh" hidden>${esc(t.title)}</p>
+    <p class="full-title" hidden>${esc(t.title)}</p>
     <dl class="facts">
-      ${pair('Label', t.labels.map((l) => `<span class="tag">${esc(l)}</span>`).join(' ') || '—')}
-      ${pair('Pelapor', esc(t.meta.reporter || '') || '—')}
-      ${pair('Dikerjakan', esc(t.meta.assign_to || '') || '—')}
-      ${pair('Dibuat', esc(t.created) || '—')}
-      ${pair('Diubah', esc(t.updated) || '—')}
-      ${pair('Terkait', refLinks(t.related, ctx), true)}
-      ${pair('Menunggu', refLinks(t.blockedBy, ctx), true)}
+      ${pair('Labels', t.labels.map((l) => `<span class="tag">${esc(l)}</span>`).join(' ') || '—')}
+      ${pair('Reporter', esc(t.meta.reporter || '') || '—')}
+      ${pair('Assigned to', esc(t.meta.assign_to || '') || '—')}
+      ${pair('Created', esc(t.created) || '—')}
+      ${pair('Updated', esc(t.updated) || '—')}
+      ${pair('Related', refLinks(t.related, ctx), true)}
+      ${pair('Blocked by', refLinks(t.blockedBy, ctx), true)}
     </dl>
-    ${t.broken ? '<p class="notice">Berkas ini tidak punya frontmatter, jadi tipe, prioritas, dan tanggalnya tidak diketahui.</p>' : ''}
-    ${dup.length > 1 ? `<p class="notice">ID ini dipakai ${dup.length} berkas: ${dup.map((f) => `<code>${esc(f.status)}/${esc(f.file)}</code>`).join(', ')}. Yang ditampilkan berkas pertama.</p>` : ''}`;
+    ${t.broken ? '<p class="notice">This file has no frontmatter, so its type, priority and dates are unknown.</p>' : ''}
+    ${dup.length > 1 ? `<p class="notice">This ID is used by ${dup.length} files: ${dup.map((f) => `<code>${esc(f.status)}/${esc(f.file)}</code>`).join(', ')}. The first one is shown.</p>` : ''}`;
 }

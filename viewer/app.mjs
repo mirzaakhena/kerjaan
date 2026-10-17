@@ -6,15 +6,28 @@
 // listed, a ticket only by an ID found on that board, and a page or asset only
 // by a name in the fixed list below. A crafted address therefore has nothing
 // to point at outside what the scan already found.
+//
+// The addresses:
+//   /                              the front page: every project
+//   /api/projects                  the projects, with their counts per status
+//   /assets/<name>                 a stylesheet or script from ASSETS
+//   /<project>/                    the project's kanban
+//   /<project>/ticket/<id>         the kanban with that ticket open
+//   /<project>/order               the kanban with order.md open
+//   /<project>/api/board           every card, without the tickets' text
+//   /<project>/api/order           order.md, and the files its groups share
+//   /<project>/api/ticket/<id>     one ticket in full
+//   /<project>/api/agent/<id>      the agent on one ticket, with its steps
+//   /<project>/events              live changes (server-sent events)
 
 import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { STATUSES, readBoard, watchBoard, sharedInGroups } from '../skills/kerjaan/scripts/board.mjs';
-import { readAgents, summary, defaultClaudeDir } from './agen.mjs';
-import { AGENT_STATUSES } from './web/agen.js';
-import { unmergedBranches } from './gabung.mjs';
+import { readAgents, summary, defaultClaudeDir } from './agents.mjs';
+import { AGENT_STATUSES } from './web/agent.js';
+import { unmergedBranches } from './unmerged.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const web = path.join(here, 'web');
@@ -23,17 +36,17 @@ const web = path.join(here, 'web');
 const AGENT_POLL = 2000;
 
 const ASSETS = {
-  'gaya.css': 'text/css; charset=utf-8',
-  'beranda.js': 'text/javascript; charset=utf-8',
-  'proyek.js': 'text/javascript; charset=utf-8',
+  'style.css': 'text/css; charset=utf-8',
+  'home.js': 'text/javascript; charset=utf-8',
+  'project.js': 'text/javascript; charset=utf-8',
   'markdown.js': 'text/javascript; charset=utf-8',
-  'saring.js': 'text/javascript; charset=utf-8',
-  'pil.js': 'text/javascript; charset=utf-8',
-  'laci.js': 'text/javascript; charset=utf-8',
-  'agen.js': 'text/javascript; charset=utf-8',
-  'umum.js': 'text/javascript; charset=utf-8',
-  'arsip.js': 'text/javascript; charset=utf-8',
-  'pindah.js': 'text/javascript; charset=utf-8',
+  'filter.js': 'text/javascript; charset=utf-8',
+  'pills.js': 'text/javascript; charset=utf-8',
+  'drawer.js': 'text/javascript; charset=utf-8',
+  'agent.js': 'text/javascript; charset=utf-8',
+  'common.js': 'text/javascript; charset=utf-8',
+  'archive.js': 'text/javascript; charset=utf-8',
+  'switcher.js': 'text/javascript; charset=utf-8',
 };
 
 // Projects are found fresh on every request, so a board created after the
@@ -67,7 +80,7 @@ const page = (res, file) => send(res, 200, 'text/html; charset=utf-8', fs.readFi
 
 function notFound(res, what) {
   const esc = (s) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
-  const html = fs.readFileSync(path.join(web, 'tidak-ada.html'), 'utf8').replace('{{APA}}', esc(what));
+  const html = fs.readFileSync(path.join(web, 'not-found.html'), 'utf8').replace('{{WHAT}}', esc(what));
   send(res, 404, 'text/html; charset=utf-8', html);
 }
 
@@ -95,7 +108,7 @@ const projectDir = (project) => path.dirname(project.board);
 const agentsOf = (project, claudeDir) => readAgents(projectDir(project), { claudeDir, ids: [...activeIds(project).keys()] });
 
 // Branches holding work outside the main line, by the ticket ID they carry:
-// Map<id, branch names[]> (see gabung.mjs). Only done tickets are marked with
+// Map<id, branch names[]> (see unmerged.mjs). Only done tickets are marked with
 // them; a board with none skips git altogether.
 const unmergedFor = (project, tickets) =>
   (tickets.some((t) => t.status === 'done') ? unmergedBranches(projectDir(project), project.board) : Promise.resolve(new Map()));
@@ -173,7 +186,7 @@ export function createViewer({ root, claudeDir = defaultClaudeDir() }) {
         const now = JSON.stringify(agentSummaries(project, claudeDir));
         if (now !== last) {
           last = now;
-          for (const c of clients) c.write(`event: agen\ndata: ${now}\n\n`);
+          for (const c of clients) c.write(`event: agent\ndata: ${now}\n\n`);
         }
         if (checking) return;
         checking = true;
@@ -203,7 +216,7 @@ export function createViewer({ root, claudeDir = defaultClaudeDir() }) {
 
   const server = http.createServer((req, res) => {
     if (req.method !== 'GET' && req.method !== 'HEAD') {
-      send(res, 405, 'text/plain; charset=utf-8', 'Viewer ini hanya membaca.');
+      send(res, 405, 'text/plain; charset=utf-8', 'This viewer only reads.');
       return;
     }
     const url = new URL(req.url, 'http://localhost');
@@ -211,20 +224,20 @@ export function createViewer({ root, claudeDir = defaultClaudeDir() }) {
     try {
       parts = url.pathname.split('/').slice(1).map(decodeURIComponent);
     } catch {
-      notFound(res, 'Alamat ini');
+      notFound(res, 'This address');
       return;
     }
 
-    if (url.pathname === '/') return page(res, 'beranda.html');
-    if (url.pathname === '/api/proyek') {
+    if (url.pathname === '/') return page(res, 'home.html');
+    if (url.pathname === '/api/projects') {
       return json(res, findProjects(root).map((p) => ({ name: p.name, counts: counts(p) })));
     }
-    if (parts[0] === 'aset' && parts.length === 2 && Object.hasOwn(ASSETS, parts[1])) {
+    if (parts[0] === 'assets' && parts.length === 2 && Object.hasOwn(ASSETS, parts[1])) {
       return send(res, 200, ASSETS[parts[1]], fs.readFileSync(path.join(web, parts[1])));
     }
 
     const project = findProjects(root).find((p) => p.name === parts[0]);
-    if (!project) return notFound(res, `Proyek "${parts[0]}"`);
+    if (!project) return notFound(res, `Project "${parts[0]}"`);
     const rest = parts.slice(1);
     const at = rest.join('/');
 
@@ -234,32 +247,32 @@ export function createViewer({ root, claudeDir = defaultClaudeDir() }) {
       res.writeHead(301, { location: url.pathname + '/' });
       return res.end();
     }
-    if (at === '') return page(res, 'proyek.html');
-    if (rest[0] === 'tiket' && rest.length === 2 && /^\d{12}$/.test(rest[1])) return page(res, 'proyek.html');
-    if (at === 'urutan') return page(res, 'proyek.html');
-    if (at === 'api/papan') {
-      boardSummary(project, claudeDir).then((data) => json(res, data), () => send(res, 500, 'text/plain; charset=utf-8', 'Papan tidak bisa dibaca.'));
+    if (at === '') return page(res, 'project.html');
+    if (rest[0] === 'ticket' && rest.length === 2 && /^\d{12}$/.test(rest[1])) return page(res, 'project.html');
+    if (at === 'order') return page(res, 'project.html');
+    if (at === 'api/board') {
+      boardSummary(project, claudeDir).then((data) => json(res, data), () => send(res, 500, 'text/plain; charset=utf-8', 'The board cannot be read.'));
       return;
     }
-    if (at === 'api/urutan') {
+    if (at === 'api/order') {
       const file = path.join(project.board, 'order.md');
-      if (!fs.existsSync(file)) return send(res, 404, 'application/json; charset=utf-8', JSON.stringify({ error: 'tidak ada' }));
+      if (!fs.existsSync(file)) return send(res, 404, 'application/json; charset=utf-8', JSON.stringify({ error: 'not found' }));
       // With the text, the files each group's tickets share by their
       // estimates, read fresh from the tickets on every request.
       const text = fs.readFileSync(file, 'utf8');
       return json(res, { text, shared: sharedInGroups(text, readBoard(project.board).tickets) });
     }
-    if (rest[0] === 'api' && rest[1] === 'tiket' && rest.length === 3 && /^\d{12}$/.test(rest[2])) {
+    if (rest[0] === 'api' && rest[1] === 'ticket' && rest.length === 3 && /^\d{12}$/.test(rest[2])) {
       const ticket = readBoard(project.board).tickets.filter((t) => t.id === rest[2]);
-      if (ticket.length === 0) return send(res, 404, 'application/json; charset=utf-8', JSON.stringify({ error: 'tidak ada' }));
+      if (ticket.length === 0) return send(res, 404, 'application/json; charset=utf-8', JSON.stringify({ error: 'not found' }));
       const a = AGENT_STATUSES.includes(ticket[0].status) && agentsOf(project, claudeDir).get(rest[2]);
       return json(res, a ? [{ ...ticket[0], agent: a }, ...ticket.slice(1)] : ticket);
     }
-    if (rest[0] === 'api' && rest[1] === 'agen' && rest.length === 3 && /^\d{12}$/.test(rest[2])) {
+    if (rest[0] === 'api' && rest[1] === 'agent' && rest.length === 3 && /^\d{12}$/.test(rest[2])) {
       return json(res, { agent: activeIds(project).has(rest[2]) ? agentsOf(project, claudeDir).get(rest[2]) || null : null });
     }
     if (at === 'events') return listen(project, req, res);
-    return notFound(res, 'Halaman ini');
+    return notFound(res, 'This page');
   });
 
   server.on('close', () => {
