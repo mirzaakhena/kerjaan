@@ -540,7 +540,7 @@ case "$dest_status" in
     if [ "$dest_status" != "$current_status" ] && git rev-parse --git-dir > /dev/null 2>&1; then
       # The link between a branch and a ticket is the ID inside the branch
       # name, whatever prefix a project puts in front of it — `kerjaan/<id>`,
-      # `tiket-<id>`, anything. Matching on the ID rather than on a prefix is
+      # `ticket-<id>`, anything. Matching on the ID rather than on a prefix is
       # what lets a project keep the naming it already uses, and an ID is
       # distinctive enough that it cannot match something unrelated.
       branches="$(git for-each-ref --format='%(refname:short)' refs/heads | grep -F "$id" || true)"

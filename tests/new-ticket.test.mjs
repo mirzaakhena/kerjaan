@@ -35,7 +35,7 @@ function create1(root, session, status = 'backlog') {
   const env = { ...process.env };
   if (session === undefined) delete env.CLAUDE_CODE_SESSION_ID;
   else env.CLAUDE_CODE_SESSION_ID = session;
-  const r = spawnSync('bash', [create, status, 'Sebuah tiket'], { cwd: root, encoding: 'utf8', env });
+  const r = spawnSync('bash', [create, status, 'A ticket'], { cwd: root, encoding: 'utf8', env });
   assert.equal(r.status, 0, r.stderr);
   const text = fs.readFileSync(r.stdout.trim(), 'utf8');
   const created = text.match(/^created: (.*)$/m)[1];
@@ -48,7 +48,7 @@ test('inside a Claude Code session the first line is "- <created> <session-id> <
   assert.deepEqual(history, [`- ${created} ${SESSION} todo`]);
 });
 
-for (const [where, session] of [['with no CLAUDE_CODE_SESSION_ID', undefined], ['with it empty', ''], ['with a value that is not one word', 'dua kata']]) {
+for (const [where, session] of [['with no CLAUDE_CODE_SESSION_ID', undefined], ['with it empty', ''], ['with a value that is not one word', 'two words']]) {
   test(`${where} the first line is "- <created> <status>"`, () => {
     const { created, history } = create1(board(), session);
     assert.match(created, new RegExp(`^${TIME}$`));
@@ -72,7 +72,7 @@ function pinnedEnv() {
   return env;
 }
 
-function createPinned(root, title = 'Sebuah tiket', status = 'backlog') {
+function createPinned(root, title = 'A ticket', status = 'backlog') {
   const r = spawnSync('bash', [create, status, title], { cwd: root, encoding: 'utf8', env: pinnedEnv() });
   return { code: r.status, out: r.stdout.trim(), err: r.stderr };
 }
@@ -101,7 +101,7 @@ test('tickets created at the same moment each get their own ID, numbered on from
     const root = board();
     const env = pinnedEnv();
     const n = 8;
-    const runs = await Promise.all(Array.from({ length: n }, (_, i) => createPinnedAsync(root, `Tiket ${i}`, env)));
+    const runs = await Promise.all(Array.from({ length: n }, (_, i) => createPinnedAsync(root, `Ticket ${i}`, env)));
     const made = runs.filter((r) => r.code === 0);
     for (const r of runs.filter((x) => x.code !== 0)) {
       assert.equal(r.code, 1, r.err);
@@ -119,12 +119,12 @@ test('tickets created at the same moment each get their own ID, numbered on from
 
 test('the next number is counted across every status folder, so an ID that moved on is not reused', () => {
   const root = board();
-  placeholder(root, 'done', `${MINUTE}05 Sudah selesai.md`);
+  placeholder(root, 'done', `${MINUTE}05 Already done.md`);
   placeholder(root, 'cancel', `${MINUTE}03 Batal.md`);
-  placeholder(root, 'todo', '261016115999 Menit sebelumnya.md');
+  placeholder(root, 'todo', '261016115999 The minute before.md');
   const r = createPinned(root);
   assert.equal(r.code, 0, r.err);
-  assert.equal(path.basename(r.out), `${MINUTE}06 Sebuah tiket.md`);
+  assert.equal(path.basename(r.out), `${MINUTE}06 A ticket.md`);
 });
 
 test('the 99th ticket of a minute is created; the 100th is refused, with nothing written', () => {
@@ -132,9 +132,9 @@ test('the 99th ticket of a minute is created; the 100th is refused, with nothing
   placeholder(root, 'cancel', `${MINUTE}98 Hampir penuh.md`);
   const ok = createPinned(root);
   assert.equal(ok.code, 0, ok.err);
-  assert.equal(path.basename(ok.out), `${MINUTE}99 Sebuah tiket.md`);
+  assert.equal(path.basename(ok.out), `${MINUTE}99 A ticket.md`);
   const before = allTickets(root).sort();
-  const full = createPinned(root, 'Satu lagi');
+  const full = createPinned(root, 'One more');
   assert.equal(full.code, 1);
   assert.equal(full.out, '');
   assert.match(full.err, new RegExp(`Minute ${MINUTE} already holds 99 tickets`));
@@ -154,7 +154,7 @@ test('a board lock left behind by a process that no longer runs is taken over', 
   fs.writeFileSync(path.join(lock, 'owner'), `${deadPid()}\tupdate-ticket.sh, killed\n`);
   const r = createPinned(root);
   assert.equal(r.code, 0, r.err);
-  assert.equal(path.basename(r.out), `${MINUTE}01 Sebuah tiket.md`);
+  assert.equal(path.basename(r.out), `${MINUTE}01 A ticket.md`);
   assert.match(r.err, /no longer runs; taking it over/);
   assert.equal(fs.existsSync(lock), false);
 });

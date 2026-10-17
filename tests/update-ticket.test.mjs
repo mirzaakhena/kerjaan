@@ -19,10 +19,10 @@ const A = '261016500001';
 
 const gitEnv = {
   ...process.env,
-  GIT_AUTHOR_NAME: 'Uji',
-  GIT_AUTHOR_EMAIL: 'uji@example.com',
-  GIT_COMMITTER_NAME: 'Uji',
-  GIT_COMMITTER_EMAIL: 'uji@example.com',
+  GIT_AUTHOR_NAME: 'Test',
+  GIT_AUTHOR_EMAIL: 'test@example.com',
+  GIT_COMMITTER_NAME: 'Test',
+  GIT_COMMITTER_EMAIL: 'test@example.com',
 };
 
 const ticketText = `---
@@ -39,13 +39,13 @@ blocked_by: []
 ---
 
 ## Background
-Sesuatu.
+Something.
 
 ## Request
-Sesuatu.
+Something.
 
 ## Done when
-- [ ] Butir
+- [ ] An item
 
 ## History
 - 2026-10-16 20:00:00 todo
@@ -68,15 +68,15 @@ function repo() {
     fs.writeFileSync(path.join(root, '.kerjaan', s, '.gitkeep'), '');
   }
   fs.writeFileSync(path.join(root, '.kerjaan', 'settings.md'), `---
-language: Bahasa Indonesia
+language: English
 test_command:
 long_lived_branches: []
 ---
 `);
-  fs.writeFileSync(path.join(root, '.kerjaan', 'todo', `${A} Judul lama.md`), ticketText);
-  fs.writeFileSync(path.join(root, '.kerjaan', 'order.md'), `**Grup satu.**\n- ${A} Judul lama\n`);
+  fs.writeFileSync(path.join(root, '.kerjaan', 'todo', `${A} Old title.md`), ticketText);
+  fs.writeFileSync(path.join(root, '.kerjaan', 'order.md'), `**Group one.**\n- ${A} Old title\n`);
   git(root, 'add', '-A');
-  git(root, 'commit', '-q', '-m', 'awal');
+  git(root, 'commit', '-q', '-m', 'initial');
   return root;
 }
 
@@ -86,7 +86,7 @@ function run(root, ...args) {
 }
 
 // awk -v reads its value as a string literal: `\d` became `d` and `\t` a tab.
-const slashed = String.raw`pola \d+ di C:\temp`;
+const slashed = String.raw`pattern \d+ in C:\temp`;
 
 test('--title: backslashes reach order.md and the file name exactly as given', () => {
   const root = repo();
@@ -94,13 +94,13 @@ test('--title: backslashes reach order.md and the file name exactly as given', (
   assert.equal(r.code, 0, r.err);
   assert.ok(fs.existsSync(path.join(root, '.kerjaan', 'todo', `${A} ${slashed}.md`)));
   const order = fs.readFileSync(path.join(root, '.kerjaan', 'order.md'), 'utf8');
-  assert.equal(order, `**Grup satu.**\n- ${A} ${slashed}\n`);
+  assert.equal(order, `**Group one.**\n- ${A} ${slashed}\n`);
 });
 
 test('a note update-ticket writes into an empty Notes replaces "(none yet)"', () => {
   const root = repo();
   assert.equal(run(root, A, '--accept-size').code, 0);
-  const file = path.join(root, '.kerjaan', 'todo', `${A} Judul lama.md`);
+  const file = path.join(root, '.kerjaan', 'todo', `${A} Old title.md`);
   const notes = fs.readFileSync(file, 'utf8').split('## Notes\n')[1];
   assert.match(notes, /^- [\d-]+ [\d:]+: size accepted by the owner with --accept-size: [^\n]+\n$/);
 });
@@ -131,7 +131,7 @@ test('a move inside a Claude Code session writes "- <time> <session-id> <status>
   const root = repo();
   const r = runWith(root, SESSION, A, '--status', 'backlog');
   assert.equal(r.code, 0, r.err);
-  const lines = historyOf(path.join(root, '.kerjaan', 'backlog', `${A} Judul lama.md`));
+  const lines = historyOf(path.join(root, '.kerjaan', 'backlog', `${A} Old title.md`));
   assert.equal(lines.length, 2, lines.join('\n'));
   assert.equal(lines[0], '- 2026-10-16 20:00:00 todo');
   assert.match(lines[1], new RegExp(`^- ${TIME} ${SESSION} backlog$`));
@@ -142,19 +142,19 @@ for (const [where, session] of [['with no CLAUDE_CODE_SESSION_ID', undefined], [
     const root = repo();
     const r = runWith(root, session, A, '--status', 'backlog');
     assert.equal(r.code, 0, r.err);
-    const lines = historyOf(path.join(root, '.kerjaan', 'backlog', `${A} Judul lama.md`));
+    const lines = historyOf(path.join(root, '.kerjaan', 'backlog', `${A} Old title.md`));
     assert.match(lines[1], new RegExp(`^- ${TIME} backlog$`));
   });
 }
 
 // The status must stay the last word, and the line one record: a value that
 // is not a single plain word is left out rather than written.
-for (const bad of ['dua kata', 'a\tb', 'x\ny', '$(id)', 'a/b']) {
+for (const bad of ['two words', 'a\tb', 'x\ny', '$(id)', 'a/b']) {
   test(`a session value that is not one plain word (${JSON.stringify(bad)}) is left out`, () => {
     const root = repo();
     const r = runWith(root, bad, A, '--status', 'backlog');
     assert.equal(r.code, 0, r.err);
-    const lines = historyOf(path.join(root, '.kerjaan', 'backlog', `${A} Judul lama.md`));
+    const lines = historyOf(path.join(root, '.kerjaan', 'backlog', `${A} Old title.md`));
     assert.equal(lines.length, 2, lines.join('\n'));
     assert.match(lines[1], new RegExp(`^- ${TIME} backlog$`));
   });
@@ -166,7 +166,7 @@ test('each move names the session that made it, next to older lines without one'
   assert.equal(runWith(root, SESSION, A, '--status', 'backlog').code, 0);
   assert.equal(runWith(root, undefined, A, '--status', 'todo').code, 0);
   assert.equal(runWith(root, other, A, '--status', 'cancel').code, 0);
-  const lines = historyOf(path.join(root, '.kerjaan', 'cancel', `${A} Judul lama.md`));
+  const lines = historyOf(path.join(root, '.kerjaan', 'cancel', `${A} Old title.md`));
   assert.equal(lines.length, 4, lines.join('\n'));
   assert.equal(lines[0], '- 2026-10-16 20:00:00 todo');
   assert.match(lines[1], new RegExp(`^- ${TIME} ${SESSION} backlog$`));
@@ -176,8 +176,8 @@ test('each move names the session that made it, next to older lines without one'
 
 test('a rename inside a session adds no History line', () => {
   const root = repo();
-  assert.equal(runWith(root, SESSION, A, '--title', 'Judul baru').code, 0);
-  const lines = historyOf(path.join(root, '.kerjaan', 'todo', `${A} Judul baru.md`));
+  assert.equal(runWith(root, SESSION, A, '--title', 'New title').code, 0);
+  const lines = historyOf(path.join(root, '.kerjaan', 'todo', `${A} New title.md`));
   assert.deepEqual(lines, ['- 2026-10-16 20:00:00 todo']);
 });
 
@@ -190,13 +190,13 @@ const B = '261016500002';
 const orderPath = (root) => path.join(root, '.kerjaan', 'order.md');
 const readOrder = (root) => fs.readFileSync(orderPath(root), 'utf8');
 const writeOrder = (root, text) => fs.writeFileSync(orderPath(root), text);
-const ticketAt = (root, status, title = 'Judul lama') => path.join(root, '.kerjaan', status, `${A} ${title}.md`);
+const ticketAt = (root, status, title = 'Old title') => path.join(root, '.kerjaan', status, `${A} ${title}.md`);
 const moveTo = (root, from, to) => fs.renameSync(ticketAt(root, from), ticketAt(root, to));
 
 for (const dest of ['in_progress', 'review']) {
   test(`starting or reviewing a ticket keeps its line: todo, then ${dest}`, () => {
     const root = repo();
-    const text = `**Goal.** One batch.\n\n**Group one.** The reason.\n<!-- lands-first: ${A}, ${B} -->\n\n- ${A} Judul lama\n- ${B} Other\n`;
+    const text = `**Goal.** One batch.\n\n**Group one.** The reason.\n<!-- lands-first: ${A}, ${B} -->\n\n- ${A} Old title\n- ${B} Other\n`;
     writeOrder(root, text);
     if (dest === 'review') moveTo(root, 'todo', 'in_progress');
     else assert.equal(run(root, A, '--status', dest).code, 0);
@@ -214,7 +214,7 @@ for (const [from, dest] of [
   test(`leaving ${from} for ${dest} drops only this ticket's line; the group keeps the rest`, () => {
     const root = repo();
     if (from !== 'todo') moveTo(root, 'todo', from);
-    writeOrder(root, `**Goal.** One batch.\n\n**Group one.** The reason.\n\n- ${A} Judul lama\n- ${B} Other\n`);
+    writeOrder(root, `**Goal.** One batch.\n\n**Group one.** The reason.\n\n- ${A} Old title\n- ${B} Other\n`);
     const r = run(root, A, '--status', dest);
     assert.equal(r.code, 0, r.err);
     assert.equal(readOrder(root), `**Goal.** One batch.\n\n**Group one.** The reason.\n\n- ${B} Other\n`);
@@ -228,7 +228,7 @@ test('a group left with no ticket goes whole; the goal line and the other groups
     '',
     '**Group one.** The reason.',
     '',
-    `- ${A} Judul lama`,
+    `- ${A} Old title`,
     '',
     '**Group two.** Another reason.',
     '',
@@ -241,10 +241,10 @@ test('a group left with no ticket goes whole; the goal line and the other groups
 
 test('the goal line is never dropped: not when the last group empties, nor when a ticket line sits right under it', () => {
   for (const [before, after] of [
-    [`**Goal.** One batch.\n\n**Group one.**\n\n- ${A} Judul lama\n`, '**Goal.** One batch.\n\n'],
-    [`**Goal.** One batch.\n\n**Group one.**\n- ${A} Judul lama\n`, '**Goal.** One batch.\n\n'],
-    [`**Goal.** One batch.\n- ${A} Judul lama\n\n**Group two.**\n- ${B} Other\n`, `**Goal.** One batch.\n\n**Group two.**\n- ${B} Other\n`],
-    [`**Goal.**\n- ${A} Judul lama\n`, '**Goal.**\n'],
+    [`**Goal.** One batch.\n\n**Group one.**\n\n- ${A} Old title\n`, '**Goal.** One batch.\n\n'],
+    [`**Goal.** One batch.\n\n**Group one.**\n- ${A} Old title\n`, '**Goal.** One batch.\n\n'],
+    [`**Goal.** One batch.\n- ${A} Old title\n\n**Group two.**\n- ${B} Other\n`, `**Goal.** One batch.\n\n**Group two.**\n- ${B} Other\n`],
+    [`**Goal.**\n- ${A} Old title\n`, '**Goal.**\n'],
   ]) {
     const root = repo();
     writeOrder(root, before);
@@ -262,7 +262,7 @@ test('a ticket line with no title is still this ticket\'s line', () => {
 
 test('bold prose that never held a ticket is left for check to report, even when the group beside it empties', () => {
   const root = repo();
-  writeOrder(root, `**A note.** Not a group.\n\n**Group one.**\n- ${A} Judul lama\n\n**Closing.** Not a group either.\n`);
+  writeOrder(root, `**A note.** Not a group.\n\n**Group one.**\n- ${A} Old title\n\n**Closing.** Not a group either.\n`);
   assert.equal(run(root, A, '--status', 'cancel').code, 0);
   assert.equal(readOrder(root), `**A note.** Not a group.\n\n**Closing.** Not a group either.\n`);
 });
@@ -270,7 +270,7 @@ test('bold prose that never held a ticket is left for check to report, even when
 test('a ticket line that only starts with the same digits is not this ticket', () => {
   const root = repo();
   const longer = `${A}9`;
-  writeOrder(root, `**Group one.**\n- ${longer} Similar\n- ${A} Judul lama\n`);
+  writeOrder(root, `**Group one.**\n- ${longer} Similar\n- ${A} Old title\n`);
   assert.equal(run(root, A, '--status', 'backlog').code, 0);
   assert.equal(readOrder(root), `**Group one.**\n- ${longer} Similar\n`);
 });
@@ -286,7 +286,7 @@ for (const [before, after] of [
 ]) {
   test(`finishing takes the ticket off its lands-first line, the rest in order: ${before}`, () => {
     const root = repo();
-    writeOrder(root, `**Group one.** The reason.\n${before}\n\n- ${A} Judul lama\n- ${B} Other\n- ${C} Third\n`);
+    writeOrder(root, `**Group one.** The reason.\n${before}\n\n- ${A} Old title\n- ${B} Other\n- ${C} Third\n`);
     const r = run(root, A, '--status', 'done');
     assert.equal(r.code, 0, r.err);
     assert.equal(readOrder(root), `**Group one.** The reason.\n${after}\n\n- ${B} Other\n- ${C} Third\n`);
@@ -295,16 +295,16 @@ for (const [before, after] of [
 
 test('a lands-first line left naming nobody goes; the group and its lead-in stay', () => {
   const root = repo();
-  writeOrder(root, `**Grup satu.** Alasan.\n<!-- lands-first: ${A} -->\n\n- ${A} Judul lama\n- ${B} Lain\n`);
+  writeOrder(root, `**Group one.** The reason.\n<!-- lands-first: ${A} -->\n\n- ${A} Old title\n- ${B} Another\n`);
   assert.equal(run(root, A, '--status', 'cancel').code, 0);
-  assert.equal(readOrder(root), `**Grup satu.** Alasan.\n\n- ${B} Lain\n`);
+  assert.equal(readOrder(root), `**Group one.** The reason.\n\n- ${B} Another\n`);
 });
 
 test('a group left with no bullets goes with its lands-first line', () => {
   const root = repo();
-  writeOrder(root, `**Grup satu.**\n<!-- lands-first: ${A} -->\n\n- ${A} Judul lama\n\n**Grup dua.**\n\n- ${B} Lain\n`);
+  writeOrder(root, `**Group one.**\n<!-- lands-first: ${A} -->\n\n- ${A} Old title\n\n**Group two.**\n\n- ${B} Another\n`);
   assert.equal(run(root, A, '--status', 'done').code, 0);
-  assert.equal(readOrder(root), `**Grup dua.**\n\n- ${B} Lain\n`);
+  assert.equal(readOrder(root), `**Group two.**\n\n- ${B} Another\n`);
 });
 
 // The wait-for-owner line (261017113002) marks its own group: it stays while
@@ -313,12 +313,12 @@ test('a group left with no bullets goes with its lands-first line', () => {
 const wait = '<!-- wait-for-owner -->';
 test('a wait-for-owner line stays while its group holds a ticket, and goes with the group', () => {
   const root = repo();
-  writeOrder(root, `**Goal.** One batch.\n\n**Group one.** The reason.\n${wait}\n\n- ${A} Judul lama\n- ${B} Other\n`);
+  writeOrder(root, `**Goal.** One batch.\n\n**Group one.** The reason.\n${wait}\n\n- ${A} Old title\n- ${B} Other\n`);
   assert.equal(run(root, A, '--status', 'done').code, 0);
   assert.equal(readOrder(root), `**Goal.** One batch.\n\n**Group one.** The reason.\n${wait}\n\n- ${B} Other\n`);
 
   const root2 = repo();
-  writeOrder(root2, `**Goal.** One batch.\n\n**Group one.** The reason.\n${wait}\n<!-- lands-first: ${A} -->\n\n- ${A} Judul lama\n\n**Group two.**\n\n- ${B} Other\n`);
+  writeOrder(root2, `**Goal.** One batch.\n\n**Group one.** The reason.\n${wait}\n<!-- lands-first: ${A} -->\n\n- ${A} Old title\n\n**Group two.**\n\n- ${B} Other\n`);
   assert.equal(run(root2, A, '--status', 'cancel').code, 0);
   assert.equal(readOrder(root2), `**Goal.** One batch.\n\n**Group two.**\n\n- ${B} Other\n`);
 });
@@ -326,7 +326,7 @@ test('a wait-for-owner line stays while its group holds a ticket, and goes with 
 test('a group emptied before a waiting one leaves the wait-for-owner line where it was, on the group that waits', () => {
   for (const dest of ['done', 'cancel', 'backlog']) {
     const root = repo();
-    writeOrder(root, `**Group one.**\n\n- ${A} Judul lama\n\n**Group two.** Once the owner tried group one.\n${wait}\n\n- ${B} Other\n`);
+    writeOrder(root, `**Group one.**\n\n- ${A} Old title\n\n**Group two.** Once the owner tried group one.\n${wait}\n\n- ${B} Other\n`);
     assert.equal(run(root, A, '--status', dest).code, 0);
     assert.equal(readOrder(root), `**Group two.** Once the owner tried group one.\n${wait}\n\n- ${B} Other\n`, dest);
   }
@@ -340,14 +340,14 @@ test('lands-first lines not naming this ticket, or not in the fixed shape, are l
     `<!-- lands-first: ${A} ${B} -->`,
     `<!-- Lands-First: ${A} -->`,
   ];
-  writeOrder(root, `**Grup satu.**\n${lines.join('\n')}\n\n- ${A} Judul lama\n- ${B} Lain\n- ${C} Ketiga\n`);
+  writeOrder(root, `**Group one.**\n${lines.join('\n')}\n\n- ${A} Old title\n- ${B} Another\n- ${C} Third\n`);
   assert.equal(run(root, A, '--status', 'backlog').code, 0);
-  assert.equal(readOrder(root), `**Grup satu.**\n${lines.join('\n')}\n\n- ${B} Lain\n- ${C} Ketiga\n`);
+  assert.equal(readOrder(root), `**Group one.**\n${lines.join('\n')}\n\n- ${B} Another\n- ${C} Third\n`);
 });
 
 test('a ticket leaving todo without a bullet in order.md is reported, and order.md is left as it was', () => {
   const root = repo();
-  const text = `**Grup satu.**\n- ${B} Lain\n`;
+  const text = `**Group one.**\n- ${B} Another\n`;
   writeOrder(root, text);
   const r = run(root, A, '--status', 'backlog');
   assert.equal(r.code, 0, r.err);
@@ -382,27 +382,27 @@ test('a ticket coming into todo is not added to order.md, and the move says it n
 
 test('renaming a ticket in todo rewrites its bullet only; every other line is kept byte for byte', () => {
   const root = repo();
-  const rest = `**Grup dua.** Alasan\nlain.\n\n- ${B} Judul lama juga\n`;
-  writeOrder(root, `Kepala.\n\n**Grup satu.** Alasan.\n\n- ${A} Judul lama\n\n${rest}`);
-  const r = run(root, A, '--title', 'Judul baru');
+  const rest = `**Group two.** The reason\ngoes on.\n\n- ${B} Old title too\n`;
+  writeOrder(root, `A heading.\n\n**Group one.** The reason.\n\n- ${A} Old title\n\n${rest}`);
+  const r = run(root, A, '--title', 'New title');
   assert.equal(r.code, 0, r.err);
-  assert.ok(fs.existsSync(ticketAt(root, 'todo', 'Judul baru')));
-  assert.equal(readOrder(root), `Kepala.\n\n**Grup satu.** Alasan.\n\n- ${A} Judul baru\n\n${rest}`);
+  assert.ok(fs.existsSync(ticketAt(root, 'todo', 'New title')));
+  assert.equal(readOrder(root), `A heading.\n\n**Group one.** The reason.\n\n- ${A} New title\n\n${rest}`);
 });
 
 test('a title is tidied the same way in the file name and in order.md', () => {
   const root = repo();
-  assert.equal(run(root, A, '--title', ' Judul/dengan   garis\nbaru ').code, 0);
-  assert.ok(fs.existsSync(ticketAt(root, 'todo', 'Judul dengan garis baru')));
-  assert.equal(readOrder(root), `**Grup satu.**\n- ${A} Judul dengan garis baru\n`);
+  assert.equal(run(root, A, '--title', ' Title/with   a\nnewline ').code, 0);
+  assert.ok(fs.existsSync(ticketAt(root, 'todo', 'Title with a newline')));
+  assert.equal(readOrder(root), `**Group one.**\n- ${A} Title with a newline\n`);
 });
 
 test('renaming and leaving todo at once drops the bullet rather than renaming it', () => {
   const root = repo();
-  writeOrder(root, `**Grup satu.**\n- ${A} Judul lama\n- ${B} Lain\n`);
-  assert.equal(run(root, A, '--status', 'backlog', '--title', 'Judul baru').code, 0);
-  assert.ok(fs.existsSync(ticketAt(root, 'backlog', 'Judul baru')));
-  assert.equal(readOrder(root), `**Grup satu.**\n- ${B} Lain\n`);
+  writeOrder(root, `**Group one.**\n- ${A} Old title\n- ${B} Another\n`);
+  assert.equal(run(root, A, '--status', 'backlog', '--title', 'New title').code, 0);
+  assert.ok(fs.existsSync(ticketAt(root, 'backlog', 'New title')));
+  assert.equal(readOrder(root), `**Group one.**\n- ${B} Another\n`);
 });
 
 test('a ticket finishing from in_progress without a line in order.md leaves it as it was, with no note', () => {
@@ -430,7 +430,7 @@ for (const st of ['in_progress', 'review']) {
   test(`renaming a ticket in ${st} rewrites its line too`, () => {
     const root = repo();
     moveTo(root, 'todo', st);
-    writeOrder(root, `**Group one.** The reason.\n\n- ${A} Judul lama\n- ${B} Other\n`);
+    writeOrder(root, `**Group one.** The reason.\n\n- ${A} Old title\n- ${B} Other\n`);
     assert.equal(run(root, A, '--title', 'New title').code, 0);
     assert.ok(fs.existsSync(ticketAt(root, st, 'New title')));
     assert.equal(readOrder(root), `**Group one.** The reason.\n\n- ${A} New title\n- ${B} Other\n`);
@@ -440,9 +440,9 @@ for (const st of ['in_progress', 'review']) {
 test('renaming a ticket outside todo leaves order.md alone', () => {
   const root = repo();
   assert.equal(run(root, A, '--status', 'backlog').code, 0);
-  const text = `**Grup satu.**\n- ${B} Lain\n`;
+  const text = `**Group one.**\n- ${B} Another\n`;
   writeOrder(root, text);
-  assert.equal(run(root, A, '--title', 'Judul baru').code, 0);
+  assert.equal(run(root, A, '--title', 'New title').code, 0);
   assert.equal(readOrder(root), text);
 });
 
@@ -451,14 +451,14 @@ test('renaming a ticket outside todo leaves order.md alone', () => {
 // fenced blocks are prose; a ticket with nowhere to record the move is
 // refused with nothing changed.
 const withSections = (background, history, notes) => ticketText
-  .replace('## Background\nSesuatu.\n', `## Background\n${background}\n`)
+  .replace('## Background\nSomething.\n', `## Background\n${background}\n`)
   .replace('## History\n- 2026-10-16 20:00:00 todo\n\n', history)
   .replace('## Notes\n(none yet)\n', notes);
 
 test('a move lands right after the last History line, and Notes is written back untouched', () => {
   const root = repo();
-  const notes = '## Notes\n- 2026-10-16 20:00:02: catatan yang menyebut\n  - 2026-10-16 20:00:03 backlog\n';
-  fs.writeFileSync(ticketAt(root, 'todo'), withSections('Sesuatu.',
+  const notes = '## Notes\n- 2026-10-16 20:00:02: a note that mentions\n  - 2026-10-16 20:00:03 backlog\n';
+  fs.writeFileSync(ticketAt(root, 'todo'), withSections('Something.',
     '## History\n- 2026-10-16 19:00:00 backlog\n- 2026-10-16 20:00:00 todo\n\n', notes));
   assert.equal(runWith(root, undefined, A, '--status', 'cancel').code, 0);
   const text = fs.readFileSync(ticketAt(root, 'cancel'), 'utf8');
@@ -467,16 +467,16 @@ test('a move lands right after the last History line, and Notes is written back 
 
 test('a ticket from before History existed gets the section, holding this move alone, just before Notes', () => {
   const root = repo();
-  fs.writeFileSync(ticketAt(root, 'todo'), withSections('Sesuatu.', '', '## Notes\n(none yet)\n'));
+  fs.writeFileSync(ticketAt(root, 'todo'), withSections('Something.', '', '## Notes\n(none yet)\n'));
   assert.equal(runWith(root, undefined, A, '--status', 'backlog').code, 0);
   const text = fs.readFileSync(ticketAt(root, 'backlog'), 'utf8');
-  assert.match(text, new RegExp(`- \\[ \\] Butir\\n\\n## History\\n- ${TIME} backlog\\n\\n## Notes\\n\\(none yet\\)\\n$`));
+  assert.match(text, new RegExp(`- \\[ \\] An item\\n\\n## History\\n- ${TIME} backlog\\n\\n## Notes\\n\\(none yet\\)\\n$`));
   assert.equal(text.match(/^## History/gm).length, 1);
 });
 
 test('History and Notes headings inside a fenced block are prose; the move goes into the real History', () => {
   const root = repo();
-  const fenced = '```\n## History\n- contoh\n\n## Notes\n- contoh\n```';
+  const fenced = '```\n## History\n- an example\n\n## Notes\n- an example\n```';
   fs.writeFileSync(ticketAt(root, 'todo'), withSections(fenced, '## History\n- 2026-10-16 20:00:00 todo\n\n', '## Notes\n(none yet)\n'));
   assert.equal(runWith(root, undefined, A, '--status', 'backlog').code, 0);
   const text = fs.readFileSync(ticketAt(root, 'backlog'), 'utf8');
@@ -486,7 +486,7 @@ test('History and Notes headings inside a fenced block are prose; the move goes 
 
 test('a fenced block in Background is no History: without a real one, the section is still added before the real Notes', () => {
   const root = repo();
-  const fenced = '```\n## History\n- contoh\n```';
+  const fenced = '```\n## History\n- an example\n```';
   fs.writeFileSync(ticketAt(root, 'todo'), withSections(fenced, '', '## Notes\n(none yet)\n'));
   assert.equal(runWith(root, undefined, A, '--status', 'backlog').code, 0);
   const text = fs.readFileSync(ticketAt(root, 'backlog'), 'utf8');
@@ -496,7 +496,7 @@ test('a fenced block in Background is no History: without a real one, the sectio
 
 test('a ticket with neither History nor Notes is refused, and nothing changes: file, folder, updated, order.md', () => {
   const root = repo();
-  const bare = withSections('Sesuatu.', '', '');
+  const bare = withSections('Something.', '', '');
   fs.writeFileSync(ticketAt(root, 'todo'), bare);
   const order = readOrder(root);
   const r = run(root, A, '--status', 'backlog');
@@ -519,7 +519,7 @@ test('a refresh, and a move to the status it already has, add no History line', 
 // board may still name `owner_explanation` in settings.md. Both are plain
 // text now: the ticket moves all the way to review like any other, the
 // section comes through byte for byte, and History still lands before Notes.
-const explanation = '## Explanation\n\n```text\nKodenya menambah satu tombol.\n## Notes\n- bukan catatan\n```\n\n';
+const explanation = '## Explanation\n\n```text\nThe code adds one button.\n## Notes\n- not a note\n```\n\n';
 
 for (const [label, section, history] of [
   ['an Explanation section, with History', explanation, '## History\n- 2026-10-16 20:00:00 todo\n\n'],
@@ -529,26 +529,26 @@ for (const [label, section, history] of [
   test(`a ticket with ${label} moves to review on a board still naming owner_explanation: strict`, () => {
     const root = repo();
     fs.writeFileSync(path.join(root, '.kerjaan', 'settings.md'), `---
-language: Bahasa Indonesia
+language: English
 test_command:
 long_lived_branches: []
 owner_explanation: strict
 explanation_translation: true
 ---
 `);
-    fs.writeFileSync(ticketAt(root, 'todo'), withSections('Sesuatu.', section + history, '## Notes\n(none yet)\n'));
+    fs.writeFileSync(ticketAt(root, 'todo'), withSections('Something.', section + history, '## Notes\n(none yet)\n'));
     // Code committed under the ticket's ID: the kind of ticket the old gate
     // stopped, not one it waved through for having nothing to explain.
-    fs.writeFileSync(path.join(root, 'tombol.txt'), 'satu tombol\n');
+    fs.writeFileSync(path.join(root, 'button.txt'), 'one button\n');
     git(root, 'add', '-A');
-    git(root, 'commit', '-q', '-m', `${A}: tiket lama`);
+    git(root, 'commit', '-q', '-m', `${A}: an old ticket`);
     for (const dest of ['in_progress', 'review']) {
       const r = runWith(root, undefined, A, '--status', dest);
       assert.equal(r.code, 0, `${dest}: ${r.err}`);
     }
     const text = fs.readFileSync(ticketAt(root, 'review'), 'utf8');
     const before = history ? '- 2026-10-16 20:00:00 todo\n' : '';
-    assert.ok(text.includes(`- [ ] Butir\n\n${section}## History\n${before}`), text);
+    assert.ok(text.includes(`- [ ] An item\n\n${section}## History\n${before}`), text);
     assert.match(text, new RegExp(`- ${TIME} in_progress\\n- ${TIME} review\\n\\n## Notes\\n\\(none yet\\)\\n$`));
     assert.equal(text.match(/^## History/gm).length, 1);
   });

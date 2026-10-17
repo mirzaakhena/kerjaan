@@ -1,506 +1,506 @@
 {
-  "tanggal": "2026-10-16T23:52:32.009Z",
+  "date": "2026-10-17T14:27:20.647Z",
   "claude": "2.1.302 (Claude Code)",
   "model": [
     "claude-opus-5-5[1m]"
   ],
-  "ulang": 3,
-  "kalimatSha": "c350419c93870cff",
-  "deskripsi": "Ticket tracker made of plain markdown files inside a repo, under a `.kerjaan/` folder whose subfolders (backlog, todo, in_progress, review, done, cancel) are the ticket status. Use this skill for creating tickets, moving them between statuses, editing them, and answering questions about what is planned or in flight. Trigger it whenever the user mentions ticket, backlog, todo, in progress, review, done, cancel, `.kerjaan`, or asks to record, track, or update a bug, feature, idea, or task in a repo — including indirect phrasings with no such word at all, like \"note this down for later\", \"put that on the backlog\", \"not now, maybe later\", \"mark that as done\", \"scrap that one\", \"what are we working on\", or their Indonesian equivalents such as \"catat ini dulu\", \"masukkan ke backlog\", \"tandai sudah selesai\", and \"apa saja yang sedang dikerjakan\". Prefer this skill over writing an ad-hoc TODO list, notes file, or issue text, since those drift away from the agreed format.",
-  "kataDeskripsi": 159,
-  "ringkasan": {
-    "harus": {
-      "jalan": 72,
-      "terpanggil": 71,
-      "kalimatLolos": 24,
-      "kalimat": 24
+  "repeat": 3,
+  "promptsSha": "363f217fec946171",
+  "description": "Ticket board kept as markdown files in a repo's `.kerjaan/` folder; its subfolders (backlog, todo, in_progress, review, done, cancel) are the statuses. Use it to create, move, edit or list tickets, answer what is planned, in flight or in review, start a board, and work the queue through worker and reviewer agents. Where `.kerjaan/` exists, trigger it whenever a request mentions tickets or those statuses, and on indirect asks like \"note this down for later\", \"put that on the backlog\", \"not now, maybe later\", \"mark that as done\", \"what are we working on\", \"work the queue\", \"catat ini dulu\", \"tandai sudah selesai\", \"apa saja yang sedang dikerjakan\", \"kerjakan tiket berikutnya\". Without `.kerjaan/`, review, done or todo alone mean ordinary code work. Prefer it over an ad-hoc TODO list or notes file.",
+  "descriptionWords": 131,
+  "summary": {
+    "should": {
+      "runs": 72,
+      "called": 70,
+      "promptsPassed": 23,
+      "prompts": 24
     },
-    "tidak": {
-      "jalan": 48,
-      "terpanggil": 0,
-      "kalimatLolos": 16,
-      "kalimat": 16
+    "shouldNot": {
+      "runs": 48,
+      "called": 0,
+      "promptsPassed": 16,
+      "prompts": 16
     }
   },
-  "hasil": [
+  "results": [
     {
-      "id": "en-catat",
-      "repo": "papan",
-      "harus": true,
-      "kelompok": "tidak-langsung",
-      "kalimat": "note this down for later: the export button is slow on big files",
-      "jalan": [
+      "id": "note-down",
+      "repo": "board",
+      "should": true,
+      "group": "indirect",
+      "prompt": "note this down for later: the export button is slow on big files",
+      "runs": [
         "skill",
         "skill",
         "skill"
       ]
     },
     {
-      "id": "en-backlog",
-      "repo": "papan",
-      "harus": true,
-      "kelompok": "tidak-langsung",
-      "kalimat": "put that on the backlog: sending notifications through Telegram",
-      "jalan": [
+      "id": "backlog",
+      "repo": "board",
+      "should": true,
+      "group": "indirect",
+      "prompt": "put that on the backlog: sending notifications through Telegram",
+      "runs": [
         "skill",
         "skill",
         "skill"
       ]
     },
     {
-      "id": "en-nanti",
-      "repo": "papan",
-      "harus": true,
-      "kelompok": "tidak-langsung",
-      "kalimat": "not now, maybe later. The dark mode idea can wait.",
-      "jalan": [
+      "id": "maybe-later",
+      "repo": "board",
+      "should": true,
+      "group": "indirect",
+      "prompt": "not now, maybe later. The dark mode idea can wait.",
+      "runs": [
         "skill",
         "skill",
         "skill"
       ]
     },
     {
-      "id": "en-tandai-done",
-      "repo": "papan",
-      "harus": true,
-      "kelompok": "tidak-langsung",
-      "kalimat": "mark the login timeout one as done",
-      "jalan": [
+      "id": "mark-done",
+      "repo": "board",
+      "should": true,
+      "group": "indirect",
+      "prompt": "mark the login timeout one as done",
+      "runs": [
         "skill",
         "skill",
         "skill"
       ]
     },
     {
-      "id": "en-buang",
-      "repo": "papan",
-      "harus": true,
-      "kelompok": "tidak-langsung",
-      "kalimat": "scrap that one, we're not doing the CSV import anymore",
-      "jalan": [
+      "id": "scrap",
+      "repo": "board",
+      "should": true,
+      "group": "indirect",
+      "prompt": "scrap that one, we're not doing the CSV import anymore",
+      "runs": [
         "skill",
         "skill",
         "skill"
       ]
     },
     {
-      "id": "en-sedang",
-      "repo": "papan",
-      "harus": true,
-      "kelompok": "tidak-langsung",
-      "kalimat": "what are we working on right now?",
-      "jalan": [
+      "id": "working-on",
+      "repo": "board",
+      "should": true,
+      "group": "indirect",
+      "prompt": "what are we working on right now?",
+      "runs": [
         "skill",
         "skill",
         "skill"
       ]
     },
     {
-      "id": "en-review-papan",
-      "repo": "papan",
-      "harus": true,
-      "kelompok": "langsung",
-      "kalimat": "what's waiting in review?",
-      "jalan": [
+      "id": "remember",
+      "repo": "board",
+      "should": true,
+      "group": "indirect",
+      "prompt": "remember this for later: exporting large files is slow",
+      "runs": [
         "skill",
         "skill",
         "skill"
       ]
     },
     {
-      "id": "en-tiket-baru",
-      "repo": "papan",
-      "harus": true,
-      "kelompok": "langsung",
-      "kalimat": "create a ticket for the broken pagination on the orders page",
-      "jalan": [
+      "id": "someday",
+      "repo": "board",
+      "should": true,
+      "group": "indirect",
+      "prompt": "Telegram notifications, let's keep that for someday",
+      "runs": [
         "skill",
         "skill",
         "skill"
       ]
     },
     {
-      "id": "en-antrean",
-      "repo": "papan",
-      "harus": true,
-      "kelompok": "antrean",
-      "kalimat": "work the queue",
-      "jalan": [
+      "id": "park",
+      "repo": "board",
+      "should": true,
+      "group": "indirect",
+      "prompt": "park the dark mode idea for now, we'll come back to it",
+      "runs": [
         "skill",
         "skill",
         "skill"
       ]
     },
     {
-      "id": "en-antrean-berikut",
-      "repo": "papan",
-      "harus": true,
-      "kelompok": "antrean",
-      "kalimat": "work the next ticket",
-      "jalan": [
+      "id": "finished",
+      "repo": "board",
+      "should": true,
+      "group": "indirect",
+      "prompt": "the login timeout one is finished",
+      "runs": [
         "skill",
         "skill",
         "skill"
       ]
     },
     {
-      "id": "en-antrean-todo",
-      "repo": "papan",
-      "harus": true,
-      "kelompok": "antrean",
-      "kalimat": "start on whatever is next in todo",
-      "jalan": [
+      "id": "drop",
+      "repo": "board",
+      "should": true,
+      "group": "indirect",
+      "prompt": "forget the CSV import, we're not doing it",
+      "runs": [
         "skill",
         "skill",
         "skill"
       ]
     },
     {
-      "id": "en-antrean-rencana",
-      "repo": "papan",
-      "harus": true,
-      "kelompok": "antrean",
-      "kalimat": "plan what we can work on next from the backlog",
-      "jalan": [
+      "id": "in-flight",
+      "repo": "board",
+      "should": true,
+      "group": "indirect",
+      "prompt": "what's in flight at the moment?",
+      "runs": [
         "skill",
         "skill",
         "skill"
       ]
     },
     {
-      "id": "id-catat",
-      "repo": "papan",
-      "harus": true,
-      "kelompok": "tidak-langsung",
-      "kalimat": "catat ini dulu: tombol ekspor lambat untuk file besar",
-      "jalan": [
+      "id": "waiting-review",
+      "repo": "board",
+      "should": true,
+      "group": "direct",
+      "prompt": "what's waiting in review?",
+      "runs": [
         "skill",
         "skill",
         "skill"
       ]
     },
     {
-      "id": "id-backlog",
-      "repo": "papan",
-      "harus": true,
-      "kelompok": "tidak-langsung",
-      "kalimat": "masukkan ke backlog: notifikasi lewat Telegram",
-      "jalan": [
+      "id": "new-ticket",
+      "repo": "board",
+      "should": true,
+      "group": "direct",
+      "prompt": "create a ticket for the broken pagination on the orders page",
+      "runs": [
         "skill",
         "skill",
         "skill"
       ]
     },
     {
-      "id": "id-nanti",
-      "repo": "papan",
-      "harus": true,
-      "kelompok": "tidak-langsung",
-      "kalimat": "nanti saja, jangan sekarang. Ide mode gelap disimpan dulu.",
-      "jalan": [
+      "id": "still-in-review",
+      "repo": "board",
+      "should": true,
+      "group": "direct",
+      "prompt": "which tickets are still in review?",
+      "runs": [
+        "none",
+        "skill",
+        "none"
+      ]
+    },
+    {
+      "id": "file-bug",
+      "repo": "board",
+      "should": true,
+      "group": "direct",
+      "prompt": "file a bug: the orders page shows up empty",
+      "runs": [
         "skill",
         "skill",
         "skill"
       ]
     },
     {
-      "id": "id-tandai-selesai",
-      "repo": "papan",
-      "harus": true,
-      "kelompok": "tidak-langsung",
-      "kalimat": "tandai yang timeout login sudah selesai",
-      "jalan": [
+      "id": "queue",
+      "repo": "board",
+      "should": true,
+      "group": "queue",
+      "prompt": "work the queue",
+      "runs": [
         "skill",
         "skill",
         "skill"
       ]
     },
     {
-      "id": "id-batal",
-      "repo": "papan",
-      "harus": true,
-      "kelompok": "tidak-langsung",
-      "kalimat": "yang impor CSV tidak jadi, buang saja",
-      "jalan": [
+      "id": "queue-next",
+      "repo": "board",
+      "should": true,
+      "group": "queue",
+      "prompt": "work the next ticket",
+      "runs": [
         "skill",
         "skill",
         "skill"
       ]
     },
     {
-      "id": "id-sedang",
-      "repo": "papan",
-      "harus": true,
-      "kelompok": "tidak-langsung",
-      "kalimat": "apa saja yang sedang dikerjakan?",
-      "jalan": [
+      "id": "queue-todo",
+      "repo": "board",
+      "should": true,
+      "group": "queue",
+      "prompt": "start on whatever is next in todo",
+      "runs": [
         "skill",
         "skill",
         "skill"
       ]
     },
     {
-      "id": "id-review-papan",
-      "repo": "papan",
-      "harus": true,
-      "kelompok": "langsung",
-      "kalimat": "tiket mana yang masih di review?",
-      "jalan": [
-        "skill",
-        "tidak",
-        "skill"
-      ]
-    },
-    {
-      "id": "id-tiket-baru",
-      "repo": "papan",
-      "harus": true,
-      "kelompok": "langsung",
-      "kalimat": "buat tiket untuk bug halaman pesanan kosong",
-      "jalan": [
+      "id": "queue-plan",
+      "repo": "board",
+      "should": true,
+      "group": "queue",
+      "prompt": "plan what we can work on next from the backlog",
+      "runs": [
         "skill",
         "skill",
         "skill"
       ]
     },
     {
-      "id": "id-antrean",
-      "repo": "papan",
-      "harus": true,
-      "kelompok": "antrean",
-      "kalimat": "kerjakan tiket berikutnya",
-      "jalan": [
+      "id": "queue-pick-up",
+      "repo": "board",
+      "should": true,
+      "group": "queue",
+      "prompt": "pick up the next ticket",
+      "runs": [
         "skill",
         "skill",
         "skill"
       ]
     },
     {
-      "id": "id-antrean-habis",
-      "repo": "papan",
-      "harus": true,
-      "kelompok": "antrean",
-      "kalimat": "jalankan antrean todo sampai habis",
-      "jalan": [
+      "id": "queue-until-empty",
+      "repo": "board",
+      "should": true,
+      "group": "queue",
+      "prompt": "keep working through todo until it's empty",
+      "runs": [
         "skill",
         "skill",
         "skill"
       ]
     },
     {
-      "id": "en-papan-baru",
-      "repo": "kosong",
-      "harus": true,
-      "kelompok": "papan-baru",
-      "kalimat": "set up a ticket board in this repo",
-      "jalan": [
+      "id": "new-board",
+      "repo": "empty",
+      "should": true,
+      "group": "new-board",
+      "prompt": "set up a ticket board in this repo",
+      "runs": [
         "skill",
         "skill",
         "skill"
       ]
     },
     {
-      "id": "id-papan-baru",
-      "repo": "kosong",
-      "harus": true,
-      "kelompok": "papan-baru",
-      "kalimat": "aku mau mulai mencatat tiket pekerjaan di repo ini",
-      "jalan": [
+      "id": "start-tracking",
+      "repo": "empty",
+      "should": true,
+      "group": "new-board",
+      "prompt": "I want to start tracking our work as tickets in this repo",
+      "runs": [
         "skill",
         "skill",
         "skill"
       ]
     },
     {
-      "id": "id-review-kode",
-      "repo": "kosong",
-      "harus": false,
-      "kelompok": "review-tanpa-papan",
-      "kalimat": "review kode ini",
-      "jalan": [
-        "skill-lain:code-review",
-        "tidak",
-        "skill-lain:code-review"
+      "id": "review-code",
+      "repo": "empty",
+      "should": false,
+      "group": "review-without-board",
+      "prompt": "review this code",
+      "runs": [
+        "other-skill:code-review",
+        "none",
+        "other-skill:code-review"
       ]
     },
     {
-      "id": "id-sudah-done",
-      "repo": "kosong",
-      "harus": false,
-      "kelompok": "review-tanpa-papan",
-      "kalimat": "sudah done",
-      "jalan": [
-        "tidak",
-        "tidak",
-        "tidak"
+      "id": "done-thanks",
+      "repo": "empty",
+      "should": false,
+      "group": "review-without-board",
+      "prompt": "done, thanks",
+      "runs": [
+        "none",
+        "none",
+        "none"
       ]
     },
     {
-      "id": "en-review-kode",
-      "repo": "kosong",
-      "harus": false,
-      "kelompok": "review-tanpa-papan",
-      "kalimat": "review this code",
-      "jalan": [
-        "skill-lain:code-review",
-        "skill-lain:code-review",
-        "skill-lain:code-review"
+      "id": "todo-comment",
+      "repo": "empty",
+      "should": false,
+      "group": "review-without-board",
+      "prompt": "is the todo comment in main.js still relevant?",
+      "runs": [
+        "none",
+        "none",
+        "none"
       ]
     },
     {
-      "id": "en-done",
-      "repo": "kosong",
-      "harus": false,
-      "kelompok": "review-tanpa-papan",
-      "kalimat": "done, thanks",
-      "jalan": [
-        "tidak",
-        "tidak",
-        "tidak"
+      "id": "can-you-review",
+      "repo": "empty",
+      "should": false,
+      "group": "review-without-board",
+      "prompt": "can you review this?",
+      "runs": [
+        "other-skill:code-review",
+        "other-skill:code-review",
+        "other-skill:code-review"
       ]
     },
     {
-      "id": "id-review-perubahan",
-      "repo": "kosong",
-      "harus": false,
-      "kelompok": "review-tanpa-papan",
-      "kalimat": "tolong review perubahan di main.js sebelum aku commit",
-      "jalan": [
-        "tidak",
-        "tidak",
-        "tidak"
+      "id": "its-done",
+      "repo": "empty",
+      "should": false,
+      "group": "review-without-board",
+      "prompt": "it's done",
+      "runs": [
+        "none",
+        "none",
+        "none"
       ]
     },
     {
-      "id": "en-todo-komentar",
-      "repo": "kosong",
-      "harus": false,
-      "kelompok": "review-tanpa-papan",
-      "kalimat": "is the todo comment in main.js still relevant?",
-      "jalan": [
-        "tidak",
-        "tidak",
-        "tidak"
+      "id": "review-changes",
+      "repo": "empty",
+      "should": false,
+      "group": "review-without-board",
+      "prompt": "please review my changes in main.js before I commit",
+      "runs": [
+        "none",
+        "none",
+        "none"
       ]
     },
     {
-      "id": "id-selesai-lanjut",
-      "repo": "kosong",
-      "harus": false,
-      "kelompok": "kode-biasa",
-      "kalimat": "fungsi rataRata sudah selesai, sekarang tambahkan uji untuknya",
-      "jalan": [
-        "tidak",
-        "tidak",
-        "tidak"
+      "id": "fix-bug",
+      "repo": "empty",
+      "should": false,
+      "group": "plain-code",
+      "prompt": "fix the off-by-one bug in main.js",
+      "runs": [
+        "none",
+        "none",
+        "none"
       ]
     },
     {
-      "id": "en-perbaiki",
-      "repo": "kosong",
-      "harus": false,
-      "kelompok": "kode-biasa",
-      "kalimat": "fix the off-by-one bug in main.js",
-      "jalan": [
-        "tidak",
-        "tidak",
-        "tidak"
+      "id": "commit",
+      "repo": "empty",
+      "should": false,
+      "group": "plain-code",
+      "prompt": "commit these changes with a good message",
+      "runs": [
+        "none",
+        "none",
+        "none"
       ]
     },
     {
-      "id": "id-jelaskan",
-      "repo": "kosong",
-      "harus": false,
-      "kelompok": "kode-biasa",
-      "kalimat": "jelaskan apa yang dilakukan main.js",
-      "jalan": [
-        "tidak",
-        "tidak",
-        "tidak"
+      "id": "done-then-test",
+      "repo": "empty",
+      "should": false,
+      "group": "plain-code",
+      "prompt": "the average function is done, now add a test for it",
+      "runs": [
+        "none",
+        "none",
+        "none"
       ]
     },
     {
-      "id": "en-commit",
-      "repo": "kosong",
-      "harus": false,
-      "kelompok": "kode-biasa",
-      "kalimat": "commit these changes with a good message",
-      "jalan": [
-        "tidak",
-        "tidak",
-        "tidak"
+      "id": "explain",
+      "repo": "empty",
+      "should": false,
+      "group": "plain-code",
+      "prompt": "explain what main.js does",
+      "runs": [
+        "none",
+        "none",
+        "none"
       ]
     },
     {
-      "id": "en-typo-papan",
-      "repo": "papan",
-      "harus": false,
-      "kelompok": "kode-biasa",
-      "kalimat": "fix the typo in README.md",
-      "jalan": [
-        "tidak",
-        "tidak",
-        "tidak"
+      "id": "typo-board",
+      "repo": "board",
+      "should": false,
+      "group": "plain-code",
+      "prompt": "fix the typo in README.md",
+      "runs": [
+        "none",
+        "none",
+        "none"
       ]
     },
     {
-      "id": "id-let-const-papan",
-      "repo": "papan",
-      "harus": false,
-      "kelompok": "kode-biasa",
-      "kalimat": "apa beda let dan const di JavaScript?",
-      "jalan": [
-        "tidak",
-        "tidak",
-        "tidak"
+      "id": "unit-test-board",
+      "repo": "board",
+      "should": false,
+      "group": "plain-code",
+      "prompt": "write a unit test for the add function in main.js",
+      "runs": [
+        "none",
+        "none",
+        "none"
       ]
     },
     {
-      "id": "en-unit-test-papan",
-      "repo": "papan",
-      "harus": false,
-      "kelompok": "kode-biasa",
-      "kalimat": "write a unit test for the add function in main.js",
-      "jalan": [
-        "tidak",
-        "tidak",
-        "tidak"
+      "id": "rebase-board",
+      "repo": "board",
+      "should": false,
+      "group": "plain-code",
+      "prompt": "what does git rebase do?",
+      "runs": [
+        "none",
+        "none",
+        "none"
       ]
     },
     {
-      "id": "id-rapikan-papan",
-      "repo": "papan",
-      "harus": false,
-      "kelompok": "kode-biasa",
-      "kalimat": "rapikan format kode di main.js",
-      "jalan": [
-        "tidak",
-        "tidak",
-        "tidak"
+      "id": "let-const-board",
+      "repo": "board",
+      "should": false,
+      "group": "plain-code",
+      "prompt": "what's the difference between let and const in JavaScript?",
+      "runs": [
+        "none",
+        "none",
+        "none"
       ]
     },
     {
-      "id": "en-rebase-papan",
-      "repo": "papan",
-      "harus": false,
-      "kelompok": "kode-biasa",
-      "kalimat": "what does git rebase do?",
-      "jalan": [
-        "tidak",
-        "tidak",
-        "tidak"
+      "id": "tidy-board",
+      "repo": "board",
+      "should": false,
+      "group": "plain-code",
+      "prompt": "tidy up the formatting in main.js",
+      "runs": [
+        "none",
+        "none",
+        "none"
       ]
     },
     {
-      "id": "id-skrip-papan",
-      "repo": "papan",
-      "harus": false,
-      "kelompok": "kode-biasa",
-      "kalimat": "buatkan skrip bash untuk backup folder data",
-      "jalan": [
-        "tidak",
-        "tidak",
-        "tidak"
+      "id": "backup-script-board",
+      "repo": "board",
+      "should": false,
+      "group": "plain-code",
+      "prompt": "write a bash script that backs up the data folder",
+      "runs": [
+        "none",
+        "none",
+        "none"
       ]
     }
   ]

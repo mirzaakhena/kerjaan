@@ -39,8 +39,8 @@ function says(files, terms, what) {
   assert.ok(hit, `${what}: no paragraph in ${files.join(', ')} holds all of ${terms.join(' ')}`);
 }
 
-test('docs: work without a ticket ("langsung saja") still goes to a worker, and always to a reviewer', () => {
-  says(skillDocs, [/langsung saja/, /worker/, /reviewer/], 'the skill');
+test('docs: work without a ticket ("just do it") still goes to a worker, and always to a reviewer', () => {
+  says(skillDocs, [/just do it/, /worker/, /reviewer/], 'the skill');
   says(skillDocs, [/without a ticket|skip the ticket/i, /reviewer/, /always/], 'the foreman');
   says(worker, [/No ticket/, /reviewer/, /report/], 'the worker records its work for the reviewer');
   says(reviewer, [/No ticket/, /request/], 'the reviewer has a path without a ticket');

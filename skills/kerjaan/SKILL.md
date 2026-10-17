@@ -1,6 +1,6 @@
 ---
 name: kerjaan
-description: Ticket board kept as markdown files in a repo's `.kerjaan/` folder; its subfolders (backlog, todo, in_progress, review, done, cancel) are the statuses. Use it to create, move, edit or list tickets, answer what is planned, in flight or in review, start a board, and work the queue through worker and reviewer agents. Where `.kerjaan/` exists, trigger it whenever a request mentions tickets or those statuses, and on indirect asks like "note this down for later", "put that on the backlog", "not now, maybe later", "mark that as done", "what are we working on", "work the queue", "catat ini dulu", "tandai sudah selesai", "apa saja yang sedang dikerjakan", "kerjakan tiket berikutnya". Without `.kerjaan/`, review, done or todo alone mean ordinary code work. Prefer it over an ad-hoc TODO list or notes file.
+description: Ticket board kept as markdown files in a repo's `.kerjaan/` folder; its subfolders (backlog, todo, in_progress, review, done, cancel) are the statuses. Use it to create, move, edit or list tickets, answer what is planned, in flight or in review, start a board, and work the queue through worker and reviewer agents. Where `.kerjaan/` exists, trigger it whenever a request mentions tickets or those statuses, and on indirect asks like "note this down for later", "put that on the backlog", "not now, maybe later", "mark that as done", "what are we working on", "what is in review", "work the queue". Without `.kerjaan/`, review, done or todo alone mean ordinary code work. Prefer it over an ad-hoc TODO list or notes file.
 ---
 
 # kerjaan
@@ -28,7 +28,7 @@ Everything else lives in a guide. Read the guide before the step, not after:
 
 | When | Read |
 |---|---|
-| Any ticket is about to be worked on (one or a whole `todo`), the owner asks what can be worked on, a worker or reviewer reports, the owner says "mark it done" or "langsung saja", the board goes quiet | `references/foreman.md` |
+| Any ticket is about to be worked on (one or a whole `todo`), the owner asks what can be worked on, a worker or reviewer reports, the owner says "mark it done" or "just do it", the board goes quiet | `references/foreman.md` |
 | Writing or editing `order.md` | `references/ordering-the-queue.md` |
 | Two tickets are going to run side by side (`worktree.sh`, `merge.sh`) | `references/parallel-work.md` |
 | A review level is worth a thought, a ticket comes back from review, reviewers left follow-ups | `references/review.md` |
@@ -185,7 +185,7 @@ technical team understands without follow-up questions.
 **Work starts from a ticket.** When the user asks for work on a repo that has
 a board and no ticket covers it, search, create it, and show the user its
 `Request` and `Done when` before any code is touched; start once they agree or
-correct it. When the user says "no ticket for this" or "langsung saja", that
+correct it. When the user says "no ticket for this" or "just do it", that
 skips the ticket, not the worker, and a `kerjaan-reviewer` always checks the
 work (`references/foreman.md`, "Work without a ticket").
 
@@ -340,8 +340,8 @@ that made the move, its subagents included: `claude --resume <session-id>`,
 from the folder that session started in. Old transcripts are deleted (after 30
 days by default); then say so, and fall back on `## Notes` and git.
 
-**The viewer.** When the user asks to see the board in a browser ("tampilkan
-papannya"), start it in the background and hand over the address it prints;
+**The viewer.** When the user asks to see the board in a browser ("show me
+the board"), start it in the background and hand over the address it prints;
 it writes nothing. For a phone on the same Wi-Fi, add `--lan`; hand over
 its network address and warning. If the port is in use, one is already
 running: hand over `http://127.0.0.1:4321/<repo folder name>/` instead.

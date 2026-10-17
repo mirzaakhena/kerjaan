@@ -32,10 +32,10 @@ const Y = '261016700002';
 const Z = '261016700003';
 
 const gitEnv = {
-  GIT_AUTHOR_NAME: 'Uji',
-  GIT_AUTHOR_EMAIL: 'uji@example.com',
-  GIT_COMMITTER_NAME: 'Uji',
-  GIT_COMMITTER_EMAIL: 'uji@example.com',
+  GIT_AUTHOR_NAME: 'Test',
+  GIT_AUTHOR_EMAIL: 'test@example.com',
+  GIT_COMMITTER_NAME: 'Test',
+  GIT_COMMITTER_EMAIL: 'test@example.com',
 };
 
 const sleep = (ms) => new Promise((res) => setTimeout(res, ms));
@@ -55,13 +55,13 @@ blocked_by: []
 ---
 
 ## Background
-Sesuatu.
+Something.
 
 ## Request
-Sesuatu.
+Something.
 
 ## Done when
-- [ ] Butir
+- [ ] An item
 
 ## History
 - 2026-10-16 20:00:00 ${status}
@@ -77,39 +77,39 @@ function git(cwd, ...args) {
   return r.stdout;
 }
 
-const ORDER = `**Grup satu: ${X} dan ${Y} berjalan berdampingan.**
-- ${X} Tiket x
-- ${Y} Tiket y
+const ORDER = `**Group one: ${X} and ${Y} run side by side.**
+- ${X} Ticket x
+- ${Y} Ticket y
 
-**Grup dua.**
-- ${Z} Tiket z
+**Group two.**
+- ${Z} Ticket z
 `;
 
 // X, Y and Z in todo, listed in order.md; `extra` lines go into settings.md.
 function repo({ testCommand = '', extra = '', status = 'todo' } = {}) {
-  const base = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'kerjaan-kunci-')));
+  const base = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'kerjaan-lock-')));
   const root = path.join(base, 'repo');
-  const outside = path.join(base, 'luar');
+  const outside = path.join(base, 'outside');
   fs.mkdirSync(outside);
   const k = path.join(root, '.kerjaan');
   for (const s of ['backlog', 'todo', 'in_progress', 'review', 'done', 'cancel']) {
     fs.mkdirSync(path.join(k, s), { recursive: true });
   }
   fs.writeFileSync(path.join(k, 'settings.md'), `---
-language: Bahasa Indonesia
+language: English
 test_command: ${testCommand}
 long_lived_branches: []
 ${extra}---
 `);
-  fs.writeFileSync(path.join(k, status, `${X} Tiket x.md`), ticket(status));
-  fs.writeFileSync(path.join(k, status, `${Y} Tiket y.md`), ticket(status));
-  fs.writeFileSync(path.join(k, 'todo', `${Z} Tiket z.md`), ticket('todo'));
+  fs.writeFileSync(path.join(k, status, `${X} Ticket x.md`), ticket(status));
+  fs.writeFileSync(path.join(k, status, `${Y} Ticket y.md`), ticket(status));
+  fs.writeFileSync(path.join(k, 'todo', `${Z} Ticket z.md`), ticket('todo'));
   if (status === 'todo') fs.writeFileSync(path.join(k, 'order.md'), ORDER);
-  fs.writeFileSync(path.join(root, 'kode.txt'), 'kode\n');
+  fs.writeFileSync(path.join(root, 'code.txt'), 'code\n');
   git(root, 'init', '-q');
   git(root, 'checkout', '-q', '-b', 'main');
   git(root, 'add', '-A');
-  git(root, 'commit', '-q', '-m', 'awal');
+  git(root, 'commit', '-q', '-m', 'initial');
   return { base, root, outside, k };
 }
 
@@ -148,7 +148,7 @@ const lockDir = (r, name) => path.join(r.root, '.git', 'kerjaan-locks', `${name}
 
 // Holds <name> the way another live process would — this test's own process,
 // so the PID check finds it alive — until the returned function is called.
-function hold(r, name, who = 'uji yang memegang kunci') {
+function hold(r, name, who = 'the test holding the lock') {
   const lock = lockDir(r, name);
   fs.mkdirSync(lock, { recursive: true });
   fs.writeFileSync(lock + '/owner', `${process.pid}\t${who}\n`);
@@ -182,12 +182,12 @@ test('two tickets of one group finished at the same moment, again and again, bot
     for (const res of both) assert.equal(res.code, 0, res.err);
     assert.equal(statusOf(r, X), 'done');
     assert.equal(statusOf(r, Y), 'done');
-    assert.equal(order(r), `**Grup dua.**\n- ${Z} Tiket z\n`, `round ${round}`);
+    assert.equal(order(r), `**Group two.**\n- ${Z} Ticket z\n`, `round ${round}`);
     for (const id of [X, Y]) assert.match(read(r, id), /\n- [\d-]+ [\d:]+ (\S+ )?done\n/);
   }
 });
 
-test('pindah status menunggu kunci papan: selama dipegang, tiket dan order.md belum berubah', async () => {
+test('a status move waits for the board lock: while it is held, the ticket and order.md stay as they were', async () => {
   const r = repo();
   const before = { ticket: read(r, X), order: order(r) };
   const { seen, res } = await whileHeld(r, 'board',
@@ -195,13 +195,13 @@ test('pindah status menunggu kunci papan: selama dipegang, tiket dan order.md be
     () => ({ status: statusOf(r, X), ticket: read(r, X), order: order(r) }));
   assert.deepEqual(seen, { done: false, status: 'todo', ...before });
   assert.equal(res.code, 0, res.err);
-  assert.match(res.err, /Waiting for the board lock, held by uji yang memegang kunci/);
+  assert.match(res.err, /Waiting for the board lock, held by the test holding the lock/);
   assert.equal(statusOf(r, X), 'cancel');
   assert.doesNotMatch(order(r), new RegExp(`^- ${X} `, 'm'));
 });
 
-test('mengganti judul dan menyegarkan updated juga menunggu kunci papan', async () => {
-  for (const args of [[X, '--title', 'Judul baru'], [X]]) {
+test('renaming a ticket and refreshing updated wait for the board lock too', async () => {
+  for (const args of [[X, '--title', 'New title'], [X]]) {
     const r = repo();
     const before = read(r, X);
     const { seen, res } = await whileHeld(r, 'board',
@@ -213,10 +213,10 @@ test('mengganti judul dan menyegarkan updated juga menunggu kunci papan', async 
 });
 
 for (const [cmd, args, record] of [
-  ['estimate', [X, 'kode.txt'], /files estimated to change: `kode.txt`/],
-  ['ask', [X, 'Pertanyaan?'], /open question: Pertanyaan\?/],
+  ['estimate', [X, 'code.txt'], /files estimated to change: `code.txt`/],
+  ['ask', [X, 'A question?'], /open question: A question\?/],
 ]) {
-  test(`queue.sh ${cmd} menunggu kunci papan sebelum menulis tiket`, async () => {
+  test(`queue.sh ${cmd} waits for the board lock before writing the ticket`, async () => {
     const r = repo();
     const { seen, res } = await whileHeld(r, 'board',
       () => runAsync(queue, r.root, [cmd, ...args]),
@@ -227,15 +227,15 @@ for (const [cmd, args, record] of [
   });
 }
 
-test('queue.sh answer menunggu kunci papan sebelum menulis tiket', async () => {
+test('queue.sh answer waits for the board lock before writing the ticket', async () => {
   const r = repo();
-  assert.equal(run(queue, r.root, ['ask', X, 'Pertanyaan?']).code, 0);
+  assert.equal(run(queue, r.root, ['ask', X, 'A question?']).code, 0);
   const { seen, res } = await whileHeld(r, 'board',
-    () => runAsync(queue, r.root, ['answer', X, '1', 'Jawaban']),
-    () => ({ written: /answer, .*: Jawaban/.test(read(r, X)) }));
+    () => runAsync(queue, r.root, ['answer', X, '1', 'The answer']),
+    () => ({ written: /answer, .*: The answer/.test(read(r, X)) }));
   assert.deepEqual(seen, { done: false, written: false });
   assert.equal(res.code, 0, res.err);
-  assert.match(read(r, X), /answered question: Pertanyaan\?\n {2}answer, [\d-]+ [\d:]+: Jawaban/);
+  assert.match(read(r, X), /answered question: A question\?\n {2}answer, [\d-]+ [\d:]+: The answer/);
 });
 
 // ---------------------------------------------------------------------------
@@ -245,10 +245,10 @@ test('queue.sh answer menunggu kunci papan sebelum menulis tiket', async () => {
 // the two runs record their results at the same moment.
 function barrier(r) {
   const o = JSON.stringify(r.outside);
-  return `touch ${o}/mulai-$KERJAAN_TICKET; while [ ! -e ${o}/mulai-${X} ] || [ ! -e ${o}/mulai-${Y} ]; do sleep 0.05; done`;
+  return `touch ${o}/started-$KERJAAN_TICKET; while [ ! -e ${o}/started-${X} ] || [ ! -e ${o}/started-${Y} ]; do sleep 0.05; done`;
 }
 
-test('hasil uji dua worktree yang selesai bersamaan sama-sama tercatat di tiketnya masing-masing', async () => {
+test('the results of two worktrees finishing at the same moment are each recorded in their own ticket', async () => {
   const r = repo({ status: 'in_progress', extra: 'parallel_tests: true\n' });
   fs.writeFileSync(path.join(r.k, 'settings.md'),
     fs.readFileSync(path.join(r.k, 'settings.md'), 'utf8').replace('test_command: ', `test_command: ${barrier(r)}`));
@@ -257,7 +257,7 @@ test('hasil uji dua worktree yang selesai bersamaan sama-sama tercatat di tiketn
   assert.equal(run(worktreeSh, r.root, ['add', X, wx]).code, 0);
   assert.equal(run(worktreeSh, r.root, ['add', Y, wy]).code, 0);
   for (let round = 1; round <= 3; round++) {
-    for (const id of [X, Y]) fs.rmSync(path.join(r.outside, `mulai-${id}`), { force: true });
+    for (const id of [X, Y]) fs.rmSync(path.join(r.outside, `started-${id}`), { force: true });
     const both = await Promise.all([runAsync(testRun, wx, [X]), runAsync(testRun, wy, [Y])]);
     for (const res of both) assert.equal(res.code, 0, res.err);
     for (const id of [X, Y]) {
@@ -267,22 +267,22 @@ test('hasil uji dua worktree yang selesai bersamaan sama-sama tercatat di tiketn
   }
 });
 
-test('hasil uji dari worktree tetap tercatat saat tiket yang sama dipindah dari main tree pada saat itu', async () => {
+test('a worktree\'s test result is still recorded while the same ticket is moved from the main tree at that moment', async () => {
   const r = repo({ status: 'in_progress', extra: 'parallel_tests: true\n' });
   const o = JSON.stringify(r.outside);
   fs.writeFileSync(path.join(r.k, 'settings.md'),
     fs.readFileSync(path.join(r.k, 'settings.md'), 'utf8')
-      .replace('test_command: ', `test_command: touch ${o}/mulai; while [ ! -e ${o}/lanjut ]; do sleep 0.05; done`));
+      .replace('test_command: ', `test_command: touch ${o}/started; while [ ! -e ${o}/go-on ]; do sleep 0.05; done`));
   const wx = path.join(r.base, 'wt-x');
   assert.equal(run(worktreeSh, r.root, ['add', X, wx]).code, 0);
   const t0 = Date.now();
   const testing = runAsync(testRun, wx, [X]);
-  while (!fs.existsSync(path.join(r.outside, 'mulai'))) {
+  while (!fs.existsSync(path.join(r.outside, 'started'))) {
     assert.ok(Date.now() - t0 < 15000, 'the test run never started');
     await sleep(20);
   }
   // The run finishes while the foreman keeps refreshing the same ticket.
-  fs.writeFileSync(path.join(r.outside, 'lanjut'), '');
+  fs.writeFileSync(path.join(r.outside, 'go-on'), '');
   const refreshes = [];
   for (let i = 0; i < 6; i++) refreshes.push(runAsync(update, r.root, [X]));
   const [res, ...others] = await Promise.all([testing, ...refreshes]);
@@ -291,21 +291,21 @@ test('hasil uji dari worktree tetap tercatat saat tiket yang sama dipindah dari 
   assert.match(read(r, X), /: test run — .* exited 0 /);
 });
 
-test('hasil uji menunggu kunci papan sebelum ditulis ke tiket', async () => {
+test('a test result waits for the board lock before it is written to the ticket', async () => {
   const r = repo({ status: 'in_progress', testCommand: 'true' });
   const { seen, res } = await whileHeld(r, 'board',
     () => runAsync(testRun, r.root, [X]),
     () => ({ written: /test run — /.test(read(r, X)) }), 2500);
   assert.deepEqual(seen, { done: false, written: false });
   assert.equal(res.code, 0, res.err);
-  assert.match(res.err, /Waiting for the board lock, held by uji yang memegang kunci/);
+  assert.match(res.err, /Waiting for the board lock, held by the test holding the lock/);
   assert.match(read(r, X), /: test run — `true` exited 0 /);
   assert.equal(fs.existsSync(lockDir(r, 'board')), false, 'the board lock is released after the run');
 });
 
 // test-run.sh holds the board lock and runs update-ticket.sh, which takes it
 // too: the child shares its parent's hold rather than waiting for itself.
-test('update-ticket.sh yang dijalankan test-run.sh tidak menunggu kunci yang dipegang test-run.sh sendiri', () => {
+test('update-ticket.sh run by test-run.sh does not wait for the lock test-run.sh itself holds', () => {
   const r = repo({ status: 'in_progress', testCommand: 'true', extra: 'lock_timeout: 2\n' });
   const t0 = Date.now();
   const res = run(testRun, r.root, [X]);
@@ -319,7 +319,7 @@ test('update-ticket.sh yang dijalankan test-run.sh tidak menunggu kunci yang dip
 // ---------------------------------------------------------------------------
 // Waits that run out
 
-test('kunci papan yang ditunggu melewati lock_timeout: berhenti dengan pesan yang menyebut pemegangnya, tanpa mengubah apa pun', () => {
+test('a wait for the board lock past lock_timeout stops with a message naming the holder, and changes nothing', () => {
   const r = repo({ extra: 'lock_timeout: 1\n' });
   const before = { ticket: read(r, X), order: order(r) };
   const release = hold(r, 'board', 'update-ticket.sh 261016709999 --status review, process 4242');
@@ -339,17 +339,17 @@ test('kunci papan yang ditunggu melewati lock_timeout: berhenti dengan pesan yan
   }
 });
 
-test('kunci uji yang ditunggu melewati test_lock_timeout: berhenti dengan pesan yang menyebut pemegangnya, uji tidak dijalankan', () => {
-  const marker = (r) => path.join(r.outside, 'jalan');
+test('a wait for the tests lock past test_lock_timeout stops with a message naming the holder, and the tests do not run', () => {
+  const marker = (r) => path.join(r.outside, 'ran');
   const r = repo({ status: 'in_progress', extra: 'test_lock_timeout: 1\n' });
   fs.writeFileSync(path.join(r.k, 'settings.md'),
     fs.readFileSync(path.join(r.k, 'settings.md'), 'utf8').replace('test_command: ', `test_command: touch ${JSON.stringify(marker(r))}`));
   const before = read(r, X);
-  const release = hold(r, 'tests', 'ticket 261016709999, slot 2, /tempat/lain');
+  const release = hold(r, 'tests', 'ticket 261016709999, slot 2, /some/where/else');
   try {
     const res = run(testRun, r.root, [X]);
     assert.equal(res.code, 2, res.err);
-    assert.match(res.err, /Gave up waiting for the tests lock after 1s\. It is held by ticket 261016709999, slot 2, \/tempat\/lain/);
+    assert.match(res.err, /Gave up waiting for the tests lock after 1s\. It is held by ticket 261016709999, slot 2, \/some\/where\/else/);
     assert.match(res.err, /test_lock_timeout in .*settings\.md/);
     assert.equal(fs.existsSync(marker(r)), false, 'the test command ran without the lock');
     assert.equal(read(r, X), before);
@@ -359,7 +359,7 @@ test('kunci uji yang ditunggu melewati test_lock_timeout: berhenti dengan pesan 
   }
 });
 
-test('kunci papan yang ditunggu test-run.sh melewati lock_timeout: hasilnya tetap tampil di layar, tidak tercatat', () => {
+test('a wait by test-run.sh for the board lock past lock_timeout: the result is still shown on screen, not recorded', () => {
   const r = repo({ status: 'in_progress', testCommand: 'true', extra: 'lock_timeout: 1\n' });
   const before = read(r, X);
   const release = hold(r, 'board', 'queue.sh answer 261016709999');
@@ -379,7 +379,7 @@ test('kunci papan yang ditunggu test-run.sh melewati lock_timeout: hasilnya teta
 
 // A child shares a hold only when the lock it inherited is still owned by the
 // process it names; a stale or foreign entry makes it wait like anyone else.
-test('KERJAAN_HELD_LOCKS hanya berlaku bila kunci itu masih dipegang proses yang disebutnya', () => {
+test('KERJAAN_HELD_LOCKS counts only while the lock is still held by the process it names', () => {
   const r = repo({ extra: 'lock_timeout: 1\n' });
   const release = hold(r, 'board');
   const lock = fs.realpathSync(lockDir(r, 'board'));
@@ -401,7 +401,7 @@ test('KERJAAN_HELD_LOCKS hanya berlaku bila kunci itu masih dipegang proses yang
 // The limits are settings, and their defaults are the ones the guide states
 
 function timeoutOf(settingsBody, key, dflt) {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'kerjaan-batas-'));
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'kerjaan-limit-'));
   fs.writeFileSync(path.join(dir, 'settings.md'), `---\n${settingsBody}---\n`);
   const r = spawnSync('bash', ['-c', `. "$1"; kerjaan_lock_timeout "$2" "$3" "$4"`, '_', lib, dir, key, dflt],
     { encoding: 'utf8' });
@@ -418,13 +418,13 @@ const defaults = () => {
   };
 };
 
-test('batas waktu kunci dibaca dari settings.md, dan nilai bawaannya yang dipakai skrip tertulis di SETTINGS.md', () => {
+test('the lock time limits are read from settings.md, and the defaults the scripts use are written in SETTINGS.md', () => {
   const d = defaults();
   assert.deepEqual(d, { lock_timeout: '120', test_lock_timeout: '3600' });
   for (const key of ['lock_timeout', 'test_lock_timeout']) {
     assert.equal(timeoutOf('', key, d[key]), d[key]);
     assert.equal(timeoutOf(`${key}:\n`, key, d[key]), d[key]);
-    assert.equal(timeoutOf(`${key}: lama\n`, key, d[key]), d[key]);
+    assert.equal(timeoutOf(`${key}: long\n`, key, d[key]), d[key]);
     assert.equal(timeoutOf(`${key}: 45\n`, key, d[key]), '45');
     assert.equal(timeoutOf(`${key}: 0\n`, key, d[key]), '0');
   }

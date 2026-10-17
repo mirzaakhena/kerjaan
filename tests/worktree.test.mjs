@@ -24,10 +24,10 @@ const A = '261016200001';
 const B = '261016200002';
 
 const gitEnv = {
-  GIT_AUTHOR_NAME: 'Uji',
-  GIT_AUTHOR_EMAIL: 'uji@example.com',
-  GIT_COMMITTER_NAME: 'Uji',
-  GIT_COMMITTER_EMAIL: 'uji@example.com',
+  GIT_AUTHOR_NAME: 'Test',
+  GIT_AUTHOR_EMAIL: 'test@example.com',
+  GIT_COMMITTER_NAME: 'Test',
+  GIT_COMMITTER_EMAIL: 'test@example.com',
   KERJAAN_LOCK_POLL: '0.2',
 };
 
@@ -46,13 +46,13 @@ blocked_by: []
 ---
 
 ## Background
-Sesuatu.
+Something.
 
 ## Request
 ${title}.
 
 ## Done when
-- [ ] Sesuatu bisa dicoba.
+- [ ] Something can be tried.
 
 ## History
 - 2026-10-16 20:00:00 in_progress
@@ -64,7 +64,7 @@ ${title}.
 
 function settings({ testCommand = '', parallel, setup = '', teardown = '', extra = '' } = {}) {
   return `---
-language: Bahasa Indonesia
+language: English
 test_command: ${testCommand}
 long_lived_branches: []
 ${extra}${parallel === undefined ? '' : `parallel_tests: ${parallel}\n`}worktree_setup: ${setup}
@@ -84,22 +84,22 @@ function git(cwd, ...args) {
 function repo(opts = {}) {
   const base = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'kerjaan-wt-')));
   const root = path.join(base, 'repo');
-  const outside = path.join(base, 'luar');
+  const outside = path.join(base, 'outside');
   fs.mkdirSync(outside);
   const k = path.join(root, '.kerjaan');
   for (const s of ['backlog', 'todo', 'in_progress', 'review', 'done', 'cancel']) {
     fs.mkdirSync(path.join(k, s), { recursive: true });
   }
   fs.writeFileSync(path.join(k, 'settings.md'), settings(opts));
-  fs.writeFileSync(path.join(k, 'in_progress', `${A} Tiket pertama.md`), ticket('Tiket pertama'));
-  fs.writeFileSync(path.join(k, 'in_progress', `${B} Tiket kedua.md`), ticket('Tiket kedua'));
-  fs.writeFileSync(path.join(root, 'kode.txt'), 'kode\n');
+  fs.writeFileSync(path.join(k, 'in_progress', `${A} First ticket.md`), ticket('First ticket'));
+  fs.writeFileSync(path.join(k, 'in_progress', `${B} Second ticket.md`), ticket('Second ticket'));
+  fs.writeFileSync(path.join(root, 'code.txt'), 'code\n');
   fs.writeFileSync(path.join(root, '.gitignore'), '.env\n.setup-ran\n');
   fs.writeFileSync(path.join(root, '.env'), 'RAHASIA=1\n');
   git(root, 'init', '-q');
   git(root, 'checkout', '-q', '-b', 'main');
   git(root, 'add', '-A');
-  git(root, 'commit', '-q', '-m', 'awal');
+  git(root, 'commit', '-q', '-m', 'initial');
   return { base, root, outside, k };
 }
 
@@ -157,7 +157,7 @@ async function until(check, ms = 15000) {
 // told, then either sleeps (to be overlapped) or waits for the other ticket to
 // start too (which only succeeds when runs really overlap).
 function helper(r) {
-  const file = path.join(r.outside, 'uji.cjs');
+  const file = path.join(r.outside, 'test.cjs');
   fs.writeFileSync(file, `
 const fs = require('fs');
 const path = require('path');
@@ -168,9 +168,9 @@ const say = (what) => fs.appendFileSync(log, JSON.stringify({ what, t: Date.now(
 const nap = (ms) => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
 say('start');
 fs.writeFileSync(path.join(${JSON.stringify(r.outside)}, 'started-' + e.KERJAAN_TICKET), '');
-const end = Date.now() + Number(e.UJI_MS || 1500);
-if (e.UJI_TOGETHER) {
-  const others = e.UJI_TOGETHER.split(',');
+const end = Date.now() + Number(e.TEST_MS || 1500);
+if (e.TEST_TOGETHER) {
+  const others = e.TEST_TOGETHER.split(',');
   while (!others.every((t) => fs.existsSync(path.join(${JSON.stringify(r.outside)}, 'started-' + t)))) {
     if (Date.now() > end) { say('alone'); process.exit(1); }
     nap(20);
@@ -188,7 +188,7 @@ const logOf = (r) => fs.readFileSync(path.join(r.outside, 'log'), 'utf8')
 
 // ---------------------------------------------------------------------------
 
-test('tanpa pengaturan, uji dari dua worktree bergiliran dan yang kedua tercatat menunggu', async () => {
+test('with no setting, the tests of two worktrees take turns and the second is recorded as waiting', async () => {
   const r = repo();
   setSettings(r, { testCommand: helper(r) });
   const a = add(r, A);
@@ -217,7 +217,7 @@ test('tanpa pengaturan, uji dari dua worktree bergiliran dan yang kedua tercatat
   assert.equal(check.code, 0, check.out + check.err);
 });
 
-test('uji di main tree dan di worktree juga bergiliran', async () => {
+test('tests in the main tree and in a worktree take turns too', async () => {
   const r = repo();
   setSettings(r, { testCommand: helper(r) });
   const b = add(r, B);
@@ -229,12 +229,12 @@ test('uji di main tree dan di worktree juga bergiliran', async () => {
   assert.match(notes(r, B), /Waited .* \(ticket 261016200001, slot 0, /);
 });
 
-test('parallel_tests: true membuat uji dari dua worktree berjalan berbarengan', async () => {
+test('parallel_tests: true makes the tests of two worktrees run at the same time', async () => {
   const r = repo();
   setSettings(r, { testCommand: helper(r), parallel: 'true' });
   const a = add(r, A);
   const b = add(r, B);
-  const env = { UJI_TOGETHER: `${A},${B}`, UJI_MS: '8000' };
+  const env = { TEST_TOGETHER: `${A},${B}`, TEST_MS: '8000' };
   const [ra, rb] = await Promise.all([
     runAsync(testRun, a.path, [A], env),
     runAsync(testRun, b.path, [B], env),
@@ -245,7 +245,7 @@ test('parallel_tests: true membuat uji dari dua worktree berjalan berbarengan', 
   assert.doesNotMatch(notes(r, A) + notes(r, B), /Waited/);
 });
 
-test('parallel_tests: false tetap bergiliran', async () => {
+test('parallel_tests: false still takes turns', async () => {
   const r = repo();
   setSettings(r, { testCommand: helper(r), parallel: 'false' });
   const a = add(r, A);
@@ -258,14 +258,14 @@ test('parallel_tests: false tetap bergiliran', async () => {
   assert.match(notes(r, B), /Waited/);
 });
 
-test('uji membaca nomor slot dan ID tiketnya; dua worktree tidak pernah bernomor sama', async () => {
+test('the tests read their slot number and ticket ID; two worktrees never share a number', async () => {
   const r = repo();
   setSettings(r, { testCommand: helper(r), parallel: 'true' });
   const a = add(r, A);
   const b = add(r, B);
-  assert.equal(run(testRun, a.path, [A], { UJI_MS: '1' }).code, 0);
-  assert.equal(run(testRun, b.path, [B], { UJI_MS: '1' }).code, 0);
-  assert.equal(run(testRun, r.root, [A], { UJI_MS: '1' }).code, 0);
+  assert.equal(run(testRun, a.path, [A], { TEST_MS: '1' }).code, 0);
+  assert.equal(run(testRun, b.path, [B], { TEST_MS: '1' }).code, 0);
+  assert.equal(run(testRun, r.root, [A], { TEST_MS: '1' }).code, 0);
   const starts = logOf(r).filter((l) => l.what === 'start');
   assert.deepEqual(starts.map((l) => [l.ticket, l.slot, l.worktree, l.main]), [
     [A, '1', a.path, r.root],
@@ -280,11 +280,11 @@ test('uji membaca nomor slot dan ID tiketnya; dua worktree tidak pernah bernomor
   assert.equal(run(worktreeSh, r.root, ['slot']).out.trim(), '0');
 });
 
-test('worktree yang dibuat bersamaan dan yang dibuat dengan tangan tetap mendapat nomor berbeda', async () => {
+test('worktrees created at the same moment and one created by hand still get different numbers', async () => {
   const r = repo();
   const ids = ['261016200011', '261016200012', '261016200013', '261016200014', '261016200015'];
   for (const id of ids) {
-    fs.writeFileSync(path.join(r.k, 'in_progress', `${id} Tiket ${id}.md`), ticket(id));
+    fs.writeFileSync(path.join(r.k, 'in_progress', `${id} Ticket ${id}.md`), ticket(id));
   }
   setSettings(r, { setup: 'echo "$KERJAAN_SLOT" > .setup-ran' });
   const made = await Promise.all(ids.map((id) =>
@@ -315,7 +315,7 @@ test('worktree yang dibuat bersamaan dan yang dibuat dengan tangan tetap mendapa
   assert.equal(new Set(now).size, now.length, `slots ${now}`);
 });
 
-test('perintah persiapan berjalan setiap kali worktree dibuat, di dalam worktree itu', () => {
+test('the setup command runs every time a worktree is created, inside that worktree', () => {
   const r = repo({ setup: 'cp "$KERJAAN_MAIN_TREE/.env" .env && echo "$KERJAAN_TICKET $KERJAAN_SLOT $PWD" > .setup-ran' });
   const a = add(r, A);
   const b = add(r, B);
@@ -327,10 +327,10 @@ test('perintah persiapan berjalan setiap kali worktree dibuat, di dalam worktree
   assert.equal(fs.readFileSync(path.join(b.path, '.env'), 'utf8'), 'RAHASIA=1\n');
   // The board stays out of the worktree's checkout.
   assert.equal(fs.existsSync(path.join(a.path, '.kerjaan')), false);
-  assert.match(git(r.root, 'worktree', 'list', '--porcelain'), new RegExp(`branch refs/heads/tiket-${A}`));
+  assert.match(git(r.root, 'worktree', 'list', '--porcelain'), new RegExp(`branch refs/heads/ticket-${A}`));
 });
 
-test('persiapan yang gagal membuat worktree tidak dipakai: dihapus lagi, pembersihan ikut jalan', () => {
+test('a failed setup leaves the worktree unused: it is removed again, and the teardown runs too', () => {
   const r = repo();
   const log = path.join(r.outside, 'teardown');
   setSettings(r, { setup: 'touch .setup-ran; exit 3', teardown: `echo "$KERJAAN_TICKET" >> ${JSON.stringify(log)}` });
@@ -341,11 +341,11 @@ test('persiapan yang gagal membuat worktree tidak dipakai: dihapus lagi, pembers
   assert.equal(a.out, '');
   assert.equal(fs.existsSync(a.path), false);
   assert.doesNotMatch(git(r.root, 'worktree', 'list', '--porcelain'), new RegExp(`wt-${A}`));
-  assert.equal(git(r.root, 'branch', '--list', `tiket-${A}`), '');
+  assert.equal(git(r.root, 'branch', '--list', `ticket-${A}`), '');
   assert.equal(fs.readFileSync(log, 'utf8').trim(), A);
 });
 
-test('perintah pembersihan berjalan setiap kali worktree dihapus, dengan tiket dan slot worktree itu', () => {
+test('the teardown command runs every time a worktree is removed, with that worktree\'s ticket and slot', () => {
   const r = repo();
   const log = path.join(r.outside, 'teardown');
   setSettings(r, { teardown: `echo "$KERJAAN_TICKET $KERJAAN_SLOT $PWD" >> ${JSON.stringify(log)}` });
@@ -360,13 +360,13 @@ test('perintah pembersihan berjalan setiap kali worktree dihapus, dengan tiket d
   assert.equal(fs.existsSync(a.path), false);
   assert.equal(fs.existsSync(b.path), false);
   // The branch is a decision about merging, not the script's, and both say so.
-  assert.notEqual(git(r.root, 'branch', '--list', `tiket-${A}`), '');
-  assert.notEqual(git(r.root, 'branch', '--list', `tiket-${B}`), '');
-  assert.match(ra.err, new RegExp(`Branch tiket-${A} is kept; merge or delete it\\.`));
-  assert.match(rb.err, new RegExp(`Branch tiket-${B} is kept; merge or delete it\\.`));
+  assert.notEqual(git(r.root, 'branch', '--list', `ticket-${A}`), '');
+  assert.notEqual(git(r.root, 'branch', '--list', `ticket-${B}`), '');
+  assert.match(ra.err, new RegExp(`Branch ticket-${A} is kept; merge or delete it\\.`));
+  assert.match(rb.err, new RegExp(`Branch ticket-${B} is kept; merge or delete it\\.`));
 });
 
-test('pembersihan yang gagal, atau worktree yang belum bersih, menolak penghapusan', () => {
+test('a failed teardown, or a worktree that is not clean, refuses the removal', () => {
   const r = repo();
   const log = path.join(r.outside, 'teardown');
   setSettings(r, { teardown: `echo ran >> ${JSON.stringify(log)}; exit 4` });
@@ -377,7 +377,7 @@ test('pembersihan yang gagal, atau worktree yang belum bersih, menolak penghapus
   assert.equal(fs.existsSync(a.path), true);
 
   setSettings(r, { teardown: `echo ran >> ${JSON.stringify(log)}` });
-  fs.writeFileSync(path.join(a.path, 'kode.txt'), 'diubah\n');
+  fs.writeFileSync(path.join(a.path, 'code.txt'), 'changed\n');
   const dirty = run(worktreeSh, r.root, ['remove', A]);
   assert.equal(dirty.code, 1);
   assert.match(dirty.err, /REFUSED: .* not committed/);
@@ -385,7 +385,7 @@ test('pembersihan yang gagal, atau worktree yang belum bersih, menolak penghapus
   assert.equal(fs.existsSync(a.path), true);
 });
 
-test('worktree.sh menolak berjalan dari worktree tertaut', () => {
+test('worktree.sh refuses to run from a linked worktree', () => {
   const r = repo();
   const a = add(r, A);
   const res = run(worktreeSh, a.path, ['add', B, path.join(r.base, 'x')]);
@@ -397,17 +397,17 @@ test('worktree.sh menolak berjalan dari worktree tertaut', () => {
 // shared seed (read only) into a folder named after the ticket, its tests use
 // only that, and its teardown removes only that.
 for (const order of [[A, B], [B, A]]) {
-  test(`data uji di luar repo: tiket ${order[0].slice(-1)} lalu ${order[1].slice(-1)}, pembersihan pertama sebelum uji kedua`, () => {
+  test(`test data outside the repo: ticket ${order[0].slice(-1)} then ${order[1].slice(-1)}, the first teardown before the second run`, () => {
     const r = repo();
     const data = path.join(r.outside, 'data');
-    fs.mkdirSync(path.join(data, 'bersama'), { recursive: true });
-    fs.writeFileSync(path.join(data, 'bersama', 'benih.txt'), 'benih\n');
-    fs.chmodSync(path.join(data, 'bersama', 'benih.txt'), 0o444);
+    fs.mkdirSync(path.join(data, 'shared'), { recursive: true });
+    fs.writeFileSync(path.join(data, 'shared', 'seed.txt'), 'seed\n');
+    fs.chmodSync(path.join(data, 'shared', 'seed.txt'), 0o444);
     const d = JSON.stringify(data);
     setSettings(r, {
-      setup: `mkdir -p ${d}/tiket-$KERJAAN_TICKET && cp ${d}/bersama/benih.txt ${d}/tiket-$KERJAAN_TICKET/db.txt && chmod u+w ${d}/tiket-$KERJAAN_TICKET/db.txt`,
-      teardown: `rm -rf ${d}/tiket-$KERJAAN_TICKET`,
-      testCommand: `echo uji >> ${d}/tiket-$KERJAAN_TICKET/db.txt && grep -q benih ${d}/bersama/benih.txt`,
+      setup: `mkdir -p ${d}/ticket-$KERJAAN_TICKET && cp ${d}/shared/seed.txt ${d}/ticket-$KERJAAN_TICKET/db.txt && chmod u+w ${d}/ticket-$KERJAAN_TICKET/db.txt`,
+      teardown: `rm -rf ${d}/ticket-$KERJAAN_TICKET`,
+      testCommand: `echo test >> ${d}/ticket-$KERJAAN_TICKET/db.txt && grep -q seed ${d}/shared/seed.txt`,
     });
     const trees = Object.fromEntries([A, B].map((id) => [id, add(r, id)]));
     for (const id of [A, B]) assert.equal(trees[id].code, 0, trees[id].err);
@@ -415,16 +415,16 @@ for (const order of [[A, B], [B, A]]) {
     const [first, second] = order;
     assert.equal(run(testRun, trees[first].path, [first]).code, 0);
     assert.equal(run(worktreeSh, r.root, ['remove', first]).code, 0);
-    assert.equal(fs.existsSync(path.join(data, `tiket-${first}`)), false);
+    assert.equal(fs.existsSync(path.join(data, `ticket-${first}`)), false);
     const res = run(testRun, trees[second].path, [second]);
     assert.equal(res.code, 0, res.err);
-    assert.equal(fs.readFileSync(path.join(data, `tiket-${second}`, 'db.txt'), 'utf8'), 'benih\nuji\n');
+    assert.equal(fs.readFileSync(path.join(data, `ticket-${second}`, 'db.txt'), 'utf8'), 'seed\ntest\n');
     assert.equal(run(worktreeSh, r.root, ['remove', second]).code, 0);
-    assert.deepEqual(fs.readdirSync(data), ['bersama']);
+    assert.deepEqual(fs.readdirSync(data), ['shared']);
   });
 }
 
-test('kunci yang ditinggal proses yang sudah mati diambil alih', () => {
+test('a lock left by a process that has died is taken over', () => {
   const r = repo({ testCommand: 'true' });
   const dead = spawnSync('bash', ['-c', 'echo $$']).stdout.toString().trim();
   const lock = path.join(r.root, '.git', 'kerjaan-locks', 'tests.lock');
@@ -441,7 +441,7 @@ test('kunci yang ditinggal proses yang sudah mati diambil alih', () => {
 async function heldLock(r, name, start) {
   const lock = path.join(r.root, '.git', 'kerjaan-locks', `${name}.lock`);
   fs.mkdirSync(lock, { recursive: true });
-  fs.writeFileSync(lock + '/owner', `${process.pid}\tuji yang memegang kunci\n`);
+  fs.writeFileSync(lock + '/owner', `${process.pid}\tthe test holding the lock\n`);
   let done = false;
   const running = start().then((res) => { done = true; return res; });
   await sleep(1200);
@@ -450,7 +450,7 @@ async function heldLock(r, name, start) {
   return { waitedWhileHeld, res: await running };
 }
 
-test('pemberian nomor slot menunggu kunci slots', async () => {
+test('handing out a slot number waits for the slots lock', async () => {
   const r = repo();
   git(r.root, 'worktree', 'add', '-q', '-b', 'tangan', path.join(r.base, 'tangan'));
   const { waitedWhileHeld, res } = await heldLock(r, 'slots',
@@ -459,7 +459,7 @@ test('pemberian nomor slot menunggu kunci slots', async () => {
   assert.equal(res.out.trim(), '1', res.err);
 });
 
-test('langkah git pembuatan dan penghapusan worktree menunggu kunci worktrees', async () => {
+test('the git steps of creating and removing a worktree wait for the worktrees lock', async () => {
   const r = repo();
   const p = path.join(r.base, `wt-${A}`);
   const made = await heldLock(r, 'worktrees', () => runAsync(worktreeSh, r.root, ['add', A, p]));
@@ -482,7 +482,7 @@ const D = '261016200004';
 
 function limitRepo(extra) {
   const r = repo({ extra });
-  for (const [id, title] of [[C, 'Tiket ketiga'], [D, 'Tiket keempat']]) {
+  for (const [id, title] of [[C, 'Third ticket'], [D, 'Fourth ticket']]) {
     fs.writeFileSync(path.join(r.k, 'in_progress', `${id} ${title}.md`), ticket(title));
   }
   return r;
@@ -497,7 +497,7 @@ function refusedByLimit(r, res, id, count, limit, why) {
   assert.equal(res.out, '');
   assert.equal(fs.existsSync(res.path), false);
   assert.doesNotMatch(git(r.root, 'worktree', 'list', '--porcelain'), new RegExp(`wt-${id}`));
-  assert.equal(git(r.root, 'branch', '--list', `tiket-${id}`), '');
+  assert.equal(git(r.root, 'branch', '--list', `ticket-${id}`), '');
 }
 
 for (const n of [1, 2, 3]) {
@@ -551,7 +551,7 @@ test('a limit or chain it cannot read is refused with the value and what to writ
     ['max_parallel: two\n', /max_parallel in settings\.md is 'two'/],
     ['max_parallel: -1\n', /max_parallel in settings\.md is '-1'/],
     ['max_parallel: 1.5\n', /max_parallel in settings\.md is '1\.5'/],
-    ['chain: tiket\n', /chain in settings\.md is 'tiket': write queue, group or ticket, or leave it empty \(queue\)\./],
+    ['chain: tickets\n', /chain in settings\.md is 'tickets': write queue, group or ticket, or leave it empty \(queue\)\./],
     ['chain: Ticket\nmax_parallel: 2\n', /chain in settings\.md is 'Ticket'/],
   ]) {
     const r = limitRepo(extra);
@@ -559,7 +559,7 @@ test('a limit or chain it cannot read is refused with the value and what to writ
     assert.equal(a.code, 2, `${extra}${a.err}`);
     assert.match(a.err, said, extra);
     assert.equal(fs.existsSync(a.path), false);
-    assert.equal(git(r.root, 'branch', '--list', `tiket-${A}`), '');
+    assert.equal(git(r.root, 'branch', '--list', `ticket-${A}`), '');
   }
 });
 

@@ -45,7 +45,7 @@ test(`the main file, the guides and the agent definitions together stay within $
 test('the README gives the budget and the rule that a new rule names what it removes', () => {
   const section = flat(read('README.md').split('## Keeping the rules small')[1].split('\n## ')[0]);
   assert.match(section, new RegExp(`${BUDGET.toLocaleString('en-US')} words`));
-  assert.match(section, /uji\/skill-ringkas\.test\.mjs/);
+  assert.match(section, /tests\/skill-size\.test\.mjs/);
   assert.match(section, /A new rule names the rule it removes or replaces/);
 });
 

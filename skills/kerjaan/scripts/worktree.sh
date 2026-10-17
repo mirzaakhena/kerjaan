@@ -14,7 +14,7 @@
 #
 # Usage:
 #   worktree.sh add <id> <path> [--branch <name>]
-#       create <path> on branch tiket-<id> (or <name>, or the existing branch
+#       create <path> on branch ticket-<id> (or <name>, or the existing branch
 #       carrying <id>), with .kerjaan/ left out of its checkout; give it a slot;
 #       run worktree_setup inside it. When the setup fails, the worktree is
 #       removed again (worktree_teardown included) and the exit status is 1.
@@ -117,7 +117,7 @@ case "$cmd" in
     # A ticket sent back from review may still have its branch: reuse it.
     if [ -z "$branch" ]; then
       branch="$(git for-each-ref --format='%(refname:short)' refs/heads | grep -F "$id" | head -1 || true)"
-      [ -n "$branch" ] || branch="tiket-$id"
+      [ -n "$branch" ] || branch="ticket-$id"
     fi
     # Two worktrees created at the same moment both write the shared
     # .git/config (the sparse checkout below), and git refuses the second

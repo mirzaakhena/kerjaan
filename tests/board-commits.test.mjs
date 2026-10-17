@@ -36,10 +36,10 @@ const Y = '261017100003'; // edited by hand by somebody else
 const N = '261017100004'; // moved from backlog to todo by the foreman
 
 const gitEnv = {
-  GIT_AUTHOR_NAME: 'Uji',
-  GIT_AUTHOR_EMAIL: 'uji@example.com',
-  GIT_COMMITTER_NAME: 'Uji',
-  GIT_COMMITTER_EMAIL: 'uji@example.com',
+  GIT_AUTHOR_NAME: 'Test',
+  GIT_AUTHOR_EMAIL: 'test@example.com',
+  GIT_COMMITTER_NAME: 'Test',
+  GIT_COMMITTER_EMAIL: 'test@example.com',
   KERJAAN_LOCK_POLL: '0.2',
 };
 
@@ -58,13 +58,13 @@ blocked_by: []
 ---
 
 ## Background
-Sesuatu.
+Something.
 
 ## Request
 ${title}.
 
 ## Done when
-- [ ] Sesuatu bisa dicoba.
+- [ ] Something can be tried.
 
 ## History
 - 2026-10-17 08:00:00 ${status}
@@ -95,29 +95,29 @@ function repo(testCommand = '', staged = true) {
     fs.mkdirSync(path.join(k, s), { recursive: true });
   }
   fs.writeFileSync(path.join(k, 'settings.md'), `---
-language: Bahasa Indonesia
+language: English
 test_command: ${testCommand}
 long_lived_branches: []
 ---
 `);
-  fs.writeFileSync(path.join(k, 'todo', `${T} Tiket yang dikerjakan.md`), ticket('Tiket yang dikerjakan', 'todo'));
-  fs.writeFileSync(path.join(k, 'todo', `${X} Tiket yang dibatalkan.md`), ticket('Tiket yang dibatalkan', 'todo'));
-  fs.writeFileSync(path.join(k, 'backlog', `${Y} Tiket orang lain.md`), ticket('Tiket orang lain', 'backlog'));
-  fs.writeFileSync(path.join(k, 'backlog', `${N} Tiket baru ke todo.md`), ticket('Tiket baru ke todo', 'backlog'));
-  fs.writeFileSync(path.join(k, 'order.md'), `**Grup.**\n\n- ${T} Tiket yang dikerjakan\n- ${X} Tiket yang dibatalkan\n`);
-  fs.writeFileSync(path.join(root, 'kode.txt'), 'satu\n');
-  fs.writeFileSync(path.join(root, 'lain.txt'), 'punya orang lain\n');
+  fs.writeFileSync(path.join(k, 'todo', `${T} Ticket being worked.md`), ticket('Ticket being worked', 'todo'));
+  fs.writeFileSync(path.join(k, 'todo', `${X} Ticket cancelled.md`), ticket('Ticket cancelled', 'todo'));
+  fs.writeFileSync(path.join(k, 'backlog', `${Y} Ticket of another person.md`), ticket('Ticket of another person', 'backlog'));
+  fs.writeFileSync(path.join(k, 'backlog', `${N} New ticket to todo.md`), ticket('New ticket to todo', 'backlog'));
+  fs.writeFileSync(path.join(k, 'order.md'), `**Group.**\n\n- ${T} Ticket being worked\n- ${X} Ticket cancelled\n`);
+  fs.writeFileSync(path.join(root, 'code.txt'), 'one\n');
+  fs.writeFileSync(path.join(root, 'other.txt'), 'belongs to another person\n');
   git(root, 'init', '-q');
   git(root, 'checkout', '-q', '-b', 'main');
   git(root, 'add', '-A');
-  git(root, 'commit', '-q', '-m', 'awal');
+  git(root, 'commit', '-q', '-m', 'initial');
   // Somebody else's work in the tree: a staged change (none when land is to
   // merge, which git refuses over a staged index), and a ticket edited by hand.
   if (staged) {
-    fs.appendFileSync(path.join(root, 'lain.txt'), 'diubah dan di-stage\n');
-    git(root, 'add', 'lain.txt');
+    fs.appendFileSync(path.join(root, 'other.txt'), 'changed and staged\n');
+    git(root, 'add', 'other.txt');
   }
-  fs.appendFileSync(path.join(k, 'backlog', `${Y} Tiket orang lain.md`), '- Catatan tangan.\n');
+  fs.appendFileSync(path.join(k, 'backlog', `${Y} Ticket of another person.md`), '- A note by hand.\n');
   return { base, root, k, staged, start: git(root, 'rev-parse', 'HEAD').trim() };
 }
 
@@ -167,8 +167,8 @@ const filesOf = (r, rev) => git(r.root, 'show', '--name-status', '--format=', '-
 // Everything uncommitted in the tree must be exactly the other person's work.
 const othersOnly = (r) => {
   const st = git(r.root, 'status', '--porcelain', '--untracked-files=all').trimEnd().split('\n').sort();
-  const expected = [` M ".kerjaan/backlog/${Y} Tiket orang lain.md"`];
-  if (r.staged) expected.push('M  lain.txt');
+  const expected = [` M ".kerjaan/backlog/${Y} Ticket of another person.md"`];
+  if (r.staged) expected.push('M  other.txt');
   assert.deepEqual(st, expected.sort());
 };
 
@@ -178,78 +178,78 @@ function foremanStarts(r) {
   move(r, X, 'cancel');
   move(r, N, 'todo');
   move(r, T, 'in_progress');
-  perform(r.root, foremanStart(), { id: T, message: `Papan: ${T} mulai dikerjakan`, others: [X, N] });
+  perform(r.root, foremanStart(), { id: T, message: `Board: ${T} started`, others: [X, N] });
   othersOnly(r);
   return git(r.root, 'rev-parse', 'HEAD').trim();
 }
 
 // The worker in the main tree: code, the move to review, one commit.
 function workerHandsOver(r, body) {
-  fs.writeFileSync(path.join(r.root, 'kode.txt'), body);
-  fs.writeFileSync(path.join(r.root, `baru-${body.length}.txt`), 'berkas baru\n');
+  fs.writeFileSync(path.join(r.root, 'code.txt'), body);
+  fs.writeFileSync(path.join(r.root, `new-${body.length}.txt`), 'a new file\n');
   move(r, T, 'review');
-  perform(r.root, workerMain(), { id: T, files: `kode.txt baru-${body.length}.txt`, message: `${T}: kerja` });
+  perform(r.root, workerMain(), { id: T, files: `code.txt new-${body.length}.txt`, message: `${T}: work` });
   othersOnly(r);
 }
 
 function reviewerDecides(r, verdict) {
   appendNote(r, T, `- 2026-10-17: Reviewed at level quick, round 1, at commit abc: ${verdict}.`);
   move(r, T, verdict === 'passed' ? 'done' : 'in_progress');
-  perform(r.root, reviewerVerdict(), { id: T, message: `Papan: ${T} ${verdict}` });
+  perform(r.root, reviewerVerdict(), { id: T, message: `Board: ${T} ${verdict}` });
   othersOnly(r);
 }
 
-test('satu tiket biasa di main tree, dari mulai sampai done, menjadi tiga commit dan tidak meninggalkan perubahan papan', () => {
+test('one ordinary ticket in the main tree, from start to done, makes three commits and leaves no board change behind', () => {
   const r = repo();
   const started = foremanStarts(r);
   // Start: the ticket's move, order.md, and the foreman's own moves with no code.
   assert.deepEqual(filesOf(r, started), [
-    `A\t.kerjaan/cancel/${X} Tiket yang dibatalkan.md`,
-    `A\t.kerjaan/in_progress/${T} Tiket yang dikerjakan.md`,
-    `A\t.kerjaan/todo/${N} Tiket baru ke todo.md`,
-    `D\t.kerjaan/backlog/${N} Tiket baru ke todo.md`,
-    `D\t.kerjaan/todo/${T} Tiket yang dikerjakan.md`,
-    `D\t.kerjaan/todo/${X} Tiket yang dibatalkan.md`,
+    `A\t.kerjaan/cancel/${X} Ticket cancelled.md`,
+    `A\t.kerjaan/in_progress/${T} Ticket being worked.md`,
+    `A\t.kerjaan/todo/${N} New ticket to todo.md`,
+    `D\t.kerjaan/backlog/${N} New ticket to todo.md`,
+    `D\t.kerjaan/todo/${T} Ticket being worked.md`,
+    `D\t.kerjaan/todo/${X} Ticket cancelled.md`,
     'M\t.kerjaan/order.md',
   ].sort());
 
-  workerHandsOver(r, 'dua\n');
+  workerHandsOver(r, 'two\n');
   // Work: code and ticket in one commit, the ticket already in review.
   assert.deepEqual(filesOf(r, 'HEAD'), [
-    `A\t.kerjaan/review/${T} Tiket yang dikerjakan.md`,
-    'A\tbaru-4.txt',
-    `D\t.kerjaan/in_progress/${T} Tiket yang dikerjakan.md`,
-    'M\tkode.txt',
+    `A\t.kerjaan/review/${T} Ticket being worked.md`,
+    'A\tnew-4.txt',
+    `D\t.kerjaan/in_progress/${T} Ticket being worked.md`,
+    'M\tcode.txt',
   ].sort());
 
   reviewerDecides(r, 'passed');
   // Verdict: the ticket's file, and order.md, which loses its line once it is done.
   assert.deepEqual(filesOf(r, 'HEAD'), [
-    `A\t.kerjaan/done/${T} Tiket yang dikerjakan.md`,
-    `D\t.kerjaan/review/${T} Tiket yang dikerjakan.md`,
+    `A\t.kerjaan/done/${T} Ticket being worked.md`,
+    `D\t.kerjaan/review/${T} Ticket being worked.md`,
     'M\t.kerjaan/order.md',
   ].sort());
   assert.equal(git(r.root, 'show', 'HEAD:.kerjaan/order.md'), '');
-  assert.match(git(r.root, 'show', `HEAD:.kerjaan/done/${T} Tiket yang dikerjakan.md`), /Reviewed at level quick, round 1, at commit abc: passed\./);
+  assert.match(git(r.root, 'show', `HEAD:.kerjaan/done/${T} Ticket being worked.md`), /Reviewed at level quick, round 1, at commit abc: passed\./);
 
   assert.equal(Number(git(r.root, 'rev-list', '--count', `${r.start}..HEAD`).trim()), 3);
 });
 
-test('tiket yang dikembalikan peninjau: putusan itu juga tersimpan, dan tiap putaran menambah satu commit kerja dan satu putusan', () => {
+test('a ticket the reviewer sends back: that verdict is committed too, and each round adds one work commit and one verdict', () => {
   const r = repo();
   foremanStarts(r);
-  workerHandsOver(r, 'dua\n');
+  workerHandsOver(r, 'two\n');
   reviewerDecides(r, 'sent back');
   assert.deepEqual(filesOf(r, 'HEAD'), [
-    `A\t.kerjaan/in_progress/${T} Tiket yang dikerjakan.md`,
-    `D\t.kerjaan/review/${T} Tiket yang dikerjakan.md`,
+    `A\t.kerjaan/in_progress/${T} Ticket being worked.md`,
+    `D\t.kerjaan/review/${T} Ticket being worked.md`,
   ].sort());
-  workerHandsOver(r, 'dua\ntiga\n');
+  workerHandsOver(r, 'two\nthree\n');
   reviewerDecides(r, 'passed');
   assert.equal(Number(git(r.root, 'rev-list', '--count', `${r.start}..HEAD`).trim()), 5);
 });
 
-test('kerja berdampingan: kode di cabang, berkas tiket di main tree, putusan tersimpan, dan land menyimpan catatannya sendiri', () => {
+test('side by side: code on the branch, the ticket\'s file in the main tree, the verdict committed, and land commits its own note', () => {
   const r = repo('true', false);
   foremanStarts(r);
   const wt = path.join(r.base, `wt-${T}`);
@@ -259,20 +259,20 @@ test('kerja berdampingan: kode di cabang, berkas tiket di main tree, putusan ter
 
   // The worker: code committed on its branch, tested, moved, then the ticket
   // committed in the main tree with the command its definition gives.
-  fs.writeFileSync(path.join(wt, 'kode.txt'), 'dua\n');
-  git(wt, 'add', '--', 'kode.txt');
-  git(wt, 'commit', '-q', '-m', `${T}: kerja`);
+  fs.writeFileSync(path.join(wt, 'code.txt'), 'two\n');
+  git(wt, 'add', '--', 'code.txt');
+  git(wt, 'commit', '-q', '-m', `${T}: work`);
   const t = run(testRun, wt, [T]);
   assert.equal(t.code, 0, t.out + t.err);
   move(r, T, 'review');
-  perform(wt, workerWorktree(), { id: T, message: `Papan: ${T} masuk review`, mainTree: r.root });
+  perform(wt, workerWorktree(), { id: T, message: `Board: ${T} to review`, mainTree: r.root });
   othersOnly(r);
   assert.deepEqual(filesOf(r, 'main'), [
-    `A\t.kerjaan/review/${T} Tiket yang dikerjakan.md`,
-    `D\t.kerjaan/in_progress/${T} Tiket yang dikerjakan.md`,
+    `A\t.kerjaan/review/${T} Ticket being worked.md`,
+    `D\t.kerjaan/in_progress/${T} Ticket being worked.md`,
   ].sort());
   // No commit on the branch carries the board.
-  assert.equal(git(r.root, 'log', '--format=%h', `main..tiket-${T}`, '--', '.kerjaan').trim(), '');
+  assert.equal(git(r.root, 'log', '--format=%h', `main..ticket-${T}`, '--', '.kerjaan').trim(), '');
 
   reviewerDecides(r, 'passed');
 
@@ -282,7 +282,7 @@ test('kerja berdampingan: kode di cabang, berkas tiket di main tree, putusan ter
   assert.match(land.out, /Note committed: /);
   assert.doesNotMatch(land.out, /NOTE NOT COMMITTED/);
   othersOnly(r);
-  assert.equal(git(r.root, 'show', 'main:kode.txt'), 'dua\n');
+  assert.equal(git(r.root, 'show', 'main:code.txt'), 'two\n');
 });
 
 // The command and the moves with no code behind them are in SKILL.md, which

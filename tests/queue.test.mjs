@@ -26,13 +26,13 @@ const D = '261016400004';
 
 const gitEnv = {
   ...process.env,
-  GIT_AUTHOR_NAME: 'Uji',
-  GIT_AUTHOR_EMAIL: 'uji@example.com',
-  GIT_COMMITTER_NAME: 'Uji',
-  GIT_COMMITTER_EMAIL: 'uji@example.com',
+  GIT_AUTHOR_NAME: 'Test',
+  GIT_AUTHOR_EMAIL: 'test@example.com',
+  GIT_COMMITTER_NAME: 'Test',
+  GIT_COMMITTER_EMAIL: 'test@example.com',
 };
 
-const items = (n) => Array.from({ length: n }, (_, i) => `- [ ] Butir ke-${i + 1}`).join('\n');
+const items = (n) => Array.from({ length: n }, (_, i) => `- [ ] Item ${i + 1}`).join('\n');
 
 function ticketText({ blockedBy = [], doneWhen = items(2), notes = '(none yet)', type = 'feature', priority = 'medium' } = {}) {
   return `---
@@ -49,10 +49,10 @@ blocked_by: [${blockedBy.join(', ')}]
 ---
 
 ## Background
-Sesuatu.
+Something.
 
 ## Request
-Sesuatu.
+Something.
 
 ## Done when
 ${doneWhen}
@@ -79,7 +79,7 @@ function repo() {
     fs.writeFileSync(path.join(root, '.kerjaan', s, '.gitkeep'), '');
   }
   fs.writeFileSync(path.join(root, '.kerjaan', 'settings.md'), `---
-language: Bahasa Indonesia
+language: English
 test_command:
 long_lived_branches: []
 ---
@@ -88,11 +88,11 @@ long_lived_branches: []
   fs.writeFileSync(path.join(root, 'src', 'a.js'), 'a\n');
   fs.writeFileSync(path.join(root, 'src', 'web', 'b.js'), 'b\n');
   git(root, 'add', '-A');
-  git(root, 'commit', '-q', '-m', 'awal');
+  git(root, 'commit', '-q', '-m', 'initial');
   return root;
 }
 
-function add(root, id, { status = 'backlog', title = `Tiket ${id}`, ...t } = {}) {
+function add(root, id, { status = 'backlog', title = `Ticket ${id}`, ...t } = {}) {
   const file = path.join(root, '.kerjaan', status, `${id} ${title}.md`);
   fs.writeFileSync(file, ticketText(t));
   return file;
@@ -123,15 +123,15 @@ function order(root, text) {
 test('estimate: recorded as a fixed line in Notes, sorted, folders marked with a slash, updated refreshed', () => {
   const root = repo();
   add(root, A);
-  const r = q(root, 'estimate', A, './src/a.js', 'src/web', 'docs/baru.md');
+  const r = q(root, 'estimate', A, './src/a.js', 'src/web', 'docs/new.md');
   assert.equal(r.code, 0, r.err);
   const text = read(root, A);
-  assert.match(text, /^- \d{4}-\d\d-\d\d \d\d:\d\d:\d\d: files estimated to change: `docs\/baru\.md`, `src\/a\.js`, `src\/web\/`$/m);
+  assert.match(text, /^- \d{4}-\d\d-\d\d \d\d:\d\d:\d\d: files estimated to change: `docs\/new\.md`, `src\/a\.js`, `src\/web\/`$/m);
   assert.doesNotMatch(text, /\(none yet\)/);
   assert.doesNotMatch(text, /updated: 2026-10-16 20:00:00/);
   const shown = q(root, 'estimate', A);
   assert.equal(shown.code, 0);
-  assert.equal(shown.out, 'docs/baru.md\nsrc/a.js\nsrc/web/\n');
+  assert.equal(shown.out, 'docs/new.md\nsrc/a.js\nsrc/web/\n');
 });
 
 test('estimate: the latest one counts', () => {
@@ -211,7 +211,7 @@ test('estimate --none: compare names every file its commits changed as not estim
   const root = repo();
   add(root, A, { status: 'done' });
   q(root, 'estimate', A, '--none');
-  commit(root, `${A}: kerja`, { 'src/c.js': 'c\n' });
+  commit(root, `${A}: work`, { 'src/c.js': 'c\n' });
   const r = q(root, 'compare', A);
   assert.equal(r.code, 0, r.out + r.err);
   assert.equal(r.out, [
@@ -235,7 +235,7 @@ test('overlap: names each pair sharing files, with the files, per kind of match'
   q(root, 'estimate', A, 'src/a.js', 'src/web/');      // file + folder
   q(root, 'estimate', B, 'src/a.js', 'docs/x.md');     // same file as A
   q(root, 'estimate', C, 'src/web/b.js');              // under A's folder
-  q(root, 'estimate', D, 'src/', 'lain.txt');          // a folder holding A's folder
+  q(root, 'estimate', D, 'src/', 'other.txt');          // a folder holding A's folder
   const r = q(root, 'overlap');
   assert.equal(r.code, 0, r.err);
   const expect = [
@@ -274,52 +274,52 @@ test('overlap: done tickets are left out by default; named tickets are compared,
 test('ask and answer: numbers stay put when another question is answered first', () => {
   const root = repo();
   add(root, A);
-  assert.match(q(root, 'ask', A, 'Satu?').out, /question 1\./);
-  assert.match(q(root, 'ask', A, 'Dua?\nbaris kedua').out, /question 2\./);
-  q(root, 'ask', A, 'Tiga?');
-  assert.equal(q(root, 'answer', A, '1', 'jawab satu').code, 0);
+  assert.match(q(root, 'ask', A, 'One?').out, /question 1\./);
+  assert.match(q(root, 'ask', A, 'Two?\nsecond line').out, /question 2\./);
+  q(root, 'ask', A, 'Three?');
+  assert.equal(q(root, 'answer', A, '1', 'answer one').code, 0);
   const chk = q(root, 'check', A);
-  assert.match(chk.out, /open question 2: Dua\? baris kedua/);
-  assert.match(chk.out, /open question 3: Tiga\?/);
+  assert.match(chk.out, /open question 2: Two\? second line/);
+  assert.match(chk.out, /open question 3: Three\?/);
   assert.doesNotMatch(chk.out, /open question 1/);
-  assert.equal(q(root, 'answer', A, '3', 'jawab tiga').code, 0);
-  assert.equal(q(root, 'answer', A, '2', 'jawab dua').code, 0);
+  assert.equal(q(root, 'answer', A, '3', 'answer three').code, 0);
+  assert.equal(q(root, 'answer', A, '2', 'answer two').code, 0);
   const notes = read(root, A).split('## Notes\n')[1];
-  assert.match(notes, /: answered question: Satu\?\n  answer, [\d-]+ [\d:]+: jawab satu\n/);
-  assert.match(notes, /: answered question: Dua\? baris kedua\n  answer, [\d-]+ [\d:]+: jawab dua\n/);
-  assert.match(notes, /: answered question: Tiga\?\n  answer, [\d-]+ [\d:]+: jawab tiga\n/);
+  assert.match(notes, /: answered question: One\?\n  answer, [\d-]+ [\d:]+: answer one\n/);
+  assert.match(notes, /: answered question: Two\? second line\n  answer, [\d-]+ [\d:]+: answer two\n/);
+  assert.match(notes, /: answered question: Three\?\n  answer, [\d-]+ [\d:]+: answer three\n/);
   assert.doesNotMatch(notes, /open question/);
 });
 
 test('answer: lands after the lines that continue the question', () => {
   const root = repo();
-  add(root, A, { notes: '- 2026-10-16 10:00:00: open question: Warna?\n  Pilihan: merah atau biru.\n- 2026-10-16 10:00:01: catatan lain' });
-  q(root, 'answer', A, '1', 'biru');
-  assert.match(read(root, A), /answered question: Warna\?\n  Pilihan: merah atau biru\.\n  answer, [^\n]+: biru\n- 2026-10-16 10:00:01: catatan lain/);
+  add(root, A, { notes: '- 2026-10-16 10:00:00: open question: Colour?\n  Options: red or blue.\n- 2026-10-16 10:00:01: another note' });
+  q(root, 'answer', A, '1', 'blue');
+  assert.match(read(root, A), /answered question: Colour\?\n  Options: red or blue\.\n  answer, [^\n]+: blue\n- 2026-10-16 10:00:01: another note/);
 });
 
 test('answer: refuses an answered question, a number that does not exist, and an empty answer', () => {
   const root = repo();
   add(root, A);
-  q(root, 'ask', A, 'Satu?');
-  q(root, 'answer', A, '1', 'ya');
+  q(root, 'ask', A, 'One?');
+  q(root, 'answer', A, '1', 'yes');
   const before = read(root, A);
-  assert.equal(q(root, 'answer', A, '1', 'lagi').code, 2);
+  assert.equal(q(root, 'answer', A, '1', 'again').code, 2);
   assert.equal(q(root, 'answer', A, '2', 'x').code, 2);
   assert.equal(q(root, 'answer', A, '0', 'x').code, 2);
   assert.equal(read(root, A), before);
-  q(root, 'ask', A, 'Dua?');
+  q(root, 'ask', A, 'Two?');
   assert.equal(q(root, 'answer', A, '2', '  ').code, 2);
-  assert.match(read(root, A), /open question: Dua\?\n$/);
+  assert.match(read(root, A), /open question: Two\?\n$/);
 });
 
 // awk -v reads its value as a string literal: `\d` became `d` and `\t` a tab.
-const slashed = String.raw`pakai pola \d+ di C:\temp`;
+const slashed = String.raw`use the pattern \d+ in C:\temp`;
 
 test('answer: backslashes in the answer are stored exactly as given', () => {
   const root = repo();
   add(root, A);
-  q(root, 'ask', A, 'Pola apa?');
+  q(root, 'ask', A, 'Which pattern?');
   assert.equal(q(root, 'answer', A, '1', slashed).code, 0);
   const lines = read(root, A).split('\n');
   const ans = lines.find((l) => l.startsWith('  answer, '));
@@ -330,11 +330,11 @@ test('ask: backslashes survive both as the first note and as a later one', () =>
   const root = repo();
   add(root, A);
   // The first note replaces "(none yet)"; the second is appended after it.
-  q(root, 'ask', A, `Pertama ${slashed}?`);
-  q(root, 'ask', A, `Kedua ${slashed}?`);
+  q(root, 'ask', A, `First ${slashed}?`);
+  q(root, 'ask', A, `Second ${slashed}?`);
   const notes = read(root, A).split('## Notes\n')[1].split('\n');
-  assert.equal(notes[0].replace(/^- [\d-]+ [\d:]+: open question: /, ''), `Pertama ${slashed}?`);
-  assert.equal(notes[1].replace(/^- [\d-]+ [\d:]+: open question: /, ''), `Kedua ${slashed}?`);
+  assert.equal(notes[0].replace(/^- [\d-]+ [\d:]+: open question: /, ''), `First ${slashed}?`);
+  assert.equal(notes[1].replace(/^- [\d-]+ [\d:]+: open question: /, ''), `Second ${slashed}?`);
   assert.ok(!notes.includes('(none yet)'));
 });
 
@@ -351,11 +351,11 @@ test('gate: a ticket with an open question is refused entry into todo, from ever
   for (const from of ['backlog', 'in_progress', 'review', 'done', 'cancel']) {
     const root = repo();
     add(root, A, { status: from });
-    q(root, 'ask', A, 'Boleh?');
+    q(root, 'ask', A, 'May I?');
     const r = run(root, update, A, '--status', 'todo');
     assert.equal(r.code, 1, from);
     assert.match(r.err, /REFUSED: 261016400001 was not moved to todo/);
-    assert.match(r.err, /1\. Boleh\?/);
+    assert.match(r.err, /1\. May I\?/);
     assert.ok(fileOf(root, A).includes(`/${from}/`), from);
   }
 });
@@ -363,8 +363,8 @@ test('gate: a ticket with an open question is refused entry into todo, from ever
 test('gate: once answered, the move goes through', () => {
   const root = repo();
   add(root, A);
-  q(root, 'ask', A, 'Boleh?');
-  q(root, 'answer', A, '1', 'boleh');
+  q(root, 'ask', A, 'May I?');
+  q(root, 'answer', A, '1', 'you may');
   const r = run(root, update, A, '--status', 'todo');
   assert.equal(r.code, 0, r.err);
   assert.ok(fileOf(root, A).includes('/todo/'));
@@ -373,22 +373,22 @@ test('gate: once answered, the move goes through', () => {
 test('gate: the refusal numbers each open question as answer takes it, answered ones counted', () => {
   const root = repo();
   add(root, A);
-  q(root, 'ask', A, 'Satu?');
-  q(root, 'ask', A, 'Dua?');
-  q(root, 'ask', A, 'Tiga?');
-  q(root, 'answer', A, '1', 'ya');
+  q(root, 'ask', A, 'One?');
+  q(root, 'ask', A, 'Two?');
+  q(root, 'ask', A, 'Three?');
+  q(root, 'answer', A, '1', 'yes');
   const r = run(root, update, A, '--status', 'todo');
   assert.equal(r.code, 1, r.err);
-  assert.match(r.err, /^  2\. Dua\?$/m);
-  assert.match(r.err, /^  3\. Tiga\?$/m);
+  assert.match(r.err, /^  2\. Two\?$/m);
+  assert.match(r.err, /^  3\. Three\?$/m);
   assert.doesNotMatch(r.err, /^  1\./m);
   // The number in the message is the one that answers it.
-  assert.equal(q(root, 'answer', A, '2', 'boleh').code, 0);
+  assert.equal(q(root, 'answer', A, '2', 'you may').code, 0);
   const again = run(root, update, A, '--status', 'todo');
   assert.equal(again.code, 1);
-  assert.match(again.err, /^  3\. Tiga\?$/m);
+  assert.match(again.err, /^  3\. Three\?$/m);
   assert.doesNotMatch(again.err, /^  [12]\./m);
-  assert.equal(q(root, 'answer', A, '3', 'boleh').code, 0);
+  assert.equal(q(root, 'answer', A, '3', 'you may').code, 0);
   assert.equal(run(root, update, A, '--status', 'todo').code, 0, 'the move after every answer');
   assert.ok(fileOf(root, A).includes('/todo/'));
 });
@@ -396,9 +396,9 @@ test('gate: the refusal numbers each open question as answer takes it, answered 
 test('gate: other moves are not held up by an open question, and a fenced example is not one', () => {
   const root = repo();
   add(root, A);
-  q(root, 'ask', A, 'Boleh?');
+  q(root, 'ask', A, 'May I?');
   assert.equal(run(root, update, A, '--status', 'in_progress').code, 0);
-  add(root, B, { notes: '```\n- 2026-10-16 10:00:00: open question: contoh\n```' });
+  add(root, B, { notes: '```\n- 2026-10-16 10:00:00: open question: an example\n```' });
   assert.equal(run(root, update, B, '--status', 'todo').code, 0);
 });
 
@@ -414,12 +414,12 @@ test('check: a ticket with an estimate and nothing open is ready', () => {
   readyTicket(root, A);
   const r = q(root, 'check', A);
   assert.equal(r.code, 0, r.out);
-  assert.match(r.out, /261016400001 \(backlog\) Tiket 261016400001\n  ready\nREADY\n$/);
+  assert.match(r.out, /261016400001 \(backlog\) Ticket 261016400001\n  ready\nREADY\n$/);
 });
 
 test('check: names each kind of problem in a ticket', () => {
   const cases = [
-    ['an open question', (root) => { readyTicket(root, A); q(root, 'ask', A, 'Apa?'); }, /open question 1: Apa\?/],
+    ['an open question', (root) => { readyTicket(root, A); q(root, 'ask', A, 'What?'); }, /open question 1: What\?/],
     ['no estimate', (root) => { add(root, A); }, /no estimate of the files/],
     ['over the size limit', (root) => { readyTicket(root, A, { doneWhen: items(9) }); }, /over the size limit/],
     ['a blocker still in backlog', (root) => { readyTicket(root, A, { blockedBy: [B] }); readyTicket(root, B); }, /blocked_by 261016400002, which is still in backlog/],
@@ -472,7 +472,7 @@ function todoBoard() {
 
 test('check: todo in step with order.md is READY', () => {
   const root = todoBoard();
-  order(root, `**Bebas.** Tidak saling menunggu.\n\n- ${A} Tiket ${A}\n- ${B} Tiket ${B}\n`);
+  order(root, `**Free.** Neither waits for the other.\n\n- ${A} Ticket ${A}\n- ${B} Ticket ${B}\n`);
   const r = q(root, 'check');
   assert.equal(r.code, 0, r.out);
   assert.match(r.out, /order\.md\n  in step with todo\nREADY/);
@@ -480,7 +480,7 @@ test('check: todo in step with order.md is READY', () => {
 
 test('check: a ticket missing from order.md, and an entry whose ticket left todo', () => {
   const root = todoBoard();
-  order(root, `**Pertama.** Alasan.\n\n- ${A} Tiket ${A}\n- ${C} Tiket ${C}\n`);
+  order(root, `**First.** The reason.\n\n- ${A} Ticket ${A}\n- ${C} Ticket ${C}\n`);
   const r = q(root, 'check');
   assert.equal(r.code, 1);
   assert.match(r.out, /261016400002 is in todo but has no place in order\.md/);
@@ -491,7 +491,7 @@ test('check: a ticket never shares a group with one it waits for, directly or th
   const direct = repo();
   readyTicket(direct, A, { status: 'todo', blockedBy: [B] });
   readyTicket(direct, B, { status: 'todo' });
-  order(direct, `**Bersama.** Salah.\n\n- ${A} Tiket ${A}\n- ${B} Tiket ${B}\n`);
+  order(direct, `**Together.** Wrong.\n\n- ${A} Ticket ${A}\n- ${B} Ticket ${B}\n`);
   let r = q(direct, 'check');
   assert.equal(r.code, 1);
   assert.match(r.out, /261016400001 and 261016400002 share a group, but 261016400001 waits for the result of 261016400002/);
@@ -501,7 +501,7 @@ test('check: a ticket never shares a group with one it waits for, directly or th
   readyTicket(chain, A, { status: 'todo', blockedBy: [C] });
   readyTicket(chain, B, { status: 'todo' });
   add(chain, C, { status: 'in_progress', blockedBy: [B] });
-  order(chain, `**Bersama.** Salah.\n\n- ${A} Tiket ${A}\n- ${B} Tiket ${B}\n`);
+  order(chain, `**Together.** Wrong.\n\n- ${A} Ticket ${A}\n- ${B} Ticket ${B}\n`);
   r = q(chain, 'check');
   assert.equal(r.code, 1);
   assert.match(r.out, /261016400001 waits for the result of 261016400002/);
@@ -511,11 +511,11 @@ test('check: a ticket placed before the one it waits for; after it, it is fine',
   const root = repo();
   readyTicket(root, A, { status: 'todo', blockedBy: [B] });
   readyTicket(root, B, { status: 'todo' });
-  order(root, `**Dulu.** Salah.\n\n- ${A} Tiket ${A}\n\n**Lalu.** Salah.\n\n- ${B} Tiket ${B}\n`);
+  order(root, `**First.** Wrong.\n\n- ${A} Ticket ${A}\n\n**Then.** Wrong.\n\n- ${B} Ticket ${B}\n`);
   let r = q(root, 'check');
   assert.equal(r.code, 1);
   assert.match(r.out, /261016400001 is placed before 261016400002, which it waits for/);
-  order(root, `**Dulu.** Fondasi.\n\n- ${B} Tiket ${B}\n\n**Lalu.** Memakai hasilnya.\n\n- ${A} Tiket ${A}\n`);
+  order(root, `**First.** The foundation.\n\n- ${B} Ticket ${B}\n\n**Then.** Builds on it.\n\n- ${A} Ticket ${A}\n`);
   r = q(root, 'check');
   assert.equal(r.code, 0, r.out);
 });
@@ -524,10 +524,10 @@ test('check: a blocker in an earlier group of todo makes the ticket waiting for 
   const root = repo();
   readyTicket(root, A, { status: 'todo', blockedBy: [B] });
   readyTicket(root, B, { status: 'todo' });
-  order(root, `**Dulu.** Fondasi.\n\n- ${B} Tiket ${B}\n\n**Lalu.** Memakai hasilnya.\n\n- ${A} Tiket ${A}\n`);
+  order(root, `**First.** The foundation.\n\n- ${B} Ticket ${B}\n\n**Then.** Builds on it.\n\n- ${A} Ticket ${A}\n`);
   let r = q(root, 'check');
   assert.equal(r.code, 0, r.out);
-  assert.match(r.out, /261016400001 \(todo\) Tiket 261016400001\n  ready\n/);
+  assert.match(r.out, /261016400001 \(todo\) Ticket 261016400001\n  ready\n/);
   r = q(root, 'check', A);
   assert.equal(r.code, 0, r.out);
 });
@@ -548,17 +548,17 @@ test('check: questions open in tickets in flight are shown with their number, an
   const root = todoBoard();
   add(root, C, { status: 'in_progress' });
   add(root, D, { status: 'review' });
-  q(root, 'ask', C, 'Yang pertama?');
-  q(root, 'answer', C, '1', 'Ya.');
-  q(root, 'ask', C, 'Tombol di kiri atau kanan? Saran: kanan.');
-  q(root, 'ask', D, 'Nama berkasnya?');
+  q(root, 'ask', C, 'The first one?');
+  q(root, 'answer', C, '1', 'Yes.');
+  q(root, 'ask', C, 'Button on the left or the right? Recommended: the right.');
+  q(root, 'ask', D, 'The file name?');
   const r = q(root, 'check');
   assert.equal(r.code, 0, r.out);
-  assert.match(r.out, /in flight, waiting for the owner \(not counted against todo\)\n  261016400003 \(in_progress\) question 2: Tombol di kiri atau kanan\? Saran: kanan\.\n  261016400004 \(review\) question 1: Nama berkasnya\?\n/);
-  assert.doesNotMatch(r.out, /Yang pertama/);
+  assert.match(r.out, /in flight, waiting for the owner \(not counted against todo\)\n  261016400003 \(in_progress\) question 2: Button on the left or the right\? Recommended: the right\.\n  261016400004 \(review\) question 1: The file name\?\n/);
+  assert.doesNotMatch(r.out, /The first one/);
   assert.match(r.out, /READY\n$/);
   const one = q(root, 'check', C);
-  assert.match(one.out, /open question 2: Tombol di kiri atau kanan/);
+  assert.match(one.out, /open question 2: Button on the left or the right/);
   const quiet = todoBoard();
   assert.doesNotMatch(q(quiet, 'check').out, /in flight/);
 });
@@ -577,7 +577,7 @@ const noLine = new RegExp(`${A} and ${B} share a group and the files src/web/b\\
 
 test('check: two tickets of one group sharing files, with no lands-first line, are not ready, and it says why', () => {
   const root = sharingPair();
-  order(root, `**Bersama.** ${A} dan ${B} sama-sama mengubah src/web/b.js.\n\n- ${A} Tiket ${A}\n- ${B} Tiket ${B}\n`);
+  order(root, `**Together.** ${A} and ${B} both change src/web/b.js.\n\n- ${A} Ticket ${A}\n- ${B} Ticket ${B}\n`);
   const r = q(root, 'check');
   assert.equal(r.code, 1, r.out);
   assert.match(r.out, noLine);
@@ -593,7 +593,7 @@ test('check: the free wording that used to say which lands first is no longer re
     `${A} dan ${B} mengubah src/web/b.js; ${A} mendarat dahulu.`,
     `${A} dan ${B} mengubah src/web/b.js; ${B} digabung sebelum ${A}.`,
   ]) {
-    order(root, `**Bersama.** ${lead}\n\n- ${A} Tiket ${A}\n- ${B} Tiket ${B}\n`);
+    order(root, `**Together.** ${lead}\n\n- ${A} Ticket ${A}\n- ${B} Ticket ${B}\n`);
     const r = q(root, 'check');
     assert.equal(r.code, 1, `${lead}\n${r.out}`);
     assert.match(r.out, noLine, lead);
@@ -611,7 +611,7 @@ test('check: a lands-first line naming either ticket, or both in either order, m
     `<!--lands-first:${B},${A}-->`,
     `  <!--   lands-first:   ${A} ,  ${B}   -->  `,
   ]) {
-    order(root, `**Bersama.** Keduanya mengubah src/web/b.js.\n${line}\n\n- ${A} Tiket ${A}\n- ${B} Tiket ${B}\n`);
+    order(root, `**Together.** Both change src/web/b.js.\n${line}\n\n- ${A} Ticket ${A}\n- ${B} Ticket ${B}\n`);
     const r = q(root, 'check');
     assert.equal(r.code, 0, `${line}\n${r.out}`);
     assert.match(r.out, /in step with todo\nREADY/);
@@ -622,10 +622,10 @@ test('check: the lands-first line counts anywhere inside its group, and only the
   const root = sharingPair();
   const mark = `<!-- lands-first: ${A} -->`;
   for (const text of [
-    `**Bersama.** Alasan.\n${mark}\n\n- ${A} Tiket ${A}\n- ${B} Tiket ${B}\n`,
-    `**Bersama.** Alasan.\n\n${mark}\n\n- ${A} Tiket ${A}\n- ${B} Tiket ${B}\n`,
-    `**Bersama.** Alasan.\n\n- ${A} Tiket ${A}\n- ${B} Tiket ${B}\n${mark}\n`,
-    `**Goal.** One batch.\n\n**Together.** The reason.\n\n- ${A} Tiket ${A}\n${mark}\n- ${B} Tiket ${B}\n`,
+    `**Together.** The reason.\n${mark}\n\n- ${A} Ticket ${A}\n- ${B} Ticket ${B}\n`,
+    `**Together.** The reason.\n\n${mark}\n\n- ${A} Ticket ${A}\n- ${B} Ticket ${B}\n`,
+    `**Together.** The reason.\n\n- ${A} Ticket ${A}\n- ${B} Ticket ${B}\n${mark}\n`,
+    `**Goal.** One batch.\n\n**Together.** The reason.\n\n- ${A} Ticket ${A}\n${mark}\n- ${B} Ticket ${B}\n`,
   ]) {
     order(root, text);
     const r = q(root, 'check');
@@ -633,7 +633,7 @@ test('check: the lands-first line counts anywhere inside its group, and only the
   }
   // In the group above, it settles nothing here, and names tickets not in its own group.
   add(root, C, { status: 'todo' }); q(root, 'estimate', C, 'src/c.js');
-  order(root, `**Dulu.**\n${mark}\n\n- ${C} Tiket ${C}\n\n**Bersama.**\n\n- ${A} Tiket ${A}\n- ${B} Tiket ${B}\n`);
+  order(root, `**First.**\n${mark}\n\n- ${C} Ticket ${C}\n\n**Together.**\n\n- ${A} Ticket ${A}\n- ${B} Ticket ${B}\n`);
   const r = q(root, 'check');
   assert.equal(r.code, 1, r.out);
   assert.match(r.out, new RegExp(`order\\.md line 2 names ${A}, which is not a ticket of its group`));
@@ -656,10 +656,10 @@ test('check: a lands-first line that cannot be read is reported with its line an
     `<!-- lands-first: ${A}9 -->`,
     `<!-- lands-first: -->`,
     `<!-- lands-first: ${A}`,
-    `<!-- lands-first: ${A} --> lalu ${B}`,
+    `<!-- lands-first: ${A} --> then ${B}`,
     `<!-- lands-first: \`${A}\` -->`,
   ]) {
-    order(root, `**Bersama.** Alasan.\n${line}\n\n- ${A} Tiket ${A}\n- ${B} Tiket ${B}\n`);
+    order(root, `**Together.** The reason.\n${line}\n\n- ${A} Ticket ${A}\n- ${B} Ticket ${B}\n`);
     const r = q(root, 'check');
     assert.equal(r.code, 1, `${line}\n${r.out}`);
     assert.match(r.out, /order\.md line 2 is not a lands-first line check can read: write it as <!-- lands-first: <id>, <id> -->, the IDs in the order they land/, line);
@@ -669,7 +669,7 @@ test('check: a lands-first line that cannot be read is reported with its line an
 
 test('check: a second lands-first line in a group, and an ID named twice, are reported', () => {
   const root = sharingPair();
-  order(root, `**Bersama.**\n<!-- lands-first: ${A} -->\n<!-- lands-first: ${B} -->\n\n- ${A} Tiket ${A}\n- ${B} Tiket ${B}\n`);
+  order(root, `**Together.**\n<!-- lands-first: ${A} -->\n<!-- lands-first: ${B} -->\n\n- ${A} Ticket ${A}\n- ${B} Ticket ${B}\n`);
   let r = q(root, 'check');
   assert.equal(r.code, 1, r.out);
   assert.match(r.out, /order\.md line 3 is a second lands-first line in its group: write one, with every ID in the order they land/);
@@ -678,11 +678,11 @@ test('check: a second lands-first line in a group, and an ID named twice, are re
   // One line in each of two groups is not a second line.
   add(root, C, { status: 'todo' }); add(root, D, { status: 'todo' });
   q(root, 'estimate', C, 'src/c.js'); q(root, 'estimate', D, 'src/c.js');
-  order(root, `**Satu.**\n<!-- lands-first: ${A} -->\n\n- ${A} Tiket ${A}\n- ${B} Tiket ${B}\n\n**Dua.**\n<!-- lands-first: ${D} -->\n\n- ${C} Tiket ${C}\n- ${D} Tiket ${D}\n`);
+  order(root, `**One.**\n<!-- lands-first: ${A} -->\n\n- ${A} Ticket ${A}\n- ${B} Ticket ${B}\n\n**Two.**\n<!-- lands-first: ${D} -->\n\n- ${C} Ticket ${C}\n- ${D} Ticket ${D}\n`);
   r = q(root, 'check');
   assert.equal(r.code, 0, r.out);
 
-  order(root, `**Satu.**\n<!-- lands-first: ${A}, ${B}, ${A} -->\n\n- ${A} Tiket ${A}\n- ${B} Tiket ${B}\n\n**Dua.**\n<!-- lands-first: ${D} -->\n\n- ${C} Tiket ${C}\n- ${D} Tiket ${D}\n`);
+  order(root, `**One.**\n<!-- lands-first: ${A}, ${B}, ${A} -->\n\n- ${A} Ticket ${A}\n- ${B} Ticket ${B}\n\n**Two.**\n<!-- lands-first: ${D} -->\n\n- ${C} Ticket ${C}\n- ${D} Ticket ${D}\n`);
   r = q(root, 'check');
   assert.equal(r.code, 1, r.out);
   assert.match(r.out, new RegExp(`order\\.md line 2 names ${A} twice`));
@@ -692,23 +692,23 @@ test('check: a second lands-first line in a group, and an ID named twice, are re
 test('check: in a group of three sharing one file, the line settles each pair or says which one it leaves open', () => {
   const root = repo();
   for (const id of [A, B, C]) { add(root, id, { status: 'todo' }); q(root, 'estimate', id, 'src/a.js'); }
-  const bullets = `- ${A} Tiket ${A}\n- ${B} Tiket ${B}\n- ${C} Tiket ${C}\n`;
+  const bullets = `- ${A} Ticket ${A}\n- ${B} Ticket ${B}\n- ${C} Ticket ${C}\n`;
 
   // One ID settles that ticket against each of the others, not the others between them.
-  order(root, `**Bersama.**\n<!-- lands-first: ${A} -->\n\n${bullets}`);
+  order(root, `**Together.**\n<!-- lands-first: ${A} -->\n\n${bullets}`);
   let r = q(root, 'check');
   assert.equal(r.code, 1, r.out);
   assert.match(r.out, new RegExp(`${B} and ${C} share a group and the files src/a\\.js; its lands-first line names neither, so which lands first is open \\(add one of them to it\\)`));
   assert.match(r.out, /NOT READY: 1 problem/);
 
   for (const ids of [[A, B], [C, B], [C, B, A], [B, A, C]]) {
-    order(root, `**Bersama.**\n<!-- lands-first: ${ids.join(', ')} -->\n\n${bullets}`);
+    order(root, `**Together.**\n<!-- lands-first: ${ids.join(', ')} -->\n\n${bullets}`);
     r = q(root, 'check');
     assert.equal(r.code, 0, `${ids}\n${r.out}`);
   }
 
   // Without the line, every pair is named.
-  order(root, `**Bersama.**\n\n${bullets}`);
+  order(root, `**Together.**\n\n${bullets}`);
   r = q(root, 'check');
   assert.match(r.out, /NOT READY: 3 problem/);
 });
@@ -720,9 +720,9 @@ test('check: in a group of three sharing one file, the line settles each pair or
 test('check: tickets of one group in flight side by side stay listed, with their lands-first line, until they finish', () => {
   const root = repo();
   for (const id of [A, B, C]) { readyTicket(root, id, { status: 'todo' }); q(root, 'estimate', id, 'src/a.js'); }
-  const start = `**Goal.** One batch.\n\n**Together.** None of the three waits for another.\n<!-- lands-first: ${A}, ${B}, ${C} -->\n\n- ${A} Tiket ${A}\n- ${B} Tiket ${B}\n- ${C} Tiket ${C}\n`;
+  const start = `**Goal.** One batch.\n\n**Together.** None of the three waits for another.\n<!-- lands-first: ${A}, ${B}, ${C} -->\n\n- ${A} Ticket ${A}\n- ${B} Ticket ${B}\n- ${C} Ticket ${C}\n`;
   order(root, start);
-  git(root, 'add', '-A'); git(root, 'commit', '-q', '-m', 'papan');
+  git(root, 'add', '-A'); git(root, 'commit', '-q', '-m', 'board');
   assert.equal(q(root, 'check').code, 0);
   const orderText = () => fs.readFileSync(path.join(root, '.kerjaan', 'order.md'), 'utf8');
 
@@ -767,8 +767,8 @@ function grammarBoard() {
   readyTicket(root, B, { status: 'todo' });
   return root;
 }
-const lineA = `- ${A} Tiket ${A}`;
-const lineB = `- ${B} Tiket ${B}`;
+const lineA = `- ${A} Ticket ${A}`;
+const lineB = `- ${B} Ticket ${B}`;
 
 test('check: a free paragraph, a lead-in wrapped over two lines, or a ticket under no lead-in is reported by its line number', () => {
   const root = grammarBoard();
@@ -865,7 +865,7 @@ test('check: a second wait-for-owner line in one group, one outside any group, a
 test('check: a group that waits for the owner and already has a ticket in flight is named as started', () => {
   const root = grammarBoard();
   add(root, C, { status: 'in_progress' });
-  order(root, `**First.**\n\n${lineA}\n\n**Then.**\n${waitLine}\n\n- ${C} Tiket ${C}\n${lineB}\n`);
+  order(root, `**First.**\n\n${lineA}\n\n**Then.**\n${waitLine}\n\n- ${C} Ticket ${C}\n${lineB}\n`);
   let r = q(root, 'check');
   assert.equal(r.code, 0, r.out);
   assert.match(r.out, /\n  the group of line 5 waits for the owner \(line 6\), and has started: a ticket of it is in flight\n/);
@@ -879,7 +879,7 @@ test('check: a group that waits for the owner and already has a ticket in flight
 // and worktree.sh cannot read is reported before the chain starts on it.
 test('check: settings.md chain and max_parallel are read as written, and a value outside them is reported', () => {
   const root = todoBoard();
-  order(root, `**Bebas.**\n\n- ${A} Tiket ${A}\n- ${B} Tiket ${B}\n`);
+  order(root, `**Free.**\n\n- ${A} Ticket ${A}\n- ${B} Ticket ${B}\n`);
   const settingsFile = path.join(root, '.kerjaan', 'settings.md');
   const base = fs.readFileSync(settingsFile, 'utf8');
   const write = (lines) => fs.writeFileSync(settingsFile, base.replace(/\n---\n$/, `\n${lines}---\n`));
@@ -935,25 +935,25 @@ test('check: a title on a ticket line that differs from its ticket is NOT READY,
   const root = grammarBoard();
   add(root, C, { status: 'in_progress' });
   const text = (a, c) => `**First.**\n\n- ${C} ${c}\n\n**Then.**\n\n- ${A} ${a}\n${lineB}\n`;
-  order(root, text(`Tiket ${A}`, `Tiket ${C}`));
+  order(root, text(`Ticket ${A}`, `Ticket ${C}`));
   assert.equal(q(root, 'check').code, 0);
   for (const [a, c, ln, id, given] of [
-    ['Title edited by hand', `Tiket ${C}`, 7, A, 'Title edited by hand'],
-    [`Tiket ${A}`, 'Old title', 3, C, 'Old title'],
-    ['', `Tiket ${C}`, 7, A, ''],
+    ['Title edited by hand', `Ticket ${C}`, 7, A, 'Title edited by hand'],
+    [`Ticket ${A}`, 'Old title', 3, C, 'Old title'],
+    ['', `Ticket ${C}`, 7, A, ''],
   ]) {
     order(root, text(a, c).replace(`- ${A} \n`, `- ${A}\n`));
     const r = q(root, 'check');
     assert.equal(r.code, 1, r.out);
-    assert.match(r.out, new RegExp(`order\\.md line ${ln} gives ${id} the title "${given}", but its ticket is titled "Tiket ${id}": copy the ticket's title \\(update-ticket\\.sh --title renames both\\)`), r.out);
+    assert.match(r.out, new RegExp(`order\\.md line ${ln} gives ${id} the title "${given}", but its ticket is titled "Ticket ${id}": copy the ticket's title \\(update-ticket\\.sh --title renames both\\)`), r.out);
     assert.match(r.out, /NOT READY: 1 problem/);
   }
   // Trailing spaces are not a different title.
-  order(root, text(`Tiket ${A}  `, `Tiket ${C}`));
+  order(root, text(`Ticket ${A}  `, `Ticket ${C}`));
   assert.equal(q(root, 'check').code, 0);
 
-  order(root, text(`Tiket ${A}`, `Tiket ${C}`));
-  git(root, 'add', '-A'); git(root, 'commit', '-q', '-m', 'papan');
+  order(root, text(`Ticket ${A}`, `Ticket ${C}`));
+  git(root, 'add', '-A'); git(root, 'commit', '-q', '-m', 'board');
   for (const id of [A, C]) assert.equal(run(root, update, id, '--title', `New name ${id}`).code, 0);
   assert.equal(fs.readFileSync(path.join(root, '.kerjaan', 'order.md'), 'utf8'), text(`New name ${A}`, `New name ${C}`));
   const r = q(root, 'check');
@@ -972,7 +972,7 @@ function realBoard() {
   const root = repo();
   const text = real('rewritten.md');
   const F1 = '261017065501';
-  add(root, F1, { status: 'done', title: 'Mitra melihat dan mengubah data diri, domisili, dan foto profilnya dari aplikasi Flutter dengan akun sungguhan di server' });
+  add(root, F1, { status: 'done', title: 'Partners see and change their personal data, address and profile photo from the Flutter app with a real account on the server' });
   const blocked = {
     261017065502: [F1],
     261017073005: ['261017073004'],
@@ -1019,7 +1019,7 @@ test('check: the marker ordering-the-queue.md documents is the one check reads',
   assert.ok(section.includes('<!-- lands-first: <id> -->'), section);
   assert.ok(section.includes('<!-- lands-first: <id>, <id> -->'), section);
   // No free phrase is offered as a way of saying it any more.
-  for (const phrase of ['digabung lebih dulu', 'digabung sebelum', 'mendarat', 'lands before']) {
+  for (const phrase of ['lands before', 'lands after', 'merged first', 'merged before']) {
     assert.ok(!section.includes(phrase), phrase);
   }
   const root = repo();
@@ -1031,7 +1031,7 @@ test('check: the marker ordering-the-queue.md documents is the one check reads',
   assert.ok(examples.length >= 1, section);
   for (const ex of examples) {
     const text = ex.replaceAll('260905160502', A).replaceAll('260905160503', B)
-      .replace(/^- (\d{12}) .*$/gm, (m, id) => `- ${id} Tiket ${id}`);
+      .replace(/^- (\d{12}) .*$/gm, (m, id) => `- ${id} Ticket ${id}`);
     order(root, text);
     const r = q(root, 'check');
     assert.equal(r.code, 0, `${text}\n${r.out}`);
@@ -1059,7 +1059,7 @@ test('check: tickets in different groups may share files without a word', () => 
   add(root, A, { status: 'todo' }); add(root, B, { status: 'todo' });
   q(root, 'estimate', A, 'src/a.js');
   q(root, 'estimate', B, 'src/a.js');
-  order(root, `**First.**\n\n- ${A} Tiket ${A}\n\n**Then.**\n\n- ${B} Tiket ${B}\n`);
+  order(root, `**First.**\n\n- ${A} Ticket ${A}\n\n**Then.**\n\n- ${B} Ticket ${B}\n`);
   assert.equal(q(root, 'check').code, 0);
 });
 
@@ -1085,12 +1085,12 @@ test('compare: estimated and changed, estimated but untouched, changed but not e
   const root = repo();
   add(root, A, { status: 'done' });
   q(root, 'estimate', A, 'src/a.js', 'src/web/', 'docs/');
-  commit(root, `${A}: kerja`, { 'src/web/b.js': 'b2\n', 'src/web/baru.js': 'n\n', 'src/c.js': 'c\n' });
-  commit(root, 'tiket lain', { 'src/a.js': 'diubah orang lain\n' });
+  commit(root, `${A}: work`, { 'src/web/b.js': 'b2\n', 'src/web/new.js': 'n\n', 'src/c.js': 'c\n' });
+  commit(root, 'another ticket', { 'src/a.js': 'changed by somebody else\n' });
   const r = q(root, 'compare', A);
   assert.equal(r.code, 0, r.err);
   assert.equal(r.out, [
-    'Estimated and changed:', '  src/web/b.js', '  src/web/baru.js',
+    'Estimated and changed:', '  src/web/b.js', '  src/web/new.js',
     'Estimated, not changed:', '  docs/', '  src/a.js',
     'Changed, not estimated:', '  src/c.js', '',
   ].join('\n'));
@@ -1101,18 +1101,18 @@ test('compare: work on a branch not merged yet is read from that branch', () => 
   const root = repo();
   add(root, A, { status: 'review' });
   q(root, 'estimate', A, 'src/a.js');
-  git(root, 'add', '-A'); git(root, 'commit', '-q', '-m', 'papan');
-  git(root, 'checkout', '-q', '-b', `tiket-${A}`);
-  commit(root, `${A}: di cabang`, { 'src/a.js': 'a2\n' });
+  git(root, 'add', '-A'); git(root, 'commit', '-q', '-m', 'board');
+  git(root, 'checkout', '-q', '-b', `ticket-${A}`);
+  commit(root, `${A}: on the branch`, { 'src/a.js': 'a2\n' });
   git(root, 'checkout', '-q', 'main');
   const r = q(root, 'compare', A);
-  assert.match(r.out, new RegExp(`^Read from tiket-${A}, which is not merged into HEAD\\.\\nEstimated and changed:\\n  src/a\\.js\\n`));
+  assert.match(r.out, new RegExp(`^Read from ticket-${A}, which is not merged into HEAD\\.\\nEstimated and changed:\\n  src/a\\.js\\n`));
 });
 
 test('compare: without an estimate it lists what changed and exits 1', () => {
   const root = repo();
   add(root, A, { status: 'done' });
-  commit(root, `${A}: kerja`, { 'src/c.js': 'c\n' });
+  commit(root, `${A}: work`, { 'src/c.js': 'c\n' });
   const r = q(root, 'compare', A);
   assert.equal(r.code, 1);
   assert.match(r.out, /No estimate was recorded for 261016400001\. Changed by its commits:\n  src\/c\.js/);
@@ -1124,7 +1124,7 @@ test('refuses to run from a linked worktree', () => {
   const root = repo();
   add(root, A);
   const wt = `${root}-wt`;
-  git(root, 'worktree', 'add', '-q', '-b', `tiket-${A}`, wt);
+  git(root, 'worktree', 'add', '-q', '-b', `ticket-${A}`, wt);
   const r = q(wt, 'overlap');
   assert.equal(r.code, 2);
   assert.match(r.err, /linked git worktree/);
@@ -1171,7 +1171,7 @@ test('check: a ticket moved into todo inside a Claude Code session, and ordered,
   const m = spawnSync('bash', [update, A, '--status', 'todo'], { cwd: root, encoding: 'utf8', env });
   assert.equal(m.status, 0, m.stderr);
   assert.match(read(root, A), /\n- \d{4}-\d\d-\d\d \d\d:\d\d:\d\d 4dbcf082-290a-4f65-845c-ee75fd3b3e9c todo\n/);
-  order(root, `**Grup.**\n- ${A} Tiket ${A}\n`);
+  order(root, `**Group.**\n- ${A} Ticket ${A}\n`);
   const r = q(root, 'check');
   assert.equal(r.code, 0, r.out);
   assert.match(r.out, /READY\n$/);
@@ -1291,7 +1291,7 @@ test('docs: SETTINGS.md and the foreman guide explain chain, max_parallel and th
   const line = row.match(/`(<!-- wait-for-owner -->)`/)[1];
   const root = repo();
   readyTicket(root, A, { status: 'todo' });
-  order(root, `**First.** The reason.\n${line}\n\n- ${A} Tiket ${A}\n`);
+  order(root, `**First.** The reason.\n${line}\n\n- ${A} Ticket ${A}\n`);
   const r = q(root, 'check');
   assert.equal(r.code, 0, r.out);
   assert.match(r.out, /the group of line 1 waits for the owner \(line 2\)/);

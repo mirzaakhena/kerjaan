@@ -42,7 +42,7 @@ tell the owner in one line what changed.
 
 ## Work without a ticket
 
-When the user says to skip the ticket — "langsung saja", "no ticket for
+When the user says to skip the ticket — "just do it", "no ticket for
 this" — the ticket is skipped, not the worker. Dispatch `kerjaan-worker` as in
 "One ticket, start to finish", step 2, with the request where the ticket's path
 would go:
@@ -333,7 +333,7 @@ a ticket to `review` itself.
   `review`. Tell the user the reviewer will move it to `done`.
 - **`review`.** It is already waiting for its reviewer; say so.
 
-If the owner explicitly wants to skip review — "langsung done saja" — the path
+If the owner explicitly wants to skip review — "just mark it done" — the path
 is the same up to `review`, so `test-run.sh` still records the checks; then
 the foreman moves the ticket to `done` without review and appends to
 `## Notes`: `Moved to done by <owner> without review, <date>.` A worktree

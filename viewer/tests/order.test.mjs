@@ -129,7 +129,7 @@ test('an order.md that also lists tickets in flight: the viewer and queue.sh che
 // goal line, and on one with a goal line below the top: it opens no group in
 // either reader.
 test('readOrderGroups and queue.sh check read the same groups, the goal line opening none', () => {
-  const real = fs.readFileSync(path.join(here, '..', '..', 'uji', 'real-order', 'rewritten.md'), 'utf8');
+  const real = fs.readFileSync(path.join(here, '..', '..', 'tests', 'real-order', 'rewritten.md'), 'utf8');
   const crafted = `**Goal.** One batch.\n- ${ID.a} One\n- ${ID.b} Two\n\n**First.** The reason.\n\n- ${ID.c} Three\n- ${ID.d} Four\n- ${ID.e} Five\n\n**Then.** Another.\n\n- ${ID.f} Six\n`;
   const shared = '## Notes\n- 2026-10-17 11:36:22: files estimated to change: `src/shared.js`';
   // A goal line out of place is reported by check, and still splits no group.
