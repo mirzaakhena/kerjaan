@@ -6,7 +6,7 @@ labels: [sesi-8e6130e0, viewer]
 reporter: mirza
 assign_to: claude
 created: 2026-10-17 17:51:37
-updated: 2026-10-17 20:56:05
+updated: 2026-10-17 21:13:02
 related: [261017113003, 261017155801, 261017184401, 261017184402]
 blocked_by: [261017113003]
 ---
@@ -33,6 +33,7 @@ Viewer kerjaan sepenuhnya berbahasa Inggris: teks yang terlihat, alamat halaman,
 - 2026-10-17 18:45:42 8e6130e0-0828-4d64-b383-ba0d1c9f4b02 todo
 - 2026-10-17 20:05:56 8e6130e0-0828-4d64-b383-ba0d1c9f4b02 in_progress
 - 2026-10-17 20:39:09 8e6130e0-0828-4d64-b383-ba0d1c9f4b02 review
+- 2026-10-17 21:13:02 8e6130e0-0828-4d64-b383-ba0d1c9f4b02 done
 
 ## Notes
 - 2026-10-17: lahir dari permintaan pemilik di sesi 8e6130e0-0828-4d64-b383-ba0d1c9f4b02 (`claude --resume 8e6130e0-0828-4d64-b383-ba0d1c9f4b02`): "Jangan ada bahasa indonesia dalam skill ini. Saya menemukan ada bahasa indonesia pada viewer board yaitu \"diam\"". Keputusan pemilik lewat pilihan: cakupan seluruhnya (teks terlihat, nama berkas/folder/identifier, komentar, nama uji); viewer selalu Inggris tanpa terjemahan; isi papan repo ini tetap Indonesia; dikerjakan di akhir antrean, setelah 261017113003, karena mengubah hampir semua berkas viewer. Tiket yang sedang berjalan saat itu sudah diminta menulis teks baru dalam bahasa Inggris.
@@ -62,3 +63,18 @@ Viewer kerjaan sepenuhnya berbahasa Inggris: teks yang terlihat, alamat halaman,
 - Satu kali dalam run viewer penuh, uji browser shared-files gagal karena halaman `/alpha/order` tidak selesai dimuat dalam 30 detik (fon Google); diulang sendiri lulus 8/8.
 - 2026-10-17 20:38:57: test run — `node --test --test-timeout=900000 --test-force-exit` exited 0 after 3m26s, on content fingerprint 0d33d6cd0c4a45c29d5c4b4c799f5233468e489a (the same before and after the run; .kerjaan/ left out).
 - 2026-10-17 20:39:09: review covers branch tiket-261017175101 at 664f7b7da2c38025300baa5a24550fd0f3cced3f, which holds main at 9bfeefc5ea4e7a453ae7d8f9268ddc3ba945e0be (code outside .kerjaan/); the latest test run passed on exactly this content.
+- 2026-10-17: Reviewed at level normal, round 1, at commit 664f7b7: passed.
+  Level normal di sini: test_command tidak dijalankan ulang (dibawa dari run pengerja), setiap butir Done when dibuktikan dengan menjalankan sesuatu (viewer dari worktree di port 4399, Chrome, curl), dan uji dibaca untuk asersi yang tidak bisa gagal. Tidak ada ekspor bersih: pohon tidak terlihat bergerak. Tinjauan mencakup cabang tiket-261017175101 di 664f7b7 (worktree /Users/mirza/Workspace/kerjaan-viewer-inggris).
+  - Perintah: `test-run.sh --check 261017175101 664f7b7` → SAME: run 2026-10-17 20:38:57, `node --test --test-timeout=900000 --test-force-exit` keluar 0 pada sidik 0d33d6cd0c4a45c29d5c4b4c799f5233468e489a; tidak dijalankan ulang.
+  - Jumlah uji per berkas, dihitung dengan menjalankan setiap berkas uji viewer satu per satu (reporter TAP) di ekspor main dan di worktree: sama di 15 pasang berkas yang dipetakan git sebagai rename (agen-papan→agent-board 12, agen→agents 15, arsip→archive 4, berkas-bersama→shared-files 8, gabung→unmerged 10, laci→drawer 10, lan 7, markdown 12, peramban→browser 8, pil→pills 11, pindah→switcher 6, riwayat→history 2, saring→filter 6, server 12, urutan→order 20); total 143 = 143. Hitungan statis `test(` per berkas juga sama.
+  - Butir 1 (tidak ada kata Indonesia): skrip Chrome pada papan berisi bahasa Inggris dengan agen "quiet" membuka beranda, papan, laci tiket, laci order.md, tiket yang tidak ada, halaman 404, dan /alpha/urutan, lalu memeriksa innerText, title, aria-label, placeholder dan option terhadap ±70 kata Indonesia umum: tidak ada temuan (satu-satunya cocokan, "label", kata Inggris). grep kata yang sama di viewer/web dan viewer/*.mjs: nol.
+  - Butir 2 (label status agen): kartu agen yang 5 menit tak melangkah tampil "worker quiet List files 5 min ago", title "This agent has not taken a step for a few minutes"; viewer/web/agent.js memakai interrupted/stopped/done/quiet/silent.
+  - Butir 3 (alamat): di port 4399, `/`, `/api/projects`, 11 `/assets/<nama>`, `/kerjaan/`, `/kerjaan/ticket/<id>`, `/kerjaan/order`, `/kerjaan/api/board|order|ticket/<id>|agent/<id>` semua 200; alamat lama `/api/proyek`, `/aset/gaya.css`, `/aset/style.css`, `/kerjaan/tiket/<id>`, `/kerjaan/urutan`, `/kerjaan/api/papan|urutan|tiket/<id>|agen/<id>` semua 404. Uji `project and ticket page addresses; the old Indonesian addresses open nothing` di server.test.mjs memeriksa status 404 dan tidak ada Location untuk setiap alamat lama: bukan uji kosong.
+  - Butir 4 (nama berkas, kelas, uji, komentar): `git diff --name-status main...664f7b7` menunjukkan semua berkas viewer berganti nama ke bahasa Inggris; grep kata Indonesia di viewer/ hanya menemukan daftar alamat lama yang disengaja di tests/server.test.mjs dan jalur folder akar `uji/real-order` di tests/order.test.mjs (folder akar di luar cakupan, sudah dicatat pengerja). Uji lulus: lihat SAME dan jumlah di atas.
+  - Butir 5 (papan lama tetap tampil): viewer baru (4399) dibandingkan dengan viewer pemilik dari main (4321) pada ~/Workspace: 9 papan, data papan sama persis (selain cap waktu readAt), 674 tiket via api/ticket sama byte demi byte, order.md sama di 6 papan yang memilikinya; 3 papan tanpa order.md hanya berbeda pada pesan galat ("tidak ada" → "not found"). Termasuk papan kerjaan yang berbahasa Indonesia.
+  - Catatan: dalam satu run per berkas di worktree, satu uji browser di history.test.mjs dan satu di order.test.mjs gagal; diulang langsung, keduanya lulus (22/22). Ini sejenis kegagalan sesekali yang dicatat pengerja (halaman lambat dimuat saat mesin sibuk); tidak terkait penggantian nama, tetapi uji browser tampak rapuh di bawah beban.
+  - Catatan: kunci penyimpanan peramban diganti tanpa pemindahan sesuai jawaban pemilik #5; viewer pemilik di port 4321 perlu dinyalakan ulang setelah tiket ini masuk main.
+
+### Suggested follow-up
+
+- **Uji browser viewer kadang gagal saat mesin sibuk.** Dalam run penuh, uji Chrome (riwayat, order.md, berkas bersama) sesekali gagal karena halaman tidak selesai dimuat tepat waktu, lalu lulus saat diulang; pengerja dan peninjau sama-sama melihatnya. Layak tiket: cari penyebab lambatnya (misalnya fon dari Google yang dimuat halaman) dan buat uji tidak bergantung padanya.
