@@ -6,7 +6,7 @@ labels: [sesi-8e6130e0, viewer]
 reporter: mirza
 assign_to: claude
 created: 2026-10-17 15:58:20
-updated: 2026-10-17 16:01:22
+updated: 2026-10-17 17:47:40
 related: [261016084202]
 blocked_by: []
 ---
@@ -35,6 +35,7 @@ Setiap langkah di panel aktivitas punya keterangan yang bisa dibaca. Agen kerjaa
 ## History
 - 2026-10-17 15:58:20 8e6130e0-0828-4d64-b383-ba0d1c9f4b02 backlog
 - 2026-10-17 16:01:22 8e6130e0-0828-4d64-b383-ba0d1c9f4b02 todo
+- 2026-10-17 17:47:40 8e6130e0-0828-4d64-b383-ba0d1c9f4b02 in_progress
 
 ## Notes
 - 2026-10-17: lahir dari pertanyaan pemilik di sesi 8e6130e0-0828-4d64-b383-ba0d1c9f4b02 (`claude --resume 8e6130e0-0828-4d64-b383-ba0d1c9f4b02`) sambil melihat tangkapan layar panel aktivitas nukitu-mockup. Pemilik setuju kedua lapis: aturan keterangan di definisi agen, dan cadangan nama program di viewer (melonggarkan aturan "tidak ada isi perintah" sebatas nama program). Pemilik khawatir soal tambahan context: tambahannya sekitar 5-10 token per perintah dan satu kalimat per definisi agen; cadangan di viewer tidak menambah context agen sama sekali. Pemilik minta tiket ini langsung masuk todo.
