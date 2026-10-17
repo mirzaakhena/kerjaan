@@ -6,7 +6,7 @@ labels: [sesi-8e6130e0, viewer]
 reporter: mirza
 assign_to: claude
 created: 2026-10-17 19:34:30
-updated: 2026-10-17 19:59:19
+updated: 2026-10-17 19:59:42
 related: [261006121501]
 blocked_by: []
 ---
@@ -62,3 +62,4 @@ Saat viewer dijalankan dengan pilihan tambahan untuk jaringan, papan bisa dibuka
 
 - **Viewer `--lan` diam-diam berbagi porta dengan viewer lama di macOS.** Bila viewer tanpa `--lan` sudah berjalan di 4321, menjalankan yang `--lan` di porta sama tidak gagal; Mac dilayani yang lama, HP yang baru, dan tidak ada pesan. Layak tiket: viewer menolak menyala (atau memberi tahu) bila porta itu sudah dipakai di alamat mana pun.
 - **Uji jaringan kosong di mesin tanpa Wi-Fi.** Uji butir "tanpa pilihan jaringan" dan uji perintah `--lan` lolos tanpa memeriksa apa pun bila mesin tak punya alamat jaringan. Layak tiket: laporkan sebagai dilewati (skip dengan alasan), bukan lolos.
+- 2026-10-17 19:59:42: landed on main as 6270ed6304d8ced0064bedb19dae826b67d5c22b, merging tiket-261017193401 at 3c91de64100306e56d2513f3813925c654c1af69; tests carried from the run on this exact content, not run again.
