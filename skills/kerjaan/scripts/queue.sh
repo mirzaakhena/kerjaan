@@ -314,8 +314,8 @@ fi
 # files, the one listed earlier lands first, and a listed one lands before any
 # the line leaves out; two left out are unordered. The prose of the lead-in is
 # never read for it: free wording in every language could not be matched
-# reliably. update-ticket.sh takes a ticket's ID off the line when it leaves
-# todo, so an ID naming no ticket of its group is a hand edit and reported.
+# reliably. update-ticket.sh takes a ticket's ID off the line when its ticket
+# line goes, so an ID naming no ticket of its group is a hand edit and reported.
 
 whole=0
 if [ "$#" -gt 0 ]; then
@@ -411,35 +411,98 @@ if [ "$whole" -eq 1 ] && [ -f "$order" ]; then
     done
   done
 
-  # Groups: "<n> <id>" per bullet. A group runs from one bold opening line to
-  # the next, and is a group only when it holds bullets. Its lands-first lines
-  # go to "marks" as "<n> <line number> <id>..." when they read as the fixed
-  # shape, and to "badmarks" as "<line number>" when they only look like it —
-  # a comment mentioning lands first, in any letter case and joined by a
-  # hyphen, a space or nothing — so a misspelt marker is reported rather than
-  # passed over.
-  awk -v gl="$tmpdir/groups" -v ml="$tmpdir/marks" -v bl="$tmpdir/badmarks" '
-    BEGIN { printf "" > gl; printf "" > ml; printf "" > bl }
-    /^\*\*/ { g++; next }
-    /^- [0-9]{12}( |$)/ { print g + 0, substr($0, 3, 12) > gl; next }
+  # order.md has a fixed grammar (references/ordering-the-queue.md, "The
+  # lines it may hold"): every line is one of a goal line, a lead-in, a
+  # lands-first line, a ticket line or a blank line, and anything else is
+  # reported by its line number. The file is never rewritten here; a line
+  # that fits none of them is the owner's or the planner's to move to where
+  # it belongs.
+  #
+  # Groups: "<n> <id>" per ticket line. A group runs from one lead-in to the
+  # next. Ticket lines go to "listed" as "<line number> <id> <title>" for the
+  # title check. Its lands-first lines go to "marks" as "<n> <line number>
+  # <id>..." when they read as the fixed shape, and to "badmarks" as "<line
+  # number>" when they only look like it — a comment mentioning lands first,
+  # in any letter case and joined by a hyphen, a space or nothing — so a
+  # misspelt marker is reported rather than passed over. Lines outside the
+  # grammar go to "badlines" as "<line number>\t<what is wrong>".
+  awk -v gl="$tmpdir/groups" -v ml="$tmpdir/marks" -v bl="$tmpdir/badmarks" \
+      -v tl="$tmpdir/listed" -v xl="$tmpdir/badlines" '
+    function bad(ln, msg) { printf "%d\t%s\n", ln, msg > xl }
+    function close_group() {
+      if (g > 0 && !count[g]) bad(lead[g], "is a lead-in with no ticket under it: give it its tickets, or remove it")
+    }
+    BEGIN { printf "" > gl; printf "" > ml; printf "" > bl; printf "" > tl; printf "" > xl; cont = 0 }
+    /^[ \t\r]*$/ { cont = 0; next }
+    /^\*\*Goal\.\*\*/ {
+      if (goal) bad(NR, "is a second goal line: order.md holds one, on its first line")
+      else if (seen) bad(NR, "is a goal line below the top: it goes on the first line, above every group")
+      goal = NR; seen = 1; cont = 0; next
+    }
+    /^\*\*/ {
+      close_group()
+      g++; lead[g] = NR; seen = 1; cont = NR
+      if (!index(substr($0, 3), "**"))
+        bad(NR, "opens a bold lead-in that does not close on the same line: write the lead-in as one line")
+      next
+    }
+    /^- [0-9]{12}( |$)/ {
+      id = substr($0, 3, 12)
+      if (g == 0) bad(NR, "lists " id " under no lead-in: put it in a group, below a bold lead-in")
+      if (id in at) bad(NR, "lists " id " again, after line " at[id] ": one line per ticket")
+      else at[id] = NR
+      count[g]++; seen = 1; cont = 0
+      print g + 0, id > gl
+      print NR, id, substr($0, 16) > tl
+      next
+    }
     tolower($0) ~ /^[ \t]*<!--.*lands[- _]*first/ {
+      seen = 1; cont = 0
+      if (g == 0) { bad(NR, "is a lands-first line outside any group: put it under the lead-in of its group"); next }
       s = $0
       if (sub(/^[ \t]*<!--[ \t]*lands-first:/, "", s) && sub(/-->[ \t]*$/, "", s) \
           && s ~ /^[ \t]*[0-9]{12}([ \t]*,[ \t]*[0-9]{12})*[ \t]*$/) {
         gsub(/[ \t,]+/, " ", s); sub(/^ /, "", s); sub(/ $/, "", s)
         print g + 0, NR, s > ml
       } else print NR > bl
+      next
     }
+    {
+      if (cont) bad(NR, "continues the lead-in of line " cont ": a lead-in is one sentence on one line")
+      else bad(NR, "is none of the lines order.md holds (a goal line, a lead-in, a lands-first line, a ticket line, a blank line): move what it says where ordering-the-queue.md, \"Where everything else goes\", sends it")
+      seen = 1
+    }
+    END { close_group() }
   ' "$order"
 
+  while IFS=$'\t' read -r ln msg; do
+    problem "order.md line $ln $msg"
+  done < <(sort -s -n -k1,1 "$tmpdir/badlines")
+
+  # order.md covers every ticket still being worked on: todo, in_progress and
+  # review. update-ticket.sh takes a ticket's line off when it leaves them
+  # (done, cancel, or back to backlog), so a line naming any other ticket is
+  # stale. The title on a line is a label for people, kept in step by
+  # update-ticket.sh --title; one that differs from its ticket's was edited by
+  # hand, and is reported so it never silently names the wrong work.
+  ids_in todo in_progress review > "$tmpdir/active"
   while IFS= read -r id; do
     [ -n "$id" ] || continue
     awk -v id="$id" '$2 == id { f = 1 } END { exit !f }' "$tmpdir/groups" \
       || problem "$id is in todo but has no place in order.md"
   done < "$tmpdir/targets"
   while read -r g id; do
-    grep -qx "$id" "$tmpdir/targets" || problem "order.md lists $id, which is not in todo"
+    grep -qx "$id" "$tmpdir/active" || problem "order.md lists $id, which is not in todo, in_progress or review"
   done < "$tmpdir/groups"
+  while read -r ln id title; do
+    grep -qx "$id" "$tmpdir/active" || continue
+    f="$(kerjaan_ticket_file "$board" "$id" 2> /dev/null || true)"
+    [ -n "$f" ] || continue
+    want="$(basename "$f" .md | cut -c14-)"
+    title="${title%"${title##*[![:space:]]}"}"
+    [ "$title" = "$want" ] \
+      || problem "order.md line $ln gives $id the title \"$title\", but its ticket is titled \"$want\": copy the ticket's title (update-ticket.sh --title renames both)"
+  done < "$tmpdir/listed"
 
   # Waiting, directly or through others, on a ticket in the same group or a
   # later one.

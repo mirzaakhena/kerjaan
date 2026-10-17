@@ -114,8 +114,10 @@ foreman moves no ticket into `todo` and writes no line of `order.md`.
 
 **1. Settle what the chain covers.** The tickets the user named, or `todo` in
 the order `order.md` gives. That order is already the owner's decision: take
-the first ticket, or any ticket in its first group, without asking which. With
-no `order.md`, any ticket in `todo`. Ask only when the order no longer fits
+the first ticket, or any ticket in its first group, without asking which —
+counting only lines whose ticket is still in `todo`: a ticket in flight keeps
+its line until it is done, so its group's lands-first line still says which
+lands first. With no `order.md`, any ticket in `todo`. Ask only when the order no longer fits
 what the board shows, and name that one problem. A ticket in `backlog` that
 the user names explicitly is the user's own move; take it.
 
@@ -250,7 +252,7 @@ whoever made the change in it, in the form SKILL.md, "Committing" gives:
 2. **Work** — the worker, after its move to `review`: the code and the ticket
    together, so the commit that holds the work also says it is in review.
 3. **Verdict** — the reviewer, after its move to `done` or back to
-   `in_progress`: its ticket's file and nothing else.
+   `in_progress`: its ticket's file and `order.md`, nothing else.
 
 A ticket sent back adds one work and one verdict commit per round. Nobody
 commits the board alone in between.
@@ -283,8 +285,9 @@ The chain stops itself, and reports to the user, in three cases:
 2. **The reviewer rejected the same ticket twice.** Put the choice to the
    owner as `references/review.md` describes.
 3. **A ticket others stand on did not pass**: one another ticket in the chain
-   lists in `blocked_by`, or one `order.md` puts in an earlier group whose
-   lead-in says the rest depends on it.
+   lists in `blocked_by`. A dependency a lead-in of `order.md` names is in
+   `blocked_by` too (`references/ordering-the-queue.md`, "Where everything
+   else goes").
 
 A question that does not hold the work up never stops the chain; collect it
 for the summary.

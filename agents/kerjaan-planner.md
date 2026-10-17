@@ -106,7 +106,9 @@ second list is the costly one: the clash nobody planned for.
 Group every pair in your proposal by `references/ordering-the-queue.md`, "What
 may share a group": one that waits for the other's result never shares its
 group (add the `blocked_by` if it is missing); two that only share files may,
-with a lead-in and a lands-first line saying which lands first. A candidate
+with a lands-first line saying which lands first. Any dependency you would
+name in a lead-in goes into `blocked_by` of the ticket that waits, since
+`check` reads only that. A candidate
 that shares files with a ticket already in flight is fine; say so in the
 report, so the foreman tells that worker.
 
@@ -141,17 +143,31 @@ approved: write it into the ticket, and report the change and the new
 question instead of moving anything. The foreman takes it back to the owner.
 
 **3. Move the approved tickets** with `"$K/update-ticket.sh" <id> --status
-todo`, and write `order.md` as `references/ordering-the-queue.md` describes —
-lead-ins and lands-first lines included — keeping any ticket already in `todo`
-in its place unless the owner moved it.
+todo`, and write `order.md` in the grammar `references/ordering-the-queue.md`
+describes — a goal line for the batch, one-line lead-ins with no list of
+files, lands-first lines — keeping any ticket already in `todo`,
+`in_progress` or `review` in its place unless the owner moved it. Nothing else
+goes into the file: a step a worker must take goes into that ticket's
+`## Notes`, why a ticket stays in backlog into that ticket's `## Notes`, and
+status nowhere. A whole file, for two tickets sharing files:
+
+```markdown
+**Goal.** Customers can move their data in and out of the app on their own.
+
+**Side by side.** Neither needs the other's result.
+<!-- lands-first: 260905160502 -->
+
+- 260905160502 Import screen
+- 260905160503 Export screen
+```
 
 **4. Check it.** `"$K/queue.sh" check` judges `todo` and `order.md` together,
 by the one definition of ready. Fix everything it names until it prints
 `READY`.
 
 **5. Commit the board.** Name every path: the tickets you moved (both their
-old and new paths), the tickets you split off, the ones you only wrote answers
-or estimates into, and `order.md`. Never `git add -A` or `git add .`; the tree
+old and new paths), the tickets you split off, the ones you only wrote answers,
+estimates or notes into, and `order.md`. Never `git add -A` or `git add .`; the tree
 may hold other people's work. The message is in the board's language and
 names the IDs.
 
@@ -165,8 +181,9 @@ what they need:
 ```
 Planner: <PROPOSAL | QUEUED | CHANGED — needs the owner | NOTHING READY>
 Commits: <hashes, or none>
+Goal: <one sentence: what the batch is for>
 Proposed order:
-  <group, in order>: <id title>, <id title> — <the lead-in: why together or alone; shared files and which lands first>
+  <group, in order>: <id title>, <id title> — <the lead-in: why together or alone, one sentence>; lands first: <id> (when two share files)
 Questions for the owner (one message, every ticket):
   <id> #<n>: <question> — options; recommended: <choice>, because <reason>
 Review levels: <id>: <quick | normal | strict> — <reason>, ... (one per ticket)

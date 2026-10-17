@@ -6,7 +6,7 @@ labels: [sesi-8e6130e0, viewer]
 reporter: mirza
 assign_to: claude
 created: 2026-10-17 15:58:20
-updated: 2026-10-17 18:45:41
+updated: 2026-10-17 19:06:13
 related: [261016084202]
 blocked_by: []
 ---
@@ -29,8 +29,8 @@ Setiap langkah di panel aktivitas punya keterangan yang bisa dibaca. Agen kerjaa
 ## Done when
 - [ ] Langkah di reproduksi di atas menampilkan keterangan singkat dalam bahasa papan pada hampir setiap baris Bash, bukan "—" — menunggu mirza: skenario tangan di Notes
 - [x] Panduan pengerja, peninjau, dan penyusun antrean masing-masing meminta keterangan itu dalam satu kalimat, tanpa menambah aturan lain
-- [ ] Langkah Bash tanpa keterangan menampilkan nama program saja, dan tidak pernah argumen, nama berkas, isi variabel, atau teks lain dari perintahnya
-- [ ] Perintah yang memuat rahasia (misalnya token di argumen atau variabel lingkungan di depan perintah) tetap tidak memperlihatkan rahasia itu di panel
+- [x] Langkah Bash tanpa keterangan menampilkan nama program saja, dan tidak pernah argumen, nama berkas, isi variabel, atau teks lain dari perintahnya
+- [x] Perintah yang memuat rahasia (misalnya token di argumen atau variabel lingkungan di depan perintah) tetap tidak memperlihatkan rahasia itu di panel
 
 ## History
 - 2026-10-17 15:58:20 8e6130e0-0828-4d64-b383-ba0d1c9f4b02 backlog
@@ -38,6 +38,9 @@ Setiap langkah di panel aktivitas punya keterangan yang bisa dibaca. Agen kerjaa
 - 2026-10-17 17:47:40 8e6130e0-0828-4d64-b383-ba0d1c9f4b02 in_progress
 - 2026-10-17 18:04:50 8e6130e0-0828-4d64-b383-ba0d1c9f4b02 review
 - 2026-10-17 18:45:41 8e6130e0-0828-4d64-b383-ba0d1c9f4b02 in_progress
+- 2026-10-17 18:55:47 8e6130e0-0828-4d64-b383-ba0d1c9f4b02 review
+- 2026-10-17 19:05:55 8e6130e0-0828-4d64-b383-ba0d1c9f4b02 done
+- 2026-10-17 19:06:13 8e6130e0-0828-4d64-b383-ba0d1c9f4b02 in_progress
 
 ## Notes
 - 2026-10-17: lahir dari pertanyaan pemilik di sesi 8e6130e0-0828-4d64-b383-ba0d1c9f4b02 (`claude --resume 8e6130e0-0828-4d64-b383-ba0d1c9f4b02`) sambil melihat tangkapan layar panel aktivitas nukitu-mockup. Pemilik setuju kedua lapis: aturan keterangan di definisi agen, dan cadangan nama program di viewer (melonggarkan aturan "tidak ada isi perintah" sebatas nama program). Pemilik khawatir soal tambahan context: tambahannya sekitar 5-10 token per perintah dan satu kalimat per definisi agen; cadangan di viewer tidak menambah context agen sama sekali. Pemilik minta tiket ini langsung masuk todo.
@@ -92,3 +95,35 @@ Setiap langkah di panel aktivitas punya keterangan yang bisa dibaca. Agen kerjaa
   - Uji di `viewer/uji/agen.test.mjs` tidak hampa. Setiap kasus memeriksa label persis dan juga ketiadaan RAHASIA. Cabang `if (want !== null)` selalu berjalan karena tidak ada kasus dengan `want` null, jadi cabang itu tidak berguna.
   - Kata kunci shell muncul sebagai "program", misalnya `if`, `for`, `case`, `time`, `sudo`, `env` dan `export`. Tidak ada yang bocor, tetapi kata itu kurang memberi tahu.
   - Kata pertama yang lolos `PROGRAM` selalu tampil, sampai 40 karakter. Token yang ditempel sebagai kata pertama, misalnya karena salah tempel, akan terlihat. Ini sesuai dengan aturan "nama program", tetapi patut diketahui.
+- 2026-10-17: perbaikan ronde 1 (worker). Yang diperbaiki adalah jenis kesalahannya, yaitu kata di posisi program yang sebenarnya bukan program. Setiap kasus yang disebut peninjau kini menjadi kasus uji, dan bentuk sejenis juga ditambahkan.
+  - Penetapan array dibaca utuh. `(` di dalam kata (`A=(…)`, `X+=(…)`, `f()`) diambil sampai pasangannya. `a[i]=…` dan `X+=…` juga dikenali sebagai penetapan.
+  - Pengalihan beserta targetnya tidak pernah dibaca sebagai program. Ini mencakup `<` `>` `>>` `&>` `&>>` `>|` `<>` `<<<`, nomor deskriptor atau `{fd}` di depannya, bentuk duplikasi `>&f` `2>&1` `>&-`, dan `<(…)`. Isi heredoc (`<<` dan `<<-`) dilewati sampai baris penutupnya.
+  - Bila ragu, tidak ada yang ditampilkan: aritmetika `((…))`, `[[ … ]]`, definisi fungsi, serta kutip atau substitusi yang tidak tertutup sebelum nama program. Kutip `$'…'` dibaca dengan benar.
+  - Cabang `want !== null` yang mati di uji bentuk perintah dihapus.
+  - Diukur ulang pada catatan nyata: perintah yang dulu menampilkan isi array (nama berkas) kini menampilkan program sesudahnya. Definisi fungsi kini tidak menampilkan apa pun.
+  - Sabotase ronde 1, satu per penjaga; berkas dipulihkan dari salinan:
+    - Uji 7 merah untuk setiap penjaga berikut: `(` di dalam kata, aritmetika `((`, bentuk penetapan `[i]` dan `+=`, cabang pengalihan, pengenalan `&>`, nomor deskriptor, target yang dilewati, isi heredoc, tab pada `<<-`, tanda `broken`, kutip `$'…'`, `$(` di dalam kutip ganda, `>|`, `&` dalam `>&`, dan `<(…)`.
+    - Penjaga lama diuji ulang (cadangan Bash, nama polos, nama folder, `cd`, komentar, kutip, backslash, pemisah) dan semuanya merah.
+    - Awalnya `&>`, `>|`, `&` dalam `>&`, dan tanda `broken` tetap hijau. Kasus `cd /x &>/dev/null RAHASIA`, `cd /x 2>&1 RAHASIA`, `cd /x >|RAHASIA.log RAHASIA`, dan `cd /x; A="RAHASIA node` lalu ditambahkan.
+    - Satu sabotase sempat membuat perulangan tanpa akhir. Perulangan operator pengalihan kini selalu maju satu karakter.
+- 2026-10-17 18:55:42: test run — `node --test --test-timeout=900000 --test-force-exit` exited 0 after 2m55s, on content fingerprint 8182f71fe4f418495292d4ed94175bafa36d89c8 (the same before and after the run; .kerjaan/ left out).
+- 2026-10-17 18:55:47: review covers branch tiket-261017155801 at a2dd467538a4f2a101db8aaa463b207a411f885b, which holds main at f42a48109c0b0a7f4f088bff4987934bd07aa9ee (code outside .kerjaan/); the latest test run passed on exactly this content.
+- 2026-10-17: Reviewed at level normal, round 2, at commit a2dd467538a4f2a101db8aaa463b207a411f885b: passed.
+  Level normal di sini berarti: uji lengkap tidak dijalankan ulang karena `test-run.sh --check 261017155801 a2dd467` menjawab SAME (jalan 2026-10-17 18:55:42, exit 0, sidik 8182f71fe4f418495292d4ed94175bafa36d89c8). Hasil itu juga menunjukkan perbaikan tidak merusak bagian yang sudah lolos. Butir 3 dan 4 dibuktikan ulang dengan cara yang sama seperti saat gagal: `stepLabel` dari worktree dipanggil langsung. Sejak a940712, kode yang berubah hanya `viewer/agen.mjs` dan `viewer/uji/agen.test.mjs`, ditambah penggabungan main yang hanya menyentuh berkas papan. Definisi agen dan `uji/` tidak berubah.
+  - Butir 1: tetap menunggu mirza. Keputusan pemilik bertanggal 2026-10-17 16:01:21 dan skenario tangan ada di Notes.
+  - Butir 2: dibawa dari tinjauan ronde 1 tanggal 2026-10-17. Kodenya tidak berubah sejak a940712 (`git diff --stat a940712 a2dd467 -- agents uji` kosong).
+  - Butir 3: terpenuhi. Setiap perintah yang gagal di ronde 1 kini memberi nama program atau kosong:
+    - `TOKENS=(RAHASIA other)` memberi ""
+    - `2>/tmp/RAHASIA.log cat x` memberi "cat"
+    - `</tmp/RAHASIA.txt wc -l` memberi "wc"
+    - `>/tmp/RAHASIA cat` memberi "cat"
+    - `cd /x &>/tmp/RAHASIA.log && ls` memberi "ls"
+    - `cd /x >&/tmp/RAHASIA && ls` memberi "ls"
+    - `cd RAHASIA 2>&1; ls` memberi "ls"
+    Bentuk sejenis di luar daftar uji juga diperiksa: array yang memuat baris baru, pengalihan setelah penetapan variabel, heredoc dengan pembatas berkutip, heredoc sebelum program, `>& f cmd`, `1>&2 cat`, backtick bersarang, `$((…))` dan `A[$(…)]=1 ls`. Semuanya memberi nama program atau kosong, tidak pernah RAHASIA.
+  - Butir 4: terpenuhi. `A=(RAHASIA b) node` dan `X+=(RAHASIA "RAHASIA b") node` memberi "node". `A=$'RAHASIA b' node` dan `env TOKEN=RAHASIA node` juga tidak memperlihatkan nilainya.
+  - Pemeriksaan uji: kasus baru di `viewer/uji/agen.test.mjs` memeriksa label persis dan ketiadaan RAHASIA. Cabang `if (want !== null)` dari ronde 1 sudah dihapus, jadi setiap kasus kini diperiksa label persisnya.
+  Catatan (tidak menghalangi):
+  - Kata kunci shell dan pembungkus tetap tampil sebagai program, misalnya `env`, `sudo`, `time`, `if` dan `for`. Tidak ada yang bocor, tetapi label itu kurang memberi tahu.
+  - Main sudah bergerak setelah 261017113001 mendarat, dan tiket itu juga mengubah `agents/kerjaan-planner.md`. Penggabungan ke main perlu disinkronkan saat mendarat. Ini urusan penggabungan, bukan temuan tinjauan ini.
+- 2026-10-17 19:06:13: merge postponed — main changed since tiket-261017155801 last took it in (README.md agents/kerjaan-planner.md agents/kerjaan-reviewer.md skills/kerjaan/SKILL.md skills/kerjaan/references/foreman.md skills/kerjaan/references/ordering-the-queue.md skills/kerjaan/scripts/board.mjs skills/kerjaan/scripts/queue.sh skills/kerjaan/scripts/repair.sh skills/kerjaan/scripts/update-ticket.sh uji/commit-papan.test.mjs uji/kunci-papan.test.mjs uji/queue.test.mjs uji/real-order/old.md uji/real-order/rewritten.md uji/repair.test.mjs uji/update-ticket.test.mjs viewer/uji/urutan.test.mjs); back to in_progress to be brought up to date with main, tested and reviewed again.

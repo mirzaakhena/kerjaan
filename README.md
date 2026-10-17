@@ -32,7 +32,7 @@ there is no service to run, host, or pay for.
 ├── review/       done, not yet verified
 ├── done/         passed review
 ├── cancel/       abandoned
-├── order.md      the order to pick `todo` up in — optional
+├── order.md      the order of the work in todo and in flight — optional
 └── settings.md   language, test command, long-lived branches,
                   side-by-side tests and worktree setup
 ```
@@ -311,25 +311,46 @@ next, while it still remembers the work. It proposes; you choose.
 
 A folder has no order, though, and `blocked_by` only covers the hard case where
 one ticket cannot start until another finishes. Softer sequencing lives in
-`.kerjaan/order.md`, which covers `todo/` and nothing else:
+`.kerjaan/order.md`, which covers the tickets in `todo/`, `in_progress/` and
+`review/`, and nothing else:
 
 ```markdown
+**Goal.** Customers can move their data in and out of the app on their own.
+
 **First, on its own.** Everything below reads the settings file it introduces.
 
 - 260905160401 Add the config loader
 
-**Then these two, in any order.** Neither touches the other's files.
+**Then these two, side by side.** Neither needs the other's result.
+<!-- lands-first: 260905160502 -->
 
 - 260905160502 Import screen
 - 260905160503 Export screen
 ```
 
+The file has a fixed grammar: every line is a goal line at the top (at most
+one, `**Goal.**` in any language), a bold lead-in on one line, a lands-first
+line, a ticket line `- <id> <title>`, or a blank line.
+`queue.sh check` refuses any other line by its number, and rewrites nothing.
 Order is position on the page; tickets sharing a group can run side by side;
-the bold sentence carries the reasoning, which is the part that exists nowhere
-else. `update-ticket.sh` keeps the file honest — a ticket leaving `todo` loses
-its line, and a group loses its lead-in once its last ticket is gone. Once
-the file is set, it is your choice already made: a session takes the next
-ticket from the top of it without asking you again.
+the lead-in gives the reason in one sentence, without listing files — which
+files two tickets share is in their estimates; and the lands-first line says
+which of two tickets sharing files lands in main first. The title on a ticket
+line is a label: one that differs from its ticket's makes `check` say
+`NOT READY`, and a rename by `update-ticket.sh --title` keeps it in step.
+
+What used to be written around the groups goes elsewhere: steps a worker must
+take into that ticket's Notes, why a ticket stays in backlog into that
+ticket's Notes, status nowhere at all — the folders say it — and every
+dependency a lead-in names into `blocked_by` of the ticket that waits.
+
+`update-ticket.sh` keeps the file honest: a ticket keeps its line while it is
+worked on and reviewed, so two tickets running side by side still know which
+lands first, and loses it once it is done, cancelled or back in backlog — its
+ID off the lands-first line too, and its group's lead-in once the group is
+empty. Once the file is set, it is your choice already made: a session takes
+the next ticket still in `todo` from the top of it without asking you again.
+The full rules are in `skills/kerjaan/references/ordering-the-queue.md`.
 
 The file is optional. Write it the first time ordering actually matters, and
 refill `todo` from `backlog` only when `todo`, `in_progress` and `review` are
@@ -386,8 +407,8 @@ one). Its tests run with `node --test` from the repo root.
 ## Two tickets at once
 
 Tickets sharing a group in `order.md` have already been declared able to run
-together — none waits for another's result, and any files they both change are
-named, with which lands first — which is the licence to run them side by side
+together — none waits for another's result, and when two change the same files
+the group's lands-first line says which lands first — which is the licence to run them side by side
 in separate git worktrees, on branches whose names carry the ticket ID.
 
 Nothing about that is written down. The ticket gains no `branch:` field — the
