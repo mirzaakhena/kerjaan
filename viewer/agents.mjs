@@ -219,7 +219,7 @@ export function programName(command) {
 // The one place a step's label is made. Only these fields are ever read.
 export function stepLabel(name, input, projectDir) {
   const tool = clean(typeof name === 'string' && name ? name : '?');
-  if (tool === 'SubagentHandback') return { tool, label: 'menyerahkan laporan' };
+  if (tool === 'SubagentHandback') return { tool, label: 'handing back its report' };
   const i = input && typeof input === 'object' ? input : {};
   if (typeof i.description === 'string' && i.description.trim()) return { tool, label: clean(i.description) };
   if (tool === 'Bash') return { tool, label: programName(i.command) };
@@ -250,7 +250,7 @@ function fold(state, line, projectDir) {
     if (state.lastAt === null || at > state.lastAt) state.lastAt = at;
   }
   if (o.type === 'user' && isInterrupt(o.message)) {
-    state.ended = 'dihentikan';
+    state.ended = 'interrupted';
     return;
   }
   if (o.type !== 'assistant') return;
@@ -264,10 +264,10 @@ function fold(state, line, projectDir) {
     if (!b || b.type !== 'tool_use') continue;
     const { tool, label } = stepLabel(b.name, b.input, projectDir);
     state.steps.push({ at, tool, label });
-    state.ended = tool === 'SubagentHandback' ? 'selesai' : null;
+    state.ended = tool === 'SubagentHandback' ? 'finished' : null;
     stepped = true;
   }
-  if (!stepped && o.message?.stop_reason === 'end_turn') state.ended = 'selesai';
+  if (!stepped && o.message?.stop_reason === 'end_turn') state.ended = 'finished';
   if (state.steps.length > STEPS * 2) state.steps.splice(0, state.steps.length - STEPS);
 }
 
@@ -358,7 +358,7 @@ function readLog(file, projectDir) {
 }
 
 const kindOf = (agentType) => {
-  const t = clean(agentType || '').split(':').pop() || 'agen';
+  const t = clean(agentType || '').split(':').pop() || 'agent';
   if (/worker$/.test(t)) return 'worker';
   if (/reviewer$/.test(t)) return 'reviewer';
   return t;
@@ -368,7 +368,7 @@ const kindOf = (agentType) => {
 
 // Returns Map<ticketId, agent> holding, for each ticket named in `ids`, the
 // agent most recently active on it. `agent` is what the page may show:
-//   { kind, startedAt, lastAt, ended: null|'selesai'|'dihentikan', step, steps }
+//   { kind, startedAt, lastAt, ended: null|'finished'|'interrupted', step, steps }
 export function readAgents(projectDir, { claudeDir = defaultClaudeDir(), ids } = {}) {
   const out = new Map();
   try {
@@ -416,7 +416,7 @@ function readOne(metaFile, logFile, projectDir, wanted) {
     let ended = log.ended;
     // Newer Claude Code marks a finished agent in its meta file; an agent
     // resumed after that writes to its log again, which outdates the mark.
-    if (!ended && meta.finished && lastAt <= meta.mtimeMs + 5000) ended = 'selesai';
+    if (!ended && meta.finished && lastAt <= meta.mtimeMs + 5000) ended = 'finished';
     const steps = log.steps.filter((s) => s.at !== null);
     return {
       ids,

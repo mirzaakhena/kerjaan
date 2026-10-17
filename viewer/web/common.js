@@ -12,8 +12,8 @@ export async function getJson(url) {
 
 // The dot in the top bar: green while the page is receiving live changes.
 export function liveIndicator(el, source) {
-  const on = () => { el.classList.add('on'); el.textContent = 'langsung'; el.title = 'Halaman ikut berubah saat tiket berubah'; };
-  const off = () => { el.classList.remove('on'); el.textContent = 'terputus'; el.title = 'Tidak tersambung ke server; menyambung ulang…'; };
+  const on = () => { el.classList.add('on'); el.textContent = 'live'; el.title = 'The page follows the tickets as they change'; };
+  const off = () => { el.classList.remove('on'); el.textContent = 'disconnected'; el.title = 'Not connected to the server; reconnecting…'; };
   source.addEventListener('open', on);
   source.addEventListener('error', off);
 }

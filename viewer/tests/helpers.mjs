@@ -12,7 +12,7 @@ export function ticket({ type = 'task', priority = 'medium', labels = '', relate
   return `---\ntype: ${type}\npriority: ${priority}\nreview:\nlabels: [${labels}]\nreporter: t\nassign_to:\ncreated: ${created}\nupdated: ${updated || created}\nrelated: [${related}]\nblocked_by: [${blocked}]\n---\n\n${body}\n`;
 }
 
-// files: { 'todo/260101000001 Judul.md': '<text>', 'order.md': '...' }
+// files: { 'todo/260101000001 Title.md': '<text>', 'order.md': '...' }
 export function makeBoard(root, name, files = {}) {
   const board = path.join(root, name, '.kerjaan');
   for (const s of ['backlog', 'todo', 'in_progress', 'review', 'done', 'cancel']) fs.mkdirSync(path.join(board, s), { recursive: true });
@@ -26,7 +26,7 @@ export function tempRoot() {
 
 // claudeDir defaults to a folder that does not exist, so no test ever reads
 // the real ~/.claude.
-export async function startViewer(root, { claudeDir = path.join(root, '.tidak-ada-claude') } = {}) {
+export async function startViewer(root, { claudeDir = path.join(root, '.no-claude') } = {}) {
   const server = createViewer({ root, claudeDir });
   await new Promise((r) => server.listen(0, '127.0.0.1', r));
   const base = `http://127.0.0.1:${server.address().port}`;
@@ -75,7 +75,7 @@ export function listenEvents(url, until, ms = 4000) {
 }
 
 // ---------- made-up Claude Code agent logs ----------
-// Shaped like what Claude Code 2.1.30x writes: see viewer/agen.mjs.
+// Shaped like what Claude Code 2.1.30x writes: see viewer/agents.mjs.
 
 export const encodeProject = (dir) => dir.replace(/[^a-zA-Z0-9]/g, '-');
 
@@ -93,7 +93,7 @@ export const line = {
 };
 
 // Writes one agent's pair of files; returns the log's path, for appending.
-export function agentLog(claudeDir, projectDir, { session = 'sesi-1', id, agentType = 'kerjaan:kerjaan-worker', description, finished, lines = [], meta } = {}) {
+export function agentLog(claudeDir, projectDir, { session = 'session-1', id, agentType = 'kerjaan:kerjaan-worker', description, finished, lines = [], meta } = {}) {
   const dir = path.join(claudeDir, 'projects', encodeProject(projectDir), session, 'subagents');
   fs.mkdirSync(dir, { recursive: true });
   const m = meta ?? JSON.stringify({ agentType, launchedWithDefaults: true, description, toolUseId: 'toolu_1', spawnDepth: 1, ...(finished ? { finished: true } : {}) });

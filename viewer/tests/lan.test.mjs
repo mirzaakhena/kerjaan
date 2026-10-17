@@ -7,9 +7,9 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { networkAddresses, lanLines } from '../lan.mjs';
-import { statusName } from '../web/umum.js';
-import { ticket, makeBoard, tempRoot, listenEvents, runCli } from './bantu.mjs';
-import { openBrowser, chromePath } from './peramban.mjs';
+import { statusName } from '../web/common.js';
+import { ticket, makeBoard, tempRoot, listenEvents, runCli } from './helpers.mjs';
+import { openBrowser, chromePath } from './browser.mjs';
 
 const ID = { a: '260101000001', b: '260101000002', c: '260101000003' };
 const WARNING = /anyone on the same network can read every board shown here/;
@@ -55,9 +55,9 @@ test('printed lines: one full address per network address, then the warning; non
 function board() {
   const root = tempRoot();
   makeBoard(root, 'alpha', {
-    [`todo/${ID.a} Satu.md`]: ticket({ type: 'bug', priority: 'high', labels: 'viewer', body: '## Background\nx\n\n## Done when\n- [x] a\n- [ ] b\n\n## Notes\n(none yet)' }),
+    [`todo/${ID.a} One.md`]: ticket({ type: 'bug', priority: 'high', labels: 'viewer', body: '## Background\nx\n\n## Done when\n- [x] a\n- [ ] b\n\n## Notes\n(none yet)' }),
     [`todo/${ID.b} A rather long title that a phone has to wrap over more than one line.md`]: ticket({ related: ID.a }),
-    [`done/${ID.c} Tiga.md`]: ticket(),
+    [`done/${ID.c} Three.md`]: ticket(),
     'order.md': `Order\n\n- ${ID.b} Two\n- ${ID.a} One\n`,
   });
   makeBoard(root, 'beta');
@@ -67,7 +67,7 @@ function board() {
 // Starts the viewer as the owner would and waits for everything it prints.
 async function start(args) {
   const cli = runCli(args);
-  for (let i = 0; i < 100 && !/proyek:/.test(cli.out()); i++) await new Promise((r) => setTimeout(r, 100));
+  for (let i = 0; i < 100 && !/projects?:/.test(cli.out()); i++) await new Promise((r) => setTimeout(r, 100));
   const local = cli.out().match(/kerjaan viewer: (http:\/\/127\.0\.0\.1:(\d+)\/\S*)/);
   assert.ok(local, cli.out() + cli.err());
   return { cli, local: local[1], port: local[2] };
@@ -91,18 +91,18 @@ for (const [order, args] of [
       for (const { name, address } of here) {
         const base = `http://${address}:${port}`;
         assert.ok(out.includes(`(${name}): ${base}/alpha/`), `${address} printed with the project's path:\n${out}`);
-        assert.match(await (await fetch(`${base}/alpha/`)).text(), /aset\/proyek\.js/);
-        const papan = await (await fetch(`${base}/alpha/api/papan`)).json();
-        assert.deepEqual(papan.tickets.map((t) => t.id).sort(), [ID.a, ID.b, ID.c]);
-        const [a] = await (await fetch(`${base}/alpha/api/tiket/${ID.a}`)).json();
+        assert.match(await (await fetch(`${base}/alpha/`)).text(), /assets\/project\.js/);
+        const data = await (await fetch(`${base}/alpha/api/board`)).json();
+        assert.deepEqual(data.tickets.map((t) => t.id).sort(), [ID.a, ID.b, ID.c]);
+        const [a] = await (await fetch(`${base}/alpha/api/ticket/${ID.a}`)).json();
         assert.match(a.body, /- \[ \] b/);
-        assert.equal((await fetch(`${base}/alpha/api/tiket/${ID.a}`, { method: 'POST' })).status, 405, 'still read-only');
+        assert.equal((await fetch(`${base}/alpha/api/ticket/${ID.a}`, { method: 'POST' })).status, 405, 'still read-only');
 
         const waiting = listenEvents(`${base}/alpha/events`, (t) => t.includes('event: change'));
         await new Promise((r) => setTimeout(r, 300));
         const from = fs.readdirSync(path.join(boardDir, 'todo')).find((f) => f.startsWith(ID.a)) ? 'todo' : 'done';
         const to = from === 'todo' ? 'done' : 'todo';
-        fs.renameSync(path.join(boardDir, from, `${ID.a} Satu.md`), path.join(boardDir, to, `${ID.a} Satu.md`));
+        fs.renameSync(path.join(boardDir, from, `${ID.a} One.md`), path.join(boardDir, to, `${ID.a} One.md`));
         const got = await waiting;
         assert.ok(got.ok, `${address}: no live change arrived; got ${JSON.stringify(got.text)}`);
       }
@@ -147,10 +147,10 @@ for (const [name, w, h] of [['phone 360×740', 360, 740], ['phone 390×844', 390
       assert.deepEqual(drawer, { sideways: false, inside: true }, 'ticket drawer');
 
       const boardDir = path.join(root, 'alpha', '.kerjaan');
-      fs.renameSync(path.join(boardDir, 'todo', `${ID.a} Satu.md`), path.join(boardDir, 'done', `${ID.a} Satu.md`));
+      fs.renameSync(path.join(boardDir, 'todo', `${ID.a} One.md`), path.join(boardDir, 'done', `${ID.a} One.md`));
       await page.until(`() => document.querySelector('#drawer-head .status-pill')?.textContent === '${statusName('done')}' && document.querySelectorAll('.col.picked .card').length === 1`);
 
-      await page.goto(`${base}/alpha/urutan`);
+      await page.goto(`${base}/alpha/order`);
       await page.until(`() => document.querySelector('#drawer-body')?.textContent.includes('${ID.b}')`);
       assert.equal(await page.eval(sideways), false, 'order.md');
     } finally {

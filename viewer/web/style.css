@@ -18,9 +18,9 @@
   --low: #767ca6;
   --warn-bg: #fff4e0;
   --warn-ink: #8a5300;
-  --agen-jalan: #138f67;
-  --agen-diam: #a87a00;
-  --agen-berhenti: #d1342f;
+  --agent-working: #138f67;
+  --agent-quiet: #a87a00;
+  --agent-stopped: #d1342f;
   --stop-bg: #fde8e6;
   --shadow: 0 6px 24px rgba(20, 30, 55, 0.12);
   --sans: "IBM Plex Sans Condensed", "Arial Narrow", ui-sans-serif, system-ui, sans-serif;
@@ -49,9 +49,9 @@
     --low: #9ba1c9;
     --warn-bg: #3a2a10;
     --warn-ink: #ffcf87;
-    --agen-jalan: #3fcf9d;
-    --agen-diam: #f2c94c;
-    --agen-berhenti: #ff6b5e;
+    --agent-working: #3fcf9d;
+    --agent-quiet: #f2c94c;
+    --agent-stopped: #ff6b5e;
     --stop-bg: #4a1714;
     --shadow: 0 8px 30px rgba(0, 0, 0, 0.45);
     color-scheme: dark;
@@ -68,8 +68,8 @@ body {
 }
 /* On a wide screen the project page fills the window and only the columns
    scroll; on a narrow one the page scrolls as usual. */
-body.proyek { display: flex; flex-direction: column; height: 100vh; }
-body.proyek .board { flex: 1; min-height: 0; grid-template-rows: minmax(0, 1fr); }
+body.board-page { display: flex; flex-direction: column; height: 100vh; }
+body.board-page .board { flex: 1; min-height: 0; grid-template-rows: minmax(0, 1fr); }
 a { color: var(--accent); text-decoration: none; }
 a:hover { text-decoration: underline; }
 button, input, select { font: inherit; color: inherit; }
@@ -90,32 +90,32 @@ button, input, select { font: inherit; color: inherit; }
 /* The board page's bar: the project's name, then every active project as a
    button, then the live dot. The row of buttons takes the room between them
    and scrolls sideways when it holds more than fits; the page never widens. */
-body.proyek .bar h1 { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
-.proyek-tombol {
+body.board-page .bar h1 { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.project-buttons {
   position: relative; flex: 1 1 0; min-width: 0;
   display: flex; gap: 6px; overflow-x: auto; overscroll-behavior-x: contain;
   scrollbar-width: none; padding: 2px 0;
 }
-.proyek-tombol[hidden] { display: none; }
-.proyek-tombol::-webkit-scrollbar { display: none; }
-.proyek-tombol a {
+.project-buttons[hidden] { display: none; }
+.project-buttons::-webkit-scrollbar { display: none; }
+.project-buttons a {
   flex: none; white-space: nowrap;
   padding: 3px 12px; border-radius: 999px; border: 1px solid var(--line); background: var(--panel);
   font-size: 13px; line-height: 1.4; color: var(--muted);
 }
-.proyek-tombol a:hover { color: var(--ink); border-color: var(--faint); text-decoration: none; }
-.proyek-tombol a:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
-.proyek-tombol a[aria-current="page"] {
+.project-buttons a:hover { color: var(--ink); border-color: var(--faint); text-decoration: none; }
+.project-buttons a:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.project-buttons a[aria-current="page"] {
   color: var(--accent); border-color: var(--accent); background: var(--sunk);
   box-shadow: inset 0 0 0 1px var(--accent); font-weight: 600;
 }
-body.proyek .bar .live { flex: none; }
+body.board-page .bar .live { flex: none; }
 /* On a phone the buttons get a row of their own under the name, the full
    width of the screen. */
 @media (max-width: 640px) {
-  body.proyek .bar { row-gap: 8px; }
-  body.proyek .bar h1 { flex: 1 1 0; }
-  .proyek-tombol { order: 3; flex: 1 0 calc(100% + 32px); margin: 0 -16px; padding: 2px 16px; scroll-padding: 0 16px; }
+  body.board-page .bar { row-gap: 8px; }
+  body.board-page .bar h1 { flex: 1 1 0; }
+  .project-buttons { order: 3; flex: 1 0 calc(100% + 32px); margin: 0 -16px; padding: 2px 16px; scroll-padding: 0 16px; }
 }
 .live { margin-left: auto; font-size: 12px; color: var(--muted); display: flex; align-items: center; gap: 6px; }
 .live::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--faint); }
@@ -143,15 +143,15 @@ body.proyek .bar .live { flex: none; }
 .project .name a:hover { text-decoration: none; }
 .project .name a:focus-visible { outline: none; }
 .project:has(.name a:focus-visible) { outline: 2px solid var(--accent); outline-offset: 2px; }
-.project .arsip {
+.project .archive {
   position: relative; z-index: 1; margin-left: auto; flex: none; align-self: center; cursor: pointer;
   border: 1px solid var(--line); background: var(--panel); border-radius: 999px;
   padding: 1px 9px; font-size: 12px; font-weight: 400; color: var(--muted);
   opacity: 0; transition: opacity .12s;
 }
-.project:hover .arsip, .project .arsip:focus-visible { opacity: 1; }
-.project .arsip:hover { color: var(--ink); border-color: var(--faint); }
-@media (hover: none) { .project .arsip { opacity: 1; } }
+.project:hover .archive, .project .archive:focus-visible { opacity: 1; }
+.project .archive:hover { color: var(--ink); border-color: var(--faint); }
+@media (hover: none) { .project .archive { opacity: 1; } }
 .project .total { flex: none; color: var(--muted); font-weight: 400; font-size: 13px; }
 .stack { display: flex; height: 6px; border-radius: 3px; overflow: hidden; background: var(--sunk); margin-bottom: 10px; }
 .stack span { display: block; }
@@ -219,23 +219,23 @@ body.proyek .bar .live { flex: none; }
 /* A done ticket whose branch is not merged into main yet: each branch name
    in full (it is what gets typed next), kept whole on a line when it fits,
    broken only when it is longer than the card is wide. */
-.card .belum-gabung {
+.card .unmerged {
   margin-top: 5px; padding: 1px 6px; border-radius: 4px;
   background: var(--warn-bg); color: var(--warn-ink);
   font-size: 11.5px; line-height: 1.45; overflow-wrap: anywhere;
 }
-.card .belum-gabung .label { font-weight: 600; }
-.card .belum-gabung .cabang { display: inline-block; max-width: 100%; font-family: var(--mono); font-size: 10.5px; }
+.card .unmerged .label { font-weight: 600; }
+.card .unmerged .branch { display: inline-block; max-width: 100%; font-family: var(--mono); font-size: 10.5px; }
 /* The Done when row: one pill per item. Each pill is a slot whose drawn part
    takes three quarters of it, so the gaps narrow together with the pills: the
    row never needs more than the width it is given, and a long list narrows
    instead of widening or clipping the card. */
 .pills { display: inline-flex; align-items: center; min-width: 0; max-width: 100%; height: 12px; }
-.pil { flex: 0 1 auto; width: 8px; min-width: 0; height: 10px; display: flex; align-items: center; }
-.pil::before { content: ""; width: 75%; height: 100%; border-radius: 2px; border: 1px solid var(--muted); }
-.pil.done::before { background: var(--done); border-color: var(--done); }
+.pill { flex: 0 1 auto; width: 8px; min-width: 0; height: 10px; display: flex; align-items: center; }
+.pill::before { content: ""; width: 75%; height: 100%; border-radius: 2px; border: 1px solid var(--muted); }
+.pill.done::before { background: var(--done); border-color: var(--done); }
 /* Voided or moved: a low dash, not an empty box waiting for work. */
-.pil.struck::before { height: 2px; border: 0; border-radius: 1px; background: var(--faint); }
+.pill.struck::before { height: 2px; border: 0; border-radius: 1px; background: var(--faint); }
 .card .progress { margin-left: auto; }
 .tag { border-radius: 4px; padding: 0 5px; background: var(--sunk); white-space: nowrap; }
 .tag.type-bug { color: var(--cancel); }
@@ -252,43 +252,43 @@ body.proyek .bar .live { flex: none; }
    how long ago, which always stays in view. Green while the agent works,
    yellow once it has been quiet a few minutes, red when it has stopped and
    the ticket is still waiting on it; grey when it finished its part. */
-.agen-slot:empty, .agen-baris:empty, .agen-blok:empty { display: none; }
-.card .agen-slot { margin-top: 5px; }
-.agen {
+.agent-slot:empty, .agent-row:empty, .agent-block:empty { display: none; }
+.card .agent-slot { margin-top: 5px; }
+.agent {
   --tone: var(--faint);
   display: flex; align-items: center; gap: 0 6px; min-width: 0;
   font-size: 11.5px; line-height: 1.5; color: var(--muted); white-space: nowrap;
 }
-.agen.jalan { --tone: var(--agen-jalan); }
-.agen.diam { --tone: var(--agen-diam); }
-.agen.berhenti { --tone: var(--agen-berhenti); background: var(--stop-bg); color: var(--ink); border-radius: 4px; padding: 0 6px; margin: 0 -6px; }
-.agen .titik { flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--tone); }
-.agen.selesai .titik { background: none; border: 1.5px solid var(--faint); }
-.agen .jenis { flex: none; font-weight: 600; color: var(--ink); }
-.agen .keadaan { flex: none; font-weight: 600; color: var(--tone); }
-.agen.selesai .keadaan { color: var(--muted); }
-.agen .langkah { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
-.agen .keadaan::before, .agen .langkah::before { content: "·"; margin-right: 6px; color: var(--muted); font-weight: 400; }
-.agen .lalu { flex: none; margin-left: auto; font-variant-numeric: tabular-nums; }
-.agen.jalan .titik { animation: denyut 1.6s ease-in-out infinite; }
-@keyframes denyut { 50% { opacity: .35; } }
-@media (prefers-reduced-motion: reduce) { .agen.jalan .titik { animation: none; } }
-.card:has(.agen.berhenti) { border-color: var(--agen-berhenti); box-shadow: inset 3px 0 0 var(--agen-berhenti); }
-.drawer .agen-baris { margin-top: 5px; }
-.drawer .agen-baris .agen { font-size: 12px; }
-.drawer .agen-blok { margin: 12px 0 0; }
-.drawer .agen-langkah { font: 12.5px/1.45 var(--sans); border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; }
-.drawer .agen-langkah summary { cursor: pointer; font-weight: 600; overflow-wrap: anywhere; }
-.drawer .agen-langkah summary .muted { font-weight: 400; }
-.drawer .agen-langkah ol { list-style: none; margin: 6px 0 2px; padding: 0; }
-.drawer .agen-langkah li {
+.agent.working { --tone: var(--agent-working); }
+.agent.quiet { --tone: var(--agent-quiet); }
+.agent.stopped { --tone: var(--agent-stopped); background: var(--stop-bg); color: var(--ink); border-radius: 4px; padding: 0 6px; margin: 0 -6px; }
+.agent .signal { flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--tone); }
+.agent.done .signal { background: none; border: 1.5px solid var(--faint); }
+.agent .kind { flex: none; font-weight: 600; color: var(--ink); }
+.agent .state { flex: none; font-weight: 600; color: var(--tone); }
+.agent.done .state { color: var(--muted); }
+.agent .step { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.agent .state::before, .agent .step::before { content: "·"; margin-right: 6px; color: var(--muted); font-weight: 400; }
+.agent .ago { flex: none; margin-left: auto; font-variant-numeric: tabular-nums; }
+.agent.working .signal { animation: pulse 1.6s ease-in-out infinite; }
+@keyframes pulse { 50% { opacity: .35; } }
+@media (prefers-reduced-motion: reduce) { .agent.working .signal { animation: none; } }
+.card:has(.agent.stopped) { border-color: var(--agent-stopped); box-shadow: inset 3px 0 0 var(--agent-stopped); }
+.drawer .agent-row { margin-top: 5px; }
+.drawer .agent-row .agent { font-size: 12px; }
+.drawer .agent-block { margin: 12px 0 0; }
+.drawer .agent-steps { font: 12.5px/1.45 var(--sans); border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; }
+.drawer .agent-steps summary { cursor: pointer; font-weight: 600; overflow-wrap: anywhere; }
+.drawer .agent-steps summary .muted { font-weight: 400; }
+.drawer .agent-steps ol { list-style: none; margin: 6px 0 2px; padding: 0; }
+.drawer .agent-steps li {
   display: grid; grid-template-columns: max-content minmax(0, 8em) minmax(0, 1fr); gap: 10px;
   margin: 0; padding: 2px 0; border-top: 1px solid var(--line);
 }
-.drawer .agen-langkah li.muted { display: block; }
-.drawer .agen-langkah time { font: 11.5px/1.6 var(--mono); color: var(--muted); }
-.drawer .agen-langkah .alat { font: 11.5px/1.6 var(--mono); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.drawer .agen-langkah .ket { overflow-wrap: anywhere; }
+.drawer .agent-steps li.muted { display: block; }
+.drawer .agent-steps time { font: 11.5px/1.6 var(--mono); color: var(--muted); }
+.drawer .agent-steps .tool { font: 11.5px/1.6 var(--mono); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.drawer .agent-steps .step-label { overflow-wrap: anywhere; }
 
 /* ---------- ticket drawer ---------- */
 .drawer {
@@ -311,14 +311,14 @@ body.proyek .bar .live { flex: none; }
   display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden;
 }
 .drawer.scrolled h2 { -webkit-line-clamp: 1; line-clamp: 1; }
-.drawer .sekilas { display: flex; align-items: center; gap: 4px 10px; font-size: 12px; min-width: 0; white-space: nowrap; }
-.drawer .sekilas .kemajuan { display: inline-flex; align-items: center; gap: 6px; min-width: 0; flex: 0 1 auto; margin-left: auto; }
-.drawer .sekilas .count { color: var(--muted); font-variant-numeric: tabular-nums; }
+.drawer .glance { display: flex; align-items: center; gap: 4px 10px; font-size: 12px; min-width: 0; white-space: nowrap; }
+.drawer .glance .done-when { display: inline-flex; align-items: center; gap: 6px; min-width: 0; flex: 0 1 auto; margin-left: auto; }
+.drawer .glance .count { color: var(--muted); font-variant-numeric: tabular-nums; }
 .status-pill { display: inline-flex; align-items: center; gap: 5px; font-weight: 600; color: var(--c); }
 .status-pill::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--c); }
 /* The other facts open the scrolling part, two pairs to a row; links to
    other tickets take a whole row. */
-.drawer .judul-penuh { font: 600 15px/1.35 var(--sans); margin: 12px 0 0; overflow-wrap: anywhere; }
+.drawer .full-title { font: 600 15px/1.35 var(--sans); margin: 12px 0 0; overflow-wrap: anywhere; }
 .drawer .facts {
   display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 3px 18px;
   font: 12.5px/1.45 var(--sans); margin: 12px 0 0; padding: 8px 10px; border-radius: 8px; background: var(--sunk);
@@ -354,34 +354,34 @@ body.proyek .bar .live { flex: none; }
 .md th, .md td { border: 1px solid var(--line); padding: 4px 8px; text-align: left; vertical-align: top; }
 .md hr { border: 0; border-top: 1px solid var(--line); margin: 16px 0; }
 .md del { color: var(--muted); }
-.md a.tiket { font-family: var(--mono); font-size: 12.5px; }
-.md a.tiket .t { font-family: var(--text); font-size: 13px; margin-left: 4px; }
-.md ul.riwayat { list-style: none; padding-left: 0; display: grid; grid-template-columns: max-content max-content minmax(0, 1fr); column-gap: 14px; row-gap: 2px; font-size: 13px; }
-.md ul.riwayat li { display: contents; }
-.md ul.riwayat .waktu { font-family: var(--mono); font-size: 12.5px; color: var(--muted); white-space: nowrap; }
-.md ul.riwayat .status { white-space: nowrap; font-weight: 600; }
-.md ul.riwayat .status::before { content: ""; display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 6px; vertical-align: 1px; background: var(--faint); }
-.md ul.riwayat .s-backlog::before { background: var(--backlog); }
-.md ul.riwayat .s-todo::before { background: var(--todo); }
-.md ul.riwayat .s-in_progress::before { background: var(--in_progress); }
-.md ul.riwayat .s-review::before { background: var(--review); }
-.md ul.riwayat .s-done::before { background: var(--done); }
-.md ul.riwayat .s-cancel::before { background: var(--cancel); }
-.md ul.riwayat .sesi { font-size: 11.5px; color: var(--muted); background: none; padding: 0; align-self: center; overflow-wrap: anywhere; user-select: all; }
+.md a.ticket { font-family: var(--mono); font-size: 12.5px; }
+.md a.ticket .t { font-family: var(--text); font-size: 13px; margin-left: 4px; }
+.md ul.history { list-style: none; padding-left: 0; display: grid; grid-template-columns: max-content max-content minmax(0, 1fr); column-gap: 14px; row-gap: 2px; font-size: 13px; }
+.md ul.history li { display: contents; }
+.md ul.history .time { font-family: var(--mono); font-size: 12.5px; color: var(--muted); white-space: nowrap; }
+.md ul.history .status { white-space: nowrap; font-weight: 600; }
+.md ul.history .status::before { content: ""; display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 6px; vertical-align: 1px; background: var(--faint); }
+.md ul.history .s-backlog::before { background: var(--backlog); }
+.md ul.history .s-todo::before { background: var(--todo); }
+.md ul.history .s-in_progress::before { background: var(--in_progress); }
+.md ul.history .s-review::before { background: var(--review); }
+.md ul.history .s-done::before { background: var(--done); }
+.md ul.history .s-cancel::before { background: var(--cancel); }
+.md ul.history .session { font-size: 11.5px; color: var(--muted); background: none; padding: 0; align-self: center; overflow-wrap: anywhere; user-select: all; }
 .md .missing { font-family: var(--mono); font-size: 12.5px; color: var(--cancel); text-decoration: underline dotted; }
 
 /* order.md: the files a group's tickets share, read from their estimates */
-.md .berkas-bersama { margin: 6px 0 14px; padding: 8px 12px; border-radius: 8px; background: var(--sunk); border-left: 3px solid var(--in_progress); font-size: 13px; }
-.md .berkas-bersama .judul { margin: 0 0 2px; font: 600 12.5px/1.4 var(--sans); text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
-.md .berkas-bersama ul { margin: 2px 0; }
-.md .berkas-bersama p { margin: 4px 0; }
-.md .berkas-bersama code { background: var(--panel); }
-.md .berkas-bersama .asal { margin: 4px 0 0; font-size: 12px; color: var(--muted); }
+.md .shared-files { margin: 6px 0 14px; padding: 8px 12px; border-radius: 8px; background: var(--sunk); border-left: 3px solid var(--in_progress); font-size: 13px; }
+.md .shared-files .heading { margin: 0 0 2px; font: 600 12.5px/1.4 var(--sans); text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+.md .shared-files ul { margin: 2px 0; }
+.md .shared-files p { margin: 4px 0; }
+.md .shared-files code { background: var(--panel); }
+.md .shared-files .source { margin: 4px 0 0; font-size: 12px; color: var(--muted); }
 
 /* ---------- narrow screens: one status at a time ---------- */
 @media (max-width: 860px) {
-  body.proyek { display: block; height: auto; }
-  body.proyek .board { grid-template-rows: none; }
+  body.board-page { display: block; height: auto; }
+  body.board-page .board { grid-template-rows: none; }
   .board { grid-template-columns: minmax(0, 1fr); }
   .col { max-height: none; }
   .col:not(.picked) { display: none; }
@@ -398,11 +398,11 @@ body.proyek .bar .live { flex: none; }
 /* Too narrow for the session beside the status: it goes on its own line
    under them, whole, rather than broken over three. */
 @media (max-width: 600px) {
-  .md ul.riwayat { grid-template-columns: max-content minmax(0, 1fr); }
-  .md ul.riwayat .sesi { grid-column: 1 / -1; margin: -2px 0 4px; }
-  .md ul.riwayat .sesi.kosong { display: none; }
+  .md ul.history { grid-template-columns: max-content minmax(0, 1fr); }
+  .md ul.history .session { grid-column: 1 / -1; margin: -2px 0 4px; }
+  .md ul.history .session.blank { display: none; }
 }
 @media (max-width: 480px) {
   .drawer .facts { grid-template-columns: minmax(0, 1fr); }
-  .drawer .agen-langkah li { grid-template-columns: max-content minmax(0, 4.5em) minmax(0, 1fr); gap: 8px; }
+  .drawer .agent-steps li { grid-template-columns: max-content minmax(0, 4.5em) minmax(0, 1fr); gap: 8px; }
 }

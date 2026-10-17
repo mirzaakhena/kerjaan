@@ -30,7 +30,7 @@ const STEP_MS = 30000;
 const within = (promise, ms, what) => {
   let timer;
   const late = new Promise((_, reject) => {
-    timer = setTimeout(() => reject(new Error(`${what}: tidak selesai dalam ${ms / 1000} detik`)), ms);
+    timer = setTimeout(() => reject(new Error(`${what}: not done within ${ms / 1000} seconds`)), ms);
   });
   return Promise.race([promise, late]).finally(() => clearTimeout(timer));
 };
@@ -120,9 +120,9 @@ async function connect(b, conn) {
     if (fs.existsSync(portFile)) port = fs.readFileSync(portFile, 'utf8').split('\n')[0];
   }
   if (!port) { await shutDown(b); return null; }
-  const target = await within(fetch(`http://127.0.0.1:${port}/json/new?about:blank`, { method: 'PUT' }).then((r) => r.json()), b.stepMs, 'membuka tab');
+  const target = await within(fetch(`http://127.0.0.1:${port}/json/new?about:blank`, { method: 'PUT' }).then((r) => r.json()), b.stepMs, 'opening a tab');
   const ws = (conn.ws = new WebSocket(target.webSocketDebuggerUrl));
-  await within(new Promise((r, j) => { ws.onopen = r; ws.onerror = j; }), b.stepMs, 'menyambung ke Chrome');
+  await within(new Promise((r, j) => { ws.onopen = r; ws.onerror = j; }), b.stepMs, 'connecting to Chrome');
   let seq = 0;
   const pending = new Map();
   const listeners = [];
@@ -137,11 +137,11 @@ async function connect(b, conn) {
   };
   // Chrome gone: whatever still waits on it fails now instead of never.
   ws.onclose = () => {
-    for (const { reject } of pending.values()) reject(new Error('Chrome tertutup'));
+    for (const { reject } of pending.values()) reject(new Error('Chrome closed'));
     pending.clear();
   };
   const send = (method, params = {}) => within(new Promise((resolve, reject) => {
-    if (ws.readyState !== WebSocket.OPEN) return reject(new Error('Chrome tertutup'));
+    if (ws.readyState !== WebSocket.OPEN) return reject(new Error('Chrome closed'));
     const id = ++seq;
     pending.set(id, { resolve, reject });
     ws.send(JSON.stringify({ id, method, params }));
@@ -163,7 +163,7 @@ async function connect(b, conn) {
     async goto(url) {
       const loaded = new Promise((r) => listeners.push((m) => m.method === 'Page.loadEventFired' && r()));
       await send('Page.navigate', { url });
-      await within(loaded, b.stepMs, `memuat ${url}`);
+      await within(loaded, b.stepMs, `loading ${url}`);
     },
     // Runs `fn` (a function's source) in the page and returns its value.
     async eval(fn, ...args) {
@@ -181,7 +181,7 @@ async function connect(b, conn) {
       for (;;) {
         const v = await page.eval(fn);
         if (v) return v;
-        if (Date.now() > end) throw new Error(`tidak terjadi: ${fn}`);
+        if (Date.now() > end) throw new Error(`never happened: ${fn}`);
         await wait(50);
       }
     },

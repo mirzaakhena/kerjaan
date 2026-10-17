@@ -11,8 +11,8 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { readOrder, readOrderGroups, orderPlaces } from '../../skills/kerjaan/scripts/board.mjs';
-import { ticket, makeBoard, tempRoot, startViewer } from './bantu.mjs';
-import { openBrowser, chromePath } from './peramban.mjs';
+import { ticket, makeBoard, tempRoot, startViewer } from './helpers.mjs';
+import { openBrowser, chromePath } from './browser.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const queue = path.join(here, '..', '..', 'skills', 'kerjaan', 'scripts', 'queue.sh');
@@ -26,31 +26,31 @@ const orderOf = (text) => readOrder(makeBoard(tempRoot(), 'p', { 'order.md': tex
 
 // ---------- the reading itself, per kind of mention ----------
 
-test('kalimat biasa yang menyebut ID tidak memberi peringkat', () => {
-  assert.deepEqual(orderOf(`Sudah selesai: ${ID.b}. Sengaja tetap di backlog: ${ID.c}, ${ID.d}.\n\n- ${ID.a} Satu\n`), [ID.a]);
+test('a plain sentence naming an ID gives no rank', () => {
+  assert.deepEqual(orderOf(`Already done: ${ID.b}. Left in backlog on purpose: ${ID.c}, ${ID.d}.\n\n- ${ID.a} One\n`), [ID.a]);
 });
 
-test('kalimat tebal pembuka kelompok yang menyebut ID tidak memberi peringkat', () => {
-  assert.deepEqual(orderOf(`**Dulu ${ID.b}, lalu yang ini.** Karena ${ID.c}.\n\n- ${ID.a} Satu\n`), [ID.a]);
+test('a group\'s bold lead-in naming an ID gives no rank', () => {
+  assert.deepEqual(orderOf(`**First ${ID.b}, then this one.** Because of ${ID.c}.\n\n- ${ID.a} One\n`), [ID.a]);
 });
 
-test('baris lands-first tidak memberi peringkat, juga untuk ID yang tidak didaftar', () => {
-  assert.deepEqual(orderOf(`**Bersamaan.**\n<!-- lands-first: ${ID.b}, ${ID.a} -->\n\n- ${ID.a} Satu\n- ${ID.c} Tiga\n`), [ID.a, ID.c]);
+test('a lands-first line gives no rank, also for an ID not listed', () => {
+  assert.deepEqual(orderOf(`**Together.**\n<!-- lands-first: ${ID.b}, ${ID.a} -->\n\n- ${ID.a} One\n- ${ID.c} Three\n`), [ID.a, ID.c]);
 });
 
-test('beberapa kelompok: urutan baris daftar dari atas ke bawah, melintasi kelompok', () => {
-  const text = `**Pertama.** Sebelum ${ID.a}.\n\n- ${ID.c} Tiga\n\n**Lalu dua ini.** ${ID.d} dan ${ID.b}.\n<!-- lands-first: ${ID.b} -->\n\n- ${ID.b} Dua\n- ${ID.a} Satu\n\n**Terakhir.**\n\n- ${ID.d} Empat\n`;
+test('several groups: the order of the list lines from top to bottom, across groups', () => {
+  const text = `**First.** Before ${ID.a}.\n\n- ${ID.c} Three\n\n**Then these two.** ${ID.d} and ${ID.b}.\n<!-- lands-first: ${ID.b} -->\n\n- ${ID.b} Two\n- ${ID.a} One\n\n**Last.**\n\n- ${ID.d} Four\n`;
   assert.deepEqual(orderOf(text), [ID.c, ID.b, ID.a, ID.d]);
 });
 
-test('order.md tanpa baris daftar: tidak ada peringkat, tetapi berkasnya ada', () => {
-  assert.deepEqual(orderOf(`Sudah selesai: ${ID.a}, ${ID.b}.\n\n**Nanti ${ID.c}.**\n`), []);
+test('an order.md without list lines: no rank, but the file is there', () => {
+  assert.deepEqual(orderOf(`Already done: ${ID.a}, ${ID.b}.\n\n**Later ${ID.c}.**\n`), []);
   assert.deepEqual(orderOf(''), []);
-  assert.equal(readOrder(makeBoard(tempRoot(), 'p')), null, 'tanpa order.md sama sekali');
+  assert.equal(readOrder(makeBoard(tempRoot(), 'p')), null, 'no order.md at all');
 });
 
-test('hanya bentuk `- <ID> <judul>` persis: menjorok, bintang, backtick, ID di tengah baris bukan tempat', () => {
-  const text = `  - ${ID.b} Menjorok\n* ${ID.c} Bintang\n- \`${ID.d}\` Backtick\n- lihat ${ID.e}\n-${ID.f} Tanpa spasi\n- ${ID.g}1 Tiga belas digit\n- ${ID.a}\n- ${ID.h} Delapan\n`;
+test('only the exact form `- <ID> <title>`: indented, a star, backticks, an ID mid-line are no place', () => {
+  const text = `  - ${ID.b} Indented\n* ${ID.c} Star\n- \`${ID.d}\` Backtick\n- see ${ID.e}\n-${ID.f} No space\n- ${ID.g}1 Thirteen digits\n- ${ID.a}\n- ${ID.h} Eight\n`;
   assert.deepEqual(orderOf(text), [ID.a, ID.h]);
 });
 
@@ -60,25 +60,25 @@ test('hanya bentuk `- <ID> <judul>` persis: menjorok, bintang, backtick, ID di t
 // line: no title, a stray \r, a line that only looks like a bullet, a
 // duplicate.
 const SAMPLE = [
-  `Sudah selesai: ${ID.h}. Sengaja tetap di backlog: ${ID.g}.`,
+  `Already done: ${ID.h}. Left in backlog on purpose: ${ID.g}.`,
   '',
-  `**Pertama, sendiri.** Menunggu ${ID.f} selesai.`,
+  `**First, alone.** Waits for ${ID.f} to finish.`,
   '',
-  `- ${ID.c} Tiga`,
+  `- ${ID.c} Three`,
   '',
-  `**Lalu dua ini bersamaan.** ${ID.a} dan ${ID.b} sama-sama mengubah menu.`,
+  `**Then these two together.** ${ID.a} and ${ID.b} both change the menu.`,
   `<!-- lands-first: ${ID.a}, ${ID.e} -->`,
   '',
-  `- ${ID.a} Satu`,
+  `- ${ID.a} One`,
   `- ${ID.b}`,
-  `  - ${ID.g} Menjorok`,
+  `  - ${ID.g} Indented`,
   `- \`${ID.f}\` Backtick`,
   `- ${ID.e}\r`,
   '',
-  `**Terakhir.**`,
+  `**Last.**`,
   '',
-  `- ${ID.d} Empat\r`,
-  `- ${ID.a} Satu lagi`,
+  `- ${ID.d} Four\r`,
+  `- ${ID.a} One again`,
   '',
 ].join('\n');
 
@@ -87,15 +87,15 @@ const SAMPLE = [
 function queueReads(board) {
   const r = spawnSync('bash', [queue, 'check'], { cwd: path.dirname(board), encoding: 'utf8' });
   const ids = [...r.stdout.matchAll(/order\.md lists (\d{12}), which is not in todo, in_progress or review/g)].map((m) => m[1]);
-  assert.ok(r.stdout.includes('order.md'), `queue.sh check membaca order.md:\n${r.stdout}${r.stderr}`);
+  assert.ok(r.stdout.includes('order.md'), `queue.sh check reads order.md:\n${r.stdout}${r.stderr}`);
   return [...new Set(ids)];
 }
 
-test('viewer dan queue.sh check membaca daftar ID yang sama dari satu order.md contoh', () => {
+test('the viewer and queue.sh check read the same list of IDs from one sample order.md', () => {
   const board = makeBoard(tempRoot(), 'p', { 'order.md': SAMPLE });
   const viewer = readOrder(board);
-  assert.deepEqual(viewer, [ID.c, ID.a, ID.b, ID.d], 'yang dibaca viewer');
-  assert.deepEqual(queueReads(board), viewer, 'queue.sh check membaca daftar yang sama');
+  assert.deepEqual(viewer, [ID.c, ID.a, ID.b, ID.d], 'what the viewer reads');
+  assert.deepEqual(queueReads(board), viewer, 'queue.sh check reads the same list');
 });
 
 // order.md also lists the tickets in flight (in_progress, review), which keep
@@ -298,7 +298,7 @@ test('the viewer and queue.sh check agree on which groups wait for the owner, st
 
 // ---------- in a real browser ----------
 
-const browserTest = (name, files, fn) => test(name, { skip: chromePath() ? false : 'Chrome tidak terpasang' }, async () => {
+const browserTest = (name, files, fn) => test(name, { skip: chromePath() ? false : 'Chrome is not installed' }, async () => {
   const root = tempRoot();
   makeBoard(root, 'alpha', files);
   const v = await startViewer(root);
@@ -316,23 +316,23 @@ const todoColumn = `() => [...document.querySelectorAll('#board section[aria-lab
 
 const todo = (id, title, o) => ({ [`todo/${id} ${title}.md`]: ticket(o) });
 
-browserTest('langkah di tiket: B hanya disebut di kalimat, A didaftar — A #1 di atas, B di bawahnya tanpa lencana', {
-  ...todo(ID.a, 'Satu', { priority: 'low' }),
-  ...todo(ID.b, 'Dua', { priority: 'high' }),
-  'order.md': `Tiket ${ID.b} sengaja belum diurutkan.\n\n- ${ID.a} One\n`,
+browserTest('as on the ticket: B only named in a sentence, A listed — A #1 on top, B below it without a badge', {
+  ...todo(ID.a, 'One', { priority: 'low' }),
+  ...todo(ID.b, 'Two', { priority: 'high' }),
+  'order.md': `Ticket ${ID.b} is left unordered on purpose.\n\n- ${ID.a} One\n`,
 }, async (v, page) => {
   assert.deepEqual(await page.eval(todoColumn), [[ID.a, '#1'], [ID.b, null]]);
 });
 
-browserTest('kalimat tebal, kalimat biasa, dan lands-first tidak memberi lencana; beberapa kelompok diurut dari atas ke bawah', {
-  ...todo(ID.a, 'Satu'),
-  ...todo(ID.b, 'Dua'),
+browserTest('bold lead-ins, plain sentences and lands-first give no badge; several groups are ordered top to bottom', {
+  ...todo(ID.a, 'One'),
+  ...todo(ID.b, 'Two'),
   ...todo(ID.c, 'Three'),
   ...todo(ID.d, 'Four', { priority: 'high' }),
   ...todo(ID.e, 'Five', { priority: 'low' }),
-  ...todo(ID.f, 'Enam'),
-  ...todo(ID.g, 'Tujuh'),
-  'order.md': `Sudah dibahas: ${ID.f}.\n\n**Pertama, setelah ${ID.g}.**\n\n- ${ID.c} Three\n\n**Lalu dua ini.**\n<!-- lands-first: ${ID.e}, ${ID.a} -->\n\n- ${ID.a} One\n- ${ID.e} Five\n\n**Terakhir.** Tanpa ${ID.d}.\n\n- ${ID.b} Two\n`,
+  ...todo(ID.f, 'Six'),
+  ...todo(ID.g, 'Seven'),
+  'order.md': `Already discussed: ${ID.f}.\n\n**First, after ${ID.g}.**\n\n- ${ID.c} Three\n\n**Then these two.**\n<!-- lands-first: ${ID.e}, ${ID.a} -->\n\n- ${ID.a} One\n- ${ID.e} Five\n\n**Last.** Without ${ID.d}.\n\n- ${ID.b} Two\n`,
 }, async (v, page) => {
   // The rest by priority, then id: d (high) before f, g (medium).
   assert.deepEqual(await page.eval(todoColumn), [
@@ -376,17 +376,17 @@ browserTest('a group finished moves the next group up to #1, and a group waiting
   assert.deepEqual(await page.eval(column('todo')), [[ID.c, '#1', null], [ID.e, '#2', null], [ID.f, '#3', null]]);
 });
 
-browserTest('order.md tanpa baris daftar: todo menurut prioritas lalu ID, tautan "urut order.md" membuka berkasnya', {
-  ...todo(ID.a, 'Satu', { priority: 'low' }),
-  ...todo(ID.b, 'Dua'),
-  ...todo(ID.c, 'Tiga', { priority: 'high' }),
-  ...todo(ID.d, 'Empat'),
-  'order.md': `Sudah selesai: ${ID.a}, ${ID.b}.\n\n**Nanti ${ID.c} dan ${ID.d}.**\n`,
+browserTest('an order.md without list lines: todo by priority then ID, and the "by order.md" link opens the file', {
+  ...todo(ID.a, 'One', { priority: 'low' }),
+  ...todo(ID.b, 'Two'),
+  ...todo(ID.c, 'Three', { priority: 'high' }),
+  ...todo(ID.d, 'Four'),
+  'order.md': `Already done: ${ID.a}, ${ID.b}.\n\n**Later ${ID.c} and ${ID.d}.**\n`,
 }, async (v, page) => {
   assert.deepEqual(await page.eval(todoColumn), [[ID.c, null], [ID.b, null], [ID.d, null], [ID.a, null]]);
   const link = await page.eval(`() => document.querySelector('#board section[aria-label="todo"] header [data-order]')?.textContent`);
-  assert.equal(link, 'urut order.md');
+  assert.equal(link, 'by order.md');
   await page.eval(`() => document.querySelector('#board [data-order]').click()`);
-  await page.until(`() => !document.getElementById('drawer').hidden && location.pathname === '/alpha/urutan' && document.getElementById('drawer-body').textContent.includes('Sudah selesai')`);
+  await page.until(`() => !document.getElementById('drawer').hidden && location.pathname === '/alpha/order' && document.getElementById('drawer-body').textContent.includes('Already done')`);
   assert.equal(await page.eval(`() => document.querySelector('#drawer-head .mono').textContent`), '.kerjaan/order.md');
 });
