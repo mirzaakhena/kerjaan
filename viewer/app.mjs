@@ -11,7 +11,7 @@ import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { STATUSES, readBoard, watchBoard } from '../skills/kerjaan/scripts/board.mjs';
+import { STATUSES, readBoard, watchBoard, sharedInGroups } from '../skills/kerjaan/scripts/board.mjs';
 import { readAgents, summary, defaultClaudeDir } from './agen.mjs';
 import { AGENT_STATUSES } from './web/agen.js';
 import { unmergedBranches } from './gabung.mjs';
@@ -243,7 +243,10 @@ export function createViewer({ root, claudeDir = defaultClaudeDir() }) {
     if (at === 'api/urutan') {
       const file = path.join(project.board, 'order.md');
       if (!fs.existsSync(file)) return send(res, 404, 'application/json; charset=utf-8', JSON.stringify({ error: 'tidak ada' }));
-      return json(res, { text: fs.readFileSync(file, 'utf8') });
+      // With the text, the files each group's tickets share by their
+      // estimates, read fresh from the tickets on every request.
+      const text = fs.readFileSync(file, 'utf8');
+      return json(res, { text, shared: sharedInGroups(text, readBoard(project.board).tickets) });
     }
     if (rest[0] === 'api' && rest[1] === 'tiket' && rest.length === 3 && /^\d{12}$/.test(rest[2])) {
       const ticket = readBoard(project.board).tickets.filter((t) => t.id === rest[2]);

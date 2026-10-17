@@ -10,11 +10,19 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { spawn } from 'node:child_process';
+import { spawn, execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
-const settings = fs.readFileSync(path.join(here, '..', '.kerjaan', 'settings.md'), 'utf8');
+// A linked worktree has no .kerjaan/ of its own (the board has one home, in
+// the main tree), so there the settings are read from the main tree.
+function settingsFile() {
+  const own = path.join(here, '..', '.kerjaan', 'settings.md');
+  if (fs.existsSync(own)) return own;
+  const common = execFileSync('git', ['rev-parse', '--path-format=absolute', '--git-common-dir'], { cwd: here, encoding: 'utf8' }).trim();
+  return path.join(path.dirname(common), '.kerjaan', 'settings.md');
+}
+const settings = fs.readFileSync(settingsFile(), 'utf8');
 const command = settings.match(/^test_command:\s*(.*)$/m)?.[1].trim() ?? '';
 
 // A hung test: it holds a server open and waits on something that never
