@@ -321,7 +321,7 @@ git commit -m "<message>" -- <files> '.kerjaan/*/<id> *'
 
 `<files>` are the code files, or nothing for a board-only commit. The quoted
 pattern catches the ticket's old and new path after a move; add one per
-ticket the commit carries. Everything else in the tree stays as it was.
+ticket the commit carries.
 
 **A move with no code behind it** — a ticket created, moved to `backlog`,
 `todo` or `cancel`, an answer written in — goes in the next commit of
@@ -333,8 +333,7 @@ before its summary when the chain ends.
 
 Read the folders directly (`ls .kerjaan/review/`, `grep -l 'priority: high'
 .kerjaan/todo/*.md`) and answer in conversation. Never write the answer to a
-file: an index or status summary starts going stale the moment it exists. `order.md` and `settings.md` hold what no folder
-can.
+file: an index or status summary starts going stale the moment it exists.
 
 **Who moved it, and why.** A History line's session id opens the conversation
 that made the move, its subagents included: `claude --resume <session-id>`,
@@ -343,8 +342,9 @@ days by default); then say so, and fall back on `## Notes` and git.
 
 **The viewer.** When the user asks to see the board in a browser ("tampilkan
 papannya"), start it in the background and hand over the address it prints;
-it writes nothing. If the port is in use, one is already running: hand over
-`http://127.0.0.1:4321/<repo folder name>/` instead.
+it writes nothing. For a phone on the same Wi-Fi, add `--lan`; hand over
+its network address and warning. If the port is in use, one is already
+running: hand over `http://127.0.0.1:4321/<repo folder name>/` instead.
 
 ```bash
 node "$K/../../../viewer/server.mjs" --scan "$(dirname "$PWD")" --project "$(basename "$PWD")" --open

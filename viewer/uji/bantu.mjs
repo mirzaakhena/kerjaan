@@ -4,6 +4,8 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import http from 'node:http';
+import { spawn } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 import { createViewer } from '../app.mjs';
 
 export function ticket({ type = 'task', priority = 'medium', labels = '', related = '', blocked = '', created = '2026-10-01 10:00:00', updated, body = '## Background\nx\n\n## Notes\n(none yet)' } = {}) {
@@ -43,6 +45,17 @@ export async function startViewer(root, { claudeDir = path.join(root, '.tidak-ad
     }),
     close: () => new Promise((r) => { server.closeAllConnections?.(); server.close(r); }),
   };
+}
+
+// Runs viewer/server.mjs as the owner would, collecting what it prints.
+export function runCli(args) {
+  const child = spawn(process.execPath, [fileURLToPath(new URL('../server.mjs', import.meta.url)), ...args], { stdio: ['ignore', 'pipe', 'pipe'] });
+  let out = '';
+  let err = '';
+  child.stdout.on('data', (c) => (out += c));
+  child.stderr.on('data', (c) => (err += c));
+  const exited = new Promise((r) => child.on('exit', (code) => r(code)));
+  return { child, exited, out: () => out, err: () => err };
 }
 
 // Collects a server-sent event stream until `until(text)` holds or time runs out.
