@@ -582,6 +582,14 @@ single module and fails with "Cannot find module". To run part of the
 suite, name the files, or a glob in quotes (Node 21 or newer):
 `node --test uji/update-ticket.test.mjs` or `node --test 'uji/*.test.mjs'`.
 
+The skill's `description` is held to a trigger test: about 40 sentences in
+`uji/pemicu/kalimat.json`, each run three times in a fresh `claude -p`
+session, recording whether it calls the skill. That run uses Claude quota, so
+the suite does not make it; `uji/pemicu.test.mjs` only checks the stored
+results against the current sentences and description, and fails when either
+changed. After changing one, run it again by hand (a few minutes, 120 calls):
+`node uji/pemicu/jalankan.mjs --keluar uji/pemicu/hasil-baru.json`.
+
 ## Releasing a new version
 
 A Claude Code session does not run this repository. It runs the copy of the
