@@ -6,7 +6,7 @@ labels: [viewer, order-md]
 reporter: mirza
 assign_to: claude
 created: 2026-10-17 07:08:38
-updated: 2026-10-17 07:17:22
+updated: 2026-10-17 07:18:09
 related: [261016141912]
 blocked_by: []
 ---
@@ -71,6 +71,7 @@ viewer pun hanya membaca baris daftar.
 - 2026-10-17 07:09:02 274ec161-5783-448b-9b14-9ef25dd7d5f9 todo
 - 2026-10-17 07:11:44 e97c38bb-2b6f-487d-a8b0-2fdab5809ee3 in_progress
 - 2026-10-17 07:17:22 e97c38bb-2b6f-487d-a8b0-2fdab5809ee3 review
+- 2026-10-17 07:18:09 e97c38bb-2b6f-487d-a8b0-2fdab5809ee3 done
 
 ## Notes
 - 2026-10-17 07:09:01: files estimated to change: `skills/kerjaan/references/ordering-the-queue.md`, `skills/kerjaan/scripts/board.mjs`, `viewer/uji/`, `viewer/web/proyek.js`, `viewer/web/saring.js`
@@ -95,3 +96,36 @@ viewer pun hanya membaca baris daftar.
   dan `saring.js` tidak perlu diubah (peringkat sudah dihitung dari
   `board.order`).
 - 2026-10-17 07:17:16: test run — `node --test --test-timeout=900000 --test-force-exit` exited 0 after 2m18s, on content fingerprint fe52d127ec1edf005de3507c5fd30be7c25cfafe (the same before and after the run; .kerjaan/ left out).
+- 2026-10-17: Reviewed at level quick, round 1, at commit 2caae62: passed.
+  Level quick: uji proyek tidak dijalankan ulang karena `test-run.sh --check`
+  menyatakan SAME (dibawa dari run pengerja 2026-10-17 07:17:16, fingerprint
+  fe52d127ec1edf005de3507c5fd30be7c25cfafe, 604 uji, exit 0); perubahan dibaca
+  baris demi baris terhadap Done when. Tidak ada server yang dijalankan.
+  - Langkah reproduksi (A `#1`, B tanpa lencana): uji peramban pertama di
+    `viewer/uji/urutan.test.mjs` menegaskan persis `[[A,'#1'],[B,null]]`; B
+    berprioritas high sehingga uji ini akan merah bila B masih diberi peringkat.
+  - Kalimat tebal, kalimat biasa, lands-first: uji unit per jenis dan uji
+    peramban kedua; regex baru `^- (\d{12})(?: |$)` per baris tidak bisa
+    menangkap ID di tempat lain.
+  - Beberapa kelompok: uji unit dan peramban dengan tiga kelompok, urutan dari
+    atas ke bawah, sisanya menurut prioritas lalu ID.
+  - order.md tanpa daftar: uji peramban ketiga memeriksa urutan prioritas lalu
+    ID dan tautan "urut order.md" membuka laci `.kerjaan/order.md`.
+  - Kesamaan dengan pemeriksaan antrean: regex di `readOrder` sama dengan awk
+    `queue.sh` (`/^- [0-9]{12}( |$)/`); uji kesamaan menjalankan
+    `queue.sh check` sungguhan pada satu order.md contoh berisi kasus tepi
+    (tanpa judul, `\r`, menjorok, backtick, duplikat).
+  - `references/ordering-the-queue.md`: kalimat baru menyebut queue.sh check,
+    skrip, dan viewer hanya membaca bullet, dan ID di prosa aman.
+  - Catatan (tidak memblokir): repo ini tidak punya CLAUDE.md/AGENTS.md.
+    Klaim "bukti uji bisa merah" di atas tidak diulang (bukan bagian level
+    quick).
+
+### Suggested follow-up
+
+- **Baris `- <ID>` tanpa judul tidak dihapus saat tiketnya keluar dari todo.**
+  `queue.sh check` dan viewer kini membaca `- <ID>` tanpa judul sebagai tempat
+  dalam urutan, tetapi `update-ticket.sh` hanya mencocokkan `- <ID> ` (dengan
+  spasi), jadi baris semacam itu tertinggal di order.md setelah tiketnya pindah
+  dan baru dilaporkan sebagai entri basi oleh `queue.sh check`. Layak jadi
+  tiket: pemindah tiket memakai aturan baris yang sama (`( |$)`).
