@@ -1,12 +1,12 @@
 ---
 type: feature
 priority: medium
-review:
+review: quick
 labels: [sesi-8e6130e0, order-md, viewer]
 reporter: mirza
 assign_to: claude
 created: 2026-10-17 11:30:54
-updated: 2026-10-17 11:36:22
+updated: 2026-10-17 11:41:31
 related: [261017113001, 261017113002, 261017113004]
 blocked_by: [261017113001, 261017113002]
 ---
@@ -26,6 +26,7 @@ Nomor di kartu menunjukkan urutan kelompok di order.md: tiket dalam satu kelompo
 
 ## History
 - 2026-10-17 11:30:54 8e6130e0-0828-4d64-b383-ba0d1c9f4b02 backlog
+- 2026-10-17 11:41:31 8e6130e0-0828-4d64-b383-ba0d1c9f4b02 todo
 
 ## Notes
 - 2026-10-17: lahir dari pembahasan pemilik dengan Claude tentang aturan dan format order.md, sesi 8e6130e0-0828-4d64-b383-ba0d1c9f4b02 (`claude --resume 8e6130e0-0828-4d64-b383-ba0d1c9f4b02`). Empat tiket dari sesi ini: 261017113001, 261017113002, 261017113003, 261017113004.
