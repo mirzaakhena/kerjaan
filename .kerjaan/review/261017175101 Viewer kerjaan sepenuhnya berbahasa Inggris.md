@@ -6,7 +6,7 @@ labels: [sesi-8e6130e0, viewer]
 reporter: mirza
 assign_to: claude
 created: 2026-10-17 17:51:37
-updated: 2026-10-17 20:39:09
+updated: 2026-10-17 20:56:05
 related: [261017113003, 261017155801, 261017184401, 261017184402]
 blocked_by: [261017113003]
 ---
@@ -47,7 +47,8 @@ Viewer kerjaan sepenuhnya berbahasa Inggris: teks yang terlihat, alamat halaman,
   answer, 2026-10-17 18:44:22: Pemilik: "Ganti tanpa pengalihan". (b) alamat viewer diganti ke bahasa Inggris (/order, /ticket/<id>, /api/order, ...) tanpa pengalihan dari alamat lama.
 - 2026-10-17: dipecah per hasil atas jawaban pemilik #1: tiket ini menjadi bagian viewer; 261017184401 (skrip, definisi agen, panduan, README, uji skill) dan 261017184402 (uji penjaga) mengikutinya berurutan.
 - 2026-10-17 18:45:33: files estimated to change: `README.md`, `skills/kerjaan/scripts/board.mjs`, `viewer/`
-- 2026-10-17 20:31:05: open question: Viewer menyimpan pilihan di peramban dengan kunci berbahasa Indonesia (kerjaan.proyek-arsip untuk proyek yang diarsipkan, kerjaan.kolom-tersembunyi untuk kolom yang disembunyikan); keduanya kini diganti menjadi kerjaan.archived-projects dan kerjaan.hidden-columns, sehingga proyek yang pernah diarsipkan dan kolom yang disembunyikan kembali ke bawaan sekali di setiap peramban. Pilihan: (a) dibiarkan begitu, sejalan dengan alamat lama yang diganti tanpa pengalihan; (b) viewer membaca kunci lama sekali bila kunci baru belum ada, sehingga nama Indonesia tetap ada di kode sebagai pengecualian. Saran: (a), karena pemilik memilih tanpa pengalihan untuk alamat, dan mengarsipkan ulang hanya beberapa klik. Tidak menahan pekerjaan: dikerjakan sebagai (a).
+- 2026-10-17 20:31:05: answered question: Viewer menyimpan pilihan di peramban dengan kunci berbahasa Indonesia (kerjaan.proyek-arsip untuk proyek yang diarsipkan, kerjaan.kolom-tersembunyi untuk kolom yang disembunyikan); keduanya kini diganti menjadi kerjaan.archived-projects dan kerjaan.hidden-columns, sehingga proyek yang pernah diarsipkan dan kolom yang disembunyikan kembali ke bawaan sekali di setiap peramban. Pilihan: (a) dibiarkan begitu, sejalan dengan alamat lama yang diganti tanpa pengalihan; (b) viewer membaca kunci lama sekali bila kunci baru belum ada, sehingga nama Indonesia tetap ada di kode sebagai pengecualian. Saran: (a), karena pemilik memilih tanpa pengalihan untuk alamat, dan mengarsipkan ulang hanya beberapa klik. Tidak menahan pekerjaan: dikerjakan sebagai (a).
+  answer, 2026-10-17 20:56:05: Pemilik memilih "Tanpa pemindahan": nama penyimpanan browser diganti tanpa memindahkan nilai lama; arsip proyek dan kolom tersembunyi kembali ke bawaan sekali per browser.
 - 2026-10-17 20:40: pengerja, ringkasan pekerjaan (cabang tiket-261017175101, dua commit: 798a376 hanya penggantian nama dengan isi lama agar `git log --follow` menyambung, lalu 6bc5917 isinya):
   - Nama: `viewer/uji/` → `viewer/tests/` (bukan `test/`: pola bawaan `node --test` menjalankan setiap berkas di folder bernama `test/` sebagai berkas uji, termasuk `helpers.mjs` dan `browser.mjs`). agen.mjs → agents.mjs, gabung.mjs → unmerged.mjs; web/: agent.js, archive.js, common.js, drawer.js, filter.js, home.html/.js, not-found.html, pills.js, project.html/.js, style.css, switcher.js; uji: agent-board, agents, archive, browser, drawer, filter, helpers, history, order, pills, shared-files, switcher, unmerged. Kelas, variabel CSS, atribut data, nama uji, data uji, dan komentar ikut berbahasa Inggris; `html lang="en"`.
   - Alamat (tanpa pengalihan): `/api/projects`, `/assets/<nama>`, `/<p>/ticket/<id>`, `/<p>/order`, `/<p>/api/board`, `/<p>/api/order`, `/<p>/api/ticket/<id>`, `/<p>/api/agent/<id>`, peristiwa langsung `agent`. Daftar alamat ditulis di kepala `viewer/app.mjs`.
