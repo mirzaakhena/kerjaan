@@ -1,8 +1,8 @@
 {
   "$schema": "https://anthropic.com/claude-code/plugin.schema.json",
   "name": "kerjaan",
-  "description": "A ticket tracker that is nothing but markdown files inside a repo. Ships the board skill, the worker, reviewer and queue planner agents, and the hook that dispatches the reviewer the moment a ticket enters review.",
-  "version": "1.14.0",
+  "description": "A ticket tracker that is nothing but markdown files inside a repo. Ships the board skill, the worker, reviewer and queue planner agents, and the hook that has the foreman dispatch the reviewer once a ticket is in review.",
+  "version": "1.15.0",
   "author": {
     "name": "mirzaakhena"
   },

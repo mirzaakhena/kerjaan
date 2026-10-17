@@ -9,7 +9,7 @@
   "plugins": [
     {
       "name": "kerjaan",
-      "description": "A ticket tracker that is nothing but markdown files inside a repo. Ships the board skill, the independent reviewer agent, and the hook that dispatches that reviewer the moment a ticket enters review.",
+      "description": "A ticket tracker that is nothing but markdown files inside a repo. Ships the board skill, the worker, reviewer and queue planner agents, and the hook that has the foreman dispatch the reviewer once a ticket is in review.",
       "author": {
         "name": "mirzaakhena"
       },
