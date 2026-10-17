@@ -62,12 +62,12 @@ ${title}.
 `;
 }
 
-function settings({ testCommand = '', parallel, setup = '', teardown = '' } = {}) {
+function settings({ testCommand = '', parallel, setup = '', teardown = '', extra = '' } = {}) {
   return `---
 language: Bahasa Indonesia
 test_command: ${testCommand}
 long_lived_branches: []
-${parallel === undefined ? '' : `parallel_tests: ${parallel}\n`}worktree_setup: ${setup}
+${extra}${parallel === undefined ? '' : `parallel_tests: ${parallel}\n`}worktree_setup: ${setup}
 worktree_teardown: ${teardown}
 ---
 `;
@@ -469,4 +469,105 @@ test('langkah git pembuatan dan penghapusan worktree menunggu kunci worktrees', 
   assert.equal(gone.waitedWhileHeld, true, 'worktree removed while the lock was held');
   assert.equal(gone.res.code, 0, gone.res.err);
   assert.equal(fs.existsSync(p), false);
+});
+
+// ---------------------------------------------------------------------------
+// The limit on tickets worked side by side (261017113002): max_parallel in
+// settings.md, or one at a time under chain: ticket. Each ticket running
+// beside another has its own linked worktree, so add counts them and refuses
+// past the limit, creating nothing.
+
+const C = '261016200003';
+const D = '261016200004';
+
+function limitRepo(extra) {
+  const r = repo({ extra });
+  for (const [id, title] of [[C, 'Tiket ketiga'], [D, 'Tiket keempat']]) {
+    fs.writeFileSync(path.join(r.k, 'in_progress', `${id} ${title}.md`), ticket(title));
+  }
+  return r;
+}
+
+// Asserts that `res`, an add for <id>, was refused by the limit with nothing
+// created: no folder, no worktree, no branch.
+function refusedByLimit(r, res, id, count, limit, why) {
+  assert.equal(res.code, 1, res.err);
+  assert.match(res.err, new RegExp(`REFUSED: no worktree for ${id}\\. ${count} ticket\\(s\\) already run side by side, and\\nsettings\\.md allows ${limit} \\(${why}\\)\\. Worktrees in use:`));
+  assert.match(res.err, /a higher limit is the owner's to set in settings\.md/);
+  assert.equal(res.out, '');
+  assert.equal(fs.existsSync(res.path), false);
+  assert.doesNotMatch(git(r.root, 'worktree', 'list', '--porcelain'), new RegExp(`wt-${id}`));
+  assert.equal(git(r.root, 'branch', '--list', `tiket-${id}`), '');
+}
+
+for (const n of [1, 2, 3]) {
+  test(`max_parallel: ${n} allows ${n} worktree(s) at once and refuses the next, naming those in use`, () => {
+    const r = limitRepo(`max_parallel: ${n}\n`);
+    const ids = [A, B, C, D];
+    const made = ids.slice(0, n).map((id) => add(r, id));
+    for (const m of made) assert.equal(m.code, 0, m.err);
+    const over = add(r, ids[n]);
+    refusedByLimit(r, over, ids[n], n, n, `max_parallel: ${n}`);
+    for (const m of made) assert.ok(over.err.includes(`  ${m.path}\n`), over.err);
+    // Once one has gone, the next is made.
+    assert.equal(run(worktreeSh, r.root, ['remove', ids[0]]).code, 0);
+    const next = add(r, ids[n]);
+    assert.equal(next.code, 0, next.err);
+  });
+}
+
+test('chain: ticket allows one worktree at a time, whatever max_parallel says', () => {
+  for (const extra of ['chain: ticket\n', 'chain: ticket\nmax_parallel: 3\n', 'max_parallel:\nchain: ticket\n']) {
+    const r = limitRepo(extra);
+    const a = add(r, A);
+    assert.equal(a.code, 0, `${extra}${a.err}`);
+    refusedByLimit(r, add(r, B), B, 1, 1, 'chain: ticket runs one ticket at a time');
+  }
+});
+
+test('with no limit set, chain queue or group, or max_parallel empty, worktrees are not counted', () => {
+  for (const extra of ['', 'chain:\nmax_parallel:\n', 'chain: queue\n', 'chain: group\n', 'chain: group\nmax_parallel: 4\n']) {
+    const r = limitRepo(extra);
+    for (const id of [A, B, C, D]) {
+      const m = add(r, id);
+      assert.equal(m.code, 0, `${extra}${id}: ${m.err}`);
+    }
+  }
+});
+
+test('a worktree whose folder is gone no longer counts against the limit', () => {
+  const r = limitRepo('max_parallel: 1\n');
+  const a = add(r, A);
+  assert.equal(a.code, 0, a.err);
+  refusedByLimit(r, add(r, B), B, 1, 1, 'max_parallel: 1');
+  fs.rmSync(a.path, { recursive: true, force: true });
+  const b = add(r, B);
+  assert.equal(b.code, 0, b.err);
+});
+
+test('a limit or chain it cannot read is refused with the value and what to write, creating nothing', () => {
+  for (const [extra, said] of [
+    ['max_parallel: 0\n', /max_parallel in settings\.md is '0': write a whole number from 1 up, or leave it empty \(no limit\)\./],
+    ['max_parallel: two\n', /max_parallel in settings\.md is 'two'/],
+    ['max_parallel: -1\n', /max_parallel in settings\.md is '-1'/],
+    ['max_parallel: 1.5\n', /max_parallel in settings\.md is '1\.5'/],
+    ['chain: tiket\n', /chain in settings\.md is 'tiket': write queue, group or ticket, or leave it empty \(queue\)\./],
+    ['chain: Ticket\nmax_parallel: 2\n', /chain in settings\.md is 'Ticket'/],
+  ]) {
+    const r = limitRepo(extra);
+    const a = add(r, A);
+    assert.equal(a.code, 2, `${extra}${a.err}`);
+    assert.match(a.err, said, extra);
+    assert.equal(fs.existsSync(a.path), false);
+    assert.equal(git(r.root, 'branch', '--list', `tiket-${A}`), '');
+  }
+});
+
+test('two adds at the same moment cannot both take the last place', async () => {
+  const r = limitRepo('max_parallel: 2\n');
+  assert.equal(add(r, A).code, 0);
+  const tries = await Promise.all([B, C, D].map((id) => runAsync(worktreeSh, r.root, ['add', id, path.join(r.base, `wt-${id}`)])));
+  assert.deepEqual(tries.map((t) => t.code).sort(), [0, 1, 1], tries.map((t) => t.err).join('\n'));
+  const linked = git(r.root, 'worktree', 'list', '--porcelain').match(/^worktree /gm).length - 1;
+  assert.equal(linked, 2);
 });

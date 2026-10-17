@@ -1,11 +1,3 @@
-**Sekarang, sendiri, berdampingan dengan 261017113002 yang sedang di review.** Tidak menunggu dan tidak ditunggu tiket mana pun; berbagi README.md dengan 261017113002, yang direncanakan digabung ke main lebih dulu.
-
-- 261017193401 Papan bisa dibuka dari HP di jaringan yang sama
-
-**Kemudian, sendiri.** Nomor kelompok di kartu membutuhkan tiket berjalan yang tetap tercantum (261017113001) dan tanda menunggu pemilik (261017113002).
-
-- 261017113003 Viewer memberi nomor yang sama pada tiket yang boleh dikerjakan berdampingan
-
 **Sesudahnya, sendiri.** Viewer berbahasa Inggris menunggu 261017113003 karena mengubah hampir semua berkas viewer.
 
 - 261017175101 Viewer kerjaan sepenuhnya berbahasa Inggris

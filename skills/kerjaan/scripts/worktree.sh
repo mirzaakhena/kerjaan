@@ -18,6 +18,8 @@
 #       carrying <id>), with .kerjaan/ left out of its checkout; give it a slot;
 #       run worktree_setup inside it. When the setup fails, the worktree is
 #       removed again (worktree_teardown included) and the exit status is 1.
+#       Refused, with nothing created, when the linked worktrees already
+#       number max_parallel from settings.md (one under chain: ticket).
 #   worktree.sh remove <id|path>
 #       run worktree_teardown inside the worktree, then remove it. Refused,
 #       with nothing removed, when the worktree holds uncommitted changes or the
@@ -47,7 +49,9 @@ Usage: worktree.sh add <id> <path> [--branch <name>]
        worktree.sh slot
 
   add      create a worktree for ticket <id> at <path>, .kerjaan/ left out,
-           and run worktree_setup from .kerjaan/settings.md inside it
+           and run worktree_setup from .kerjaan/settings.md inside it;
+           refused when max_parallel worktrees already exist (one under
+           chain: ticket)
   remove   run worktree_teardown inside the worktree, then remove it
   slot     print this tree's slot number: 0 in the main tree, 1, 2, ... in
            linked worktrees, never shared by two worktrees at once
@@ -121,6 +125,31 @@ case "$cmd" in
     # which may take minutes, does not.
     trap 'kerjaan_lock_release worktrees' EXIT
     kerjaan_lock_acquire worktrees "worktree.sh add $id"
+
+    # The limit on tickets worked side by side (max_parallel, or one at a time
+    # under chain: ticket) counts the linked worktrees, one per ticket running
+    # beside another. Counted under the lock, so two adds at the same moment
+    # cannot both take the last place.
+    limit="$(kerjaan_parallel_limit "$settings")" || exit 2
+    if [ -n "$limit" ]; then
+      running="$(git worktree list --porcelain | awk '/^worktree / { if (n++) print substr($0, 10) }' \
+        | while IFS= read -r wpath; do [ -d "$wpath" ] && printf '%s\n' "$wpath"; done || true)"
+      count="$(printf '%s' "$running" | grep -c . || true)"
+      if [ "$count" -ge "$limit" ]; then
+        if [ "$(kerjaan_chain_mode "$settings")" = ticket ]; then
+          why="chain: ticket runs one ticket at a time"
+        else
+          why="max_parallel: $limit"
+        fi
+        echo "REFUSED: no worktree for $id. $count ticket(s) already run side by side, and" >&2
+        echo "settings.md allows $limit ($why). Worktrees in use:" >&2
+        printf '%s\n' "$running" | sed 's/^/  /' >&2
+        echo "Start $id once one of them has landed (merge.sh land) or been removed;" >&2
+        echo "a higher limit is the owner's to set in settings.md." >&2
+        exit 1
+      fi
+    fi
+
     created_branch=0
     if git show-ref --verify -q "refs/heads/$branch"; then
       git worktree add "$path" "$branch" >&2
