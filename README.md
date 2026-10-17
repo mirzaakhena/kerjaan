@@ -631,8 +631,13 @@ That one command runs the whole suite: every `*.test.mjs` under `tests/` (the
 scripts in `skills/kerjaan/scripts/`) and `viewer/tests/` (the viewer). This
 board's own `test_command`, which `test-run.sh` runs before a ticket goes to
 review, is the same run with two guards added (Node 22 or newer):
-`node --test --test-timeout=900000 --test-force-exit`, so that a test which
-hangs fails after 15 minutes instead of holding the run forever. Each test
+`node --test --test-timeout=900000 --import=./tests/complete-runs.mjs`. The
+time limit makes a test which hangs fail after 15 minutes instead of holding
+the run forever. `tests/complete-runs.mjs` ends a test file whose tests are
+done but which something left open keeps alive, once its results are
+delivered, and fails a file that ends before its tests have finished. It
+replaces `--test-force-exit`, which dropped results still on their way out,
+so a run could pass with tests missing. Each test
 builds a throwaway repository with a board under the system temp folder and
 runs the real scripts against it; nothing in this checkout is changed. Expect
 a few minutes for the whole run.

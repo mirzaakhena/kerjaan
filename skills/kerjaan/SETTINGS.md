@@ -21,7 +21,15 @@ Settings for this board, read by the kerjaan skill, its reviewer, and
   `npm test` or `make check`. The worker runs it through `test-run.sh`
   before a ticket goes to review, and the reviewer does not run it again when
   that run passed on exactly the content under review. Empty means the
-  project has none, and reviews say so rather than inventing one.
+  project has none, and reviews say so rather than inventing one. A run
+  counts as passed by its exit status alone, so the command must exit
+  non-zero whenever a test did not run to its end. Options that force the
+  runner to exit once its tests are done (Node's `--test-force-exit`, Jest's
+  `--forceExit`, Mocha's `--exit`) can end a process before its results are
+  delivered, and the run then passes with tests missing: let the run end by
+  itself, stop a hung test with a time limit, and end a process that stays
+  open only after its output is out. The kerjaan repository does this for
+  `node --test` in `tests/complete-runs.mjs`.
 - `long_lived_branches` — branches that hold work outside `HEAD` on purpose,
   so starting a ticket is not refused because of them. Glob patterns work:
   `[develop, release/*]`. List the main branch too if work usually happens on
