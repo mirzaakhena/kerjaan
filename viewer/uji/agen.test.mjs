@@ -134,12 +134,50 @@ test('Bash step without a description: the program name alone, for every shape o
     ['heredoc', "cat > RAHASIA.md <<'EOF'\nRAHASIA\nEOF", 'cat'],
     ['negated group', '! { grep -q RAHASIA f; }', 'grep'],
     ['nothing but spaces', '   ', ''],
+    // Array assignments, whole, whatever is inside the parentheses.
+    ['array assignment alone', 'TOKENS=(RAHASIA other)', ''],
+    ['array assignment before the program', 'A=(RAHASIA b) node', 'node'],
+    ['array appended to before the program', 'X+=(RAHASIA "RAHASIA b") node', 'node'],
+    ['array element set before the program', 'a[RAHASIA]=RAHASIA node', 'node'],
+    ['array assignment, then a command', 'P=(RAHASIA.md); git add -- "${P[@]}"', 'git'],
+    // Redirections and their targets, before the program or on a leading cd.
+    ['stderr redirected before the program', '2>/tmp/RAHASIA.log cat x', 'cat'],
+    ['input redirected before the program', '</tmp/RAHASIA.txt wc -l', 'wc'],
+    ['output redirected before the program', '>/tmp/RAHASIA cat', 'cat'],
+    ['appended before the program', '>> RAHASIA cat', 'cat'],
+    ['both streams before the program', '&>>RAHASIA cat', 'cat'],
+    ['clobbering before the program', '>|RAHASIA cat', 'cat'],
+    ['read-write before the program', '3<>RAHASIA cat', 'cat'],
+    ['named descriptor before the program', '{fd}>RAHASIA cat', 'cat'],
+    ['here-string before the program', '<<<RAHASIA cat', 'cat'],
+    ['process substitution before the program', '< <(cat RAHASIA) wc', 'wc'],
+    ['both streams on a cd', 'cd /x &>/tmp/RAHASIA.log && ls', 'ls'],
+    ['descriptor duplicated to a file on a cd', 'cd /x >&/tmp/RAHASIA && ls', 'ls'],
+    ['stderr into stdout on a cd', 'cd RAHASIA 2>&1; ls', 'ls'],
+    ['both streams on a cd, then more words', 'cd /x &>/dev/null RAHASIA', 'cd'],
+    ['stderr into stdout on a cd, then more words', 'cd /x 2>&1 RAHASIA', 'cd'],
+    ['clobbering on a cd, then more words', 'cd /x >|RAHASIA.log RAHASIA', 'cd'],
+    ['descriptor closed on a cd', 'cd RAHASIA >&- ; ls', 'ls'],
+    ['redirection glued to the program', 'cat>RAHASIA', 'cat'],
+    ['heredoc on a cd', 'cd x <<EOF\nRAHASIA\nEOF\nls', 'ls'],
+    ['indented heredoc on a cd', 'cd x <<-EOF\n\tRAHASIA\n\tEOF\nls', 'ls'],
+    ['heredoc on a cd, to the end', "cd x <<'EOF'\nRAHASIA\nEOF", 'cd'],
+    // Lines that cannot be read with confidence show nothing.
+    ['arithmetic', '((RAHASIA++))', ''],
+    ['test brackets', '[[ -f RAHASIA ]] && ls', ''],
+    ['function definition', 'f() { RAHASIA; }', ''],
+    ['quote left open before the program', 'A="RAHASIA node', ''],
+    ['quote left open after a cd', 'cd /x; A="RAHASIA node', ''],
+    ['substitution left open before the program', 'A=$(RAHASIA node', ''],
+    ['quote left open after the program', 'node "RAHASIA', 'node'],
+    ['ANSI-C quoting with an escaped quote', "A=$'RAHASIA\\'s' node", 'node'],
+    ['substitution with quotes inside a quoted value', 'A="$(cat "RAHASIA b")" node', 'node'],
   ];
   for (const [shape, command, want] of cases) {
     const got = stepLabel('Bash', { command }, '/proj');
     assert.equal(got.tool, 'Bash');
     assert.ok(!got.label.includes('RAHASIA'), `${shape}: ${got.label}`);
-    if (want !== null) assert.equal(got.label, want, shape);
+    assert.equal(got.label, want, shape);
     assert.equal(got.label, programName(command), shape);
   }
 });

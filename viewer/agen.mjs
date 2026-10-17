@@ -84,45 +84,107 @@ const time = (v) => {
 
 const clean = (s) => String(s).replace(/[\u0000-\u001f\u007f]+/g, ' ').replace(/\s+/g, ' ').trim().slice(0, LABEL_MAX);
 
-// A command line read as the shell would split it, as words and the operators
-// between commands. Quotes are taken off; what is inside them stays one word.
-// Only the program names are ever kept from this (programName, below).
+// A command line read as the shell would split it: words, the operators
+// between commands, and redirections. Quotes are taken off; a substitution, an
+// array's parentheses or an arithmetic `((...))` stay inside their word, raw. A
+// redirection's target and a heredoc's body are marked so they are never taken
+// for a program. Past anything left unclosed the line is not understood, and
+// a `broken` mark ends the list.
+// Only program names are ever kept from this (programName, below).
+function closing(s, k) {
+  // From an opening `'`, `"`, `` ` `` or `(` at k, the index of what closes it.
+  const open = s[k];
+  if (open === "'") return s.indexOf("'", k + 1);
+  if (open === '`') {
+    for (let j = k + 1; j < s.length; j++) {
+      if (s[j] === '\\') j++;
+      else if (s[j] === '`') return j;
+    }
+    return -1;
+  }
+  let depth = 0;
+  for (let j = k + (open === '"' ? 1 : 0); j < s.length; j++) {
+    const c = s[j];
+    if (c === '\\') j++;
+    else if (open === '"' && c === '"') return j;
+    else if (open === '"' && c === '$' && s[j + 1] === '(') { j = closing(s, j + 1); if (j < 0) return -1; }
+    else if (open === '"' && c === '`') { j = closing(s, j); if (j < 0) return -1; }
+    else if (open === '"') continue;
+    else if (c === "'" || c === '"' || c === '`') { j = closing(s, j); if (j < 0) return -1; }
+    else if (c === '(') depth++;
+    else if (c === ')' && --depth === 0) return j;
+  }
+  return -1;
+}
+
 function shellTokens(command) {
   const out = [];
+  const heredocs = [];
   let word = null;
-  const push = () => { if (word !== null) out.push({ word }); word = null; };
-  for (let k = 0; k < command.length; k++) {
-    const c = command[k];
-    if (c === "'") {
-      const end = command.indexOf("'", k + 1);
-      word = (word ?? '') + command.slice(k + 1, end < 0 ? command.length : end);
-      k = end < 0 ? command.length : end;
-    } else if (c === '"') {
-      let w = '';
-      for (k++; k < command.length && command[k] !== '"'; k++) w += command[k] === '\\' ? command[++k] ?? '' : command[k];
-      word = (word ?? '') + w;
-    } else if (c === '`' || (c === '$' && command[k + 1] === '(')) {
-      // A substitution stays inside the word it is part of, however it nests.
-      let depth = 0;
-      let end = k;
-      if (c === '`') end = command.indexOf('`', k + 1);
-      else for (end = k + 1; end < command.length; end++) {
-        if (command[end] === '(') depth++;
-        else if (command[end] === ')' && --depth === 0) break;
-      }
-      if (end < 0) end = command.length;
-      word = (word ?? '') + command.slice(k, end + 1);
+  let target = false;
+  let heredoc = null;
+  const push = () => {
+    if (word === null) return;
+    if (heredoc) heredocs.push({ end: word, tabs: heredoc === '<<-' });
+    out.push({ word, skip: target || heredoc !== null });
+    word = null; target = false; heredoc = null;
+  };
+  const s = command;
+  for (let k = 0; k < s.length; k++) {
+    const c = s[k];
+    if (c === '$' && s[k + 1] === "'") {
+      // $'...' quoting, where \' does not close it.
+      let end = k + 2;
+      while (end < s.length && s[end] !== "'") end += s[end] === '\\' ? 2 : 1;
+      if (end >= s.length) return [...out, { broken: true }];
+      word = (word ?? '') + s.slice(k, end + 1);
+      k = end;
+    } else if (c === "'" || c === '"' || c === '`' || (c === '$' && s[k + 1] === '(') || (c === '(' && (word !== null || s[k + 1] === '('))) {
+      // Quotes lose their marks; everything else keeps its raw text.
+      const at = c === '$' ? k + 1 : k;
+      const end = closing(s, at);
+      if (end < 0) return [...out, { broken: true }];
+      word = (word ?? '') + (c === "'" || c === '"' ? s.slice(at + 1, end) : s.slice(k, end + 1));
       k = end;
     } else if (c === '\\') {
-      if (command[k + 1] !== '\n') word = (word ?? '') + (command[k + 1] ?? '');
+      if (s[k + 1] !== '\n') word = (word ?? '') + (s[k + 1] ?? '');
       k++;
+    } else if (c === '<' || c === '>' || (c === '&' && s[k + 1] === '>')) {
+      // A redirection: a file descriptor before it is part of it, and the
+      // word after it is its target, also when written as `>&1` or `>&-`.
+      if (word !== null && !/^(\d+|\{[A-Za-z_][A-Za-z0-9_]*\})$/.test(word)) push();
+      word = null;
+      let op = c;
+      while (op.length < 3 && (/[<>&]/.test(s[k + 1]) || (s[k + 1] === '-' && op === '<<') || (s[k + 1] === '|' && op === '>'))) op += s[++k];
+      if (op === '<<' || op === '<<-') heredoc = op;
+      else target = true;
+      if (s[k + 1] === '(') {
+        const end = closing(s, k + 1);
+        if (end < 0) return [...out, { broken: true }];
+        word = s.slice(k + 1, end + 1);
+        k = end;
+      }
     } else if (c === '\n' || c === ';' || c === '&' || c === '|' || c === '(' || c === ')') {
       push();
-      out.push({ op: c === '\n' ? ';' : c });
-      if ((c === '&' || c === '|') && command[k + 1] === c) k++;
+      out.push({ op: c });
+      if ((c === '&' || c === '|') && (s[k + 1] === c || (c === '|' && s[k + 1] === '&'))) k++;
+      if (c === '\n') {
+        // A heredoc's body runs to the line holding only its delimiter.
+        for (const h of heredocs.splice(0)) {
+          let next = s.indexOf('\n', k + 1);
+          while (true) {
+            const lineEnd = next < 0 ? s.length : next;
+            const text = s.slice(k + 1, lineEnd);
+            k = lineEnd;
+            if ((h.tabs ? text.replace(/^\t+/, '') : text) === h.end || next < 0) break;
+            next = s.indexOf('\n', k + 1);
+          }
+          if (k >= s.length) return out;
+        }
+      }
     } else if (/\s/.test(c)) push();
     else if (c === '#' && word === null) {
-      while (k + 1 < command.length && command[k + 1] !== '\n') k++;
+      while (k + 1 < s.length && s[k + 1] !== '\n') k++;
     } else word = (word ?? '') + c;
   }
   push();
@@ -131,23 +193,25 @@ function shellTokens(command) {
 
 // The program a Bash command runs, by name only: "node" for
 // `API_TOKEN=x node --test`, "test-run.sh" for `"$K/test-run.sh" 2610...`.
-// Assignments before the program are skipped, and so is a leading `cd <dir>`
-// with its operator, since the program after it says more. A name that is not
-// a plain word once its folder is dropped (a variable, a substitution, a
-// quoted phrase) gives no label at all rather than any part of itself.
+// Assignments (arrays included) and redirections before the program are
+// skipped, and so is a leading `cd <dir>` with its operator, since the program
+// after it says more. When in doubt it shows nothing: a name that is not a
+// plain word once its folder is dropped (a variable, a substitution, a quoted
+// phrase, arithmetic), or a line that cannot be read to its end, gives no
+// label at all rather than any part of itself.
 const PROGRAM = /^[A-Za-z0-9_][A-Za-z0-9._+-]{0,39}$/;
-const ASSIGNMENT = /^[A-Za-z_][A-Za-z0-9_]*=/;
+const ASSIGNMENT = /^[A-Za-z_][A-Za-z0-9_]*(\[[^\]]*\])?\+?=/;
 export function programName(command) {
   if (typeof command !== 'string') return '';
   let first = '';
   let skipping = false;
   for (const t of shellTokens(command)) {
+    if (t.broken) return '';
     if (t.op) { skipping = false; continue; }
-    if (skipping || ASSIGNMENT.test(t.word) || t.word === '{' || t.word === '!') continue;
+    if (skipping || t.skip || ASSIGNMENT.test(t.word) || t.word === '{' || t.word === '!') continue;
     const name = t.word.slice(t.word.lastIndexOf('/') + 1);
-    const shown = PROGRAM.test(name) ? name : '';
     if (name === 'cd' || name === 'pushd') { first ||= name; skipping = true; continue; }
-    return shown;
+    return PROGRAM.test(name) ? name : '';
   }
   return first;
 }
