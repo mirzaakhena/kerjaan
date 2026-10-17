@@ -88,6 +88,92 @@ export function readOrder(board) {
   return [...new Set(lines.map((l) => l.match(/^- (\d{12})(?: |$)/)?.[1]).filter(Boolean))];
 }
 
+// order.md's groups: a group runs from one bold lead-in line (`**...`) to the
+// next, and holds the tickets of its list lines `- <id> <title>`, the same
+// reading queue.sh check uses. List lines above the first lead-in form a group
+// of their own. Only groups that hold a list line are returned, as
+// { start, end, ids }: start is the lead-in's line index (0 for the group
+// above the first lead-in), end the index of the next lead-in or the line
+// count, so the text of a group is lines.slice(start, end).
+export function readOrderGroups(text) {
+  const lines = text.split('\n');
+  const groups = [];
+  let cur = { start: 0, ids: [] };
+  const close = (end) => { if (cur.ids.length) groups.push({ ...cur, end }); };
+  lines.forEach((line, i) => {
+    if (line.startsWith('**')) {
+      close(i);
+      cur = { start: i, ids: [] };
+      return;
+    }
+    const id = line.match(/^- (\d{12})(?: |$)/)?.[1];
+    if (id && !cur.ids.includes(id)) cur.ids.push(id);
+  });
+  close(lines.length);
+  return groups;
+}
+
+// The latest "files estimated to change:" record in a ticket's body, read the
+// way lib.sh's kerjaan_estimate reads it: the last such line outside fenced
+// blocks, its paths the backquoted parts. Returns the paths (a folder ends in
+// "/"), [] for an estimate of none, or null when none was recorded.
+const ESTIMATE = /^- \d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}: files estimated to change: /;
+export function readEstimate(body) {
+  let last = null;
+  let fenced = false;
+  for (const line of body.split('\n')) {
+    if (/^(```|~~~)/.test(line)) {
+      fenced = !fenced;
+      continue;
+    }
+    if (!fenced && ESTIMATE.test(line)) last = line;
+  }
+  if (last === null) return null;
+  return [...last.matchAll(/`([^`]+)`/g)].map((m) => m[1]);
+}
+
+// The paths two estimates share, as queue.sh's shared_paths finds them: equal
+// paths, or a folder ("x/") and anything under it, where the narrower is what
+// is shared. Sorted, each once.
+export function sharedPaths(a, b) {
+  const out = new Set();
+  for (const p of a) {
+    for (const q of b) {
+      if (p === q) out.add(p);
+      else if (p.endsWith('/') && q.startsWith(p)) out.add(q);
+      else if (q.endsWith('/') && p.startsWith(q)) out.add(p);
+    }
+  }
+  return [...out].sort();
+}
+
+// For each group of order.md whose tickets share files by their estimates, the
+// pairs that do: { start, end, pairs: [{ a, b, files }], unestimated: [ids] }.
+// Pairs across groups, and with tickets order.md does not list, are left out:
+// only tickets of one group run side by side and need an order of landing.
+// Computed from the tickets each time, so a changed estimate shows at once.
+export function sharedInGroups(text, tickets) {
+  const byId = new Map();
+  for (const t of tickets) if (!byId.has(t.id)) byId.set(t.id, t);
+  const result = [];
+  for (const g of readOrderGroups(text)) {
+    const est = g.ids.filter((id) => byId.has(id)).map((id) => [id, readEstimate(byId.get(id).body)]);
+    const pairs = [];
+    for (const [a, ea] of est) {
+      for (const [b, eb] of est) {
+        if (!(a < b) || !ea || !eb) continue;
+        const files = sharedPaths(ea, eb);
+        if (files.length) pairs.push({ a, b, files });
+      }
+    }
+    if (!pairs.length) continue;
+    pairs.sort((x, y) => (x.a + x.b < y.a + y.b ? -1 : 1));
+    const unestimated = est.filter(([, e]) => e === null).map(([id]) => id);
+    result.push({ start: g.start, end: g.end, pairs, unestimated });
+  }
+  return result;
+}
+
 export function readBoard(board) {
   const tickets = [];
   for (const status of STATUSES) {
