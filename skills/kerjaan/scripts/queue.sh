@@ -301,8 +301,10 @@ fi
 # earlier group (so, with no order.md, nothing in todo waits for another
 # ticket of todo), no group holding a ticket together with one it waits for
 # (directly or through others), and every two tickets of one group that share
-# files ordered by that group's lands-first line. Questions still open in
-# tickets in flight are shown too, without counting against todo.
+# files ordered by that group's lands-first line; settings.md's `chain` and
+# `max_parallel` readable. Questions still open in tickets in flight are shown
+# too, without counting against todo, and so are the groups that wait for the
+# owner.
 #
 # The lands-first line is the one fixed marker for which lands first, the same
 # on a board in any language, documented in references/ordering-the-queue.md
@@ -396,6 +398,18 @@ if [ "$whole" -eq 1 ]; then
     cat "$tmpdir/waiting"
   fi
 fi
+# How far the chain runs (lib.sh): a value the foreman and worktree.sh cannot
+# read is named here, before the chain starts on it.
+if [ "$whole" -eq 1 ]; then
+  : > "$tmpdir/settings"
+  kerjaan_chain_mode "$board/settings.md" 2>> "$tmpdir/settings" > /dev/null || true
+  kerjaan_max_parallel "$board/settings.md" 2>> "$tmpdir/settings" > /dev/null || true
+  if [ -s "$tmpdir/settings" ]; then
+    echo "settings.md"
+    while IFS= read -r msg; do problem "$msg"; done < "$tmpdir/settings"
+  fi
+fi
+
 if [ "$whole" -eq 1 ] && [ -f "$order" ]; then
   echo "order.md"
   before="$problems"
@@ -413,8 +427,8 @@ if [ "$whole" -eq 1 ] && [ -f "$order" ]; then
 
   # order.md has a fixed grammar (references/ordering-the-queue.md, "The
   # lines it may hold"): every line is one of a goal line, a lead-in, a
-  # lands-first line, a ticket line or a blank line, and anything else is
-  # reported by its line number. The file is never rewritten here; a line
+  # lands-first line, a wait-for-owner line, a ticket line or a blank line,
+  # and anything else is reported by its line number. The file is never rewritten here; a line
   # that fits none of them is the owner's or the planner's to move to where
   # it belongs.
   #
@@ -424,15 +438,19 @@ if [ "$whole" -eq 1 ] && [ -f "$order" ]; then
   # <id>..." when they read as the fixed shape, and to "badmarks" as "<line
   # number>" when they only look like it — a comment mentioning lands first,
   # in any letter case and joined by a hyphen, a space or nothing — so a
-  # misspelt marker is reported rather than passed over. Lines outside the
+  # misspelt marker is reported rather than passed over. The wait-for-owner
+  # line, <!-- wait-for-owner -->, marks a group the foreman starts only with
+  # the owner's yes (references/foreman.md, "How far the chain runs"); one per
+  # group, its groups go to "waits" as "<n> <lead-in line> <line number>", and
+  # a line that only looks like it is reported the same way. Lines outside the
   # grammar go to "badlines" as "<line number>\t<what is wrong>".
   awk -v gl="$tmpdir/groups" -v ml="$tmpdir/marks" -v bl="$tmpdir/badmarks" \
-      -v tl="$tmpdir/listed" -v xl="$tmpdir/badlines" '
+      -v tl="$tmpdir/listed" -v xl="$tmpdir/badlines" -v wl="$tmpdir/waits" '
     function bad(ln, msg) { printf "%d\t%s\n", ln, msg > xl }
     function close_group() {
       if (g > 0 && !count[g]) bad(lead[g], "is a lead-in with no ticket under it: give it its tickets, or remove it")
     }
-    BEGIN { printf "" > gl; printf "" > ml; printf "" > bl; printf "" > tl; printf "" > xl; cont = 0 }
+    BEGIN { printf "" > gl; printf "" > ml; printf "" > bl; printf "" > tl; printf "" > xl; printf "" > wl; cont = 0 }
     /^[ \t\r]*$/ { cont = 0; next }
     /^\*\*Goal\.\*\*/ {
       if (goal) bad(NR, "is a second goal line: order.md holds one, on its first line")
@@ -467,9 +485,20 @@ if [ "$whole" -eq 1 ] && [ -f "$order" ]; then
       } else print NR > bl
       next
     }
+    tolower($0) ~ /^[ \t]*<!--.*wait[- _]*for[- _]*owner/ {
+      seen = 1; cont = 0
+      if (g == 0) { bad(NR, "is a wait-for-owner line outside any group: put it under the lead-in of the group that waits"); next }
+      if ($0 !~ /^[ \t]*<!--[ \t]*wait-for-owner[ \t]*-->[ \t]*$/) {
+        bad(NR, "is not a wait-for-owner line check can read: write it as <!-- wait-for-owner -->")
+        next
+      }
+      if (g in wait) bad(NR, "is a second wait-for-owner line in its group, after line " wait[g] ": one is enough")
+      else { wait[g] = NR; print g + 0, lead[g], NR > wl }
+      next
+    }
     {
       if (cont) bad(NR, "continues the lead-in of line " cont ": a lead-in is one sentence on one line")
-      else bad(NR, "is none of the lines order.md holds (a goal line, a lead-in, a lands-first line, a ticket line, a blank line): move what it says where ordering-the-queue.md, \"Where everything else goes\", sends it")
+      else bad(NR, "is none of the lines order.md holds (a goal line, a lead-in, a lands-first line, a wait-for-owner line, a ticket line, a blank line): move what it says where ordering-the-queue.md, \"Where everything else goes\", sends it")
       seen = 1
     }
     END { close_group() }
@@ -581,6 +610,23 @@ if [ "$whole" -eq 1 ] && [ -f "$order" ]; then
       fi
     done < "$tmpdir/groups"
   done < "$tmpdir/groups"
+
+  # The groups that wait for the owner, so the foreman asks before the chain
+  # reaches them. One with a ticket already in flight has been started, and
+  # is not asked about again.
+  while read -r g lead ln; do
+    started=""
+    while read -r gg id; do
+      [ "$gg" = "$g" ] || continue
+      f="$(kerjaan_ticket_file "$board" "$id" 2> /dev/null || true)"
+      case "$f" in */in_progress/* | */review/*) started=1 ;; esac
+    done < "$tmpdir/groups"
+    if [ -n "$started" ]; then
+      echo "  the group of line $lead waits for the owner (line $ln), and has started: a ticket of it is in flight"
+    else
+      echo "  the group of line $lead waits for the owner (line $ln): it starts only with their yes"
+    fi
+  done < "$tmpdir/waits"
 
   [ "$problems" -gt "$before" ] || echo "  in step with todo"
 fi

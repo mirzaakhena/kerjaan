@@ -464,6 +464,10 @@ if [ -f "$order" ] && active "$current_status" && ! active "$dest_status"; then
     # as written for queue.sh check to report by its line number — this script
     # never deletes what it does not understand.
     #
+    # The group's other lines go with it, its wait-for-owner line
+    # (`<!-- wait-for-owner -->`) included: it marks that group alone, and
+    # never passes to the next one.
+    #
     # The ticket's ID also comes off its group's lands-first line
     # (`<!-- lands-first: <id>, <id> -->`), keeping the others in their order;
     # a line left naming nobody goes. A line in any other shape is left

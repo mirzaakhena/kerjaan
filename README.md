@@ -34,7 +34,8 @@ there is no service to run, host, or pay for.
 ├── cancel/       abandoned
 ├── order.md      the order of the work in todo and in flight — optional
 └── settings.md   language, test command, long-lived branches,
-                  side-by-side tests and worktree setup
+                  side-by-side tests and worktree setup, how far
+                  the chain runs
 ```
 
 `settings.md` is written once, the first time the board is used: Claude
@@ -330,7 +331,7 @@ one ticket cannot start until another finishes. Softer sequencing lives in
 
 The file has a fixed grammar: every line is a goal line at the top (at most
 one, `**Goal.**` in any language), a bold lead-in on one line, a lands-first
-line, a ticket line `- <id> <title>`, or a blank line.
+line, a wait-for-owner line, a ticket line `- <id> <title>`, or a blank line.
 `queue.sh check` refuses any other line by its number, and rewrites nothing.
 Order is position on the page; tickets sharing a group can run side by side;
 the lead-in gives the reason in one sentence, without listing files — which
@@ -351,6 +352,19 @@ ID off the lands-first line too, and its group's lead-in once the group is
 empty. Once the file is set, it is your choice already made: a session takes
 the next ticket still in `todo` from the top of it without asking you again.
 The full rules are in `skills/kerjaan/references/ordering-the-queue.md`.
+
+How far a session works through the queue before it comes back to you is
+yours to set in `settings.md`. `chain: queue`, the default, runs until `todo`
+is empty; `chain: group` stops after each group; `chain: ticket` stops after
+each ticket and runs one at a time, even inside a group. A group whose result
+you want to try before the next one starts gets the line
+`<!-- wait-for-owner -->` under its lead-in: the session asks you before
+starting it, and not again if you said yes when the chain started. What you
+say when you start always wins — "just one ticket" is one ticket — then the
+mark, then the setting. `max_parallel: <n>` caps how many tickets run side by
+side, empty for no cap; `worktree.sh` refuses a worktree past it.
+`queue.sh check` accepts one wait-for-owner line per group and names the
+groups that wait.
 
 The file is optional. Write it the first time ordering actually matters, and
 refill `todo` from `backlog` only when `todo`, `in_progress` and `review` are

@@ -142,7 +142,8 @@ question instead of moving anything. The foreman takes it back to the owner.
 **3. Move the approved tickets** with `"$K/update-ticket.sh" <id> --status
 todo`, and write `order.md` in the grammar `references/ordering-the-queue.md`
 describes — a goal line for the batch, one-line lead-ins with no list of
-files, lands-first lines — keeping any ticket already in `todo`,
+files, lands-first lines, a wait-for-owner line on each group the owner
+will try the work before — keeping any ticket already in `todo`,
 `in_progress` or `review` in its place unless the owner moved it. Nothing else
 goes into the file: a step a worker must take goes into that ticket's
 `## Notes`, why a ticket stays in backlog into that ticket's `## Notes`, and

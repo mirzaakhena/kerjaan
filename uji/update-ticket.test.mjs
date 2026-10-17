@@ -307,6 +307,31 @@ test('a group left with no bullets goes with its lands-first line', () => {
   assert.equal(readOrder(root), `**Grup dua.**\n\n- ${B} Lain\n`);
 });
 
+// The wait-for-owner line (261017113002) marks its own group: it stays while
+// the group holds a ticket, goes with the group, and never moves on to the
+// group after it.
+const wait = '<!-- wait-for-owner -->';
+test('a wait-for-owner line stays while its group holds a ticket, and goes with the group', () => {
+  const root = repo();
+  writeOrder(root, `**Goal.** One batch.\n\n**Group one.** The reason.\n${wait}\n\n- ${A} Judul lama\n- ${B} Other\n`);
+  assert.equal(run(root, A, '--status', 'done').code, 0);
+  assert.equal(readOrder(root), `**Goal.** One batch.\n\n**Group one.** The reason.\n${wait}\n\n- ${B} Other\n`);
+
+  const root2 = repo();
+  writeOrder(root2, `**Goal.** One batch.\n\n**Group one.** The reason.\n${wait}\n<!-- lands-first: ${A} -->\n\n- ${A} Judul lama\n\n**Group two.**\n\n- ${B} Other\n`);
+  assert.equal(run(root2, A, '--status', 'cancel').code, 0);
+  assert.equal(readOrder(root2), `**Goal.** One batch.\n\n**Group two.**\n\n- ${B} Other\n`);
+});
+
+test('a group emptied before a waiting one leaves the wait-for-owner line where it was, on the group that waits', () => {
+  for (const dest of ['done', 'cancel', 'backlog']) {
+    const root = repo();
+    writeOrder(root, `**Group one.**\n\n- ${A} Judul lama\n\n**Group two.** Once the owner tried group one.\n${wait}\n\n- ${B} Other\n`);
+    assert.equal(run(root, A, '--status', dest).code, 0);
+    assert.equal(readOrder(root), `**Group two.** Once the owner tried group one.\n${wait}\n\n- ${B} Other\n`, dest);
+  }
+});
+
 test('lands-first lines not naming this ticket, or not in the fixed shape, are left byte for byte', () => {
   const root = repo();
   const lines = [
