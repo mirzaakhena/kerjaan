@@ -421,8 +421,24 @@ the mark goes away by itself once the branch is merged or deleted, on an open
 page as well. A project that is not a git repository shows no mark.
 
 It only reads, needs Node 18 or newer and nothing else, and
-listens on `127.0.0.1` only. `--port` picks another port (`0` for any free
-one). Its tests run with `node --test` from the repo root.
+listens on `127.0.0.1` only, unless started with `--lan`. `--port` picks
+another port (`0` for any free one). Its tests run with `node --test` from the
+repo root.
+
+To watch the boards from a phone on the same Wi-Fi as the Mac, add `--lan`:
+
+```bash
+node viewer/server.mjs --scan ~/Workspace --port 4321 --lan
+```
+
+Under the address for the Mac itself, it prints the Mac's address on each
+network it is on, such as `http://192.168.1.20:4321/`: type that one into the
+phone's browser. On a phone the page fits the screen — one status at a time,
+the ticket opening over the board — and follows the board live as it does on
+the Mac. There is no password: while it runs with `--lan`, anyone on the same
+network can read every board it shows, and it prints a warning saying so.
+Without `--lan`, no other device can reach it. If macOS asks whether `node`
+may accept incoming connections, allow it, or the phone gets no answer.
 
 ## Two tickets at once
 

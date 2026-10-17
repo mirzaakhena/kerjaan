@@ -3,11 +3,8 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { spawn } from 'node:child_process';
-import { fileURLToPath } from 'node:url';
-import { ticket, makeBoard, tempRoot, startViewer, listenEvents } from './bantu.mjs';
+import { ticket, makeBoard, tempRoot, startViewer, listenEvents, runCli } from './bantu.mjs';
 
-const here = path.dirname(fileURLToPath(import.meta.url));
 const ID = { a: '260101000001', b: '260101000002', c: '260101000003', d: '260101000004', rusak: '260101000005' };
 
 function setup() {
@@ -178,16 +175,6 @@ test('perubahan di proyek lain tidak dikabarkan', async () => {
     assert.equal((await waiting).ok, false);
   } finally { await v.close(); }
 });
-
-function runCli(args) {
-  const child = spawn(process.execPath, [path.join(here, '..', 'server.mjs'), ...args], { stdio: ['ignore', 'pipe', 'pipe'] });
-  let out = '';
-  let err = '';
-  child.stdout.on('data', (c) => (out += c));
-  child.stderr.on('data', (c) => (err += c));
-  const exited = new Promise((r) => child.on('exit', (code) => r(code)));
-  return { child, exited, out: () => out, err: () => err };
-}
 
 test('perintah: menyala, mencetak alamat 127.0.0.1, dan menolak tanpa --scan', async () => {
   const root = setup();
