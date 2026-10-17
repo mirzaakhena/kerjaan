@@ -6,7 +6,7 @@ labels: [sesi-8e6130e0, order-md]
 reporter: mirza
 assign_to: claude
 created: 2026-10-17 11:30:54
-updated: 2026-10-17 19:35:51
+updated: 2026-10-17 19:48:47
 related: [261017113001, 261017113003]
 blocked_by: [261017113001]
 ---
@@ -30,6 +30,7 @@ Pemilik bisa menetapkan di setelan papan apakah antrean dijalankan terus sampai 
 - 2026-10-17 11:41:31 8e6130e0-0828-4d64-b383-ba0d1c9f4b02 todo
 - 2026-10-17 19:05:20 8e6130e0-0828-4d64-b383-ba0d1c9f4b02 in_progress
 - 2026-10-17 19:35:51 8e6130e0-0828-4d64-b383-ba0d1c9f4b02 review
+- 2026-10-17 19:48:47 8e6130e0-0828-4d64-b383-ba0d1c9f4b02 done
 
 ## Notes
 - 2026-10-17: lahir dari pembahasan pemilik dengan Claude tentang aturan dan format order.md, sesi 8e6130e0-0828-4d64-b383-ba0d1c9f4b02 (`claude --resume 8e6130e0-0828-4d64-b383-ba0d1c9f4b02`). Empat tiket dari sesi ini: 261017113001, 261017113002, 261017113003, 261017113004.
@@ -59,3 +60,16 @@ Pemilik bisa menetapkan di setelan papan apakah antrean dijalankan terus sampai 
     4. Dengan `chain: queue` dan penanda di atas, mulai dengan "satu tiket saja": hanya satu tiket dikerjakan, lalu sesi berhenti.
 - 2026-10-17 19:35:47: test run — `node --test --test-timeout=900000 --test-force-exit` exited 0 after 2m33s, on content fingerprint 8db28d6b809a1e482879ca690ebe3a8f58d242db (the same before and after the run; .kerjaan/ left out).
 - 2026-10-17 19:35:51: review covers branch tiket-261017113002 at 287a27ae1e50d0b136655d6d27c06a31f3d50dfb, which holds main at b230e8e4fd1205af15d98197db6b8cc8e1fa547b (code outside .kerjaan/); the latest test run passed on exactly this content.
+- 2026-10-17: Reviewed at level normal, round 1, at commit 287a27ae1e50: passed.
+  Level normal di sini: test_command tidak dijalankan ulang (hasil SAME, lihat di bawah), kedua butir yang dicentang dibuktikan dengan menjalankan skrip cabang pada papan percobaan di /tmp, dan uji yang ditambahkan dibaca untuk mencari pernyataan yang tak bisa gagal. Tidak perlu salinan bersih: worktree tiket ini sudah terpisah dan tidak bergerak selama tinjauan.
+  - Pemeriksaan: `test-run.sh --check 261017113002 287a27a` → SAME: run 2026-10-17 19:35:47, `node --test --test-timeout=900000 --test-force-exit` exit 0, sidik 8db28d6b809a1e482879ca690ebe3a8f58d242db. Itu satu-satunya jalan penuh, dibawa dari pekerja.
+  - Butir 1–4: tertunda menunggu mirza, sesuai keputusan pemilik 2026-10-17 11:41:06 (ditunda, rantai tidak ditahan). Skenario tangan di Notes berisi langkah yang bisa diikuti dan apa yang harus terlihat, dan keempatnya memang perilaku sesi utama pada antrean nyata. Yang bisa diperiksa sudah diperiksa: panduan (SETTINGS.md, foreman.md "How far the chain runs" dan langkah 2, ordering-the-queue.md, parallel-work.md, planner, README) memuat ketiga pilihan `chain`, batas `max_parallel`, penanda, dan urutan "perintah pemilik > penanda > setelan"; skrip di belakang butir 2 dicoba langsung: dengan `max_parallel: 1`, `worktree.sh add` kedua menjawab `REFUSED: no worktree for ...` exit 1 tanpa folder atau cabang dibuat; `chain: ticket` menolak dengan alasan "chain: ticket runs one ticket at a time"; `max_parallel: 0` exit 2 tanpa membuat apa pun; tanpa batas, worktree kedua dibuat.
+  - Butir 5 (check menerima penanda, menolak ganda): papan percobaan dengan penanda di bawah kalimat pembuka kelompok kedua → `queue.sh check` menulis "the group of line 5 waits for the owner (line 6): it starts only with their yes" dan tidak melaporkan baris itu sebagai di luar tata bahasa. Dengan penanda di luar kelompok, `<!-- Wait for owner -->`, dan penanda kedua dalam satu kelompok → tiga masalah, masing-masing dengan nomor barisnya ("outside any group", "not a wait-for-owner line check can read", "a second wait-for-owner line in its group, after line 7"). Terpenuhi.
+  - Butir 6 (penjelasan setelan dan panduan sesi utama): SETTINGS.md menjelaskan `chain` dan `max_parallel` beserta nilai kosongnya dan menulis urutan prioritas dengan huruf tebal; foreman.md punya bagian "How far the chain runs" dengan urutan yang sama, izin di awal dicatat di Notes dan tidak ditanya lagi, dan langkah 2 menanyakan kelompok yang menunggu. `queue.sh check` juga melaporkan nilai yang tak terbaca (dicoba: `chain: tiket`). Terpenuhi.
+  - Uji yang dibaca: uji batas worktree memeriksa pesan, kode keluar, tidak adanya folder/cabang, dan dua add bersamaan; uji check memeriksa nomor baris dan "check rewrites nothing"; urutan.test.mjs membandingkan board.mjs dengan check. Tidak ada pernyataan yang lolos apa pun isi kodenya.
+  - Teks yang dibuang demi anggaran kata, diperiksa satu per satu: "a ticket in flight keeps its line" dan "a dependency in a lead-in is in blocked_by too" masih ada di ordering-the-queue.md ("While tickets are worked on", "Where everything else goes"); "The prose is never read for the order" masih ada sebagai "the lead-in is never read for it" dan "Only ticket lines are read as the order"; paragraf update-ticket.sh dan lands-first sama isinya dengan "While tickets are worked on"; isi "Why this is not a banned index" (yang diperiksa check, judul yang diganti, tiket baru di todo) masih dijaga skrip dan disebut di tempat lain (`check` sebagai satu-satunya definisi siap, `update-ticket.sh --title`, pesan "needs a place in order.md" dari update-ticket.sh). Tidak ada aturan yang hilang. Teks yang ditambahkan ke skill berbahasa Inggris.
+  - Catatan (tidak memblokir): batas menghitung semua worktree tertaut yang foldernya ada, termasuk worktree milik pemilik sendiri di luar papan dan worktree yang tertinggal karena merge ditunda; pekerja sudah menyebut yang kedua. Kalimat "refuses a group breaking either rule" di ordering-the-queue.md kini lebih samar daripada daftar tiga penolakan sebelumnya, walau ketiganya tetap tertulis di bagian sekitarnya. Satu baris di "While tickets are worked on" dan "Saying which lands first" kini lebih panjang dari lebar biasa (hanya rapi-rapi).
+
+### Suggested follow-up
+
+- **Batas `max_parallel` ikut menghitung worktree yang bukan milik papan.** Pemilik yang punya worktree sendiri (misalnya untuk percobaan) atau worktree yang tertinggal setelah merge ditunda akan melihat tiket baru ditolak meski tidak ada tiket lain yang sedang dikerjakan. Layak jadi tiket: hitung hanya worktree yang cabangnya membawa ID tiket di in_progress atau review, atau sebutkan di pesan penolakan worktree mana yang bukan tiket.
