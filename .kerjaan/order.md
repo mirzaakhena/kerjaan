@@ -1,7 +1,3 @@
-**Sesudahnya, sendiri.** Viewer berbahasa Inggris menunggu 261017113003 karena mengubah hampir semua berkas viewer.
-
-- 261017175101 Viewer kerjaan sepenuhnya berbahasa Inggris
-
 **Lalu, sendiri.** Skrip, definisi agen, panduan, dan README menyusul viewer karena README dan board.mjs ikut diubah keduanya.
 
 - 261017184401 Skrip, definisi agen, panduan, dan README kerjaan berbahasa Inggris
