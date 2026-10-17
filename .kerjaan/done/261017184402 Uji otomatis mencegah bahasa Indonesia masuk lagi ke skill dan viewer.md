@@ -6,7 +6,7 @@ labels: [sesi-8e6130e0]
 reporter: mirza
 assign_to: claude
 created: 2026-10-17 18:44:41
-updated: 2026-10-18 00:01:00
+updated: 2026-10-18 00:02:01
 related: [261017175101, 261017184401]
 blocked_by: [261017184401]
 ---
@@ -28,6 +28,7 @@ Sebuah uji otomatis gagal bila kata Indonesia yang umum muncul lagi di berkas sk
 - 2026-10-17 18:45:43 8e6130e0-0828-4d64-b383-ba0d1c9f4b02 todo
 - 2026-10-17 23:52:41 8e6130e0-0828-4d64-b383-ba0d1c9f4b02 in_progress
 - 2026-10-18 00:01:00 8e6130e0-0828-4d64-b383-ba0d1c9f4b02 review
+- 2026-10-18 00:02:01 8e6130e0-0828-4d64-b383-ba0d1c9f4b02 done
 
 ## Notes
 - 2026-10-17: dipecah dari 261017175101 atas jawaban pemilik #1 "Pecah jadi tiga" (sesi 8e6130e0-0828-4d64-b383-ba0d1c9f4b02).
@@ -40,3 +41,15 @@ Sebuah uji otomatis gagal bila kata Indonesia yang umum muncul lagi di berkas sk
 - README, bagian menjalankan uji, kini menyebut penjaga ini dan tempat daftar pengecualiannya.
 - 2026-10-18 00:00:55: test run — `node --test --test-timeout=900000 --import=./tests/complete-runs.mjs` exited 0 after 3m30s, on content fingerprint 82389a0e457e03c47537f5fe42d95fae83a49bc2 (the same before and after the run; .kerjaan/ left out).
 - 2026-10-18 00:01:00: review covers branch tiket-261017184402 at bbcc2119fbe3b959afd3e9951fd8a5162df1d737, which holds main at 3354345cb9869f491fa6b9be073773d445016c03 (code outside .kerjaan/); the latest test run passed on exactly this content.
+- 2026-10-18: Reviewed at level quick, round 1, at commit bbcc2119fbe3: passed.
+  Level quick: uji proyek tidak dijalankan ulang (run pekerja terbawa lewat `test-run.sh --check`), perubahan dibaca terhadap tiap kriteria. Atas permintaan foreman, satu uji tambahan dijalankan di salinan bersih, plus satu lagi untuk kriteria 3.
+  - Perintah: `test-run.sh --check 261017184402 bbcc211` → SAME: run 2026-10-18 00:00:55, `node --test --test-timeout=900000 --import=./tests/complete-runs.mjs` exit 0, fingerprint 82389a0e457e03c47537f5fe42d95fae83a49bc2. Tidak dijalankan ulang.
+  - Ekspor `git archive bbcc211` ke /tmp/review-261017184402 (dengan `git init` agar `git ls-files` jalan), baris `// status: diam` ditambahkan di akhir `viewer/web/agent.js`, lalu `node --test tests/english-only.test.mjs` → exit 1, pesan: `viewer/web/agent.js:85: "diam" in: // status: diam`.
+  - Ekspor yang sama, `agent.js` dipulihkan, `.kerjaan/` dari main tree (berbahasa Indonesia) disalin masuk → ketiga uji lulus, exit 0. Ekspor sudah dihapus.
+  - Kriteria 1 (gagal pada kata Indonesia, menyebut berkas dan baris): terpenuhi — dibuktikan dengan "diam" di atas; uji ketiga juga memeriksa `queue.sh:2` di repo sementara.
+  - Kriteria 2 (pengecualian di satu daftar, masing-masing beralasan): terpenuhi — satu daftar `EXCEPTIONS` di `tests/english-only.test.mjs`, 13 entri, semua beralasan; uji kedua gagal bila alasan kosong atau pengecualian sudah tidak dipakai (dibaca, bukan dijalankan dengan sabotase).
+  - Kriteria 3 (lulus pada repo saat ini, papan Indonesia tidak membuatnya gagal): terpenuhi — run pekerja SAME, dan run dengan `.kerjaan/` repo ini disalin ke ekspor lulus.
+  - Kriteria 4 (menambah "diam" membuat uji gagal): terpenuhi — lihat run kedua.
+  - Perubahan lain di diff (nama-nama Indonesia di `new-ticket`, `release`, `worktree` test diganti ke Inggris; README menyebut penjaga ini) cocok dengan klaim di Notes dan tidak mengubah apa yang diuji.
+  - Catatan (tidak menghalangi): uji ini sendiri dikecualikan seluruh berkasnya, jadi kalimat Indonesia yang masuk ke komentar uji ini tidak akan tertangkap. Cakupan uji seluruh repo, lebih luas dari "skill atau viewer" yang diminta; itu disengaja dan tercatat.
+  - Tidak ada CLAUDE.md atau AGENTS.md di repo ini.
