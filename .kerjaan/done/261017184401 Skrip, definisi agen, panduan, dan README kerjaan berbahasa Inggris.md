@@ -6,7 +6,7 @@ labels: [sesi-8e6130e0]
 reporter: mirza
 assign_to: claude
 created: 2026-10-17 18:44:41
-updated: 2026-10-17 22:22:38
+updated: 2026-10-17 22:28:57
 related: [261017175101, 261017184402]
 blocked_by: [261017175101]
 ---
@@ -65,3 +65,4 @@ Skrip papan, definisi agen, panduan, README, dan uji skill sepenuhnya berbahasa 
 ### Suggested follow-up
 
 - **Run uji yang hijau bisa diam-diam melewatkan uji.** Dengan `--test-force-exit` di test_command papan ini, sebuah berkas uji kadang berhenti sebelum semua ujinya jalan (on-ticket-review tercatat 70/88/95, queue 63/67), dan run tetap exit 0. Akibatnya catatan "test run passed" dari test-run.sh bisa menutupi uji yang tidak pernah jalan. Layak dibuat tiket: cari penyebab berhentinya, dan buat run gagal bila jumlah uji kurang dari yang diharapkan (atau hapus opsi itu bila tidak lagi diperlukan).
+- 2026-10-17 22:28:56: landed on main as 58638a1d3797e40bf877f20c6f8bf4dff4f3ff78, merging tiket-261017184401 at 751f8a91b02b185c0ac2640cdc794e9da6a41d8e; tests carried from the run on this exact content, not run again.
