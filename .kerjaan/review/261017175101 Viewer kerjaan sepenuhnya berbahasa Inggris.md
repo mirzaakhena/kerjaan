@@ -1,0 +1,63 @@
+---
+type: task
+priority: medium
+review: normal
+labels: [sesi-8e6130e0, viewer]
+reporter: mirza
+assign_to: claude
+created: 2026-10-17 17:51:37
+updated: 2026-10-17 20:39:09
+related: [261017113003, 261017155801, 261017184401, 261017184402]
+blocked_by: [261017113003]
+---
+
+## Background
+kerjaan dipakai di proyek berbahasa apa pun, tetapi sebagian isinya masih berbahasa Indonesia. Pemilik menemukannya di viewer: agen yang tidak melangkah beberapa menit diberi label "diam". Itu bukan satu-satunya. Tombol dan keterangan di viewer ("Tutup", "Buka order.md", "Belum ada perkiraan berkas"), nama berkas halaman viewer, folder uji, nama kelas tampilan, nama uji, dan komentar kode juga memakai bahasa Indonesia.
+
+Isi papan sebuah proyek (tiket, pesan commit, settings.md) tidak termasuk: itu mengikuti setelan language papan masing-masing, termasuk papan repo ini yang tetap berbahasa Indonesia.
+
+## Request
+Viewer kerjaan sepenuhnya berbahasa Inggris: teks yang terlihat, alamat halaman, nama berkas dan folder, nama kelas dan variabel, nama uji, dan komentar. Viewer selalu tampil dalam bahasa Inggris, tanpa terjemahan. Alamat halaman diganti ke bahasa Inggris (/order, /ticket/<id>, /api/order, dan seterusnya) tanpa pengalihan dari alamat lama. Skrip, definisi agen, panduan, dan README dikerjakan di 261017184401; uji penjaga di 261017184402.
+
+## Done when
+- [x] Membuka viewer pada papan mana pun, tidak ada satu kata Indonesia pun di halaman beranda, halaman papan, laci tiket, laci order.md, panel aktivitas agen, dan halaman "tidak ada"
+- [x] Label status agen tampil dalam bahasa Inggris, termasuk pengganti "diam"
+- [x] Alamat halaman viewer berbahasa Inggris (misalnya /order dan /ticket/<id>), dan alamat lama seperti /urutan tidak lagi membuka halaman
+- [x] Nama berkas, folder, kelas, variabel, uji, dan komentar di viewer berbahasa Inggris, dan semua uji tetap lulus setelah penggantian nama
+- [x] Papan yang sudah ada (tiket, order.md, settings.md berbahasa Indonesia) tetap terbaca dan tampil seperti sebelumnya
+- [ ] ~~Pesan yang dicetak skrip papan dan teks definisi agen, panduan, dan README tidak memuat bahasa Indonesia, kecuali contoh yang sengaja menunjukkan papan berbahasa lain~~ (pindah ke 261017184401)
+- [ ] ~~Sebuah uji otomatis gagal bila kata Indonesia yang umum muncul lagi di berkas skill atau viewer, dengan daftar pengecualian yang tertulis untuk contoh papan berbahasa lain~~ (pindah ke 261017184402)
+
+## History
+- 2026-10-17 17:51:37 8e6130e0-0828-4d64-b383-ba0d1c9f4b02 backlog
+- 2026-10-17 18:45:42 8e6130e0-0828-4d64-b383-ba0d1c9f4b02 todo
+- 2026-10-17 20:05:56 8e6130e0-0828-4d64-b383-ba0d1c9f4b02 in_progress
+- 2026-10-17 20:39:09 8e6130e0-0828-4d64-b383-ba0d1c9f4b02 review
+
+## Notes
+- 2026-10-17: lahir dari permintaan pemilik di sesi 8e6130e0-0828-4d64-b383-ba0d1c9f4b02 (`claude --resume 8e6130e0-0828-4d64-b383-ba0d1c9f4b02`): "Jangan ada bahasa indonesia dalam skill ini. Saya menemukan ada bahasa indonesia pada viewer board yaitu \"diam\"". Keputusan pemilik lewat pilihan: cakupan seluruhnya (teks terlihat, nama berkas/folder/identifier, komentar, nama uji); viewer selalu Inggris tanpa terjemahan; isi papan repo ini tetap Indonesia; dikerjakan di akhir antrean, setelah 261017113003, karena mengubah hampir semua berkas viewer. Tiket yang sedang berjalan saat itu sudah diminta menulis teks baru dalam bahasa Inggris.
+- 2026-10-17 17:52:40: files estimated to change: `README.md`, `agents/`, `docs/`, `skills/kerjaan/`, `uji/`, `viewer/`
+- 2026-10-17 17:52:41: answered question: Tiket ini hanya 6 butir Done when, tetapi menyentuh hampir setiap berkas repo (sekitar 60 berkas, termasuk mengganti nama folder uji dan berkas viewer), terlalu banyak untuk satu pengerja dalam satu putaran. Pilihan: (a) dipecah per hasil: viewer berbahasa Inggris (halaman, laci, panel agen, label pengganti "diam", nama berkas dan uji viewer), lalu skrip, definisi agen, panduan, README dan uji skill berbahasa Inggris, lalu uji penjaga yang mencegah bahasa Indonesia masuk lagi; (b) tetap satu tiket. Saran: (a), karena viewer bisa dicoba pemilik sendiri lebih dulu dan satu bagian yang gagal tidak menahan yang lain.
+  answer, 2026-10-17 18:44:22: Pemilik: "Pecah jadi tiga". (a) dipecah: viewer berbahasa Inggris; lalu skrip, definisi agen, panduan, README dan uji skill; terakhir uji penjaga.
+- 2026-10-17 17:52:41: answered question: Deskripsi skill memuat contoh kalimat Indonesia ("catat ini dulu", "kerjakan tiket berikutnya", ...) dan uji pemicu memakai kalimat Indonesia beserta hasil ukurnya; keduanya membuktikan skill tetap terpanggil saat pemilik berbicara bahasa Indonesia (261011073101). Pilihan: (a) tetap, dicatat sebagai pengecualian 'contoh pengguna berbahasa lain'; (b) dihapus dan uji pemicu diulang untuk membuktikan tidak lebih jarang terpanggil; (c) diganti kalimat Inggris saja. Saran: (a), karena itu kalimat pengguna, bukan teks skill, dan menghapusnya berisiko skill lebih jarang terpanggil di percakapan pemilik.
+  answer, 2026-10-17 18:44:22: Pemilik: "Hapus, lalu ukur". (b) kalimat contoh Indonesia di deskripsi skill dan kalimat Indonesia di uji pemicu dihapus, lalu uji pemicu diulang untuk membuktikan skill tidak lebih jarang terpanggil.
+- 2026-10-17 17:52:41: answered question: docs/cara-kerja-reviewer.md (penjelasan cara kerja peninjau, berbahasa Indonesia) tidak disebut di Request. Pilihan: (a) diterjemahkan ke bahasa Inggris seperti README; (b) dibiarkan berbahasa Indonesia sebagai dokumen untuk pemilik dan masuk daftar pengecualian; (c) dihapus. Saran: (a), karena ikut terbit bersama plugin dan dirujuk dari panduan.
+  answer, 2026-10-17 18:44:22: Pemilik: "Hapus". (c) docs/cara-kerja-reviewer.md dihapus.
+- 2026-10-17 17:52:41: answered question: Alamat halaman viewer juga berbahasa Indonesia (/urutan, /tiket/<id>, /api/urutan). Pilihan: (a) diganti ke bahasa Inggris (/order, /ticket/<id>), dan alamat lama dialihkan ke yang baru sehingga tautan lama tetap terbuka; (b) diganti tanpa pengalihan; (c) dibiarkan. Saran: (a), karena alamat terlihat di bilah alamat, dan pengalihan menjaga tautan yang sudah tersimpan.
+  answer, 2026-10-17 18:44:22: Pemilik: "Ganti tanpa pengalihan". (b) alamat viewer diganti ke bahasa Inggris (/order, /ticket/<id>, /api/order, ...) tanpa pengalihan dari alamat lama.
+- 2026-10-17: dipecah per hasil atas jawaban pemilik #1: tiket ini menjadi bagian viewer; 261017184401 (skrip, definisi agen, panduan, README, uji skill) dan 261017184402 (uji penjaga) mengikutinya berurutan.
+- 2026-10-17 18:45:33: files estimated to change: `README.md`, `skills/kerjaan/scripts/board.mjs`, `viewer/`
+- 2026-10-17 20:31:05: open question: Viewer menyimpan pilihan di peramban dengan kunci berbahasa Indonesia (kerjaan.proyek-arsip untuk proyek yang diarsipkan, kerjaan.kolom-tersembunyi untuk kolom yang disembunyikan); keduanya kini diganti menjadi kerjaan.archived-projects dan kerjaan.hidden-columns, sehingga proyek yang pernah diarsipkan dan kolom yang disembunyikan kembali ke bawaan sekali di setiap peramban. Pilihan: (a) dibiarkan begitu, sejalan dengan alamat lama yang diganti tanpa pengalihan; (b) viewer membaca kunci lama sekali bila kunci baru belum ada, sehingga nama Indonesia tetap ada di kode sebagai pengecualian. Saran: (a), karena pemilik memilih tanpa pengalihan untuk alamat, dan mengarsipkan ulang hanya beberapa klik. Tidak menahan pekerjaan: dikerjakan sebagai (a).
+- 2026-10-17 20:40: pengerja, ringkasan pekerjaan (cabang tiket-261017175101, dua commit: 798a376 hanya penggantian nama dengan isi lama agar `git log --follow` menyambung, lalu 6bc5917 isinya):
+  - Nama: `viewer/uji/` → `viewer/tests/` (bukan `test/`: pola bawaan `node --test` menjalankan setiap berkas di folder bernama `test/` sebagai berkas uji, termasuk `helpers.mjs` dan `browser.mjs`). agen.mjs → agents.mjs, gabung.mjs → unmerged.mjs; web/: agent.js, archive.js, common.js, drawer.js, filter.js, home.html/.js, not-found.html, pills.js, project.html/.js, style.css, switcher.js; uji: agent-board, agents, archive, browser, drawer, filter, helpers, history, order, pills, shared-files, switcher, unmerged. Kelas, variabel CSS, atribut data, nama uji, data uji, dan komentar ikut berbahasa Inggris; `html lang="en"`.
+  - Alamat (tanpa pengalihan): `/api/projects`, `/assets/<nama>`, `/<p>/ticket/<id>`, `/<p>/order`, `/<p>/api/board`, `/<p>/api/order`, `/<p>/api/ticket/<id>`, `/<p>/api/agent/<id>`, peristiwa langsung `agent`. Daftar alamat ditulis di kepala `viewer/app.mjs`.
+  - Status agen: nada working/quiet/stopped/done; kata yang tampil "quiet" (pengganti "diam"), "silent" (dulu "tidak ada kabar"), "interrupted", "stopped", "done"; nilai `ended` dari server "finished"/"interrupted". Waktu: "12 s ago", "5 min", "1 h 0 min", "2 days", "just now".
+  - Kunci penyimpanan peramban diganti (lihat pertanyaan #5).
+  - README: alamat `/<project>/ticket/<id>`, tanda "not merged", folder `viewer/tests/`; komentar board.mjs menunjuk `viewer/tests/order.test.mjs`.
+- Jumlah uji: sebelum 671 di seluruh repo, 143 di viewer; sesudah 143 di viewer, sama per berkas (agent-board 12, agents 15, archive 4, browser 8, drawer 10, filter 6, history 2, lan 7, markdown 12, order 20, pills 11, server 12, shared-files 8, switcher 6, unmerged 10), dan 671 di seluruh repo (run test-run.sh di bawah, 671 lulus). Tidak ada uji yang dihapus; penjaga alamat lama ditambahkan ke uji `project and ticket page addresses` yang sudah ada.
+- Penjaga yang sengaja dirusak (salinan app.mjs, dipulihkan dari salinan): alias lama dipasang satu per satu di router, masing-masing membuat `server.test.mjs` "project and ticket page addresses; the old Indonesian addresses open nothing" merah: `/api/proyek`, awalan `/aset/`, `/<p>/tiket/<id>`, `/<p>/urutan`, `/<p>/api/papan`, `/<p>/api/urutan`, `/<p>/api/tiket/<id>`, `/<p>/api/agen/<id>` (8 dari 8). Awalan `/aset/` mula-mula tetap hijau karena nama berkas lama sudah tidak ada; ditutup dengan menambah `/aset/style.css` ke daftar.
+- Diukur dengan menjalankan: (1) skrip di Chrome membuka 21 halaman dan keadaan pada papan berisi bahasa Inggris (beranda, tab arsip kosong, semua diarsipkan, papan, saringan tanpa hasil, semua kolom disembunyikan, laci tiket untuk agen working/quiet/silent/interrupted/stopped/done dengan daftar langkah terbuka, tiket rusak, ID ganda, tiket yang tidak ada, laci order.md dengan kotak berkas bersama, order.md tidak ada, tiga halaman 404 termasuk `/alpha/urutan`) dan memeriksa teks, title, aria-label, placeholder, dan option terhadap daftar kata Indonesia umum: tidak ada yang ditemukan. (2) Viewer lama (main) dan baru dijalankan berdampingan pada `~/Workspace`: 8 papan, 673 ID tiket, data papan, order.md, dan setiap tiket sama persis, dan setiap isi tiket dirender sama setelah nama kelas dipetakan; papan kerjaan sendiri (tiket, order.md, settings.md berbahasa Indonesia) ikut. Tangkapan layar papan, laci tiket, dan laci order.md repo ini sudah dilihat.
+- Untuk tiket berikutnya: `viewer/tests/server.test.mjs` sengaja memuat alamat lama berbahasa Indonesia (pengecualian bagi uji penjaga 261017184402); `viewer/tests/order.test.mjs` membaca `uji/real-order/rewritten.md` dari folder uji akar; contoh di `agents/kerjaan-planner.md` baris 92 masih menyebut `viewer/web/beranda.js viewer/uji/` (bagian 261017184401). Viewer pemilik di port 4321 perlu dinyalakan ulang setelah tiket ini masuk main.
+- Satu kali dalam run viewer penuh, uji browser shared-files gagal karena halaman `/alpha/order` tidak selesai dimuat dalam 30 detik (fon Google); diulang sendiri lulus 8/8.
+- 2026-10-17 20:38:57: test run — `node --test --test-timeout=900000 --test-force-exit` exited 0 after 3m26s, on content fingerprint 0d33d6cd0c4a45c29d5c4b4c799f5233468e489a (the same before and after the run; .kerjaan/ left out).
+- 2026-10-17 20:39:09: review covers branch tiket-261017175101 at 664f7b7da2c38025300baa5a24550fd0f3cced3f, which holds main at 9bfeefc5ea4e7a453ae7d8f9268ddc3ba945e0be (code outside .kerjaan/); the latest test run passed on exactly this content.
