@@ -302,15 +302,15 @@ test('worktrees created at the same moment and one created by hand still get dif
   for (const h of hands) git(r.root, 'worktree', 'remove', path.join(r.base, h));
 
   // A worktree made by hand gets the lowest free number.
-  git(r.root, 'worktree', 'add', '-q', '-b', 'tangan', path.join(r.base, 'tangan'));
-  const hand = run(worktreeSh, path.join(r.base, 'tangan'), ['slot']).out.trim();
+  git(r.root, 'worktree', 'add', '-q', '-b', 'by-hand', path.join(r.base, 'by-hand'));
+  const hand = run(worktreeSh, path.join(r.base, 'by-hand'), ['slot']).out.trim();
   assert.equal(hand, '6');
 
   // A removed worktree frees its number; the live ones keep theirs.
   assert.equal(run(worktreeSh, r.root, ['remove', ids[2]]).code, 0);
-  const again = run(worktreeSh, r.root, ['add', ids[2], path.join(r.base, 'lagi')]);
+  const again = run(worktreeSh, r.root, ['add', ids[2], path.join(r.base, 'again')]);
   assert.equal(again.code, 0, again.err);
-  const now = [...ids.map((id, i) => (i === 2 ? path.join(r.base, 'lagi') : path.join(r.base, `wt-${id}`))), path.join(r.base, 'tangan')]
+  const now = [...ids.map((id, i) => (i === 2 ? path.join(r.base, 'again') : path.join(r.base, `wt-${id}`))), path.join(r.base, 'by-hand')]
     .map((p) => run(worktreeSh, p, ['slot']).out.trim());
   assert.equal(new Set(now).size, now.length, `slots ${now}`);
 });
@@ -452,9 +452,9 @@ async function heldLock(r, name, start) {
 
 test('handing out a slot number waits for the slots lock', async () => {
   const r = repo();
-  git(r.root, 'worktree', 'add', '-q', '-b', 'tangan', path.join(r.base, 'tangan'));
+  git(r.root, 'worktree', 'add', '-q', '-b', 'by-hand', path.join(r.base, 'by-hand'));
   const { waitedWhileHeld, res } = await heldLock(r, 'slots',
-    () => runAsync(worktreeSh, path.join(r.base, 'tangan'), ['slot']));
+    () => runAsync(worktreeSh, path.join(r.base, 'by-hand'), ['slot']));
   assert.equal(waitedWhileHeld, true, 'slot was handed out while the lock was held');
   assert.equal(res.out.trim(), '1', res.err);
 });

@@ -216,9 +216,9 @@ test('misuse and the wrong place: exit 2', () => {
   const root = repo();
   assert.equal(run(root).code, 2);
   assert.equal(run(root, 'other').code, 2);
-  assert.equal(run(root, 'unreleased', 'lagi').code, 2);
+  assert.equal(run(root, 'unreleased', 'again').code, 2);
   const wt = path.join(fs.realpathSync(os.tmpdir()), `kerjaan-release-wt-${process.pid}-${Date.now()}`);
-  git(root, 'worktree', 'add', '-q', '-b', 'samping', wt);
+  git(root, 'worktree', 'add', '-q', '-b', 'side', wt);
   const r = run(wt, 'unreleased');
   assert.equal(r.code, 2);
   assert.match(r.err, /linked git worktree/);

@@ -120,7 +120,7 @@ test('tickets created at the same moment each get their own ID, numbered on from
 test('the next number is counted across every status folder, so an ID that moved on is not reused', () => {
   const root = board();
   placeholder(root, 'done', `${MINUTE}05 Already done.md`);
-  placeholder(root, 'cancel', `${MINUTE}03 Batal.md`);
+  placeholder(root, 'cancel', `${MINUTE}03 Cancelled.md`);
   placeholder(root, 'todo', '261016115999 The minute before.md');
   const r = createPinned(root);
   assert.equal(r.code, 0, r.err);
@@ -129,7 +129,7 @@ test('the next number is counted across every status folder, so an ID that moved
 
 test('the 99th ticket of a minute is created; the 100th is refused, with nothing written', () => {
   const root = board();
-  placeholder(root, 'cancel', `${MINUTE}98 Hampir penuh.md`);
+  placeholder(root, 'cancel', `${MINUTE}98 Almost full.md`);
   const ok = createPinned(root);
   assert.equal(ok.code, 0, ok.err);
   assert.equal(path.basename(ok.out), `${MINUTE}99 A ticket.md`);

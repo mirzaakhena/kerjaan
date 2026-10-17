@@ -647,6 +647,13 @@ single module and fails with "Cannot find module". To run part of the
 suite, name the files, or a glob in quotes (Node 21 or newer):
 `node --test tests/update-ticket.test.mjs` or `node --test 'tests/*.test.mjs'`.
 
+The skill, the scripts, the agent definitions, the viewer and the tests are
+written in English. `tests/english-only.test.mjs` fails when a common
+Indonesian word appears in any of them, naming the file and the line. A
+board's own `.kerjaan/` folder is not read. An example that shows a board in
+another language on purpose goes in that test's list of exceptions, with its
+reason.
+
 The skill's `description` is held to a trigger test: about 40 prompts in
 `tests/trigger/prompts.json`, each run three times in a fresh `claude -p`
 session, recording whether it calls the skill. That run uses Claude quota, so
