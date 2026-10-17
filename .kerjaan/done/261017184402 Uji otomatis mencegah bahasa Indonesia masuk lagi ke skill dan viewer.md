@@ -6,7 +6,7 @@ labels: [sesi-8e6130e0]
 reporter: mirza
 assign_to: claude
 created: 2026-10-17 18:44:41
-updated: 2026-10-18 00:02:01
+updated: 2026-10-18 00:02:17
 related: [261017175101, 261017184401]
 blocked_by: [261017184401]
 ---
@@ -53,3 +53,4 @@ Sebuah uji otomatis gagal bila kata Indonesia yang umum muncul lagi di berkas sk
   - Perubahan lain di diff (nama-nama Indonesia di `new-ticket`, `release`, `worktree` test diganti ke Inggris; README menyebut penjaga ini) cocok dengan klaim di Notes dan tidak mengubah apa yang diuji.
   - Catatan (tidak menghalangi): uji ini sendiri dikecualikan seluruh berkasnya, jadi kalimat Indonesia yang masuk ke komentar uji ini tidak akan tertangkap. Cakupan uji seluruh repo, lebih luas dari "skill atau viewer" yang diminta; itu disengaja dan tercatat.
   - Tidak ada CLAUDE.md atau AGENTS.md di repo ini.
+- 2026-10-18 00:02:17: landed on main as 934803a647dd8294f236b482a76bff2212a7c7b9, merging tiket-261017184402 at bbcc2119fbe3b959afd3e9951fd8a5162df1d737; tests carried from the run on this exact content, not run again.
