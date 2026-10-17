@@ -247,9 +247,9 @@ async function showOrder({ keepScroll = false } = {}) {
       <button class="close" data-close aria-label="Tutup order.md">Tutup</button>
     </div>
     <h2>Urutan pengambilan todo</h2>`;
-  let text;
+  let text, shared;
   try {
-    text = (await getJson(`${base}api/urutan`)).text;
+    ({ text, shared = [] } = await getJson(`${base}api/urutan`));
   } catch (err) {
     if (state.openId !== ORDER) return;
     body.innerHTML = err.status === 404
@@ -258,10 +258,33 @@ async function showOrder({ keepScroll = false } = {}) {
     return;
   }
   if (state.openId !== ORDER) return;
-  body.innerHTML = render(text, { ticket: lookup, href: ticketHref });
+  body.innerHTML = orderHtml(text, shared);
   body.scrollTop = scroll;
   foldTitle();
   if (!keepScroll) drawer.querySelector('[data-close]').focus({ preventScroll: true });
+}
+
+// order.md as written, with each group whose tickets share files by their
+// estimates followed by those pairs and files. order.md itself never lists
+// files (they would go stale); the server reads them from the tickets.
+function orderHtml(text, shared) {
+  const opts = { ticket: lookup, href: ticketHref };
+  const lines = text.split('\n');
+  let html = '';
+  let at = 0;
+  for (const g of [...shared].sort((x, y) => x.start - y.start)) {
+    if (g.end <= at) continue;
+    html += render(lines.slice(at, g.end).join('\n'), opts);
+    at = g.end;
+    const md = g.pairs.map((p) => `- ${p.a} dan ${p.b}: ${p.files.map((f) => `\`${f}\``).join(', ')}`);
+    if (g.unestimated.length) md.push('', `Belum ada perkiraan berkas: ${g.unestimated.join(', ')}.`);
+    html += `<aside class="berkas-bersama" aria-label="Berkas yang dibagi di kelompok ini">
+      <p class="judul">Berkas yang dibagi di kelompok ini</p>
+      ${render(md.join('\n'), opts)}
+      <p class="asal">Dari perkiraan berkas di tiket. Tiket yang berbagi berkas digabung ke main bergantian.</p>
+    </aside>`;
+  }
+  return html + render(lines.slice(at).join('\n'), opts);
 }
 
 const drawerCtx = { lookup, href: ticketHref, statusName, statusColor };
