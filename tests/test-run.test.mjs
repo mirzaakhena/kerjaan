@@ -202,3 +202,29 @@ test('a later clean run supersedes one whose content changed', () => {
   const chk = run(root, '--check', A);
   assert.equal(chk.code, 0, chk.out);
 });
+
+// A run of `node --test` that ends before every test has run, though the file
+// that stopped exited 0, is recorded as failed (261017222801): the guard the
+// board's own test_command loads makes the run exit non-zero, and the record
+// carries that, so --check gives no evidence and the move to review of a
+// ticket on a branch is refused (merge.sh check --gate).
+test('a node --test run that stops half-way is recorded as failed, and --check says NO EVIDENCE', () => {
+  const guard = path.join(here, 'complete-runs.mjs');
+  const root = repo(`node --test --test-timeout=60000 --import=${guard}`, '(none yet)');
+  fs.writeFileSync(path.join(root, 'half.test.mjs'), `import test from 'node:test';
+test('first', () => {});
+test('second, which ends the process', () => { process.exit(0); });
+test('third, never run', () => {});
+`);
+  git(root, 'add', '-A');
+  git(root, 'commit', '-q', '-m', 'half');
+  // Without this variable the inner run believes it is part of this one.
+  const env = { ...gitEnv };
+  delete env.NODE_TEST_CONTEXT;
+  const r = spawnSync('bash', [testRun, A], { cwd: root, encoding: 'utf8', env });
+  assert.notEqual(r.status, 0, r.stdout + r.stderr);
+  assert.match(records(root)[0], /` exited [1-9]\d* after /);
+  const chk = run(root, '--check', A);
+  assert.equal(chk.code, 2, chk.out);
+  assert.match(chk.out, /^NO EVIDENCE: the latest run \(.*\) exited [1-9]/m);
+});

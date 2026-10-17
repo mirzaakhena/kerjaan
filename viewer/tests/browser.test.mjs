@@ -95,10 +95,10 @@ test('Chrome dies in the middle of a step: that step fails at once', skip, async
 });
 
 // A test file whose process ends with a Chrome still open: what happens when
-// --test-timeout stops a test before its `finally` and --test-force-exit
+// --test-timeout stops a test before its `finally` and tests/complete-runs.mjs
 // then ends the process, or when the run is interrupted.
 for (const [how, end] of [
-  ['the process is forced to end (--test-force-exit)', (child) => child.stdin.end('exit\n')],
+  ['the process is forced to end (process.exit, as tests/complete-runs.mjs does)', (child) => child.stdin.end('exit\n')],
   ['the process is stopped with SIGTERM', (child) => child.kill('SIGTERM')],
   ['the process is stopped with SIGINT', (child) => child.kill('SIGINT')],
 ]) {

@@ -1,9 +1,11 @@
 // The board's test_command always finishes: a test that hangs is stopped by
 // its time limit and reported failed, and a file that leaves a server open
-// still exits, so the suite never waits forever.
+// still exits, so the suite never waits forever. And a run that passes ran
+// every test: none is lost on the way out, and a file that ends before its
+// tests have finished fails (261017222801, tests/complete-runs.mjs).
 //
-// Runs the command exactly as .kerjaan/settings.md has it, against a
-// throwaway test file, with only the time limit shortened.
+// Runs the command exactly as .kerjaan/settings.md has it, against throwaway
+// test files, with only the time limit shortened.
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -51,13 +53,47 @@ test('failed, server left open', async () => {
 });
 `;
 
-// Runs test_command on one throwaway test file, its time limit set to
-// `limitMs`; resolves { code, out, ms }, or { hung } after `giveUpMs`.
+// A passing test that leaves a server open behind it.
+const LEFT_OPEN = `
+import test from 'node:test';
+import http from 'node:http';
+test('passed, server left open', async () => {
+  const server = http.createServer(() => {});
+  await new Promise((r) => server.listen(0, '127.0.0.1', r));
+});
+`;
+
+// A file whose process ends half-way, with status 0, the way a stray
+// process.exit() in a test or in the code under test ends it.
+const ENDS_EARLY = `
+import test from 'node:test';
+test('first', () => {});
+test('second, which ends the process', () => { process.exit(0); });
+test('third, never run', () => {});
+`;
+
+// Many quick tests with long names in several files: enough output that, with
+// --test-force-exit, results still on their way to the runner were dropped.
+const MANY_FILES = 6;
+const MANY_TESTS = 400;
+const many = (f) => `import test from 'node:test';\n` +
+  Array.from({ length: MANY_TESTS }, (_, i) => `test('file ${f} test ${i} ${'x'.repeat(200)}', () => {});\n`).join('');
+
+// Paths the command gives relative to the top of the repository (the
+// --import of tests/complete-runs.mjs), made absolute so they still hold in
+// the throwaway folder the command runs in.
+const top = path.join(here, '..');
+const absolute = (a) => a.replace(/^(--import=)(\.\.?\/.*)$/, (_, flag, rel) => flag + path.join(top, rel));
+
+// Runs test_command on throwaway test files — one source, or { name: source } —
+// its time limit set to `limitMs`; resolves { code, out, ms }, or { hung } after
+// `giveUpMs`.
 async function runCommand(source, limitMs, giveUpMs) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'kerjaan-limit-'));
   try {
-    fs.writeFileSync(path.join(dir, 'sample.test.mjs'), source);
-    const args = command.split(/\s+/).slice(1).map((a) => (a.startsWith('--test-timeout=') ? `--test-timeout=${limitMs}` : a));
+    const files = typeof source === 'string' ? { 'sample.test.mjs': source } : source;
+    for (const [name, text] of Object.entries(files)) fs.writeFileSync(path.join(dir, name), text);
+    const args = command.split(/\s+/).slice(1).map((a) => (a.startsWith('--test-timeout=') ? `--test-timeout=${limitMs}` : absolute(a)));
     // Without this variable the inner run believes it is part of this one.
     const env = { ...process.env };
     delete env.NODE_TEST_CONTEXT;
@@ -79,11 +115,12 @@ async function runCommand(source, limitMs, giveUpMs) {
   }
 }
 
-test('test_command uses node --test with a time limit and a forced exit', () => {
+test('test_command uses node --test with a time limit and tests/complete-runs.mjs, not --test-force-exit', () => {
   const args = command.split(/\s+/);
   assert.deepEqual(args.slice(0, 2), ['node', '--test'], command);
   assert.ok(args.some((a) => /^--test-timeout=\d+$/.test(a)), `no --test-timeout: ${command}`);
-  assert.ok(args.includes('--test-force-exit'), `no --test-force-exit: ${command}`);
+  assert.ok(args.includes('--import=./tests/complete-runs.mjs'), `no --import=./tests/complete-runs.mjs: ${command}`);
+  assert.ok(!args.includes('--test-force-exit'), `--test-force-exit loses results: ${command}`);
 });
 
 test('a stuck test is stopped by the time limit, reported failed, and the suite finishes', async () => {
@@ -104,4 +141,37 @@ test('a failed test with a server still open finishes without waiting for the ti
   assert.match(r.out, /not ok \d+ - failed, server left open/);
   assert.doesNotMatch(r.out, /timed out/);
   assert.ok(r.ms < 30000, `finished only after ${r.ms} ms`);
+});
+
+test('a passed test with a server still open: the run ends soon after, and passes', async () => {
+  const r = await runCommand(LEFT_OPEN, 45000, 60000);
+  assert.equal(r.hung, undefined, `the suite did not finish within 60 seconds:\n${r.out}`);
+  assert.equal(r.code, 0, r.out);
+  assert.match(r.out, /^ok \d+ - passed, server left open/m);
+  assert.match(r.out, /still held the process/);
+  assert.ok(r.ms < 30000, `finished only after ${r.ms} ms`);
+});
+
+test('a file that ends before its tests have finished fails the run, though it exited 0', async () => {
+  const r = await runCommand(ENDS_EARLY, 45000, 60000);
+  assert.equal(r.hung, undefined, `the suite did not finish within 60 seconds:\n${r.out}`);
+  assert.notEqual(r.code, 0, r.out);
+  assert.match(r.out, /^not ok \d+ - .*sample\.test\.mjs$/m);
+  assert.match(r.out, /ended before its tests had finished/);
+  assert.match(r.out, /^# fail [1-9]/m);
+  assert.doesNotMatch(r.out, /third, never run/);
+});
+
+test(`every test is counted, five runs in a row: ${MANY_FILES} files of ${MANY_TESTS} tests`, async () => {
+  const files = Object.fromEntries(Array.from({ length: MANY_FILES }, (_, f) => [`many-${f}.test.mjs`, many(f)]));
+  const total = MANY_FILES * MANY_TESTS;
+  for (let run = 1; run <= 5; run++) {
+    const r = await runCommand(files, 45000, 120000);
+    assert.equal(r.hung, undefined, `run ${run} did not finish within 120 seconds`);
+    const counted = (name) => r.out.match(new RegExp(`^# ${name} (\\d+)$`, 'm'))?.[1];
+    assert.equal(r.code, 0, `run ${run} exited ${r.code}: ${r.out.slice(-2000)}`);
+    assert.equal(counted('tests'), String(total), `run ${run}: the summary is missing or short: ${r.out.slice(-600)}`);
+    assert.equal(counted('pass'), String(total), `run ${run}`);
+    assert.equal(r.out.match(/^ok \d+ - file /gm)?.length, total, `run ${run}: not every result was printed`);
+  }
 });

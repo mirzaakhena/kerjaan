@@ -54,7 +54,7 @@ const groupGone = (proc) => {
 
 // Every Chrome this process started and has not closed yet. A test stopped by
 // its time limit never reaches its `finally`; when the process then ends, by
-// --test-force-exit or by a signal, this kills what it left, so no Chrome
+// tests/complete-runs.mjs or by a signal, this kills what it left, so no Chrome
 // outlives the tests.
 const live = new Set();
 const killAll = () => {
