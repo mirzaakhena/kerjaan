@@ -10,7 +10,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { readOrder, readOrderGroups } from '../../skills/kerjaan/scripts/board.mjs';
+import { readOrder, readOrderGroups, orderPlaces } from '../../skills/kerjaan/scripts/board.mjs';
 import { ticket, makeBoard, tempRoot, startViewer } from './bantu.mjs';
 import { openBrowser, chromePath } from './peramban.mjs';
 
@@ -192,6 +192,110 @@ test('readOrderGroups and queue.sh check agree on the groups that wait for the o
   assert.deepEqual(readOrderGroups(above).map((g) => g.waitForOwner), [false, false]);
 });
 
+// ---------- the number on a card: one per group ----------
+
+const at = (status, id) => ({ id, status });
+const placesOf = (text, tickets) => Object.fromEntries(orderPlaces(text, tickets));
+
+test('orderPlaces: the tickets of one group share a number, the next group gets the next one', () => {
+  const text = `**Goal.** One batch.\n\n**First, side by side.**\n\n- ${ID.a} One\n- ${ID.b} Two\n\n**Then.**\n\n- ${ID.c} Three\n\n**Last, together.**\n- ${ID.d} Four\n- ${ID.e} Five\n`;
+  const tickets = [ID.a, ID.b, ID.c, ID.d, ID.e].map((id) => at('todo', id));
+  assert.deepEqual(placesOf(text, tickets), {
+    [ID.a]: { n: 1, waitsForOwner: false }, [ID.b]: { n: 1, waitsForOwner: false },
+    [ID.c]: { n: 2, waitsForOwner: false },
+    [ID.d]: { n: 3, waitsForOwner: false }, [ID.e]: { n: 3, waitsForOwner: false },
+  });
+  // List lines above the first lead-in are a group of their own, the first.
+  assert.deepEqual(placesOf(`- ${ID.a} One\n\n**Then.**\n- ${ID.b} Two\n`, [at('todo', ID.a), at('todo', ID.b)]),
+    { [ID.a]: { n: 1, waitsForOwner: false }, [ID.b]: { n: 2, waitsForOwner: false } });
+  assert.deepEqual(placesOf('', [at('todo', ID.a)]), {});
+});
+
+test('orderPlaces: tickets in in_progress and review keep their group number', () => {
+  const text = `**First.**\n\n- ${ID.a} One\n- ${ID.b} Two\n- ${ID.c} Three\n\n**Then.**\n\n- ${ID.d} Four\n`;
+  for (const [sa, sb] of [['in_progress', 'review'], ['review', 'review'], ['in_progress', 'in_progress']]) {
+    const p = placesOf(text, [at(sa, ID.a), at(sb, ID.b), at('todo', ID.c), at('todo', ID.d)]);
+    assert.deepEqual([p[ID.a]?.n, p[ID.b]?.n, p[ID.c]?.n, p[ID.d]?.n], [1, 1, 1, 2], `${sa}, ${sb}`);
+  }
+  // A group made only of tickets in flight still holds its place.
+  const flight = placesOf(text, [at('in_progress', ID.a), at('review', ID.b), at('done', ID.c), at('todo', ID.d)]);
+  assert.deepEqual([flight[ID.a]?.n, flight[ID.b]?.n, flight[ID.c], flight[ID.d]?.n], [1, 1, undefined, 2]);
+});
+
+test('orderPlaces: once every ticket of the first group is done the next group is #1; done, cancel, backlog and unknown tickets get no number and hold no group', () => {
+  const text = `**First.**\n\n- ${ID.a} One\n- ${ID.b} Two\n\n**Then.**\n\n- ${ID.c} Three\n\n**Last.**\n\n- ${ID.d} Four\n`;
+  const half = placesOf(text, [at('done', ID.a), at('review', ID.b), at('todo', ID.c), at('todo', ID.d)]);
+  assert.deepEqual([half[ID.a], half[ID.b]?.n, half[ID.c]?.n, half[ID.d]?.n], [undefined, 1, 2, 3], 'one ticket of the group still in review');
+  for (const gone of ['done', 'cancel', 'backlog', null]) {
+    const tickets = [at('done', ID.a), at('todo', ID.c), at('todo', ID.d)];
+    if (gone) tickets.push(at(gone, ID.b));
+    const p = placesOf(text, tickets);
+    assert.deepEqual([p[ID.a], p[ID.b], p[ID.c]?.n, p[ID.d]?.n], [undefined, undefined, 1, 2], `the last of the first group: ${gone || 'not on the board'}`);
+  }
+  // A ticket listed twice keeps the number of its first group.
+  const twice = placesOf(`**First.**\n- ${ID.a} One\n\n**Then.**\n- ${ID.b} Two\n- ${ID.a} One again\n`, [at('todo', ID.a), at('todo', ID.b)]);
+  assert.deepEqual([twice[ID.a].n, twice[ID.b].n], [1, 2]);
+});
+
+const WAITING = [
+  '**Goal.** One batch.',
+  '',
+  '**First.** Alone.',
+  '',
+  `- ${ID.a} One`,
+  '',
+  '**Then, once the owner tried it.** Together.',
+  '<!-- wait-for-owner -->',
+  '',
+  `- ${ID.b} Two`,
+  `- ${ID.c} Three`,
+  '',
+  '**Last.** Waits too.',
+  `- ${ID.d} Four`,
+  '<!-- wait-for-owner -->',
+  `- ${ID.e} Five`,
+  '',
+].join('\n');
+
+test('orderPlaces: every card of a group waiting for the owner carries the sign until a ticket of it is in flight', () => {
+  const todoAll = placesOf(WAITING, [ID.a, ID.b, ID.c, ID.d, ID.e].map((id) => at('todo', id)));
+  assert.deepEqual([ID.a, ID.b, ID.c, ID.d, ID.e].map((id) => todoAll[id].waitsForOwner), [false, true, true, true, true]);
+  for (const flight of ['in_progress', 'review']) {
+    const started = placesOf(WAITING, [at('done', ID.a), at(flight, ID.b), at('todo', ID.c), at('todo', ID.d), at('todo', ID.e)]);
+    assert.deepEqual([ID.b, ID.c, ID.d, ID.e].map((id) => [started[id].n, started[id].waitsForOwner]),
+      [[1, false], [1, false], [2, true], [2, true]], `started by a ticket in ${flight}`);
+  }
+});
+
+// The cards that carry the sign are the tickets of the groups queue.sh check
+// says still wait for the owner's yes, and the groups numbered are the ones
+// check reads: read on each board state the sign can be in.
+test('the viewer and queue.sh check agree on which groups wait for the owner, started or not', () => {
+  const states = [
+    { [ID.a]: 'todo', [ID.b]: 'todo', [ID.c]: 'todo', [ID.d]: 'todo', [ID.e]: 'todo' },
+    { [ID.a]: 'in_progress', [ID.b]: 'todo', [ID.c]: 'todo', [ID.d]: 'todo', [ID.e]: 'todo' },
+    { [ID.a]: 'done', [ID.b]: 'in_progress', [ID.c]: 'todo', [ID.d]: 'todo', [ID.e]: 'todo' },
+    { [ID.a]: 'done', [ID.b]: 'done', [ID.c]: 'review', [ID.d]: 'todo', [ID.e]: 'in_progress' },
+  ];
+  const groups = readOrderGroups(WAITING);
+  for (const state of states) {
+    const files = { 'order.md': WAITING };
+    for (const [, id, title] of WAITING.matchAll(/^- (\d{12}) (.+)$/gm)) files[`${state[id]}/${id} ${title}.md`] = ticket();
+    const root = tempRoot();
+    makeBoard(root, 'p', files);
+    const r = spawnSync('bash', [queue, 'check'], { cwd: path.join(root, 'p'), encoding: 'utf8' });
+    const waiting = [...r.stdout.matchAll(/the group of line (\d+) waits for the owner \(line \d+\): it starts only/g)].map((m) => Number(m[1]));
+    const started = [...r.stdout.matchAll(/the group of line (\d+) waits for the owner \(line \d+\), and has started/g)].map((m) => Number(m[1]));
+    const places = placesOf(WAITING, Object.entries(state).map(([id, s]) => at(s, id)));
+    const signed = groups.filter((g) => g.waitForOwner && g.ids.some((id) => places[id]?.waitsForOwner)).map((g) => g.start + 1);
+    const unsigned = groups.filter((g) => g.waitForOwner && g.ids.every((id) => !places[id]?.waitsForOwner)).map((g) => g.start + 1);
+    assert.deepEqual(signed, waiting, `${JSON.stringify(state)}\n${r.stdout}`);
+    assert.deepEqual(unsigned, started, `${JSON.stringify(state)}\n${r.stdout}`);
+    // A group's cards carry the sign all together or not at all.
+    for (const g of groups) assert.equal(new Set(g.ids.filter((id) => places[id]).map((id) => places[id].waitsForOwner)).size <= 1, true);
+  }
+});
+
 // ---------- in a real browser ----------
 
 const browserTest = (name, files, fn) => test(name, { skip: chromePath() ? false : 'Chrome tidak terpasang' }, async () => {
@@ -203,7 +307,7 @@ const browserTest = (name, files, fn) => test(name, { skip: chromePath() ? false
     await page.size(1280, 800);
     await page.goto(`${v.base}/alpha/`);
     await page.until(`() => document.querySelectorAll('#board .card').length === ${Object.keys(files).filter((f) => f.endsWith('.md') && f.includes('/')).length}`);
-    await fn(v, page);
+    await fn(v, page, root);
   } finally { await page?.close(); await v.close(); }
 });
 
@@ -232,12 +336,15 @@ browserTest('kalimat tebal, kalimat biasa, dan lands-first tidak memberi lencana
 }, async (v, page) => {
   // The rest by priority, then id: d (high) before f, g (medium).
   assert.deepEqual(await page.eval(todoColumn), [
-    [ID.c, '#1'], [ID.a, '#2'], [ID.e, '#3'], [ID.b, '#4'],
+    [ID.c, '#1'], [ID.a, '#2'], [ID.e, '#2'], [ID.b, '#3'],
     [ID.d, null], [ID.f, null], [ID.g, null],
   ]);
 });
 
-browserTest('tickets in flight still listed in order.md take no todo rank', {
+// Each card in a column: its id, its number, and the wait sign's text.
+const column = (status) => `() => [...document.querySelectorAll('#board section[aria-label="${status}"] .card')].map((c) => [c.dataset.id, c.querySelector('.rank')?.textContent || null, c.querySelector('.owner-wait')?.textContent || null])`;
+
+browserTest('tickets in flight still listed in order.md keep their group number, beside the todo tickets of their group', {
   ...todo(ID.c, 'Three'),
   ...todo(ID.d, 'Four'),
   ...todo(ID.e, 'Five', { priority: 'high' }),
@@ -246,6 +353,27 @@ browserTest('tickets in flight still listed in order.md take no todo rank', {
   'order.md': `**Goal.** One batch.\n\n**First, side by side.**\n<!-- lands-first: ${ID.a} -->\n\n- ${ID.a} One\n- ${ID.b} Two\n- ${ID.d} Four\n\n**Then.**\n\n- ${ID.c} Three\n`,
 }, async (v, page) => {
   assert.deepEqual(await page.eval(todoColumn), [[ID.d, '#1'], [ID.c, '#2'], [ID.e, null]]);
+  assert.deepEqual(await page.eval(column('in progress')), [[ID.a, '#1', null]]);
+  assert.deepEqual(await page.eval(column('review')), [[ID.b, '#1', null]]);
+});
+
+browserTest('a group finished moves the next group up to #1, and a group waiting for the owner says so on every card until it starts', {
+  [`done/${ID.a} One.md`]: ticket(),
+  [`done/${ID.b} Two.md`]: ticket(),
+  ...todo(ID.c, 'Three'),
+  ...todo(ID.d, 'Four'),
+  ...todo(ID.e, 'Five'),
+  ...todo(ID.f, 'Six'),
+  'order.md': `**Goal.** One batch.\n\n**First.**\n\n- ${ID.a} One\n- ${ID.b} Two\n\n**Then.**\n\n- ${ID.c} Three\n\n**After the owner tried it.** Together.\n<!-- wait-for-owner -->\n\n- ${ID.d} Four\n- ${ID.e} Five\n\n**Last.**\n\n- ${ID.f} Six\n`,
+}, async (v, page, root) => {
+  const sign = "waits for the owner's go-ahead";
+  assert.deepEqual(await page.eval(column('todo')), [[ID.c, '#1', null], [ID.d, '#2', sign], [ID.e, '#2', sign], [ID.f, '#3', null]]);
+  assert.deepEqual(await page.eval(column('done')), [[ID.b, null, null], [ID.a, null, null]]);
+  assert.equal(await page.eval(`() => document.querySelector('#board .owner-wait').title`), 'This group starts only once the owner says yes');
+  // The group starts: one of its tickets moves to in_progress, and the sign goes from both cards.
+  fs.renameSync(path.join(root, 'alpha', '.kerjaan', 'todo', `${ID.d} Four.md`), path.join(root, 'alpha', '.kerjaan', 'in_progress', `${ID.d} Four.md`));
+  await page.until(`() => !document.querySelector('#board .owner-wait') && document.querySelectorAll('#board section[aria-label="todo"] .card').length === 3`);
+  assert.deepEqual(await page.eval(column('todo')), [[ID.c, '#1', null], [ID.e, '#2', null], [ID.f, '#3', null]]);
 });
 
 browserTest('order.md tanpa baris daftar: todo menurut prioritas lalu ID, tautan "urut order.md" membuka berkasnya', {

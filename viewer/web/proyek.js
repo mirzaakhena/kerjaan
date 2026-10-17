@@ -118,7 +118,18 @@ function unmergedLine(t) {
   return `<div class="belum-gabung" title="${esc(tip)}"><span class="label">belum digabung</span> ${names}</div>`;
 }
 
-function card(t, rank) {
+// A card's place in order.md: its group's number, shared by the tickets that
+// may run side by side, and a sign while that group waits for the owner's yes.
+function placeBadge(place) {
+  if (!place) return '';
+  const number = `<span class="rank" title="Group ${place.n} in order.md: tickets with the same number may run side by side">#${place.n}</span>`;
+  const wait = place.waitsForOwner
+    ? '<span class="owner-wait" title="This group starts only once the owner says yes">waits for the owner\'s go-ahead</span>'
+    : '';
+  return number + wait;
+}
+
+function card(t, place) {
   const labels = t.labels.map((l) => `<span class="tag">${esc(l)}</span>`).join('');
   const agent = AGENT_STATUSES.includes(t.status)
     ? `<div class="agen-slot" data-agen-for="${t.id}">${t.agent ? agentLine(t.agent, t.status, Date.now()) : ''}</div>`
@@ -126,7 +137,7 @@ function card(t, rank) {
   return `<li><button class="card" data-id="${t.id}" aria-current="${t.id === state.openId}">
     <div class="title">${esc(t.title)}</div>${agent}${unmergedLine(t)}
     <div class="meta">
-      ${rank ? `<span class="rank" title="Urutan di order.md">#${rank}</span>` : ''}
+      ${placeBadge(place)}
       <span class="id">${t.id}</span>
       ${t.broken ? '<span class="broken" title="Berkas ini tidak punya frontmatter">rusak</span>' : ''}
       ${t.type ? `<span class="tag type-${esc(t.type)}">${esc(t.type)}</span>` : ''}
@@ -139,10 +150,9 @@ function card(t, rank) {
 function drawBoard() {
   const { board, filter } = state;
   const shown = board.tickets.filter((t) => matches(t, filter));
-  // The number is a ticket's place among those actually in todo: order.md can
-  // still name a ticket that has moved on, which is not this view's to show.
-  const inTodo = new Set(board.tickets.filter((t) => t.status === 'todo').map((t) => t.id));
-  const rank = new Map(board.order.filter((id) => inTodo.has(id)).map((id, i) => [id, i + 1]));
+  // Numbered by group over every ticket, not only those the filter shows
+  // (orderPlaces in board.mjs): todo, in_progress and review cards alike.
+  const places = board.places || {};
   const filtering = FILTER_KEYS.some((k) => filter[k]);
 
   $('shown').textContent = filtering ? `${shown.length} dari ${board.tickets.length} tiket` : `${board.tickets.length} tiket`;
@@ -165,7 +175,7 @@ function drawBoard() {
   $('board').innerHTML = STATUSES.map((s) => {
     const all = columnOrder(shown.filter((t) => t.status === s), s, board.order);
     const limit = state.expanded.has(s) ? all.length : PAGE;
-    const cards = all.slice(0, limit).map((t) => card(t, s === 'todo' ? rank.get(t.id) : null)).join('');
+    const cards = all.slice(0, limit).map((t) => card(t, places[t.id])).join('');
     const note = s === 'todo' && board.hasOrder
       ? `<a class="note" href="${base}${ORDER}${writeFilter(filter)}" data-order title="Buka order.md: urutan dan alasannya">urut order.md</a>`
       : '';

@@ -75,18 +75,24 @@ export function readTicket(board, status, file) {
   };
 }
 
-// The ids order.md lists, top to bottom. It only ranks todo. Only a list line
+// The ids order.md lists, top to bottom: the order of the todo column (the
+// number on a card comes from orderPlaces). Only a list line
 // `- <id> <title>` is a place, read with the rule queue.sh check uses
 // (references/ordering-the-queue.md); an id named in a lead-in, in prose or
 // on a lands-first line is never one. viewer/uji/urutan.test.mjs holds the two
 // readers to the same list.
 export function readOrder(board) {
-  const orderFile = path.join(board, 'order.md');
-  if (!fs.existsSync(orderFile)) return null;
-  // Split on \n alone, as awk does, so a stray \r reads the same in both.
-  const lines = fs.readFileSync(orderFile, 'utf8').split('\n');
-  return [...new Set(lines.map((l) => l.match(/^- (\d{12})(?: |$)/)?.[1]).filter(Boolean))];
+  const text = readOrderText(board);
+  return text === null ? null : orderIds(text);
 }
+
+const readOrderText = (board) => {
+  const orderFile = path.join(board, 'order.md');
+  return fs.existsSync(orderFile) ? fs.readFileSync(orderFile, 'utf8') : null;
+};
+
+// Split on \n alone, as awk does, so a stray \r reads the same in both.
+const orderIds = (text) => [...new Set(text.split('\n').map((l) => l.match(/^- (\d{12})(?: |$)/)?.[1]).filter(Boolean))];
 
 // order.md's groups: a group runs from one bold lead-in line (`**...`, other
 // than the goal line `**Goal.**`) to the next, and holds the tickets of its
@@ -119,6 +125,35 @@ export function readOrderGroups(text) {
   });
   close(lines.length);
   return groups;
+}
+
+// The number each card shows: its group's place among the groups of order.md
+// that still hold a ticket in todo, in_progress or review. Tickets of one group
+// share a number, since they may run side by side (not that they are running
+// now), and keep it while in flight; once every ticket of the first group is
+// done, the next group is #1. Done, cancelled, backlog and unknown tickets get
+// none and keep no group alive. A ticket listed twice belongs to its first
+// group, as readOrder places it. waitsForOwner marks the cards of a group with
+// a wait-for-owner line that has not started: none of its tickets is in
+// in_progress or review, the rule queue.sh check uses to stop asking.
+// Returns a Map: id -> { n, waitsForOwner }.
+const LIVE = ['todo', 'in_progress', 'review'];
+export function orderPlaces(text, tickets) {
+  const status = new Map();
+  for (const t of tickets) if (!status.has(t.id)) status.set(t.id, t.status);
+  const places = new Map();
+  const seen = new Set();
+  let n = 0;
+  for (const g of readOrderGroups(text)) {
+    const ids = g.ids.filter((id) => !seen.has(id));
+    ids.forEach((id) => seen.add(id));
+    const held = ids.filter((id) => LIVE.includes(status.get(id)));
+    if (!held.length) continue;
+    n += 1;
+    const waitsForOwner = g.waitForOwner && held.every((id) => status.get(id) === 'todo');
+    for (const id of held) places.set(id, { n, waitsForOwner });
+  }
+  return places;
 }
 
 // The latest "files estimated to change:" record in a ticket's body, read the
@@ -196,13 +231,14 @@ export function readBoard(board) {
       }
     }
   }
-  const order = readOrder(board);
+  const text = readOrderText(board);
   return {
     repo: path.basename(path.dirname(board)),
     board,
     readAt: new Date().toISOString(),
-    hasOrder: order !== null,
-    order: order || [],
+    hasOrder: text !== null,
+    order: text === null ? [] : orderIds(text),
+    places: Object.fromEntries(text === null ? [] : orderPlaces(text, tickets)),
     tickets,
   };
 }
