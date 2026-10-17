@@ -146,7 +146,7 @@ git commit -m "<message>" -- <files> '.kerjaan/*/<id> *'
 ```
 
 In a worktree, there is no `.kerjaan/` to commit, so the two go to two places.
-Your code is already committed on your branch (step 7: the
+Your code is already committed on your branch, in the worktree (step 7: the
 move to review is refused otherwise). The ticket's file is committed in the
 main tree, holding nothing else:
 
