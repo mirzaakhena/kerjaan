@@ -6,7 +6,7 @@ labels: [sesi-8e6130e0, order-md]
 reporter: mirza
 assign_to: claude
 created: 2026-10-17 11:30:54
-updated: 2026-10-17 19:48:47
+updated: 2026-10-17 19:49:08
 related: [261017113001, 261017113003]
 blocked_by: [261017113001]
 ---
@@ -73,3 +73,4 @@ Pemilik bisa menetapkan di setelan papan apakah antrean dijalankan terus sampai 
 ### Suggested follow-up
 
 - **Batas `max_parallel` ikut menghitung worktree yang bukan milik papan.** Pemilik yang punya worktree sendiri (misalnya untuk percobaan) atau worktree yang tertinggal setelah merge ditunda akan melihat tiket baru ditolak meski tidak ada tiket lain yang sedang dikerjakan. Layak jadi tiket: hitung hanya worktree yang cabangnya membawa ID tiket di in_progress atau review, atau sebutkan di pesan penolakan worktree mana yang bukan tiket.
+- 2026-10-17 19:49:08: landed on main as 85a1d4e46df37f7be9c1d2f0b1beaa26424dc3e4, merging tiket-261017113002 at 287a27ae1e50d0b136655d6d27c06a31f3d50dfb; tests carried from the run on this exact content, not run again.
