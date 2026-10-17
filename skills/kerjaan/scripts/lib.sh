@@ -2,7 +2,7 @@
 #
 # The work every kerjaan board script does the same way, written once: each
 # piece below is the only place that does it, so the scripts cannot drift
-# apart (uji/pustaka-bersama.test.mjs holds them to that). Sourced, never run:
+# apart (tests/shared-library.test.mjs holds them to that). Sourced, never run:
 #
 #   . "$(dirname "$0")/lib.sh"
 #

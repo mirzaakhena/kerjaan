@@ -68,7 +68,7 @@ question each, written in
 the board's language with the options you see and the one you recommend.
 
 ```bash
-"$K/queue.sh" ask <id> "Pratinjau tampil di laci kanan atau halaman sendiri? Saran: laci kanan, karena ..."
+"$K/queue.sh" ask <id> "Preview in the side drawer or on its own page? Recommended: the drawer, because ..."
 ```
 
 Ask too, per ticket, what a chain would otherwise stop on later: for every
@@ -89,7 +89,7 @@ folder (`viewer/web/`) only when the ticket will add files there you cannot
 name yet. A folder that holds half the project tells nobody anything.
 
 ```bash
-"$K/queue.sh" estimate <id> viewer/app.mjs viewer/web/beranda.js viewer/uji/
+"$K/queue.sh" estimate <id> viewer/app.mjs viewer/web/home.js viewer/tests/
 ```
 
 A ticket that changes no file of the project — a decision whose answers live

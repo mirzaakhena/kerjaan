@@ -24,14 +24,14 @@ const B = '261017100002';
 
 const gitEnv = {
   ...process.env,
-  GIT_AUTHOR_NAME: 'Uji',
-  GIT_AUTHOR_EMAIL: 'uji@example.com',
-  GIT_COMMITTER_NAME: 'Uji',
-  GIT_COMMITTER_EMAIL: 'uji@example.com',
+  GIT_AUTHOR_NAME: 'Test',
+  GIT_AUTHOR_EMAIL: 'test@example.com',
+  GIT_COMMITTER_NAME: 'Test',
+  GIT_COMMITTER_EMAIL: 'test@example.com',
 };
 delete gitEnv.CLAUDE_CODE_SESSION_ID;
 
-function ticketText({ created = '2026-10-17 10:00:00', background = 'Sesuatu.', doneWhen = '- [ ] Satu', notes = '(none yet)', history = `- ${created} backlog` } = {}) {
+function ticketText({ created = '2026-10-17 10:00:00', background = 'Something.', doneWhen = '- [ ] One', notes = '(none yet)', history = `- ${created} backlog` } = {}) {
   return `---
 type: feature
 priority: medium
@@ -49,7 +49,7 @@ blocked_by: []
 ${background}
 
 ## Request
-Sesuatu.
+Something.
 
 ## Done when
 ${doneWhen}
@@ -76,20 +76,20 @@ function repo({ gitRepo = true } = {}) {
     fs.writeFileSync(path.join(root, '.kerjaan', s, '.gitkeep'), '');
   }
   fs.writeFileSync(path.join(root, '.kerjaan', 'settings.md'), `---
-language: Bahasa Indonesia
+language: English
 test_command: true
 long_lived_branches: []
 ---
 `);
-  fs.writeFileSync(path.join(root, 'kode.txt'), 'satu\n');
+  fs.writeFileSync(path.join(root, 'code.txt'), 'one\n');
   if (gitRepo) {
     git(root, 'add', '-A');
-    git(root, 'commit', '-q', '-m', 'awal');
+    git(root, 'commit', '-q', '-m', 'initial');
   }
   return root;
 }
 
-function add(root, id, { status = 'backlog', title = `Tiket ${id}`, ...t } = {}) {
+function add(root, id, { status = 'backlog', title = `Ticket ${id}`, ...t } = {}) {
   const file = path.join(root, '.kerjaan', status, `${id} ${title}.md`);
   fs.writeFileSync(file, ticketText(t));
   return file;
@@ -120,10 +120,10 @@ function snapshot(root) {
 // same words, naming the main tree, and changes nothing.
 
 const fromWorktree = {
-  'new-ticket.sh': ['new-ticket.sh', 'backlog', 'Tiket baru'],
+  'new-ticket.sh': ['new-ticket.sh', 'backlog', 'New ticket'],
   'update-ticket.sh': ['update-ticket.sh', A, '--status', 'todo'],
-  'worktree.sh add': ['worktree.sh', 'add', A, 'jalan-lain'],
-  'queue.sh': ['queue.sh', 'estimate', A, 'kode.txt'],
+  'worktree.sh add': ['worktree.sh', 'add', A, 'another-path'],
+  'queue.sh': ['queue.sh', 'estimate', A, 'code.txt'],
   'release.sh': ['release.sh', 'unreleased'],
   'merge.sh land': ['merge.sh', 'land', A],
   'repair.sh': ['repair.sh', 'duplicate-id', A],
@@ -134,9 +134,9 @@ for (const [name, [script, ...args]] of Object.entries(fromWorktree)) {
     const root = repo();
     add(root, A, { status: name === 'merge.sh land' ? 'done' : 'backlog' });
     git(root, 'add', '-A');
-    git(root, 'commit', '-q', '-m', 'tiket');
+    git(root, 'commit', '-q', '-m', 'ticket');
     const wt = `${root}-wt`;
-    git(root, 'worktree', 'add', '-q', '-b', 'samping', wt);
+    git(root, 'worktree', 'add', '-q', '-b', 'aside', wt);
     const before = snapshot(root);
     const r = run(wt, S(script), ...args);
     assert.notEqual(r.code, 0, r.out);
@@ -157,7 +157,7 @@ const byId = {
   'update-ticket.sh': (root) => ['update-ticket.sh', A],
   'ticket-size.sh': (root) => ['ticket-size.sh', A],
   'test-run.sh': (root) => ['test-run.sh', A],
-  'queue.sh estimate': (root) => ['queue.sh', 'estimate', A, 'kode.txt'],
+  'queue.sh estimate': (root) => ['queue.sh', 'estimate', A, 'code.txt'],
   'queue.sh check': (root) => ['queue.sh', 'check', A],
   'merge.sh check': (root) => ['merge.sh', 'check', A],
   'worktree.sh add': (root) => ['worktree.sh', 'add', A, path.join(path.dirname(root), `${path.basename(root)}-wt`)],
@@ -166,10 +166,10 @@ const byId = {
 for (const [name, argsOf] of Object.entries(byId)) {
   test(`${name}, given an ID two tickets share, refuses and names the repair, changing nothing`, () => {
     const root = repo();
-    const one = add(root, A, { title: 'Pertama', status: 'in_progress' });
-    const two = add(root, A, { title: 'Kedua', status: 'in_progress', created: '2026-10-17 11:00:00' });
+    const one = add(root, A, { title: 'First', status: 'in_progress' });
+    const two = add(root, A, { title: 'Second', status: 'in_progress', created: '2026-10-17 11:00:00' });
     git(root, 'add', '-A');
-    git(root, 'commit', '-q', '-m', 'tiket');
+    git(root, 'commit', '-q', '-m', 'ticket');
     const before = snapshot(root);
     const [script, ...args] = argsOf(root);
     const r = run(root, S(script), ...args);
@@ -187,7 +187,7 @@ for (const [name, argsOf] of Object.entries(byId)) {
     const root = repo();
     add(root, B);
     git(root, 'add', '-A');
-    git(root, 'commit', '-q', '-m', 'tiket');
+    git(root, 'commit', '-q', '-m', 'ticket');
     const [script, ...args] = argsOf(root);
     const r = run(root, S(script), ...args);
     assert.notEqual(r.code, 0);
@@ -203,46 +203,46 @@ for (const fence of ['```', '~~~']) {
   test(`update-ticket.sh, ${fence}: a "## History" inside a fenced block is not where the move is recorded`, () => {
     const root = repo({ gitRepo: false });
     const example = `${fence}markdown\n## History\n- 2026-01-01 00:00:00 todo\n${fence}`;
-    const file = add(root, A, { background: `Contoh:\n\n${example}` });
+    const file = add(root, A, { background: `An example:\n\n${example}` });
     const r = run(root, S('update-ticket.sh'), A, '--status', 'todo');
     assert.equal(r.code, 0, r.err);
     const text = fs.readFileSync(r.out.trim(), 'utf8');
-    assert.ok(text.includes(`Contoh:\n\n${example}\n`), 'the example is left as it was');
+    assert.ok(text.includes(`An example:\n\n${example}\n`), 'the example is left as it was');
     assert.match(text, /\n## History\n- 2026-10-17 10:00:00 backlog\n- \d{4}-\d\d-\d\d \d\d:\d\d:\d\d todo\n\n## Notes/);
     assert.equal(fs.existsSync(file), false);
   });
 
   test(`ticket-size.sh, ${fence}: checkboxes inside a fenced block in Done when are not counted`, () => {
     const root = repo({ gitRepo: false });
-    const doneWhen = '- [ ] Satu\n\n' + `${fence}\n` + Array.from({ length: 9 }, (_, i) => `- [ ] Contoh ${i}`).join('\n') + `\n${fence}`;
+    const doneWhen = '- [ ] One\n\n' + `${fence}\n` + Array.from({ length: 9 }, (_, i) => `- [ ] Example ${i}`).join('\n') + `\n${fence}`;
     add(root, A, { doneWhen });
     assert.doesNotMatch(run(root, S('ticket-size.sh'), A).err, /WARNING/);
   });
 
   test(`ticket-size.sh, ${fence}: the acceptance sentence inside a fenced block is an example, not the owner's decision`, () => {
     const root = repo({ gitRepo: false });
-    const doneWhen = Array.from({ length: 9 }, (_, i) => `- [ ] Butir ${i}`).join('\n');
+    const doneWhen = Array.from({ length: 9 }, (_, i) => `- [ ] Item ${i}`).join('\n');
     const sentence = 'size accepted by the owner with --accept-size: this ticket stays whole although its "Done when" list is over the board\'s limit.';
-    add(root, A, { doneWhen, notes: `- Contoh:\n${fence}\n- 2026-10-17 10:00:00: ${sentence}\n${fence}` });
+    add(root, A, { doneWhen, notes: `- An example:\n${fence}\n- 2026-10-17 10:00:00: ${sentence}\n${fence}` });
     assert.match(run(root, S('ticket-size.sh'), A).err, /WARNING: 261017100001 has 9/);
   });
 
   test(`queue.sh, ${fence}: a question or an estimate inside a fenced block is not a record`, () => {
     const root = repo();
-    add(root, A, { notes: `- Contoh:\n${fence}\n- 2026-10-17 10:00:00: open question: ini contoh?\n- 2026-10-17 10:00:00: files estimated to change: \`kode.txt\`\n${fence}` });
+    add(root, A, { notes: `- An example:\n${fence}\n- 2026-10-17 10:00:00: open question: is this an example?\n- 2026-10-17 10:00:00: files estimated to change: \`code.txt\`\n${fence}` });
     const r = run(root, S('queue.sh'), 'check', A);
     assert.doesNotMatch(r.out, /open question/);
     assert.match(r.out, /no estimate of the files/);
     // A real question is numbered 1, the example not counted.
-    const ask = run(root, S('queue.sh'), 'ask', A, 'Yang sungguhan?');
+    const ask = run(root, S('queue.sh'), 'ask', A, 'The real one?');
     assert.equal(ask.code, 0, ask.err);
     assert.match(ask.out, /as question 1\./);
     // Its answer goes under the real question, not under the example.
-    const answer = run(root, S('queue.sh'), 'answer', A, '1', 'Ya.');
+    const answer = run(root, S('queue.sh'), 'answer', A, '1', 'Yes.');
     assert.equal(answer.code, 0, answer.err);
-    const text = fs.readFileSync(path.join(root, '.kerjaan', 'backlog', `${A} Tiket ${A}.md`), 'utf8');
-    assert.ok(text.includes(`${fence}\n- 2026-10-17 10:00:00: open question: ini contoh?\n`), 'the example is left as it was');
-    assert.match(text, /: answered question: Yang sungguhan\?\n  answer, [^\n]+: Ya\.\n$/);
+    const text = fs.readFileSync(path.join(root, '.kerjaan', 'backlog', `${A} Ticket ${A}.md`), 'utf8');
+    assert.ok(text.includes(`${fence}\n- 2026-10-17 10:00:00: open question: is this an example?\n`), 'the example is left as it was');
+    assert.match(text, /: answered question: The real one\?\n  answer, [^\n]+: Yes\.\n$/);
   });
 
   test(`on-ticket-review.sh, ${fence}: a reviewer's opening line inside a fenced block is not a review`, () => {
@@ -250,7 +250,7 @@ for (const fence of ['```', '~~~']) {
     const ticket = add(root, A, {
       status: 'review',
       history: '- 2026-10-17 10:00:00 in_progress\n- 2026-10-17 10:30:00 review',
-      notes: `- Contoh blok peninjau:\n${fence}\n- 2026-10-17: Reviewed at level quick, round 1, at commit a1b2c3d: sent back.\n${fence}`,
+      notes: `- An example of a reviewer's block:\n${fence}\n- 2026-10-17: Reviewed at level quick, round 1, at commit a1b2c3d: sent back.\n${fence}`,
     });
     const payload = {
       cwd: root,
@@ -281,7 +281,7 @@ test('on-ticket-review.sh finds the ticket in review/ from the session cwd when 
   };
   const r = spawnSync('bash', [S('on-ticket-review.sh')], { input: JSON.stringify(payload), encoding: 'utf8', env: { ...process.env, CLAUDE_PROJECT_DIR: '' } });
   assert.equal(r.status, 0, r.stderr);
-  assert.match(JSON.parse(r.stdout).hookSpecificOutput.additionalContext, new RegExp(`${A} Tiket ${A}\\.md`));
+  assert.match(JSON.parse(r.stdout).hookSpecificOutput.additionalContext, new RegExp(`${A} Ticket ${A}\\.md`));
 });
 
 // --- settings ---------------------------------------------------------------------------
@@ -292,17 +292,17 @@ test('long_lived_branches is read like every other setting: quoted items, and on
   const root = repo();
   git(root, 'branch', 'develop');
   git(root, 'checkout', '-q', 'develop');
-  fs.writeFileSync(path.join(root, 'kode.txt'), 'dua\n');
-  git(root, 'commit', '-q', '-am', 'di develop');
+  fs.writeFileSync(path.join(root, 'code.txt'), 'two\n');
+  git(root, 'commit', '-q', '-am', 'on develop');
   git(root, 'checkout', '-q', 'main');
   add(root, A, { status: 'todo' });
   const settings = path.join(root, '.kerjaan', 'settings.md');
   // Below the frontmatter: prose, so develop counts as unmerged work.
-  fs.writeFileSync(settings, '---\nlanguage: Bahasa Indonesia\n---\n\nlong_lived_branches: [develop]\n');
+  fs.writeFileSync(settings, '---\nlanguage: English\n---\n\nlong_lived_branches: [develop]\n');
   const refused = run(root, S('update-ticket.sh'), A, '--status', 'in_progress');
   assert.equal(refused.code, 1);
   assert.match(refused.err, /develop/);
-  fs.writeFileSync(settings, `---\nlanguage: Bahasa Indonesia\nlong_lived_branches: ["develop", 'release/*']\n---\n`);
+  fs.writeFileSync(settings, `---\nlanguage: English\nlong_lived_branches: ["develop", 'release/*']\n---\n`);
   const started = run(root, S('update-ticket.sh'), A, '--status', 'in_progress');
   assert.equal(started.code, 0, started.err);
 });

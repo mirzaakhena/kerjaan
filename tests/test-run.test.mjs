@@ -20,10 +20,10 @@ const A = '261016600001';
 
 const gitEnv = {
   ...process.env,
-  GIT_AUTHOR_NAME: 'Uji',
-  GIT_AUTHOR_EMAIL: 'uji@example.com',
-  GIT_COMMITTER_NAME: 'Uji',
-  GIT_COMMITTER_EMAIL: 'uji@example.com',
+  GIT_AUTHOR_NAME: 'Test',
+  GIT_AUTHOR_EMAIL: 'test@example.com',
+  GIT_COMMITTER_NAME: 'Test',
+  GIT_COMMITTER_EMAIL: 'test@example.com',
 };
 
 function ticketText(notes) {
@@ -41,13 +41,13 @@ blocked_by: []
 ---
 
 ## Background
-Sesuatu.
+Something.
 
 ## Request
-Sesuatu.
+Something.
 
 ## Done when
-- [ ] Butir
+- [ ] An item
 
 ## History
 - 2026-10-16 20:00:00 in_progress
@@ -71,15 +71,15 @@ function repo(testCommand, notes) {
     fs.writeFileSync(path.join(root, '.kerjaan', s, '.gitkeep'), '');
   }
   fs.writeFileSync(path.join(root, '.kerjaan', 'settings.md'), `---
-language: Bahasa Indonesia
+language: English
 test_command: ${testCommand}
 long_lived_branches: []
 ---
 `);
-  fs.writeFileSync(path.join(root, '.kerjaan', 'in_progress', `${A} Tiket.md`), ticketText(notes));
+  fs.writeFileSync(path.join(root, '.kerjaan', 'in_progress', `${A} A ticket.md`), ticketText(notes));
   fs.writeFileSync(path.join(root, 'a.js'), 'a\n');
   git(root, 'add', '-A');
-  git(root, 'commit', '-q', '-m', 'awal');
+  git(root, 'commit', '-q', '-m', 'initial');
   return root;
 }
 
@@ -91,17 +91,17 @@ function run(root, ...args) {
 // awk -v reads its value as a string literal: `\d` became `d` and `\t` a tab,
 // so the recorded command no longer matched settings.md and --check said
 // NO EVIDENCE.
-const command = String.raw`true pola \d+ di C:\temp`;
+const command = String.raw`true pattern \d+ in C:\temp`;
 
 for (const [where, notes] of [
   ['the first note, replacing "(none yet)"', '(none yet)'],
-  ['a note after earlier ones', '- 2026-10-16 20:00:01: catatan lain'],
+  ['a note after earlier ones', '- 2026-10-16 20:00:01: another note'],
 ]) {
   test(`a test_command with backslashes is recorded whole as ${where}, and --check accepts it`, () => {
     const root = repo(command, notes);
     const r = run(root, A);
     assert.equal(r.code, 0, r.err);
-    const file = path.join(root, '.kerjaan', 'in_progress', `${A} Tiket.md`);
+    const file = path.join(root, '.kerjaan', 'in_progress', `${A} A ticket.md`);
     const rec = fs.readFileSync(file, 'utf8').split('\n').find((l) => l.includes(': test run — '));
     assert.ok(rec.includes(`\`${command}\` exited 0 `), rec);
     const chk = run(root, '--check', A);
@@ -113,35 +113,35 @@ for (const [where, notes] of [
 // The fingerprint covers untracked files too — the checks usually run before
 // anything is added to git — while ignored files and .kerjaan/ stay outside
 // it, and building it never touches the real index.
-const ticketFile = (root) => path.join(root, '.kerjaan', 'in_progress', `${A} Tiket.md`);
+const ticketFile = (root) => path.join(root, '.kerjaan', 'in_progress', `${A} A ticket.md`);
 const records = (root) => fs.readFileSync(ticketFile(root), 'utf8').split('\n').filter((l) => l.includes(': test run — '));
 
 test('an untracked file is part of what the run vouches for: changing it, or adding one, is DIFFERENT', () => {
   const root = repo('true', '(none yet)');
-  fs.writeFileSync(path.join(root, 'baru.js'), 'satu\n');
+  fs.writeFileSync(path.join(root, 'new.js'), 'one\n');
   assert.equal(run(root, A).code, 0);
   assert.match(records(root)[0], /on content fingerprint [0-9a-f]{40,64} \(the same before and after the run/);
-  assert.equal(git(root, 'status', '--porcelain', '--', 'baru.js'), '?? baru.js', 'the real index is not touched');
+  assert.equal(git(root, 'status', '--porcelain', '--', 'new.js'), '?? new.js', 'the real index is not touched');
   let chk = run(root, '--check', A);
   assert.equal(chk.code, 0, chk.out);
 
-  fs.writeFileSync(path.join(root, 'baru.js'), 'dua\n');
+  fs.writeFileSync(path.join(root, 'new.js'), 'two\n');
   chk = run(root, '--check', A);
   assert.equal(chk.code, 1, chk.out);
   assert.match(chk.out, /^DIFFERENT: /);
-  assert.match(chk.out, /\n {2}M\tbaru\.js\n/);
+  assert.match(chk.out, /\n {2}M\tnew\.js\n/);
 
-  fs.writeFileSync(path.join(root, 'baru.js'), 'satu\n');
-  fs.writeFileSync(path.join(root, 'lain.js'), 'x\n');
+  fs.writeFileSync(path.join(root, 'new.js'), 'one\n');
+  fs.writeFileSync(path.join(root, 'other.js'), 'x\n');
   chk = run(root, '--check', A);
   assert.equal(chk.code, 1, chk.out);
-  assert.match(chk.out, /\n {2}A\tlain\.js\n/);
+  assert.match(chk.out, /\n {2}A\tother\.js\n/);
 
-  fs.rmSync(path.join(root, 'lain.js'));
-  fs.rmSync(path.join(root, 'baru.js'));
+  fs.rmSync(path.join(root, 'other.js'));
+  fs.rmSync(path.join(root, 'new.js'));
   chk = run(root, '--check', A);
   assert.equal(chk.code, 1, chk.out);
-  assert.match(chk.out, /\n {2}D\tbaru\.js\n/);
+  assert.match(chk.out, /\n {2}D\tnew\.js\n/);
 });
 
 test('ignored files and the board are outside the fingerprint', () => {
@@ -150,8 +150,8 @@ test('ignored files and the board are outside the fingerprint', () => {
   git(root, 'add', '.gitignore');
   git(root, 'commit', '-q', '-m', 'abaikan log');
   assert.equal(run(root, A).code, 0);
-  fs.writeFileSync(path.join(root, 'jejak.log'), 'apa saja\n');
-  fs.writeFileSync(path.join(root, '.kerjaan', 'in_progress', '261016600002 Lain.md'), 'tiket lain\n');
+  fs.writeFileSync(path.join(root, 'trace.log'), 'anything\n');
+  fs.writeFileSync(path.join(root, '.kerjaan', 'in_progress', '261016600002 Another.md'), 'another ticket\n');
   const chk = run(root, '--check', A);
   assert.equal(chk.code, 0, chk.out);
   assert.match(chk.out, /^SAME: /);
@@ -161,8 +161,8 @@ test('ignored files and the board are outside the fingerprint', () => {
 // record says what changed, the exit status is still the command's own, and
 // --check gives NO EVIDENCE.
 for (const [what, setup, cmd, changed] of [
-  ['writes a new untracked file', () => {}, 'echo x > ditulis.js; exit 3', 'ditulis.js'],
-  ['edits an untracked file that was there before', (root) => fs.writeFileSync(path.join(root, 'baru.js'), 'a\n'), 'echo b >> baru.js; exit 3', 'baru.js'],
+  ['writes a new untracked file', () => {}, 'echo x > written.js; exit 3', 'written.js'],
+  ['edits an untracked file that was there before', (root) => fs.writeFileSync(path.join(root, 'new.js'), 'a\n'), 'echo b >> new.js; exit 3', 'new.js'],
   ['edits a tracked file', () => {}, 'echo b >> a.js; exit 3', 'a.js'],
   ['deletes a tracked file', () => {}, 'rm a.js; exit 3', 'a.js'],
 ]) {
@@ -184,7 +184,7 @@ for (const [what, setup, cmd, changed] of [
 }
 
 test('a run that writes only ignored files keeps its fingerprint', () => {
-  const root = repo('echo x > hasil.log', '(none yet)');
+  const root = repo('echo x > result.log', '(none yet)');
   fs.writeFileSync(path.join(root, '.gitignore'), '*.log\n');
   git(root, 'add', '.gitignore');
   git(root, 'commit', '-q', '-m', 'abaikan log');
@@ -194,7 +194,7 @@ test('a run that writes only ignored files keeps its fingerprint', () => {
 });
 
 test('a later clean run supersedes one whose content changed', () => {
-  const root = repo('test -e ditulis.js || echo x > ditulis.js', '(none yet)');
+  const root = repo('test -e written.js || echo x > written.js', '(none yet)');
   assert.equal(run(root, A).code, 0);
   assert.equal(run(root, '--check', A).code, 2);
   assert.equal(run(root, A).code, 0);

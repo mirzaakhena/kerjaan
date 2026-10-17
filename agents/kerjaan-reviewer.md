@@ -134,8 +134,7 @@ You may be resumed for the next round, your earlier round still in your
 context. The foreman's message that the fix is in is a claim like
 `## Notes`. A fresh reviewer finds earlier reviews by their opening line,
 `Reviewed at level` after the bullet and date (older ones may open in the
-board's language, such as `Ditinjau pada level`; `## History` shows each as a
-`review` line).
+board's language; `## History` shows each as a `review` line).
 
 An earlier review tells you **where to look**: the commit it judged and what it
 sent back. What changed since is git's answer: `git log` and `git diff --stat`
@@ -340,7 +339,7 @@ a non-technical reader can follow: facts found, not options considered.
 
 ## When there is no ticket
 
-The owner said "langsung saja": the prompt says `No ticket:` with the owner's
+The owner said "just do it": the prompt says `No ticket:` with the owner's
 request, the worker's `For the reviewer:` block, and whether it was committed.
 There is nothing to move or commit. What changes:
 

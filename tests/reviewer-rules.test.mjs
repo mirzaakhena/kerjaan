@@ -1,9 +1,10 @@
 // The reviewer's rules each have one place (261016141910): the definition of
 // the reviewer stays short, the table of review levels is written once (in
 // the reviewer's definition), the other documents point at it instead of
-// copying it, the explanation in docs/ explains without restating rules, and
-// the case of a ticket branch already merged before review is gone, since a
-// branch is merged only after its ticket is done.
+// copying it, the case of a ticket branch already merged before review is
+// gone, since a branch is merged only after its ticket is done, and the
+// separate explanation of the reviewer that once sat in docs/ is gone with
+// every pointer to it (261017184401).
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -19,12 +20,11 @@ const words = (t) => t.split(/\s+/).filter(Boolean).length;
 
 const REVIEWER = 'agents/kerjaan-reviewer.md';
 const REVIEW = 'skills/kerjaan/references/review.md';
-const EXPLAINER = 'docs/cara-kerja-reviewer.md';
 
 // Every document a person or an agent reads for the rules.
 const mdIn = (dir) => fs.readdirSync(path.join(root, dir))
   .filter((f) => f.endsWith('.md')).map((f) => `${dir}/${f}`);
-const allDocs = ['README.md', 'skills/kerjaan/SKILL.md', ...mdIn('skills/kerjaan/references'), ...mdIn('agents'), ...mdIn('docs')];
+const allDocs = ['README.md', 'skills/kerjaan/SKILL.md', ...mdIn('skills/kerjaan/references'), ...mdIn('agents')];
 
 const headings = (t) => [...t.matchAll(/^#{2,4} (.+)$/gm)].map((m) => m[1].trim());
 
@@ -41,7 +41,6 @@ for (const file of allDocs) {
   test(`the table of review levels is only in the reviewer definition: ${file}`, () => {
     const text = read(file);
     const hasTable = levelRow.test(text) || levelHeader.test(text);
-    // The Indonesian explainer once used `Level` rows such as "| `quick` (bawaan) |".
     assert.equal(hasTable, file === REVIEWER, `${file} ${hasTable ? 'holds' : 'lacks'} a table of review levels`);
   });
 }
@@ -58,29 +57,20 @@ test('the reviewer\'s table covers every level, and every row of it names all th
 
 // Every document that mentions what a level does points at the table, by the
 // heading the reviewer definition actually has.
-for (const file of [REVIEW, 'README.md', EXPLAINER]) {
+for (const file of [REVIEW, 'README.md']) {
   test(`${file} points at the reviewer's table instead of copying it`, () => {
     assert.ok(headings(read(REVIEWER)).includes('How thorough to be'));
-    assert.match(flat(read(file)), /kerjaan-reviewer\.md`?\]?(\([^)]*\))?,? (bagian )?"How thorough to\s?be"|"How thorough to be"/);
+    assert.match(flat(read(file)), /kerjaan-reviewer\.md`?\]?(\([^)]*\))?,? "How thorough to\s?be"|"How thorough to be"/);
     assert.match(read(file), /kerjaan-reviewer\.md/);
   });
 }
 
-test('the explainer in docs/ names only sections that the reviewer definition has', () => {
-  const text = read(EXPLAINER);
-  const named = [...flat(text).matchAll(/bagian "([^"]+)"/g)].map((m) => m[1]);
-  assert.ok(named.length >= 3, `too few references: ${named}`);
-  const have = headings(read(REVIEWER));
-  for (const name of named) assert.ok(have.includes(name), `no section "${name}" in ${REVIEWER}`);
-});
-
-test('the explainer in docs/ explains without restating the reviewer\'s rules', () => {
-  const text = read(EXPLAINER);
-  assert.match(text, /tidak memuat\s+aturan/);
-  // The three answers of test-run.sh --check, the commands, the levels'
-  // escalation and round rules belong to the reviewer definition.
-  for (const rule of [/\bSAME\b/, /DIFFERENT/, /NO EVIDENCE/, /test-run\.sh --check/, /cp -cR/, /merge postponed/, /Baris pembuka/, /Batas putaran/, /`normal`/]) {
-    assert.doesNotMatch(text, rule, `the explainer restates ${rule}`);
+// The plugin ships no docs/ folder any more; a pointer to one would lead
+// nowhere. A web address such as docs.claude.com is not a pointer to it.
+test('there is no docs/ folder, and no document points into one', () => {
+  assert.equal(fs.existsSync(path.join(root, 'docs')), false, 'docs/ exists');
+  for (const file of allDocs) {
+    assert.doesNotMatch(read(file), /(^|[^\w./-])docs\//m, `${file} points into docs/`);
   }
 });
 

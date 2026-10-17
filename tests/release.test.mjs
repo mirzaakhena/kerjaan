@@ -22,10 +22,10 @@ const D = '261016500004';
 
 const gitEnv = {
   ...process.env,
-  GIT_AUTHOR_NAME: 'Uji',
-  GIT_AUTHOR_EMAIL: 'uji@example.com',
-  GIT_COMMITTER_NAME: 'Uji',
-  GIT_COMMITTER_EMAIL: 'uji@example.com',
+  GIT_AUTHOR_NAME: 'Test',
+  GIT_AUTHOR_EMAIL: 'test@example.com',
+  GIT_COMMITTER_NAME: 'Test',
+  GIT_COMMITTER_EMAIL: 'test@example.com',
 };
 
 function git(root, ...args) {
@@ -45,7 +45,7 @@ function repo() {
   }
   fs.writeFileSync(path.join(root, 'a.js'), 'a\n');
   git(root, 'add', '-A');
-  git(root, 'commit', '-q', '-m', 'awal');
+  git(root, 'commit', '-q', '-m', 'initial');
   return root;
 }
 
@@ -60,8 +60,8 @@ function ticket(root, id, status) {
     const dir = path.join(root, '.kerjaan', s);
     for (const n of fs.readdirSync(dir)) if (n.startsWith(`${id} `)) fs.rmSync(path.join(dir, n));
   }
-  fs.writeFileSync(path.join(root, '.kerjaan', status, `${id} Tiket ${id}.md`), `---\ntype: task\n---\n\n## Notes\n(none yet)\n`);
-  commitAll(root, `Papan: ${id} ke ${status}`);
+  fs.writeFileSync(path.join(root, '.kerjaan', status, `${id} Ticket ${id}.md`), `---\ntype: task\n---\n\n## Notes\n(none yet)\n`);
+  commitAll(root, `Board: ${id} to ${status}`);
 }
 
 // Code written for a ticket: a commit outside .kerjaan/ naming its ID.
@@ -104,16 +104,16 @@ test('plugin.json version: tickets done before the release are carried, those do
   code(root, A);
   ticket(root, A, 'done');
   manifest(root, '.claude-plugin/plugin.json', '1.1.0');
-  commitAll(root, 'Release 1.1.0\nIsi rilis.');
+  commitAll(root, 'Release 1.1.0\nWhat the release holds.');
   code(root, B);
   ticket(root, B, 'done');
   ticket(root, C, 'done'); // no code of its own
   const r = run(root, 'unreleased');
   assert.equal(r.code, 0, r.err);
   assert.match(r.out, /^LAST RELEASE: [0-9a-f]+ Release 1\.1\.0$/m);
-  assert.doesNotMatch(r.out, /Isi rilis/);
+  assert.doesNotMatch(r.out, /What the release holds/);
   assert.match(r.out, /^UNRELEASED: 2$/m);
-  assert.deepEqual(listed(r.out), [`${B} Tiket ${B}`, `${C} Tiket ${C} (board only)`]);
+  assert.deepEqual(listed(r.out), [`${B} Ticket ${B}`, `${C} Ticket ${C} (board only)`]);
 });
 
 test('a ticket the release message names is carried even though it reached done afterwards', () => {
@@ -121,21 +121,21 @@ test('a ticket the release message names is carried even though it reached done 
   manifest(root, '.claude-plugin/plugin.json', '1.0.0');
   code(root, A);
   ticket(root, A, 'in_progress');
-  commitAll(root, `Release 1.0.0\nMemuat 261016499999 dan ${A}.`);
+  commitAll(root, `Release 1.0.0\nCarries 261016499999 and ${A}.`);
   ticket(root, A, 'done');
   ticket(root, B, 'done');
   const r = run(root, 'unreleased');
   assert.equal(r.code, 0, r.err);
-  assert.deepEqual(listed(r.out), [`${B} Tiket ${B} (board only)`]);
+  assert.deepEqual(listed(r.out), [`${B} Ticket ${B} (board only)`]);
 });
 
 test('a longer number that only contains an ID does not count as naming it', () => {
   const root = repo();
   manifest(root, '.claude-plugin/plugin.json', '1.0.0');
-  commitAll(root, `Release 1.0.0\nlihat 9${A} dan ${A}7`);
+  commitAll(root, `Release 1.0.0\nsee 9${A} and ${A}7`);
   code(root, A);
   ticket(root, A, 'done');
-  assert.deepEqual(listed(run(root, 'unreleased').out), [`${A} Tiket ${A}`]);
+  assert.deepEqual(listed(run(root, 'unreleased').out), [`${A} Ticket ${A}`]);
 });
 
 test('a manifest change that leaves the version alone is not a release', () => {
@@ -144,25 +144,25 @@ test('a manifest change that leaves the version alone is not a release', () => {
   commitAll(root, 'Release 1.0.0');
   ticket(root, A, 'done');
   fs.writeFileSync(path.join(root, '.claude-plugin', 'plugin.json'), '{\n  "name": "y",\n  "version": "1.0.0"\n}\n');
-  commitAll(root, 'ganti nama');
+  commitAll(root, 'rename');
   const r = run(root, 'unreleased');
   assert.match(r.out, /^LAST RELEASE: [0-9a-f]+ Release 1\.0\.0$/m);
-  assert.deepEqual(listed(r.out), [`${A} Tiket ${A} (board only)`]);
+  assert.deepEqual(listed(r.out), [`${A} Ticket ${A} (board only)`]);
 });
 
 for (const file of ['package.json', 'pyproject.toml', 'Cargo.toml', '.claude-plugin/plugin.json']) {
   test(`${file}: a version change there marks the release`, () => {
     const root = repo();
     manifest(root, file, '0.1.0');
-    commitAll(root, 'versi awal');
+    commitAll(root, 'first version');
     ticket(root, A, 'done');
     manifest(root, file, '0.2.0');
-    commitAll(root, 'Rilis 0.2.0');
+    commitAll(root, 'Version 0.2.0');
     ticket(root, B, 'done');
     const r = run(root, 'unreleased');
     assert.equal(r.code, 0, r.err);
-    assert.match(r.out, /^LAST RELEASE: [0-9a-f]+ Rilis 0\.2\.0$/m);
-    assert.deepEqual(listed(r.out), [`${B} Tiket ${B} (board only)`]);
+    assert.match(r.out, /^LAST RELEASE: [0-9a-f]+ Version 0\.2\.0$/m);
+    assert.deepEqual(listed(r.out), [`${B} Ticket ${B} (board only)`]);
   });
 }
 
@@ -176,7 +176,7 @@ test('a tag newer than the last version change is the release', () => {
   ticket(root, B, 'done');
   const r = run(root, 'unreleased');
   assert.match(r.out, /^LAST RELEASE: [0-9a-f]+ siap$/m);
-  assert.deepEqual(listed(r.out), [`${B} Tiket ${B} (board only)`]);
+  assert.deepEqual(listed(r.out), [`${B} Ticket ${B} (board only)`]);
 });
 
 test('a version change newer than the last tag is the release', () => {
@@ -186,8 +186,8 @@ test('a version change newer than the last tag is the release', () => {
   ticket(root, A, 'done'); // committed together with the version
   ticket(root, B, 'done');
   const r = run(root, 'unreleased');
-  assert.match(r.out, /^LAST RELEASE: [0-9a-f]+ Papan: 261016500001 ke done$/m);
-  assert.deepEqual(listed(r.out), [`${B} Tiket ${B} (board only)`]);
+  assert.match(r.out, /^LAST RELEASE: [0-9a-f]+ Board: 261016500001 to done$/m);
+  assert.deepEqual(listed(r.out), [`${B} Ticket ${B} (board only)`]);
 });
 
 test('a tag alone, with no manifest, is enough', () => {
@@ -195,7 +195,7 @@ test('a tag alone, with no manifest, is enough', () => {
   ticket(root, A, 'done');
   git(root, 'tag', 'v1');
   ticket(root, B, 'done');
-  assert.deepEqual(listed(run(root, 'unreleased').out), [`${B} Tiket ${B} (board only)`]);
+  assert.deepEqual(listed(run(root, 'unreleased').out), [`${B} Ticket ${B} (board only)`]);
 });
 
 test('every finished ticket released: UNRELEASED: none; tickets not in done are never named', () => {
@@ -215,7 +215,7 @@ test('every finished ticket released: UNRELEASED: none; tickets not in done are 
 test('misuse and the wrong place: exit 2', () => {
   const root = repo();
   assert.equal(run(root).code, 2);
-  assert.equal(run(root, 'lain').code, 2);
+  assert.equal(run(root, 'other').code, 2);
   assert.equal(run(root, 'unreleased', 'lagi').code, 2);
   const wt = path.join(fs.realpathSync(os.tmpdir()), `kerjaan-release-wt-${process.pid}-${Date.now()}`);
   git(root, 'worktree', 'add', '-q', '-b', 'samping', wt);

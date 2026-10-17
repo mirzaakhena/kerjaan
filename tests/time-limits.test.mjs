@@ -30,8 +30,8 @@ const command = settings.match(/^test_command:\s*(.*)$/m)?.[1].trim() ?? '';
 const HANGING = `
 import test from 'node:test';
 import http from 'node:http';
-test('sehat', () => {});
-test('macet', async () => {
+test('healthy', () => {});
+test('stuck', async () => {
   const server = http.createServer(() => {});
   await new Promise((r) => server.listen(0, '127.0.0.1', r));
   await new Promise(() => {});
@@ -44,7 +44,7 @@ test('macet', async () => {
 const LEAKING = `
 import test from 'node:test';
 import http from 'node:http';
-test('gagal, server tertinggal', async () => {
+test('failed, server left open', async () => {
   const server = http.createServer(() => {});
   await new Promise((r) => server.listen(0, '127.0.0.1', r));
   throw new Error('ENOTEMPTY');
@@ -54,9 +54,9 @@ test('gagal, server tertinggal', async () => {
 // Runs test_command on one throwaway test file, its time limit set to
 // `limitMs`; resolves { code, out, ms }, or { hung } after `giveUpMs`.
 async function runCommand(source, limitMs, giveUpMs) {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'kerjaan-batas-'));
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'kerjaan-limit-'));
   try {
-    fs.writeFileSync(path.join(dir, 'contoh.test.mjs'), source);
+    fs.writeFileSync(path.join(dir, 'sample.test.mjs'), source);
     const args = command.split(/\s+/).slice(1).map((a) => (a.startsWith('--test-timeout=') ? `--test-timeout=${limitMs}` : a));
     // Without this variable the inner run believes it is part of this one.
     const env = { ...process.env };
@@ -79,29 +79,29 @@ async function runCommand(source, limitMs, giveUpMs) {
   }
 }
 
-test('test_command memakai node --test dengan batas waktu dan keluar paksa', () => {
+test('test_command uses node --test with a time limit and a forced exit', () => {
   const args = command.split(/\s+/);
   assert.deepEqual(args.slice(0, 2), ['node', '--test'], command);
-  assert.ok(args.some((a) => /^--test-timeout=\d+$/.test(a)), `tanpa --test-timeout: ${command}`);
-  assert.ok(args.includes('--test-force-exit'), `tanpa --test-force-exit: ${command}`);
+  assert.ok(args.some((a) => /^--test-timeout=\d+$/.test(a)), `no --test-timeout: ${command}`);
+  assert.ok(args.includes('--test-force-exit'), `no --test-force-exit: ${command}`);
 });
 
-test('uji yang macet dihentikan batas waktu, dilaporkan gagal, dan rangkaian uji selesai', async () => {
+test('a stuck test is stopped by the time limit, reported failed, and the suite finishes', async () => {
   const r = await runCommand(HANGING, 1500, 60000);
-  assert.equal(r.hung, undefined, `rangkaian uji tidak selesai dalam 60 detik:\n${r.out}`);
+  assert.equal(r.hung, undefined, `the suite did not finish within 60 seconds:\n${r.out}`);
   assert.notEqual(r.code, 0, r.out);
   // Reported as the test or as its file, whichever limit node reaches first.
-  assert.match(r.out, /not ok \d+ - (macet|contoh\.test\.mjs)\n/);
+  assert.match(r.out, /not ok \d+ - (stuck|sample\.test\.mjs)\n/);
   assert.match(r.out, /timed out after 1500ms/);
-  assert.match(r.out, /^ok \d+ - sehat/m);
+  assert.match(r.out, /^ok \d+ - healthy/m);
 });
 
-test('uji yang gagal dengan server masih terbuka tetap selesai tanpa menunggu batas waktu', async () => {
+test('a failed test with a server still open finishes without waiting for the time limit', async () => {
   // A limit far longer than the run may take: only leaving at once passes.
   const r = await runCommand(LEAKING, 45000, 60000);
-  assert.equal(r.hung, undefined, `rangkaian uji tidak selesai dalam 60 detik:\n${r.out}`);
+  assert.equal(r.hung, undefined, `the suite did not finish within 60 seconds:\n${r.out}`);
   assert.notEqual(r.code, 0, r.out);
-  assert.match(r.out, /not ok \d+ - gagal, server tertinggal/);
+  assert.match(r.out, /not ok \d+ - failed, server left open/);
   assert.doesNotMatch(r.out, /timed out/);
-  assert.ok(r.ms < 30000, `baru selesai setelah ${r.ms} ms`);
+  assert.ok(r.ms < 30000, `finished only after ${r.ms} ms`);
 });

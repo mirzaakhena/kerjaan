@@ -20,7 +20,7 @@ const size = path.join(scripts, 'ticket-size.sh');
 const id = '261013210001';
 
 const items = (n, mark = ' ') =>
-  Array.from({ length: n }, (_, i) => `- [${mark}] Butir ke-${i + 1} bisa dicoba sendiri`).join('\n');
+  Array.from({ length: n }, (_, i) => `- [${mark}] Item ${i + 1} can be tried on its own`).join('\n');
 
 function ticket({ doneWhen, notes = '(none yet)' }) {
   return `---
@@ -37,10 +37,10 @@ blocked_by: []
 ---
 
 ## Background
-Sesuatu.
+Something.
 
 ## Request
-Sesuatu.
+Something.
 
 ## Done when
 ${doneWhen}
@@ -60,7 +60,7 @@ function board({ status = 'backlog', settings, ...t }) {
     fs.mkdirSync(path.join(k, s), { recursive: true });
   }
   if (settings !== undefined) fs.writeFileSync(path.join(k, 'settings.md'), settings);
-  const file = path.join(k, status, `${id} Layar kategori.md`);
+  const file = path.join(k, status, `${id} Category screen.md`);
   if (t.doneWhen !== undefined) fs.writeFileSync(file, ticket(t));
   return { root, file };
 }
@@ -71,7 +71,7 @@ function run(script, root, ...args) {
 }
 
 const settingsWith = (line) => `---
-language: Bahasa Indonesia
+language: English
 test_command:
 long_lived_branches: []
 ${line}
@@ -129,7 +129,7 @@ test('a start (move to in_progress) warns, and the move still happens', () => {
 
 test('a rename warns too: every update goes through the check', () => {
   const { root } = board({ doneWhen: items(9) });
-  const r = run(update, root, id, '--title', 'Layar kategori baru');
+  const r = run(update, root, id, '--title', 'New category screen');
   assert.equal(r.code, 0);
   assert.match(r.err, /has 9 "Done when" items/);
 });
@@ -157,7 +157,7 @@ test('new-ticket.sh runs the check: a template with standing criteria over the l
   fs.writeFileSync(path.join(skill, 'TEMPLATE.md'), template);
   const repo = path.join(root, 'repo');
   fs.mkdirSync(repo);
-  const r = run(path.join(skill, 'scripts', 'new-ticket.sh'), repo, 'backlog', 'Tiket besar');
+  const r = run(path.join(skill, 'scripts', 'new-ticket.sh'), repo, 'backlog', 'A big ticket');
   assert.equal(r.code, 0, r.err);
   assert.match(r.err, /has 9 "Done when" items, over this board's limit of 8/);
   assert.ok(fs.existsSync(r.out.trim()), 'the ticket was created');
@@ -165,7 +165,7 @@ test('new-ticket.sh runs the check: a template with standing criteria over the l
 
 test('new-ticket.sh with the real template: no warning', () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'kerjaan-size-new-'));
-  const r = run(create, root, 'backlog', 'Tiket kosong');
+  const r = run(create, root, 'backlog', 'An empty ticket');
   assert.equal(r.code, 0, r.err);
   assert.ok(!warned(r.err), r.err);
 });
@@ -174,20 +174,20 @@ test('new-ticket.sh with the real template: no warning', () => {
 
 test('continuation lines and sub-bullets belong to the item above and are not counted', () => {
   const doneWhen = Array.from({ length: 8 }, (_, i) =>
-    `- [ ] Butir ${i + 1} yang panjang\n      dan berlanjut ke baris kedua\n  - [ ] rincian di bawahnya`).join('\n');
+    `- [ ] Item ${i + 1} that is long\n      and goes on to a second line\n  - [ ] a detail under it`).join('\n');
   const { root } = board({ doneWhen });
   assert.ok(!warned(run(update, root, id).err));
 });
 
 test('struck items (voided or moved to another ticket) are not counted', () => {
-  const doneWhen = items(8) + '\n- [ ] ~~Butir yang dipindah~~ — pindah ke 261013210002\n- [x] ~~Butir lain~~ — dibatalkan';
+  const doneWhen = items(8) + '\n- [ ] ~~An item moved~~ — moved to 261013210002\n- [x] ~~Another item~~ — voided';
   const { root } = board({ doneWhen });
   assert.ok(!warned(run(update, root, id).err));
 });
 
 test('checkboxes in a fenced block, or outside Done when, are not counted', () => {
   const doneWhen = items(8) + '\n\n```markdown\n' + items(5) + '\n```';
-  const notes = 'Contoh:\n' + items(5);
+  const notes = 'An example:\n' + items(5);
   const { root } = board({ doneWhen, notes });
   assert.ok(!warned(run(update, root, id).err));
 });
@@ -216,10 +216,10 @@ test('--accept-size records the decision in Notes, and the warning stops for tha
 });
 
 test('--accept-size appends after earlier notes rather than replacing them', () => {
-  const { root, file } = board({ doneWhen: items(12), notes: '- Catatan lama.' });
+  const { root, file } = board({ doneWhen: items(12), notes: '- An earlier note.' });
   run(update, root, id, '--accept-size');
   const text = fs.readFileSync(file, 'utf8');
-  assert.match(text, /- Catatan lama\.\n- .*size accepted by the owner/);
+  assert.match(text, /- An earlier note\.\n- .*size accepted by the owner/);
 });
 
 // Only the sentence --accept-size writes, after its time stamp, is the owner's
@@ -228,7 +228,7 @@ test('--accept-size appends after earlier notes rather than replacing them', () 
 const SENTENCE = 'size accepted by the owner with --accept-size: this ticket stays whole although its "Done when" list is over the board\'s limit.';
 
 test('the exact sentence --accept-size writes, written by hand with its time stamp, counts', () => {
-  for (const notes of [`- 2026-10-13 21:05:00: ${SENTENCE}`, `- Catatan lama.\n- 2026-10-13 21:05:00: ${SENTENCE}  `]) {
+  for (const notes of [`- 2026-10-13 21:05:00: ${SENTENCE}`, `- An earlier note.\n- 2026-10-13 21:05:00: ${SENTENCE}  `]) {
     const { root } = board({ doneWhen: items(12), notes });
     assert.ok(!warned(run(update, root, id).err), notes);
   }
@@ -236,13 +236,13 @@ test('the exact sentence --accept-size writes, written by hand with its time sta
 
 test('a line that only mentions the acceptance, or denies it, does not stop the warning', () => {
   for (const notes of [
-    '- Keputusan mirza, 2026-10-13: tiket ini tetap utuh (size accepted by the owner).', // a paraphrase
+    '- Decided by mirza, 2026-10-13: this ticket stays whole (size accepted by the owner).', // a paraphrase
     '- size accepted by the owner',                                                      // the phrase alone
     '- 2026-10-13 21:05:00: size accepted by the owner',                                 // cut short
-    '- 2026-10-13 21:05:00: size NOT accepted by the owner: pecah dulu.',                 // a denial
-    '- 2026-10-13 21:05:00: is the size accepted by the owner? Belum.',                  // a question
+    '- 2026-10-13 21:05:00: size NOT accepted by the owner: split it first.',            // a denial
+    '- 2026-10-13 21:05:00: is the size accepted by the owner? Not yet.',                // a question
     `- 2026-10-13 21:05:00: no, ${SENTENCE}`,                                            // a denial in front
-    `- 2026-10-13 21:05:00: ${SENTENCE} Dibatalkan: pemilik minta dipecah.`,             // withdrawn after
+    `- 2026-10-13 21:05:00: ${SENTENCE} Withdrawn: the owner asked for a split.`,       // withdrawn after
     `- ${SENTENCE}`,                                                                     // no time stamp
     `  - 2026-10-13 21:05:00: ${SENTENCE}`,                                              // a sub-bullet quoting it
   ]) {
@@ -254,7 +254,7 @@ test('a line that only mentions the acceptance, or denies it, does not stop the 
 test('the acceptance phrase only counts at the start of a bullet in Notes', () => {
   for (const notes of [
     '```\n- size accepted by the owner\n```',              // a quoted example
-    'Kalau pemilik setuju, tulis: size accepted by the owner', // prose, not a record
+    'If the owner agrees, write: size accepted by the owner', // prose, not a record
   ]) {
     const { root } = board({ doneWhen: items(12), notes });
     assert.match(run(update, root, id).err, /has 12 "Done when" items/, notes);
@@ -262,7 +262,7 @@ test('the acceptance phrase only counts at the start of a bullet in Notes', () =
   // In Background rather than Notes: not a decision either.
   const { root, file } = board({ doneWhen: items(12) });
   fs.writeFileSync(file, fs.readFileSync(file, 'utf8')
-    .replace('## Background\nSesuatu.', '## Background\n- size accepted by the owner'));
+    .replace('## Background\nSomething.', '## Background\n- size accepted by the owner'));
   assert.match(run(update, root, id).err, /has 12 "Done when" items/);
 });
 

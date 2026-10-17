@@ -6,7 +6,7 @@
 // moved and holding only that ticket for the owner when the merge fails.
 //
 // Every test builds a throwaway repository with a board and a tiny "program":
-// kode.txt defines names, pakai*.txt use them, and cek.sh — the test command —
+// code.txt defines names, uses*.txt use them, and check.sh — the test command —
 // fails when a name is used but not defined. Renaming a name in one ticket and
 // using the old name in another is the break git cannot see.
 
@@ -31,10 +31,10 @@ const C = '261016300003';
 const D = '261016300004';
 
 const gitEnv = {
-  GIT_AUTHOR_NAME: 'Uji',
-  GIT_AUTHOR_EMAIL: 'uji@example.com',
-  GIT_COMMITTER_NAME: 'Uji',
-  GIT_COMMITTER_EMAIL: 'uji@example.com',
+  GIT_AUTHOR_NAME: 'Test',
+  GIT_AUTHOR_EMAIL: 'test@example.com',
+  GIT_COMMITTER_NAME: 'Test',
+  GIT_COMMITTER_EMAIL: 'test@example.com',
   KERJAAN_LOCK_POLL: '0.2',
 };
 
@@ -53,13 +53,13 @@ blocked_by: [${blockedBy.join(', ')}]
 ---
 
 ## Background
-Sesuatu.
+Something.
 
 ## Request
 ${title}.
 
 ## Done when
-- [ ] Sesuatu bisa dicoba.
+- [ ] Something can be tried.
 
 ## History
 - 2026-10-16 20:00:00 in_progress
@@ -69,11 +69,11 @@ ${title}.
 `;
 }
 
-const cek = `#!/bin/sh
-for f in pakai*.txt; do
+const check = `#!/bin/sh
+for f in uses*.txt; do
   [ -e "$f" ] || continue
   while read -r n; do
-    grep -qx "def $n" kode.txt || { echo "$n dipakai di $f tetapi tidak didefinisikan"; exit 1; }
+    grep -qx "def $n" code.txt || { echo "$n is used in $f but not defined"; exit 1; }
   done < "$f"
 done
 `;
@@ -85,37 +85,37 @@ function git(cwd, ...args) {
 }
 
 // A repository with tickets A and B in in_progress, and C and D in todo (D is
-// blocked_by A). Every test run appends a line to luar/runs, so a test can
+// blocked_by A). Every test run appends a line to outside/runs, so a test can
 // count how often the suite really ran.
 function repo() {
   const base = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'kerjaan-merge-')));
   const root = path.join(base, 'repo');
-  const outside = path.join(base, 'luar');
+  const outside = path.join(base, 'outside');
   fs.mkdirSync(outside);
   const k = path.join(root, '.kerjaan');
   for (const s of ['backlog', 'todo', 'in_progress', 'review', 'done', 'cancel']) {
     fs.mkdirSync(path.join(k, s), { recursive: true });
   }
   const runs = path.join(outside, 'runs');
-  const urut = path.join(outside, 'urut');
+  const sequence = path.join(outside, 'sequence');
   fs.writeFileSync(path.join(k, 'settings.md'), `---
-language: Bahasa Indonesia
-test_command: echo "$KERJAAN_TICKET" >> ${JSON.stringify(runs)} && echo "mulai $KERJAAN_TICKET" >> ${JSON.stringify(urut)} && sh cek.sh && sleep $\{UJI_TIDUR:-0} && echo "akhir $KERJAAN_TICKET" >> ${JSON.stringify(urut)} && [ -z "$UJI_GAGAL" ]
+language: English
+test_command: echo "$KERJAAN_TICKET" >> ${JSON.stringify(runs)} && echo "start $KERJAAN_TICKET" >> ${JSON.stringify(sequence)} && sh check.sh && sleep $\{TEST_SLEEP:-0} && echo "end $KERJAAN_TICKET" >> ${JSON.stringify(sequence)} && [ -z "$TEST_FAIL" ]
 long_lived_branches: []
 ---
 `);
-  fs.writeFileSync(path.join(k, 'in_progress', `${A} Tiket pertama.md`), ticket('Tiket pertama'));
-  fs.writeFileSync(path.join(k, 'in_progress', `${B} Tiket kedua.md`), ticket('Tiket kedua'));
-  fs.writeFileSync(path.join(k, 'todo', `${C} Tiket ketiga.md`), ticket('Tiket ketiga'));
-  fs.writeFileSync(path.join(k, 'todo', `${D} Tiket keempat.md`), ticket('Tiket keempat', [A]));
-  fs.writeFileSync(path.join(root, 'kode.txt'), 'def satu\ndef dua\n');
-  fs.writeFileSync(path.join(root, 'pakai.txt'), 'satu\n');
-  fs.writeFileSync(path.join(root, 'cek.sh'), cek);
+  fs.writeFileSync(path.join(k, 'in_progress', `${A} First ticket.md`), ticket('First ticket'));
+  fs.writeFileSync(path.join(k, 'in_progress', `${B} Second ticket.md`), ticket('Second ticket'));
+  fs.writeFileSync(path.join(k, 'todo', `${C} Third ticket.md`), ticket('Third ticket'));
+  fs.writeFileSync(path.join(k, 'todo', `${D} Fourth ticket.md`), ticket('Fourth ticket', [A]));
+  fs.writeFileSync(path.join(root, 'code.txt'), 'def one\ndef two\n');
+  fs.writeFileSync(path.join(root, 'uses.txt'), 'one\n');
+  fs.writeFileSync(path.join(root, 'check.sh'), check);
   git(root, 'init', '-q');
   git(root, 'checkout', '-q', '-b', 'main');
   git(root, 'add', '-A');
-  git(root, 'commit', '-q', '-m', 'awal');
-  return { base, root, outside, k, runs, urut };
+  git(root, 'commit', '-q', '-m', 'initial');
+  return { base, root, outside, k, runs, sequence };
 }
 
 function run(script, cwd, args, env = {}) {
@@ -146,7 +146,7 @@ function add(r, id) {
 }
 
 // What a worker does in its worktree: change files, commit.
-function work(wt, files, msg = 'kerja') {
+function work(wt, files, msg = 'work') {
   for (const [name, body] of Object.entries(files)) fs.writeFileSync(path.join(wt, name), body);
   git(wt, 'add', '-A');
   git(wt, 'commit', '-q', '-m', msg);
@@ -183,15 +183,15 @@ function passReview(r, id) {
 
 // ---------------------------------------------------------------------------
 
-test('dua tiket yang mengubah baris yang sama berakhir di main dengan uji lulus, tanpa pemilik', () => {
+test('two tickets changing the same line end up in main with the tests passing, without the owner', () => {
   const r = repo();
   const wa = add(r, A);
   const wb = add(r, B);
 
-  // A renames satu to esa; B, at the same time, adds tiga right below satu
-  // and uses satu in a new file.
-  work(wa, { 'kode.txt': 'def esa\ndef dua\n', 'pakai.txt': 'esa\n' });
-  work(wb, { 'kode.txt': 'def satu\ndef tiga\ndef dua\n', 'pakai-b.txt': 'satu\ntiga\n' });
+  // A renames one to single; B, at the same time, adds three right below one
+  // and uses one in a new file.
+  work(wa, { 'code.txt': 'def single\ndef two\n', 'uses.txt': 'single\n' });
+  work(wb, { 'code.txt': 'def one\ndef three\ndef two\n', 'uses-b.txt': 'one\nthree\n' });
   for (const [wt, id] of [[wa, A], [wb, B]]) {
     const t = run(testRun, wt, [id]);
     assert.equal(t.code, 0, t.err);
@@ -212,23 +212,23 @@ test('dua tiket yang mengubah baris yang sama berakhir di main dengan uji lulus,
   assert.match(second.out, /MERGE POSTPONED: ticket 261016300002/);
   assert.equal(head(r), before, 'main changed although the second ticket was sent back');
   assert.equal(where(r, B), 'in_progress');
-  assert.match(notes(r, B), /merge postponed — main changed since tiket-261016300002 last took it in \(kode\.txt pakai\.txt\)/);
+  assert.match(notes(r, B), /merge postponed — main changed since ticket-261016300002 last took it in \(code\.txt uses\.txt\)/);
 
   // The worker brings main in, resolves the conflict, tests, commits.
   const sync = run(mergeSh, wb, ['sync', B]);
   assert.equal(sync.code, 1, sync.out + sync.err);
-  assert.match(sync.out, /CONFLICT: .*\n {2}kode\.txt/);
-  work(wb, { 'kode.txt': 'def esa\ndef tiga\ndef dua\n', 'pakai-b.txt': 'esa\ntiga\n' }, 'selesaikan tabrakan');
+  assert.match(sync.out, /CONFLICT: .*\n {2}code\.txt/);
+  work(wb, { 'code.txt': 'def single\ndef three\ndef two\n', 'uses-b.txt': 'single\nthree\n' }, 'resolve the conflict');
   assert.equal(run(testRun, wb, [B]).code, 0);
   toReview(r, B);
 
   // The re-review reads exactly how the conflict was resolved.
   const res = run(mergeSh, r.root, ['resolution', B]);
   assert.equal(res.code, 0, res.err);
-  assert.match(res.out, /^-<<<<<<< HEAD\n-def satu\n-def tiga\n-=======\n def esa\n->>>>>>> [0-9a-f]{40}\n\+def tiga$/m);
-  assert.match(res.out, /^-satu\n\+esa\n tiga$/m);
+  assert.match(res.out, /^-<<<<<<< HEAD\n-def one\n-def three\n-=======\n def single\n->>>>>>> [0-9a-f]{40}\n\+def three$/m);
+  assert.match(res.out, /^-one\n\+single\n three$/m);
   // What main brought in by itself is not part of it.
-  assert.deepEqual([...res.out.matchAll(/^diff --git a\/(\S+)/gm)].map((m) => m[1]), ['kode.txt', 'pakai-b.txt']);
+  assert.deepEqual([...res.out.matchAll(/^diff --git a\/(\S+)/gm)].map((m) => m[1]), ['code.txt', 'uses-b.txt']);
 
   passReview(r, B);
   const third = run(mergeSh, r.root, ['land', B]);
@@ -236,21 +236,21 @@ test('dua tiket yang mengubah baris yang sama berakhir di main dengan uji lulus,
   assert.match(third.out, /LANDED/);
 
   // Main holds both, and its tests pass.
-  assert.equal(show(r, 'HEAD', 'kode.txt'), 'def esa\ndef tiga\ndef dua\n');
-  const cekMain = spawnSync('sh', ['cek.sh'], { cwd: r.root, encoding: 'utf8' });
-  assert.equal(cekMain.status, 0, cekMain.stdout);
+  assert.equal(show(r, 'HEAD', 'code.txt'), 'def single\ndef three\ndef two\n');
+  const checkMain = spawnSync('sh', ['check.sh'], { cwd: r.root, encoding: 'utf8' });
+  assert.equal(checkMain.status, 0, checkMain.stdout);
   // Nobody acknowledged anything, and nothing is left behind.
   assert.doesNotMatch(notes(r, A) + notes(r, B), /ack-unmerged|held for the owner/);
-  assert.equal(git(r.root, 'branch', '--list', 'tiket-*'), '');
+  assert.equal(git(r.root, 'branch', '--list', 'ticket-*'), '');
   assert.equal(fs.existsSync(wa) || fs.existsSync(wb), false);
 });
 
-test('penyesuaian ulang yang tidak mengubah apa pun selain gabungan otomatis terbaca kosong bagi reviewer', () => {
+test('bringing up to date that changes nothing beyond the automatic merge reads as empty to the reviewer', () => {
   const r = repo();
   const wa = add(r, A);
   const wb = add(r, B);
-  work(wa, { 'kode.txt': 'def esa\ndef dua\n', 'pakai.txt': 'esa\n' });
-  work(wb, { 'pakai-b.txt': 'dua\n' });
+  work(wa, { 'code.txt': 'def single\ndef two\n', 'uses.txt': 'single\n' });
+  work(wb, { 'uses-b.txt': 'two\n' });
   for (const [wt, id] of [[wa, A], [wb, B]]) {
     assert.equal(run(testRun, wt, [id]).code, 0);
     toReview(r, id);
@@ -270,12 +270,12 @@ test('penyesuaian ulang yang tidak mengubah apa pun selain gabungan otomatis ter
   assert.doesNotMatch(res.out, /^diff /m);
 });
 
-test('penggabungan tanpa tabrakan teks yang membuat uji gagal tidak pernah masuk ke main', () => {
+test('a merge with no text conflict that makes the tests fail never reaches main', () => {
   const r = repo();
   const wa = add(r, A);
   const wb = add(r, B);
-  work(wa, { 'kode.txt': 'def esa\ndef dua\n', 'pakai.txt': 'esa\n' });
-  work(wb, { 'pakai-b.txt': 'satu\n' });
+  work(wa, { 'code.txt': 'def single\ndef two\n', 'uses.txt': 'single\n' });
+  work(wb, { 'uses-b.txt': 'one\n' });
   for (const [wt, id] of [[wa, A], [wb, B]]) {
     assert.equal(run(testRun, wt, [id]).code, 0);
     toReview(r, id);
@@ -288,7 +288,7 @@ test('penggabungan tanpa tabrakan teks yang membuat uji gagal tidak pernah masuk
   const land = run(mergeSh, r.root, ['land', B]);
   assert.equal(land.code, 3, land.out);
   assert.equal(head(r), afterA);
-  assert.throws(() => show(r, 'HEAD', 'pakai-b.txt'));
+  assert.throws(() => show(r, 'HEAD', 'uses-b.txt'));
 
   // Brought up to date, the branch merges cleanly and its tests fail.
   const sync = run(mergeSh, wb, ['sync', B]);
@@ -302,31 +302,31 @@ test('penggabungan tanpa tabrakan teks yang membuat uji gagal tidak pernah masuk
   assert.match(refused.err, /REFUSED: 261016300002 was not moved to review/);
   assert.equal(where(r, B), 'in_progress');
 
-  work(wb, { 'pakai-b.txt': 'esa\n' }, 'pakai nama baru');
+  work(wb, { 'uses-b.txt': 'single\n' }, 'use the new name');
   assert.equal(run(testRun, wb, [B]).code, 0);
   toReview(r, B);
   passReview(r, B);
   assert.equal(run(mergeSh, r.root, ['land', B]).code, 0);
-  const cekMain = spawnSync('sh', ['cek.sh'], { cwd: r.root, encoding: 'utf8' });
-  assert.equal(cekMain.status, 0, cekMain.stdout);
+  const checkMain = spawnSync('sh', ['check.sh'], { cwd: r.root, encoding: 'utf8' });
+  assert.equal(checkMain.status, 0, checkMain.stdout);
 });
 
-test('ke review hanya bila cabang memuat semua kode main dan uji terakhir menguji isi itu', () => {
+test('to review only when the branch holds all of main\'s code and the latest test run tested that content', () => {
   const r = repo();
   const wa = add(r, A);
   const wb = add(r, B);
-  work(wa, { 'kode.txt': 'def esa\ndef dua\n', 'pakai.txt': 'esa\n' });
+  work(wa, { 'code.txt': 'def single\ndef two\n', 'uses.txt': 'single\n' });
   assert.equal(run(testRun, wa, [A]).code, 0);
   toReview(r, A);
   passReview(r, A);
   assert.equal(run(mergeSh, r.root, ['land', A]).code, 0);
 
   // B was tested on the old main: refused, and the reason names what moved.
-  work(wb, { 'pakai-b.txt': 'dua\n' });
+  work(wb, { 'uses-b.txt': 'two\n' });
   assert.equal(run(testRun, wb, [B]).code, 0);
   const stale = move(r, B, 'review');
   assert.equal(stale.code, 1);
-  assert.match(stale.err, /STALE: main has changed since tiket-261016300002 last took it in:\n {2}kode\.txt\n {2}pakai\.txt/);
+  assert.match(stale.err, /STALE: main has changed since ticket-261016300002 last took it in:\n {2}code\.txt\n {2}uses\.txt/);
   assert.equal(where(r, B), 'in_progress');
 
   // Brought up to date but not tested again: refused.
@@ -337,7 +337,7 @@ test('ke review hanya bila cabang memuat semua kode main dan uji terakhir menguj
 
   // Tested, then changed and committed after the run: refused.
   assert.equal(run(testRun, wb, [B]).code, 0);
-  work(wb, { 'pakai-b.txt': 'dua\nesa\n' }, 'satu baris lagi');
+  work(wb, { 'uses-b.txt': 'two\nsingle\n' }, 'one more line');
   const changed = move(r, B, 'review');
   assert.equal(changed.code, 1);
   assert.match(changed.err, /UNTESTED: .*\n.*DIFFERENT/);
@@ -345,21 +345,21 @@ test('ke review hanya bila cabang memuat semua kode main dan uji terakhir menguj
   // Tested on exactly what is committed: accepted, and the commit recorded.
   assert.equal(run(testRun, wb, [B]).code, 0);
   toReview(r, B);
-  const tip = git(r.root, 'rev-parse', `tiket-${B}`).trim();
+  const tip = git(r.root, 'rev-parse', `ticket-${B}`).trim();
   const mainNow = head(r);
-  assert.match(notes(r, B), new RegExp(`review covers branch tiket-${B} at ${tip}, which holds main at ${mainNow} \\(code outside \\.kerjaan/\\); the latest test run passed on exactly this content\\.`));
+  assert.match(notes(r, B), new RegExp(`review covers branch ticket-${B} at ${tip}, which holds main at ${mainNow} \\(code outside \\.kerjaan/\\); the latest test run passed on exactly this content\\.`));
 });
 
-test('tiket pertama yang digabung tanpa perubahan kode di main tidak diuji ulang, juga bila main hanya berubah di papan', () => {
+test('the first ticket landed with no code change on main is not tested again, also when main changed only on the board', () => {
   const r = repo();
   const wa = add(r, A);
-  work(wa, { 'pakai.txt': 'satu\ndua\n' });
+  work(wa, { 'uses.txt': 'one\ntwo\n' });
   assert.equal(run(testRun, wa, [A]).code, 0);
   toReview(r, A);
   passReview(r, A);
   // The board is committed on main meanwhile; that is not main moving.
   git(r.root, 'add', '-A', '.kerjaan');
-  git(r.root, 'commit', '-q', '-m', 'Papan: A lolos review');
+  git(r.root, 'commit', '-q', '-m', 'Board: A passed review');
   const boardOnly = head(r);
   const runs = runCount(r);
 
@@ -369,35 +369,35 @@ test('tiket pertama yang digabung tanpa perubahan kode di main tidak diuji ulang
   // HEAD is land's commit of the ticket's note; the merge sits right under it.
   const merge = git(r.root, 'rev-parse', 'HEAD^').trim();
   assert.equal(git(r.root, 'rev-parse', `${merge}^1`).trim(), boardOnly);
-  assert.equal(show(r, 'HEAD', 'pakai.txt'), 'satu\ndua\n');
-  assert.match(notes(r, A), new RegExp(`landed on main as ${merge}, merging tiket-${A} at [0-9a-f]{40}; tests carried`));
+  assert.equal(show(r, 'HEAD', 'uses.txt'), 'one\ntwo\n');
+  assert.match(notes(r, A), new RegExp(`landed on main as ${merge}, merging ticket-${A} at [0-9a-f]{40}; tests carried`));
 });
 
-test('cabang yang berubah setelah masuk review dikembalikan, tidak digabung', () => {
+test('a branch changed after it went to review is sent back, not merged', () => {
   const r = repo();
   const wa = add(r, A);
-  work(wa, { 'pakai.txt': 'satu\ndua\n' });
+  work(wa, { 'uses.txt': 'one\ntwo\n' });
   assert.equal(run(testRun, wa, [A]).code, 0);
   toReview(r, A);
   passReview(r, A);
-  work(wa, { 'pakai.txt': 'satu\ndua\nsatu\n' }, 'diam-diam setelah review');
+  work(wa, { 'uses.txt': 'one\ntwo\none\n' }, 'quietly after review');
   assert.equal(run(testRun, wa, [A]).code, 0);
   const before = head(r);
   const land = run(mergeSh, r.root, ['land', A]);
   assert.equal(land.code, 3, land.out + land.err);
-  assert.match(notes(r, A), /merge postponed — tiket-261016300001 changed after it went to review/);
+  assert.match(notes(r, A), /merge postponed — ticket-261016300001 changed after it went to review/);
   assert.equal(where(r, A), 'in_progress');
   assert.equal(head(r), before);
 });
 
-test('tanpa catatan commit yang masuk review, tiket ditahan untuk pemilik', () => {
+test('without a note of the commit that went to review, the ticket is held for the owner', () => {
   const r = repo();
   const wa = add(r, A);
-  work(wa, { 'pakai.txt': 'satu\ndua\n' });
+  work(wa, { 'uses.txt': 'one\ntwo\n' });
   assert.equal(run(testRun, wa, [A]).code, 0);
   toReview(r, A);
   passReview(r, A);
-  const file = path.join(r.k, 'done', `${A} Tiket pertama.md`);
+  const file = path.join(r.k, 'done', `${A} First ticket.md`);
   fs.writeFileSync(file, fs.readFileSync(file, 'utf8').replace(/^- .*review covers branch .*\n/m, ''));
   const before = head(r);
   const land = run(mergeSh, r.root, ['land', A]);
@@ -406,26 +406,26 @@ test('tanpa catatan commit yang masuk review, tiket ditahan untuk pemilik', () =
   assert.equal(head(r), before);
 });
 
-test('uji terakhir yang gagal setelah review menahan tiket untuk pemilik', () => {
+test('a latest test run that failed after review holds the ticket for the owner', () => {
   const r = repo();
   const wa = add(r, A);
-  work(wa, { 'pakai.txt': 'satu\ndua\n' });
+  work(wa, { 'uses.txt': 'one\ntwo\n' });
   assert.equal(run(testRun, wa, [A]).code, 0);
   toReview(r, A);
   passReview(r, A);
-  assert.equal(run(testRun, wa, [A], { UJI_GAGAL: '1' }).code, 1);
+  assert.equal(run(testRun, wa, [A], { TEST_FAIL: '1' }).code, 1);
   const before = head(r);
   const land = run(mergeSh, r.root, ['land', A]);
   assert.equal(land.code, 1, land.out + land.err);
   assert.match(land.out, /HELD: ticket 261016300001/);
-  assert.match(notes(r, A), /merge held for the owner — the latest test run does not vouch for tiket-261016300001 .*exited 1/);
+  assert.match(notes(r, A), /merge held for the owner — the latest test run does not vouch for ticket-261016300001 .*exited 1/);
   assert.equal(head(r), before);
 });
 
-test('main yang berubah di tengah penggabungan membuat tiket dikembalikan, bukan digabung', () => {
+test('main changing in the middle of a merge sends the ticket back instead of merging it', () => {
   const r = repo();
   const wa = add(r, A);
-  work(wa, { 'pakai.txt': 'satu\ndua\n' });
+  work(wa, { 'uses.txt': 'one\ntwo\n' });
   assert.equal(run(testRun, wa, [A]).code, 0);
   toReview(r, A);
   passReview(r, A);
@@ -435,45 +435,45 @@ test('main yang berubah di tengah penggabungan membuat tiket dikembalikan, bukan
   const bin = path.join(r.outside, 'bin');
   fs.mkdirSync(bin);
   fs.writeFileSync(path.join(bin, 'git'), `#!/bin/sh
-if [ "$1" = merge ] && [ "$3" = --no-commit ] && [ ! -e "$UJI_SELA" ]; then
-  touch "$UJI_SELA"
-  printf 'def sela\\n' > "$UJI_MAIN/sela.txt"
-  ${JSON.stringify(realGit)} -C "$UJI_MAIN" add sela.txt
-  ${JSON.stringify(realGit)} -C "$UJI_MAIN" commit -q -m sela
+if [ "$1" = merge ] && [ "$3" = --no-commit ] && [ ! -e "$TEST_SNEAK" ]; then
+  touch "$TEST_SNEAK"
+  printf 'def sneak\\n' > "$TEST_MAIN/sneak.txt"
+  ${JSON.stringify(realGit)} -C "$TEST_MAIN" add sneak.txt
+  ${JSON.stringify(realGit)} -C "$TEST_MAIN" commit -q -m sneak
 fi
 exec ${JSON.stringify(realGit)} "$@"
 `, { mode: 0o755 });
   const land = run(mergeSh, r.root, ['land', A], {
-    PATH: `${bin}:${process.env.PATH}`, UJI_SELA: path.join(r.outside, 'sela'), UJI_MAIN: r.root,
+    PATH: `${bin}:${process.env.PATH}`, TEST_SNEAK: path.join(r.outside, 'sneak'), TEST_MAIN: r.root,
   });
-  assert.ok(fs.existsSync(path.join(r.outside, 'sela')), 'the race did not happen');
+  assert.ok(fs.existsSync(path.join(r.outside, 'sneak')), 'the race did not happen');
   assert.equal(land.code, 3, land.out + land.err);
-  assert.match(notes(r, A), /merge postponed — main changed while the merge was being prepared \(sela\.txt\)/);
-  assert.equal(git(r.root, 'log', '-1', '--format=%s').trim(), 'sela');
+  assert.match(notes(r, A), /merge postponed — main changed while the merge was being prepared \(sneak\.txt\)/);
+  assert.equal(git(r.root, 'log', '-1', '--format=%s').trim(), 'sneak');
   assert.equal(git(r.root, 'status', '--porcelain', '--untracked-files=no', '--', '.', ':(exclude).kerjaan'), '');
 });
 
-test('penggabungan yang gagal menahan hanya tiket itu, memberi tahu alasannya, dan tiket lain jalan terus', () => {
+test('a failed merge holds only that ticket, gives the reason, and other tickets go on', () => {
   const r = repo();
   const wa = add(r, A);
   const wb = add(r, B);
-  work(wa, { 'pakai.txt': 'satu\ndua\n' });
-  work(wb, { 'pakai-b.txt': 'dua\n' });
+  work(wa, { 'uses.txt': 'one\ntwo\n' });
+  work(wb, { 'uses-b.txt': 'two\n' });
   for (const [wt, id] of [[wa, A], [wb, B]]) {
     assert.equal(run(testRun, wt, [id]).code, 0);
     toReview(r, id);
     passReview(r, id);
   }
   // Somebody's uncommitted edit in the main tree sits on the file A changes.
-  fs.writeFileSync(path.join(r.root, 'pakai.txt'), 'satu\n# catatan pemilik\n');
+  fs.writeFileSync(path.join(r.root, 'uses.txt'), 'one\n# owner note\n');
   const before = head(r);
   const held = run(mergeSh, r.root, ['land', A]);
   assert.equal(held.code, 1, held.out + held.err);
-  assert.match(held.out, /HELD: ticket 261016300001 was not merged into main and waits for the owner\.\nReason: git refused the merge: .*pakai\.txt/);
-  assert.match(notes(r, A), /merge held for the owner — git refused the merge: .*pakai\.txt/);
+  assert.match(held.out, /HELD: ticket 261016300001 was not merged into main and waits for the owner\.\nReason: git refused the merge: .*uses\.txt/);
+  assert.match(notes(r, A), /merge held for the owner — git refused the merge: .*uses\.txt/);
   assert.equal(where(r, A), 'done');
   assert.equal(head(r), before);
-  assert.equal(fs.readFileSync(path.join(r.root, 'pakai.txt'), 'utf8'), 'satu\n# catatan pemilik\n');
+  assert.equal(fs.readFileSync(path.join(r.root, 'uses.txt'), 'utf8'), 'one\n# owner note\n');
 
   // The other ticket lands; a new ticket starts without anyone acknowledging
   // A's branch; the ticket that depends on A waits.
@@ -481,7 +481,7 @@ test('penggabungan yang gagal menahan hanya tiket itu, memberi tahu alasannya, d
   assert.equal(other.code, 0, other.out + other.err);
   const start = move(r, C, 'in_progress');
   assert.equal(start.code, 0, start.err);
-  assert.match(start.err, /tiket-261016300001 is not in HEAD, but its merge is held for the owner/);
+  assert.match(start.err, /ticket-261016300001 is not in HEAD, but its merge is held for the owner/);
   const dependent = move(r, D, 'in_progress');
   assert.equal(dependent.code, 1);
   assert.match(dependent.err, /blocked_by 261016300001, whose merge into main is held/);
@@ -489,7 +489,7 @@ test('penggabungan yang gagal menahan hanya tiket itu, memberi tahu alasannya, d
 
   // Once the owner clears the way, the same command takes it on: main has
   // moved meanwhile (B landed), so it goes back to its worker first.
-  fs.writeFileSync(path.join(r.root, 'pakai.txt'), 'satu\n');
+  fs.writeFileSync(path.join(r.root, 'uses.txt'), 'one\n');
   const again = run(mergeSh, r.root, ['land', A]);
   assert.equal(again.code, 3, again.out + again.err);
   assert.equal(run(mergeSh, wa, ['sync', A]).code, 0);
@@ -498,29 +498,29 @@ test('penggabungan yang gagal menahan hanya tiket itu, memberi tahu alasannya, d
   passReview(r, A);
   const last = run(mergeSh, r.root, ['land', A]);
   assert.equal(last.code, 0, last.out + last.err);
-  assert.equal(show(r, 'HEAD', 'pakai.txt'), 'satu\ndua\n');
-  assert.equal(show(r, 'HEAD', 'pakai-b.txt'), 'dua\n');
+  assert.equal(show(r, 'HEAD', 'uses.txt'), 'one\ntwo\n');
+  assert.equal(show(r, 'HEAD', 'uses-b.txt'), 'two\n');
   assert.equal(move(r, D, 'in_progress').code, 0);
 });
 
-test('tiket yang kembali dari review atau done bukan mulai baru: tidak ditolak karena cabang lain', () => {
+test('a ticket coming back from review or done is not a new start: not refused over another branch', () => {
   const r = repo();
-  git(r.root, 'checkout', '-q', '-b', 'eksperimen');
-  fs.writeFileSync(path.join(r.root, 'coba.txt'), 'coba\n');
-  git(r.root, 'add', 'coba.txt');
-  git(r.root, 'commit', '-q', '-m', 'coba');
+  git(r.root, 'checkout', '-q', '-b', 'experiment');
+  fs.writeFileSync(path.join(r.root, 'trial.txt'), 'trial\n');
+  git(r.root, 'add', 'trial.txt');
+  git(r.root, 'commit', '-q', '-m', 'trial');
   git(r.root, 'checkout', '-q', 'main');
   assert.equal(move(r, A, 'review').code, 0);
   const back = move(r, A, 'in_progress');
   assert.equal(back.code, 0, back.err);
   const start = move(r, C, 'in_progress');
   assert.equal(start.code, 1);
-  assert.match(start.err, /eksperimen/);
+  assert.match(start.err, /experiment/);
 });
 
-test('tiket yang dikerjakan langsung di main tree tidak terpengaruh', () => {
+test('a ticket worked directly in the main tree is not affected', () => {
   const r = repo();
-  fs.writeFileSync(path.join(r.root, 'pakai.txt'), 'satu\ndua\n');
+  fs.writeFileSync(path.join(r.root, 'uses.txt'), 'one\ntwo\n');
   toReview(r, A);
   assert.doesNotMatch(notes(r, A), /review covers/);
   passReview(r, A);
@@ -530,7 +530,7 @@ test('tiket yang dikerjakan langsung di main tree tidak terpengaruh', () => {
   assert.match(run(mergeSh, r.root, ['check', B]).out, /NOTHING SEPARATE/);
 });
 
-test('sync hanya berjalan di worktree tiket itu, dengan semua perubahan sudah di-commit', () => {
+test('sync runs only in that ticket\'s worktree, with every change committed', () => {
   const r = repo();
   const wa = add(r, A);
   const wb = add(r, B);
@@ -540,16 +540,16 @@ test('sync hanya berjalan di worktree tiket itu, dengan semua perubahan sudah di
   const wrong = run(mergeSh, wb, ['sync', A]);
   assert.equal(wrong.code, 1);
   assert.match(wrong.err, /not on a branch carrying 261016300001/);
-  fs.writeFileSync(path.join(wa, 'pakai.txt'), 'belum\n');
+  fs.writeFileSync(path.join(wa, 'uses.txt'), 'not yet\n');
   const dirty = run(mergeSh, wa, ['sync', A]);
   assert.equal(dirty.code, 1);
   assert.match(dirty.err, /REFUSED: this worktree has changes that are not committed/);
 });
 
-test('hanya tiket di done yang digabung, dan hanya dari main tree', () => {
+test('only a ticket in done is merged, and only from the main tree', () => {
   const r = repo();
   const wa = add(r, A);
-  work(wa, { 'pakai.txt': 'satu\ndua\n' });
+  work(wa, { 'uses.txt': 'one\ntwo\n' });
   assert.equal(run(testRun, wa, [A]).code, 0);
   toReview(r, A);
   const early = run(mergeSh, r.root, ['land', A]);
@@ -562,10 +562,10 @@ test('hanya tiket di done yang digabung, dan hanya dari main tree', () => {
   const land = run(mergeSh, r.root, ['land', A]);
   assert.equal(land.code, 0, land.out + land.err);
   // The branch is gone, and nothing on the way said it was kept.
-  assert.equal(git(r.root, 'branch', '--list', `tiket-${A}`).trim(), '');
+  assert.equal(git(r.root, 'branch', '--list', `ticket-${A}`).trim(), '');
   assert.equal(fs.existsSync(wa), false);
   assert.doesNotMatch(land.out + land.err, /kept/);
-  assert.match(land.out, new RegExp(`Branch tiket-${A} is merged into main and deleted\\.`));
+  assert.match(land.out, new RegExp(`Branch ticket-${A} is merged into main and deleted\\.`));
 });
 
 // Holds a lock the way another live process would, and reports whether the
@@ -573,7 +573,7 @@ test('hanya tiket di done yang digabung, dan hanya dari main tree', () => {
 async function heldLock(r, name, start) {
   const lock = path.join(r.root, '.git', 'kerjaan-locks', `${name}.lock`);
   fs.mkdirSync(lock, { recursive: true });
-  fs.writeFileSync(lock + '/owner', `${process.pid}\tuji yang memegang kunci\n`);
+  fs.writeFileSync(lock + '/owner', `${process.pid}\tthe test holding the lock\n`);
   let done = false;
   const running = start().then((res) => { done = true; return res; });
   await sleep(1200);
@@ -582,10 +582,10 @@ async function heldLock(r, name, start) {
   return { waitedWhileHeld, res: await running };
 }
 
-test('penggabungan menunggu kunci merge', async () => {
+test('landing waits for the merge lock', async () => {
   const r = repo();
   const wa = add(r, A);
-  work(wa, { 'pakai.txt': 'satu\ndua\n' });
+  work(wa, { 'uses.txt': 'one\ntwo\n' });
   assert.equal(run(testRun, wa, [A]).code, 0);
   toReview(r, A);
   passReview(r, A);
@@ -603,7 +603,7 @@ test('penggabungan menunggu kunci merge', async () => {
 async function noteWaitsForBoard(r, record) {
   const lock = path.join(r.root, '.git', 'kerjaan-locks', 'board.lock');
   fs.mkdirSync(lock, { recursive: true });
-  fs.writeFileSync(lock + '/owner', `${process.pid}\tuji yang memegang kunci papan\n`);
+  fs.writeFileSync(lock + '/owner', `${process.pid}\tthe test holding the board lock\n`);
   let done = false;
   const running = runAsync(mergeSh, r.root, ['land', A]).then((res) => { done = true; return res; });
   await sleep(2500);
@@ -615,18 +615,18 @@ async function noteWaitsForBoard(r, record) {
 for (const [kind, prepare, record, code] of [
   ['"landed on"', () => {}, /landed on main as /, 0],
   ['"merge postponed"', (r, wa) => {
-    work(wa, { 'pakai.txt': 'satu\ndua\nsatu\n' }, 'diam-diam setelah review');
+    work(wa, { 'uses.txt': 'one\ntwo\none\n' }, 'quietly after review');
     assert.equal(run(testRun, wa, [A]).code, 0);
   }, /merge postponed — /, 3],
   ['"merge held for the owner"', (r) => {
-    const file = path.join(r.k, 'done', `${A} Tiket pertama.md`);
+    const file = path.join(r.k, 'done', `${A} First ticket.md`);
     fs.writeFileSync(file, fs.readFileSync(file, 'utf8').replace(/^- .*review covers branch .*\n/m, ''));
   }, /merge held for the owner — /, 1],
 ]) {
-  test(`catatan ${kind} dari land menunggu kunci papan`, async () => {
+  test(`land's ${kind} note waits for the board lock`, async () => {
     const r = repo();
     const wa = add(r, A);
-    work(wa, { 'pakai.txt': 'satu\ndua\n' });
+    work(wa, { 'uses.txt': 'one\ntwo\n' });
     assert.equal(run(testRun, wa, [A]).code, 0);
     toReview(r, A);
     passReview(r, A);
@@ -634,17 +634,17 @@ for (const [kind, prepare, record, code] of [
     const { whileHeld, res } = await noteWaitsForBoard(r, record);
     assert.deepEqual(whileHeld, { done: false, written: false }, 'land wrote its note while the board lock was held');
     assert.equal(res.code, code, res.out + res.err);
-    assert.match(res.err, /Waiting for the board lock, held by uji yang memegang kunci papan/);
+    assert.match(res.err, /Waiting for the board lock, held by the test holding the board lock/);
     assert.match(notes(r, A), record);
   });
 }
 
-test('dua penggabungan yang dimulai bersamaan berjalan bergiliran', async () => {
+test('two landings started at the same moment take turns', async () => {
   const r = repo();
   const wa = add(r, A);
   const wb = add(r, B);
-  work(wa, { 'pakai.txt': 'satu\ndua\n' });
-  work(wb, { 'pakai-b.txt': 'dua\n' });
+  work(wa, { 'uses.txt': 'one\ntwo\n' });
+  work(wb, { 'uses-b.txt': 'two\n' });
   for (const [wt, id] of [[wa, A], [wb, B]]) {
     assert.equal(run(testRun, wt, [id]).code, 0);
     toReview(r, id);
@@ -656,31 +656,31 @@ test('dua penggabungan yang dimulai bersamaan berjalan bergiliran', async () => 
   assert.equal(git(r.root, 'log', '--merges', '--format=%s').trim().split('\n').length, 1);
 });
 
-test('uji reviewer ikut antre di kunci uji yang sama dengan uji pengerja, dan tidak dicatat', async () => {
+test('the reviewer\'s tests queue on the same tests lock as the worker\'s, and are not recorded', async () => {
   const r = repo();
   const wa = add(r, A);
   const { waitedWhileHeld, res } = await heldLock(r, 'tests',
     () => runAsync(testRun, r.root, ['--review', A, '--dir', wa]));
   assert.equal(waitedWhileHeld, true, 'the reviewer ran its tests while the test lock was held');
   assert.equal(res.code, 0, res.err);
-  assert.match(res.err, /Waiting for the tests lock, held by uji yang memegang kunci/);
+  assert.match(res.err, /Waiting for the tests lock, held by the test holding the lock/);
   assert.match(res.err, new RegExp(`Reviewer's run in ${wa}: .* exited 0`));
   assert.doesNotMatch(notes(r, A), /test run/);
 
   // A worker's run and a reviewer's run started together never overlap.
-  fs.rmSync(r.urut, { force: true });
-  const worker = runAsync(testRun, wa, [A], { UJI_TIDUR: '1' });
+  fs.rmSync(r.sequence, { force: true });
+  const worker = runAsync(testRun, wa, [A], { TEST_SLEEP: '1' });
   const t0 = Date.now();
-  while (!(fs.existsSync(r.urut) && fs.readFileSync(r.urut, 'utf8').includes(`mulai ${A}`))) {
+  while (!(fs.existsSync(r.sequence) && fs.readFileSync(r.sequence, 'utf8').includes(`start ${A}`))) {
     assert.ok(Date.now() - t0 < 15000, 'the worker run never started');
     await sleep(50);
   }
-  const reviewer = runAsync(testRun, r.root, ['--review', B], { UJI_TIDUR: '1' });
+  const reviewer = runAsync(testRun, r.root, ['--review', B], { TEST_SLEEP: '1' });
   const [rw, rr] = await Promise.all([worker, reviewer]);
   assert.equal(rw.code, 0, rw.err);
   assert.equal(rr.code, 0, rr.err);
   assert.match(rr.err, /Waiting for the tests lock, held by ticket 261016300001/);
-  assert.deepEqual(fs.readFileSync(r.urut, 'utf8').trim().split('\n'), [`mulai ${A}`, `akhir ${A}`, `mulai ${B}`, `akhir ${B}`]);
+  assert.deepEqual(fs.readFileSync(r.sequence, 'utf8').trim().split('\n'), [`start ${A}`, `end ${A}`, `start ${B}`, `end ${B}`]);
   assert.match(notes(r, A), /test run — .* exited 0/);
   assert.doesNotMatch(notes(r, B), /test run/);
 
@@ -692,7 +692,7 @@ test('uji reviewer ikut antre di kunci uji yang sama dengan uji pengerja, dan ti
   assert.equal(fs.readFileSync(path.join(r.outside, 'pwd.txt'), 'utf8'), `${r.outside}\n${r.outside}\n`);
 
   // Its command fails the way the suite does.
-  const red = run(testRun, wa, ['--review', A], { UJI_GAGAL: '1' });
+  const red = run(testRun, wa, ['--review', A], { TEST_FAIL: '1' });
   assert.equal(red.code, 1);
 });
 
@@ -702,7 +702,7 @@ test('uji reviewer ikut antre di kunci uji yang sama dengan uji pengerja, dan ti
 // land found it — and nothing else uncommitted there is swept into that commit.
 
 // What the foreman does after each board move: commit the board.
-function commitBoard(r, msg = 'Papan') {
+function commitBoard(r, msg = 'Board') {
   git(r.root, 'add', '-A', '--', '.kerjaan');
   git(r.root, 'commit', '-q', '-m', msg);
 }
@@ -714,18 +714,18 @@ const ticketPath = (r, id) => {
   return `.kerjaan/${s}/${f}`;
 };
 
-test('penggabungan menyimpan sendiri catatan "sudah masuk main", dan penggabungan berikutnya langsung berjalan', () => {
+test('landing commits its own "landed on main" note, and the next landing runs right away', () => {
   const r = repo();
   const wa = add(r, A);
   const wb = add(r, B);
-  work(wa, { 'kode.txt': 'def esa\ndef dua\n', 'pakai.txt': 'esa\n' });
-  work(wb, { 'pakai-b.txt': 'dua\n' });
+  work(wa, { 'code.txt': 'def single\ndef two\n', 'uses.txt': 'single\n' });
+  work(wb, { 'uses-b.txt': 'two\n' });
   for (const [wt, id] of [[wa, A], [wb, B]]) {
     assert.equal(run(testRun, wt, [id]).code, 0);
     toReview(r, id);
     passReview(r, id);
   }
-  commitBoard(r, 'Papan: A dan B lolos review');
+  commitBoard(r, 'Board: A and B passed review');
   assert.equal(status(r), '');
 
   const first = run(mergeSh, r.root, ['land', A]);
@@ -736,7 +736,7 @@ test('penggabungan menyimpan sendiri catatan "sudah masuk main", dan penggabunga
   // The note is in the ticket, and history shows when it was committed: the
   // commit right after the merge, holding only the ticket's file.
   const fileA = ticketPath(r, A);
-  assert.match(show(r, 'HEAD', fileA), new RegExp(`landed on main as ${merge}, merging tiket-${A}`));
+  assert.match(show(r, 'HEAD', fileA), new RegExp(`landed on main as ${merge}, merging ticket-${A}`));
   assert.doesNotMatch(show(r, 'HEAD^', fileA), /landed on main/);
   assert.deepEqual(lastFiles(r), [`M\t${fileA}`]);
   assert.match(git(r.root, 'log', '-1', '--format=%s').trim(), new RegExp(`^Board: ${A} landed on main as ${merge.slice(0, 12)}$`));
@@ -747,7 +747,7 @@ test('penggabungan menyimpan sendiri catatan "sudah masuk main", dan penggabunga
   const second = run(mergeSh, r.root, ['land', B]);
   assert.equal(second.code, 3, second.out + second.err);
   assert.equal(status(r), '', 'sending back left the main tree dirty');
-  assert.deepEqual(lastFiles(r).sort(), [`A\t${ticketPath(r, B)}`, `D\t.kerjaan/done/${B} Tiket kedua.md`].sort());
+  assert.deepEqual(lastFiles(r).sort(), [`A\t${ticketPath(r, B)}`, `D\t.kerjaan/done/${B} Second ticket.md`].sort());
   assert.match(show(r, 'HEAD', ticketPath(r, B)), /merge postponed — main changed/);
   assert.equal(git(r.root, 'log', '-1', '--format=%s').trim(), `Board: ${B} back to in_progress, merge postponed`);
 
@@ -755,7 +755,7 @@ test('penggabungan menyimpan sendiri catatan "sudah masuk main", dan penggabunga
   assert.equal(run(testRun, wb, [B]).code, 0);
   toReview(r, B);
   passReview(r, B);
-  commitBoard(r, 'Papan: B lolos review lagi');
+  commitBoard(r, 'Board: B passed review again');
   const third = run(mergeSh, r.root, ['land', B]);
   assert.equal(third.code, 0, third.out + third.err);
   assert.match(third.out, /LANDED/);
@@ -764,19 +764,19 @@ test('penggabungan menyimpan sendiri catatan "sudah masuk main", dan penggabunga
   assert.doesNotMatch(notes(r, A) + notes(r, B), /held for the owner/);
 });
 
-test('catatan "ditahan" juga tersimpan sendiri, tanpa membawa perubahan yang sudah ada di main tree', () => {
+test('a "held" note is committed by itself too, without taking along changes already in the main tree', () => {
   const r = repo();
   const wa = add(r, A);
-  work(wa, { 'pakai.txt': 'satu\ndua\n' });
+  work(wa, { 'uses.txt': 'one\ntwo\n' });
   assert.equal(run(testRun, wa, [A]).code, 0);
   toReview(r, A);
   passReview(r, A);
   commitBoard(r);
   // Somebody's staged change, which makes git refuse the merge, and an
   // unstaged one beside it.
-  fs.writeFileSync(path.join(r.root, 'kode.txt'), 'def satu\ndef dua\ndef staged\n');
-  git(r.root, 'add', 'kode.txt');
-  fs.writeFileSync(path.join(r.root, 'cek.sh'), `${cek}# belum disimpan\n`);
+  fs.writeFileSync(path.join(r.root, 'code.txt'), 'def one\ndef two\ndef staged\n');
+  git(r.root, 'add', 'code.txt');
+  fs.writeFileSync(path.join(r.root, 'check.sh'), `${check}# not yet committed\n`);
   const before = status(r);
   const held = run(mergeSh, r.root, ['land', A]);
   assert.equal(held.code, 1, held.out + held.err);
@@ -786,25 +786,25 @@ test('catatan "ditahan" juga tersimpan sendiri, tanpa membawa perubahan yang sud
   assert.equal(git(r.root, 'log', '-1', '--format=%s').trim(), `Board: ${A} merge held for the owner`);
   // Everything that was uncommitted is still uncommitted, staged as before.
   assert.equal(status(r), before);
-  assert.equal(git(r.root, 'diff', '--cached', '--name-only').trim(), 'kode.txt');
-  assert.equal(fs.readFileSync(path.join(r.root, 'kode.txt'), 'utf8'), 'def satu\ndef dua\ndef staged\n');
+  assert.equal(git(r.root, 'diff', '--cached', '--name-only').trim(), 'code.txt');
+  assert.equal(fs.readFileSync(path.join(r.root, 'code.txt'), 'utf8'), 'def one\ndef two\ndef staged\n');
 });
 
-test('perubahan lain di main tree tidak ikut tersimpan bersama catatan "sudah masuk main"', () => {
+test('other changes in the main tree are not committed along with the "landed on main" note', () => {
   const r = repo();
   const wa = add(r, A);
-  work(wa, { 'pakai.txt': 'satu\ndua\n' });
+  work(wa, { 'uses.txt': 'one\ntwo\n' });
   assert.equal(run(testRun, wa, [A]).code, 0);
   toReview(r, A);
   passReview(r, A);
   commitBoard(r);
   // Uncommitted work of every kind the merge does not touch: a changed code
   // file, a new file, another ticket edited, a new ticket.
-  fs.writeFileSync(path.join(r.root, 'cek.sh'), `${cek}# belum disimpan\n`);
-  fs.writeFileSync(path.join(r.root, 'baru.txt'), 'baru\n');
-  const fileC = path.join(r.k, 'todo', `${C} Tiket ketiga.md`);
-  fs.appendFileSync(fileC, '- catatan pemilik yang belum disimpan\n');
-  fs.writeFileSync(path.join(r.k, 'backlog', '261016300009 Ide.md'), ticket('Ide'));
+  fs.writeFileSync(path.join(r.root, 'check.sh'), `${check}# not yet committed\n`);
+  fs.writeFileSync(path.join(r.root, 'new.txt'), 'new\n');
+  const fileC = path.join(r.k, 'todo', `${C} Third ticket.md`);
+  fs.appendFileSync(fileC, '- owner note not yet committed\n');
+  fs.writeFileSync(path.join(r.k, 'backlog', '261016300009 Idea.md'), ticket('Idea'));
   const before = status(r);
   assert.equal(before.trim().split('\n').length, 4);
 
@@ -814,37 +814,37 @@ test('perubahan lain di main tree tidak ikut tersimpan bersama catatan "sudah ma
   assert.deepEqual(lastFiles(r), [`M\t${ticketPath(r, A)}`]);
   assert.match(show(r, 'HEAD', ticketPath(r, A)), /landed on main as/);
   assert.equal(status(r), before);
-  assert.match(fs.readFileSync(fileC, 'utf8'), /catatan pemilik yang belum disimpan/);
-  assert.doesNotMatch(show(r, 'HEAD', `.kerjaan/todo/${C} Tiket ketiga.md`), /catatan pemilik/);
+  assert.match(fs.readFileSync(fileC, 'utf8'), /owner note not yet committed/);
+  assert.doesNotMatch(show(r, 'HEAD', `.kerjaan/todo/${C} Third ticket.md`), /owner note/);
 });
 
-test('tiket yang sudah punya perubahan belum disimpan tidak di-commit bersama catatannya', () => {
+test('a ticket that already had uncommitted changes is not committed along with its note', () => {
   const r = repo();
   const wa = add(r, A);
-  work(wa, { 'pakai.txt': 'satu\ndua\n' });
+  work(wa, { 'uses.txt': 'one\ntwo\n' });
   assert.equal(run(testRun, wa, [A]).code, 0);
   toReview(r, A);
   passReview(r, A);
   commitBoard(r);
   const fileA = path.join(r.root, ticketPath(r, A));
-  fs.appendFileSync(fileA, '- catatan pemilik yang belum disimpan\n');
+  fs.appendFileSync(fileA, '- owner note not yet committed\n');
 
   const land = run(mergeSh, r.root, ['land', A]);
   assert.equal(land.code, 0, land.out + land.err);
   assert.match(land.out, /LANDED/);
-  assert.match(land.out, /NOTE NOT COMMITTED: \.kerjaan\/done\/261016300001 Tiket pertama\.md already had uncommitted changes/);
+  assert.match(land.out, /NOTE NOT COMMITTED: \.kerjaan\/done\/261016300001 First ticket\.md already had uncommitted changes/);
   // HEAD is the merge itself; the ticket's file, with both lines, waits.
-  assert.equal(git(r.root, 'log', '-1', '--format=%s').trim(), `Merge tiket-${A} into main (ticket ${A})`);
-  assert.doesNotMatch(show(r, 'HEAD', ticketPath(r, A)), /catatan pemilik|landed on main/);
+  assert.equal(git(r.root, 'log', '-1', '--format=%s').trim(), `Merge ticket-${A} into main (ticket ${A})`);
+  assert.doesNotMatch(show(r, 'HEAD', ticketPath(r, A)), /owner note|landed on main/);
   const body = fs.readFileSync(fileA, 'utf8');
-  assert.match(body, /catatan pemilik yang belum disimpan/);
+  assert.match(body, /owner note not yet committed/);
   assert.match(body, /landed on main as/);
 });
 
-test('di main tree tanpa cabang, catatan "ditahan" tidak di-commit ke HEAD yang lepas', () => {
+test('in a main tree on no branch, the "held" note is not committed onto the detached HEAD', () => {
   const r = repo();
   const wa = add(r, A);
-  work(wa, { 'pakai.txt': 'satu\ndua\n' });
+  work(wa, { 'uses.txt': 'one\ntwo\n' });
   assert.equal(run(testRun, wa, [A]).code, 0);
   toReview(r, A);
   passReview(r, A);
@@ -867,14 +867,14 @@ function rejectReview(r, id) {
   assert.equal(res.code, 0, res.err);
 }
 
-test('tiket yang diterima pemilik setelah dua penolakan digabung ke main seperti tiket yang lolos', () => {
+test('a ticket the owner accepted after two rejections lands on main like one that passed', () => {
   const r = repo();
   const wa = add(r, A);
-  work(wa, { 'pakai.txt': 'satu\ndua\n' });
+  work(wa, { 'uses.txt': 'one\ntwo\n' });
   assert.equal(run(testRun, wa, [A]).code, 0);
   toReview(r, A);
   rejectReview(r, A);
-  work(wa, { 'pakai.txt': 'satu\ndua\nsatu\n' }, 'perbaikan ronde 2');
+  work(wa, { 'uses.txt': 'one\ntwo\none\n' }, 'round 2 fix');
   assert.equal(run(testRun, wa, [A]).code, 0);
   toReview(r, A);
   rejectReview(r, A);
@@ -886,23 +886,23 @@ test('tiket yang diterima pemilik setelah dua penolakan digabung ke main seperti
   const land = run(mergeSh, r.root, ['land', A]);
   assert.equal(land.code, 0, land.out + land.err);
   assert.match(land.out, /LANDED: ticket 261016300001 is in main/);
-  assert.equal(show(r, 'HEAD', 'pakai.txt'), 'satu\ndua\nsatu\n');
-  assert.equal(git(r.root, 'branch', '--list', `tiket-${A}`).trim(), '');
+  assert.equal(show(r, 'HEAD', 'uses.txt'), 'one\ntwo\none\n');
+  assert.equal(git(r.root, 'branch', '--list', `ticket-${A}`).trim(), '');
   assert.equal(fs.existsSync(wa), false);
 });
 
-test('tiket yang diterima pemilik saat main sudah bergerak ditunda, diperbarui, lalu tetap sampai di main', () => {
+test('a ticket the owner accepted after main moved is postponed, brought up to date, and still reaches main', () => {
   const r = repo();
   const wa = add(r, A);
   const wb = add(r, B);
-  work(wa, { 'pakai.txt': 'satu\ndua\n' });
+  work(wa, { 'uses.txt': 'one\ntwo\n' });
   assert.equal(run(testRun, wa, [A]).code, 0);
   toReview(r, A);
   rejectReview(r, A);
   toReview(r, A);
   rejectReview(r, A);
   // Meanwhile B passes and lands: main's code moves.
-  work(wb, { 'pakai-b.txt': 'dua\n' });
+  work(wb, { 'uses-b.txt': 'two\n' });
   assert.equal(run(testRun, wb, [B]).code, 0);
   toReview(r, B);
   passReview(r, B);
@@ -920,11 +920,11 @@ test('tiket yang diterima pemilik saat main sudah bergerak ditunda, diperbarui, 
   passReview(r, A);
   const land = run(mergeSh, r.root, ['land', A]);
   assert.equal(land.code, 0, land.out + land.err);
-  assert.equal(show(r, 'HEAD', 'pakai.txt'), 'satu\ndua\n');
-  assert.equal(show(r, 'HEAD', 'pakai-b.txt'), 'dua\n');
+  assert.equal(show(r, 'HEAD', 'uses.txt'), 'one\ntwo\n');
+  assert.equal(show(r, 'HEAD', 'uses-b.txt'), 'two\n');
 });
 
-test('"tandai selesai" pada tiket di todo: ke review langsung ditolak, lewat in_progress dan uji diterima', () => {
+test('"mark it done" on a ticket in todo: straight to review is refused, through in_progress and the tests is accepted', () => {
   const r = repo();
   // The foreman's shortcut the guide used to give: tick and move to review.
   const direct = move(r, C, 'review');

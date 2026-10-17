@@ -117,11 +117,11 @@ naming one is enough; with three or more sharing files, list every ticket
 whose order matters.
 
 ```markdown
-**Dua tiket ini bersamaan.** Keduanya tidak saling menunggu hasil.
+**These two together.** Neither waits for the other's result.
 <!-- lands-first: 260905160502, 260905160503 -->
 
-- 260905160502 Layar impor
-- 260905160503 Layar ekspor
+- 260905160502 Import screen
+- 260905160503 Export screen
 ```
 
 The line may sit anywhere in the group; put it under the lead-in. One line per

@@ -627,7 +627,7 @@ From the repository root, with Node 18 or newer and nothing installed:
 node --test
 ```
 
-That one command runs the whole suite: every `*.test.mjs` under `uji/` (the
+That one command runs the whole suite: every `*.test.mjs` under `tests/` (the
 scripts in `skills/kerjaan/scripts/`) and `viewer/tests/` (the viewer). This
 board's own `test_command`, which `test-run.sh` runs before a ticket goes to
 review, is the same run with two guards added (Node 22 or newer):
@@ -637,18 +637,18 @@ builds a throwaway repository with a board under the system temp folder and
 runs the real scripts against it; nothing in this checkout is changed. Expect
 a few minutes for the whole run.
 
-Naming a folder does not work: `node --test uji/` tries to load `uji/` as a
+Naming a folder does not work: `node --test tests/` tries to load `tests/` as a
 single module and fails with "Cannot find module". To run part of the
 suite, name the files, or a glob in quotes (Node 21 or newer):
-`node --test uji/update-ticket.test.mjs` or `node --test 'uji/*.test.mjs'`.
+`node --test tests/update-ticket.test.mjs` or `node --test 'tests/*.test.mjs'`.
 
-The skill's `description` is held to a trigger test: about 40 sentences in
-`uji/pemicu/kalimat.json`, each run three times in a fresh `claude -p`
+The skill's `description` is held to a trigger test: about 40 prompts in
+`tests/trigger/prompts.json`, each run three times in a fresh `claude -p`
 session, recording whether it calls the skill. That run uses Claude quota, so
-the suite does not make it; `uji/pemicu.test.mjs` only checks the stored
-results against the current sentences and description, and fails when either
+the suite does not make it; `tests/trigger.test.mjs` only checks the stored
+results against the current prompts and description, and fails when either
 changed. After changing one, run it again by hand (a few minutes, 120 calls):
-`node uji/pemicu/jalankan.mjs --keluar uji/pemicu/hasil-baru.json`.
+`node tests/trigger/run.mjs --out tests/trigger/results-after.json`.
 
 ## Releasing a new version
 
@@ -664,7 +664,7 @@ what the plugin ships — anything under `skills/`, `agents/`, `hooks/` or
 latest, release when a batch ends: the foreman runs `release.sh unreleased`
 once the board goes quiet, names the tickets no release carries, and offers
 one. Tickets that changed only the board (`.kerjaan/`) or only the tests
-(`uji/`) need no release; the script marks the board-only ones.
+(`tests/`) need no release; the script marks the board-only ones.
 
 - **patch** (1.12.0 → 1.12.1): fixes that change no rule a session follows;
 - **minor** (1.12.0 → 1.13.0): new behaviour, a new script, a new setting;
@@ -718,7 +718,7 @@ to whoever is doing it, that is the signal to check who it was for.
 
 The rules a session reads — `skills/kerjaan/SKILL.md`, the guides in
 `skills/kerjaan/references/` and the agent definitions in `agents/` — have a
-budget of **18,000 words together**. `uji/skill-ringkas.test.mjs` counts them
+budget of **18,000 words together**. `tests/skill-size.test.mjs` counts them
 and fails when the budget is exceeded, so the suite goes red before a release
 can carry a heavier skill.
 

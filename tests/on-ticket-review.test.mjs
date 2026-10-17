@@ -20,7 +20,7 @@ function board(body = '') {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'kerjaan-hook-'));
   const review = path.join(root, '.kerjaan', 'review');
   fs.mkdirSync(review, { recursive: true });
-  const ticket = path.join(review, `${id} Sebuah tiket.md`);
+  const ticket = path.join(review, `${id} A ticket.md`);
   fs.writeFileSync(ticket, '---\ntype: task\n---\n' + body);
   return { root, ticket };
 }
@@ -28,7 +28,7 @@ function board(body = '') {
 // Ticket bodies at each round, as update-ticket.sh and the reviewer leave them.
 const firstRound = `
 ## Done when
-- [x] Sesuatu.
+- [x] Something.
 
 ## History
 - 2026-10-11 07:00:00 todo
@@ -36,14 +36,14 @@ const firstRound = `
 - 2026-10-11 07:40:00 review
 
 ## Notes
-- Catatan pengerja.
+- Worker note.
 `;
 
 // Sent back once, in a board written in Indonesian: the reviewer's block is in
 // the board's language, so only History tells the round.
 const secondRoundByHistory = `
 ## Done when
-- [ ] Sesuatu.
+- [ ] Something.
 
 ## History
 - 2026-10-11 07:00:00 todo
@@ -95,34 +95,34 @@ const onlyOneReview = `
 const quotesThatAreNotReviews = {
   'in Background': `
 ## Background
-Hook mencari teks "Reviewed at level" di catatan tinjauan.
-Reviewed at level quick, round 1 -- contoh baris pembuka peninjau.
+The hook looks for the text "Reviewed at level" in review notes.
+Reviewed at level quick, round 1 -- an example of the reviewer's opening line.
 ${onlyOneReview}
 ## Notes
-- Catatan pengerja.
+- Worker note.
 `,
   'mid-sentence in a worker note': `
 ${onlyOneReview}
 ## Notes
-- Catatan pengerja: peninjau membuka bloknya dengan "Reviewed at level", jadi
-  hook mencarinya.
+- Worker note: the reviewer opens its block with "Reviewed at level", so
+  the hook looks for it.
 `,
   'on a wrapped continuation line of a worker note': `
 ${onlyOneReview}
 ## Notes
-- Catatan pengerja: baris pembuka peninjau berbunyi
+- Worker note: the reviewer's opening line reads
   Reviewed at level quick, round 1, at commit a1b2c3d.
 `,
   'in a > quote in Notes': `
 ${onlyOneReview}
 ## Notes
-- Catatan pengerja, mengutip tiket lain:
+- Worker note, quoting another ticket:
 > Reviewed at level quick, round 1, at commit a1b2c3d: sent back.
 `,
   'inside a fenced block in Notes': `
 ${onlyOneReview}
 ## Notes
-- Contoh blok peninjau:
+- An example of a reviewer's block:
 \`\`\`
 - Reviewed at level quick, round 1, at commit a1b2c3d: sent back.
 \`\`\`
@@ -131,7 +131,7 @@ ${onlyOneReview}
   'inside an indented fenced block in Notes': `
 ${onlyOneReview}
 ## Notes
-- Contoh blok peninjau:
+- An example of a reviewer's block:
   \`\`\`markdown
   Reviewed at level quick, round 1, at commit a1b2c3d: sent back.
   \`\`\`
@@ -142,19 +142,19 @@ ${onlyOneReview}
   'as in ticket 261011073202': `
 ${onlyOneReview}
 ## Notes
-- Catatan pengerja, 11 Okt 2026:
-  - Sinyal putaran. Hook menganggap tiket sudah pernah ditinjau bila
-    \`## History\` memuat \`review\` lebih dari sekali, atau \`## Notes\` memuat
-    "Reviewed at level". Sinyal kedua saja tidak cukup.
-  - Catatan 1 (tidak memblokir): sinyal Notes memakai \`grep -q 'Reviewed at
-    level'\` atas seluruh berkas.
+- Worker note, 11 Oct 2026:
+  - Round signals. The hook takes a ticket as reviewed before when
+    \`## History\` holds \`review\` more than once, or \`## Notes\` holds
+    "Reviewed at level". The second signal alone is not enough.
+  - Note 1 (not blocking): the Notes signal uses \`grep -q 'Reviewed at
+    level'\` over the whole file.
 `,
   'outside Notes, in a section after it': `
 ${onlyOneReview}
 ## Notes
-- Catatan pengerja.
+- Worker note.
 
-## Lampiran
+## Appendix
 - Reviewed at level quick, round 1, at commit a1b2c3d: sent back.
 `,
 };
@@ -258,7 +258,7 @@ test('a session started with --agent has a type but no id, and is still the fore
 
 test('a ticket that never reached review summons nobody, from either side', () => {
   const { root } = board();
-  const missing = path.join(root, '.kerjaan', 'review', '261011070099 Lain.md');
+  const missing = path.join(root, '.kerjaan', 'review', '261011070099 Another.md');
   const payload = moveToReview(root, missing);
   payload.tool_input.command = `"$K/update-ticket.sh" 261011070099 --status review`;
   assert.equal(run(payload), null);
@@ -296,7 +296,7 @@ for (const [where, body] of Object.entries(quotesThatAreNotReviews)) {
 
 for (const [shape, line] of Object.entries(reviewerOpenings)) {
   test(`a later round told by the reviewer's opening line ${shape} in Notes: resume`, () => {
-    const body = `\n## History\n- 2026-10-11 08:20:00 review\n\n## Notes\n- Catatan pengerja.\n\n${line}\n`;
+    const body = `\n## History\n- 2026-10-11 08:20:00 review\n\n## Notes\n- Worker note.\n\n${line}\n`;
     const { root, ticket } = board(body);
     const out = run(moveToReview(root, ticket));
     const text = out.hookSpecificOutput.additionalContext;
@@ -336,14 +336,14 @@ const historyForms = {
 
 for (const [form, lines] of Object.entries(historyForms)) {
   test(`History with ${form}: two review lines are a later round`, () => {
-    const { root, ticket } = board(`\n## History\n${lines.join('\n')}\n\n## Notes\n- Catatan pengerja.\n`);
+    const { root, ticket } = board(`\n## History\n${lines.join('\n')}\n\n## Notes\n- Worker note.\n`);
     const out = run(moveToReview(root, ticket));
     assert.match(out.hookSpecificOutput.additionalContext, /Resume the reviewer of the round before/);
     assert.match(out.systemMessage, /resuming its reviewer/);
   });
 
   test(`History with ${form}, cut after the first review: still round one`, () => {
-    const { root, ticket } = board(`\n## History\n${lines.slice(0, 2).join('\n')}\n\n## Notes\n- Catatan pengerja.\n`);
+    const { root, ticket } = board(`\n## History\n${lines.slice(0, 2).join('\n')}\n\n## Notes\n- Worker note.\n`);
     const out = run(moveToReview(root, ticket));
     assert.match(out.hookSpecificOutput.additionalContext, /Dispatch one subagent right now/);
     assert.doesNotMatch(out.hookSpecificOutput.additionalContext, /Resume the reviewer|later round/);
@@ -353,7 +353,7 @@ for (const [form, lines] of Object.entries(historyForms)) {
 // A session id is one word: a line with two words between the time and the
 // status is not a History record, so it does not make a round.
 test('a review line with more than one word before the status is not counted', () => {
-  const body = `\n## History\n- 2026-10-11 07:40:00 ${S1} review\n- 2026-10-11 08:20:00 kata lain review\n\n## Notes\n- x\n`;
+  const body = `\n## History\n- 2026-10-11 07:40:00 ${S1} review\n- 2026-10-11 08:20:00 other words review\n\n## Notes\n- x\n`;
   const { root, ticket } = board(body);
   const out = run(moveToReview(root, ticket));
   assert.match(out.hookSpecificOutput.additionalContext, /Dispatch one subagent right now/);
@@ -372,7 +372,7 @@ const hookText = (body) => {
 };
 
 test('the issue\'s case: one rejection, then a merge postponed — the review after it has no number, and the count stays at one', () => {
-  const { text, sys } = hookText(`\n## History\n${H('todo', 'in_progress', 'review', 'in_progress', 'review', 'done', 'in_progress', 'review')}\n\n## Notes\n- 2026-10-11: Reviewed at level quick, round 1, at commit a1b2c3d: sent back.\n- 2026-10-11: Reviewed at level quick, round 2, at commit b2c3d4e: passed.\n- 2026-10-11 09:00:00: merge postponed — main changed since tiket-x last took it in (a.txt); back to in_progress to be brought up to date with main, tested and reviewed again.\n`);
+  const { text, sys } = hookText(`\n## History\n${H('todo', 'in_progress', 'review', 'in_progress', 'review', 'done', 'in_progress', 'review')}\n\n## Notes\n- 2026-10-11: Reviewed at level quick, round 1, at commit a1b2c3d: sent back.\n- 2026-10-11: Reviewed at level quick, round 2, at commit b2c3d4e: passed.\n- 2026-10-11 09:00:00: merge postponed — main changed since ticket-x last took it in (a.txt); back to in_progress to be brought up to date with main, tested and reviewed again.\n`);
   assert.match(text, /after a merge postponed/);
   assert.match(text, /not a round, no round number, and not a rejection/);
   assert.match(text, /sent it back 1 time\(s\)/);
@@ -497,7 +497,7 @@ test('docs: the event merge.sh land reports has one name, merge postponed, and n
 // background, or resumed with SendMessage). The hook remembers which agent
 // moved which ticket, and on that end tells the foreman to get the reviewer.
 
-const SESSION = 'sesi-uji-0001';
+const SESSION = 'session-test-0001';
 const WORKER = 'a5581b3155a971061';
 
 function stateDir() {
@@ -526,7 +526,7 @@ function notification(agent = WORKER, session = SESSION, result = 'Ticket: 26101
     hook_event_name: 'UserPromptSubmit',
     prompt: `<task-notification>\n<task-id>${agent}</task-id>\n<tool-use-id>toolu_01</tool-use-id>\n` +
       `<output-file>/tmp/x/tasks/${agent}.output</output-file>\n<status>completed</status>\n` +
-      `<summary>Agent "Kerjakan tiket" finished</summary>\n<result>${result}</result>\n</task-notification>`,
+      `<summary>Agent "Work the ticket" finished</summary>\n<result>${result}</result>\n</task-notification>`,
   };
 }
 
@@ -537,7 +537,7 @@ function agentReturned(agent = WORKER, session = SESSION, extra = {}) {
     session_id: session,
     hook_event_name: 'PostToolUse',
     tool_name: 'Agent',
-    tool_input: { description: 'Kerjakan tiket', prompt: `Ticket ${id}`, subagent_type: 'kerjaan:kerjaan-worker', run_in_background: false },
+    tool_input: { description: 'Work the ticket', prompt: `Ticket ${id}`, subagent_type: 'kerjaan:kerjaan-worker', run_in_background: false },
     tool_response: { status: 'completed', agentId: agent, content: [{ type: 'text', text: 'REVIEW' }] },
     ...extra,
   };
@@ -649,7 +649,7 @@ test('only the agent that moved the ticket, in the session it moved it in, bring
   runIn(state, workerMoves(root, ticket));
   assert.equal(runIn(state, notification('aother000000000001')), null, 'another agent');
   assert.equal(runIn(state, agentReturned('aother000000000001')), null, 'another agent, foreground');
-  assert.equal(runIn(state, notification(WORKER, 'sesi-lain')), null, 'another session');
+  assert.equal(runIn(state, notification(WORKER, 'other-session')), null, 'another session');
   assert.ok(runIn(state, notification()), 'the worker itself');
 });
 
@@ -666,9 +666,9 @@ test('an ordinary prompt from the owner summons nobody', () => {
   const state = stateDir();
   const { root, ticket } = board(firstRound);
   runIn(state, workerMoves(root, ticket));
-  assert.equal(runIn(state, { session_id: SESSION, hook_event_name: 'UserPromptSubmit', prompt: `lanjutkan tiket ${id} dan ${WORKER}` }), null);
+  assert.equal(runIn(state, { session_id: SESSION, hook_event_name: 'UserPromptSubmit', prompt: `continue ticket ${id} and ${WORKER}` }), null);
   // Even one that quotes the tag, outside a <task-notification>.
-  assert.equal(runIn(state, { session_id: SESSION, hook_event_name: 'UserPromptSubmit', prompt: `apa arti <task-id>${WORKER}</task-id>?` }), null);
+  assert.equal(runIn(state, { session_id: SESSION, hook_event_name: 'UserPromptSubmit', prompt: `what does <task-id>${WORKER}</task-id> mean?` }), null);
   assert.ok(runIn(state, notification()), 'the note is still there for the real end');
 });
 
@@ -683,7 +683,7 @@ test('a notification naming several agents reminds for each that moved a ticket'
 });
 
 test('a state folder that cannot be written costs the reminder, not the worker\'s message', () => {
-  const blocker = path.join(stateDir(), 'berkas');
+  const blocker = path.join(stateDir(), 'a-file');
   fs.writeFileSync(blocker, '');
   const { root, ticket } = board(firstRound);
   const out = runIn(blocker, workerMoves(root, ticket));
@@ -697,8 +697,8 @@ test('a state folder that cannot be written costs the reminder, not the worker\'
 const update = path.join(here, '..', 'skills', 'kerjaan', 'scripts', 'update-ticket.sh');
 const gitEnv = {
   ...process.env,
-  GIT_AUTHOR_NAME: 'Uji', GIT_AUTHOR_EMAIL: 'uji@example.com',
-  GIT_COMMITTER_NAME: 'Uji', GIT_COMMITTER_EMAIL: 'uji@example.com',
+  GIT_AUTHOR_NAME: 'Test', GIT_AUTHOR_EMAIL: 'test@example.com',
+  GIT_COMMITTER_NAME: 'Test', GIT_COMMITTER_EMAIL: 'test@example.com',
 };
 function realBoard() {
   const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'kerjaan-hook-real-')));
@@ -708,13 +708,13 @@ function realBoard() {
     fs.mkdirSync(path.join(root, '.kerjaan', s), { recursive: true });
     fs.writeFileSync(path.join(root, '.kerjaan', s, '.gitkeep'), '');
   }
-  fs.writeFileSync(path.join(root, '.kerjaan', 'settings.md'), '---\nlanguage: Bahasa Indonesia\ntest_command:\nlong_lived_branches: []\n---\n');
-  fs.writeFileSync(path.join(root, '.kerjaan', 'in_progress', `${id} Sebuah tiket.md`),
+  fs.writeFileSync(path.join(root, '.kerjaan', 'settings.md'), '---\nlanguage: English\ntest_command:\nlong_lived_branches: []\n---\n');
+  fs.writeFileSync(path.join(root, '.kerjaan', 'in_progress', `${id} A ticket.md`),
     '---\ntype: task\npriority: medium\nreview: quick\nlabels: []\nreporter: mirza\nassign_to: claude\n' +
     'created: 2026-10-11 07:00:00\nupdated: 2026-10-11 07:10:00\nrelated: []\nblocked_by: []\n---\n\n' +
-    '## Background\nSesuatu.\n\n## Request\nSesuatu.\n\n## Done when\n- [x] Sesuatu.\n\n## History\n- 2026-10-11 07:10:00 in_progress\n\n## Notes\n(none yet)\n');
+    '## Background\nSomething.\n\n## Request\nSomething.\n\n## Done when\n- [x] Something.\n\n## History\n- 2026-10-11 07:10:00 in_progress\n\n## Notes\n(none yet)\n');
   g('add', '-A');
-  g('commit', '-q', '-m', 'awal');
+  g('commit', '-q', '-m', 'initial');
   return root;
 }
 
@@ -739,7 +739,7 @@ for (const [form, flag] of Object.entries(reviewForms)) {
     const root = realBoard();
     const r = spawnSync('bash', ['-c', command], { cwd: root, encoding: 'utf8', env: { ...gitEnv, CLAUDE_CODE_SESSION_ID: '' } });
     assert.equal(r.status, 0, r.stderr);
-    const ticket = path.join(root, '.kerjaan', 'review', `${id} Sebuah tiket.md`);
+    const ticket = path.join(root, '.kerjaan', 'review', `${id} A ticket.md`);
     assert.ok(fs.existsSync(ticket), 'update-ticket.sh did not move the ticket');
     const payload = { cwd: root, hook_event_name: 'PostToolUse', tool_name: 'Bash', tool_input: { command }, tool_response: { stdout: r.stdout, stderr: '' } };
     const out = runIn(stateDir(), payload);

@@ -1,0 +1,507 @@
+{
+  "date": "2026-10-17T14:27:20.647Z",
+  "claude": "2.1.302 (Claude Code)",
+  "model": [
+    "claude-opus-5-5[1m]"
+  ],
+  "repeat": 3,
+  "promptsSha": "363f217fec946171",
+  "description": "Ticket board kept as markdown files in a repo's `.kerjaan/` folder; its subfolders (backlog, todo, in_progress, review, done, cancel) are the statuses. Use it to create, move, edit or list tickets, answer what is planned, in flight or in review, start a board, and work the queue through worker and reviewer agents. Where `.kerjaan/` exists, trigger it whenever a request mentions tickets or those statuses, and on indirect asks like \"note this down for later\", \"put that on the backlog\", \"not now, maybe later\", \"mark that as done\", \"what are we working on\", \"work the queue\", \"catat ini dulu\", \"tandai sudah selesai\", \"apa saja yang sedang dikerjakan\", \"kerjakan tiket berikutnya\". Without `.kerjaan/`, review, done or todo alone mean ordinary code work. Prefer it over an ad-hoc TODO list or notes file.",
+  "descriptionWords": 131,
+  "summary": {
+    "should": {
+      "runs": 72,
+      "called": 70,
+      "promptsPassed": 23,
+      "prompts": 24
+    },
+    "shouldNot": {
+      "runs": 48,
+      "called": 0,
+      "promptsPassed": 16,
+      "prompts": 16
+    }
+  },
+  "results": [
+    {
+      "id": "note-down",
+      "repo": "board",
+      "should": true,
+      "group": "indirect",
+      "prompt": "note this down for later: the export button is slow on big files",
+      "runs": [
+        "skill",
+        "skill",
+        "skill"
+      ]
+    },
+    {
+      "id": "backlog",
+      "repo": "board",
+      "should": true,
+      "group": "indirect",
+      "prompt": "put that on the backlog: sending notifications through Telegram",
+      "runs": [
+        "skill",
+        "skill",
+        "skill"
+      ]
+    },
+    {
+      "id": "maybe-later",
+      "repo": "board",
+      "should": true,
+      "group": "indirect",
+      "prompt": "not now, maybe later. The dark mode idea can wait.",
+      "runs": [
+        "skill",
+        "skill",
+        "skill"
+      ]
+    },
+    {
+      "id": "mark-done",
+      "repo": "board",
+      "should": true,
+      "group": "indirect",
+      "prompt": "mark the login timeout one as done",
+      "runs": [
+        "skill",
+        "skill",
+        "skill"
+      ]
+    },
+    {
+      "id": "scrap",
+      "repo": "board",
+      "should": true,
+      "group": "indirect",
+      "prompt": "scrap that one, we're not doing the CSV import anymore",
+      "runs": [
+        "skill",
+        "skill",
+        "skill"
+      ]
+    },
+    {
+      "id": "working-on",
+      "repo": "board",
+      "should": true,
+      "group": "indirect",
+      "prompt": "what are we working on right now?",
+      "runs": [
+        "skill",
+        "skill",
+        "skill"
+      ]
+    },
+    {
+      "id": "remember",
+      "repo": "board",
+      "should": true,
+      "group": "indirect",
+      "prompt": "remember this for later: exporting large files is slow",
+      "runs": [
+        "skill",
+        "skill",
+        "skill"
+      ]
+    },
+    {
+      "id": "someday",
+      "repo": "board",
+      "should": true,
+      "group": "indirect",
+      "prompt": "Telegram notifications, let's keep that for someday",
+      "runs": [
+        "skill",
+        "skill",
+        "skill"
+      ]
+    },
+    {
+      "id": "park",
+      "repo": "board",
+      "should": true,
+      "group": "indirect",
+      "prompt": "park the dark mode idea for now, we'll come back to it",
+      "runs": [
+        "skill",
+        "skill",
+        "skill"
+      ]
+    },
+    {
+      "id": "finished",
+      "repo": "board",
+      "should": true,
+      "group": "indirect",
+      "prompt": "the login timeout one is finished",
+      "runs": [
+        "skill",
+        "skill",
+        "skill"
+      ]
+    },
+    {
+      "id": "drop",
+      "repo": "board",
+      "should": true,
+      "group": "indirect",
+      "prompt": "forget the CSV import, we're not doing it",
+      "runs": [
+        "skill",
+        "skill",
+        "skill"
+      ]
+    },
+    {
+      "id": "in-flight",
+      "repo": "board",
+      "should": true,
+      "group": "indirect",
+      "prompt": "what's in flight at the moment?",
+      "runs": [
+        "skill",
+        "skill",
+        "skill"
+      ]
+    },
+    {
+      "id": "waiting-review",
+      "repo": "board",
+      "should": true,
+      "group": "direct",
+      "prompt": "what's waiting in review?",
+      "runs": [
+        "skill",
+        "skill",
+        "skill"
+      ]
+    },
+    {
+      "id": "new-ticket",
+      "repo": "board",
+      "should": true,
+      "group": "direct",
+      "prompt": "create a ticket for the broken pagination on the orders page",
+      "runs": [
+        "skill",
+        "skill",
+        "skill"
+      ]
+    },
+    {
+      "id": "still-in-review",
+      "repo": "board",
+      "should": true,
+      "group": "direct",
+      "prompt": "which tickets are still in review?",
+      "runs": [
+        "none",
+        "skill",
+        "none"
+      ]
+    },
+    {
+      "id": "file-bug",
+      "repo": "board",
+      "should": true,
+      "group": "direct",
+      "prompt": "file a bug: the orders page shows up empty",
+      "runs": [
+        "skill",
+        "skill",
+        "skill"
+      ]
+    },
+    {
+      "id": "queue",
+      "repo": "board",
+      "should": true,
+      "group": "queue",
+      "prompt": "work the queue",
+      "runs": [
+        "skill",
+        "skill",
+        "skill"
+      ]
+    },
+    {
+      "id": "queue-next",
+      "repo": "board",
+      "should": true,
+      "group": "queue",
+      "prompt": "work the next ticket",
+      "runs": [
+        "skill",
+        "skill",
+        "skill"
+      ]
+    },
+    {
+      "id": "queue-todo",
+      "repo": "board",
+      "should": true,
+      "group": "queue",
+      "prompt": "start on whatever is next in todo",
+      "runs": [
+        "skill",
+        "skill",
+        "skill"
+      ]
+    },
+    {
+      "id": "queue-plan",
+      "repo": "board",
+      "should": true,
+      "group": "queue",
+      "prompt": "plan what we can work on next from the backlog",
+      "runs": [
+        "skill",
+        "skill",
+        "skill"
+      ]
+    },
+    {
+      "id": "queue-pick-up",
+      "repo": "board",
+      "should": true,
+      "group": "queue",
+      "prompt": "pick up the next ticket",
+      "runs": [
+        "skill",
+        "skill",
+        "skill"
+      ]
+    },
+    {
+      "id": "queue-until-empty",
+      "repo": "board",
+      "should": true,
+      "group": "queue",
+      "prompt": "keep working through todo until it's empty",
+      "runs": [
+        "skill",
+        "skill",
+        "skill"
+      ]
+    },
+    {
+      "id": "new-board",
+      "repo": "empty",
+      "should": true,
+      "group": "new-board",
+      "prompt": "set up a ticket board in this repo",
+      "runs": [
+        "skill",
+        "skill",
+        "skill"
+      ]
+    },
+    {
+      "id": "start-tracking",
+      "repo": "empty",
+      "should": true,
+      "group": "new-board",
+      "prompt": "I want to start tracking our work as tickets in this repo",
+      "runs": [
+        "skill",
+        "skill",
+        "skill"
+      ]
+    },
+    {
+      "id": "review-code",
+      "repo": "empty",
+      "should": false,
+      "group": "review-without-board",
+      "prompt": "review this code",
+      "runs": [
+        "other-skill:code-review",
+        "none",
+        "other-skill:code-review"
+      ]
+    },
+    {
+      "id": "done-thanks",
+      "repo": "empty",
+      "should": false,
+      "group": "review-without-board",
+      "prompt": "done, thanks",
+      "runs": [
+        "none",
+        "none",
+        "none"
+      ]
+    },
+    {
+      "id": "todo-comment",
+      "repo": "empty",
+      "should": false,
+      "group": "review-without-board",
+      "prompt": "is the todo comment in main.js still relevant?",
+      "runs": [
+        "none",
+        "none",
+        "none"
+      ]
+    },
+    {
+      "id": "can-you-review",
+      "repo": "empty",
+      "should": false,
+      "group": "review-without-board",
+      "prompt": "can you review this?",
+      "runs": [
+        "other-skill:code-review",
+        "other-skill:code-review",
+        "other-skill:code-review"
+      ]
+    },
+    {
+      "id": "its-done",
+      "repo": "empty",
+      "should": false,
+      "group": "review-without-board",
+      "prompt": "it's done",
+      "runs": [
+        "none",
+        "none",
+        "none"
+      ]
+    },
+    {
+      "id": "review-changes",
+      "repo": "empty",
+      "should": false,
+      "group": "review-without-board",
+      "prompt": "please review my changes in main.js before I commit",
+      "runs": [
+        "none",
+        "none",
+        "none"
+      ]
+    },
+    {
+      "id": "fix-bug",
+      "repo": "empty",
+      "should": false,
+      "group": "plain-code",
+      "prompt": "fix the off-by-one bug in main.js",
+      "runs": [
+        "none",
+        "none",
+        "none"
+      ]
+    },
+    {
+      "id": "commit",
+      "repo": "empty",
+      "should": false,
+      "group": "plain-code",
+      "prompt": "commit these changes with a good message",
+      "runs": [
+        "none",
+        "none",
+        "none"
+      ]
+    },
+    {
+      "id": "done-then-test",
+      "repo": "empty",
+      "should": false,
+      "group": "plain-code",
+      "prompt": "the average function is done, now add a test for it",
+      "runs": [
+        "none",
+        "none",
+        "none"
+      ]
+    },
+    {
+      "id": "explain",
+      "repo": "empty",
+      "should": false,
+      "group": "plain-code",
+      "prompt": "explain what main.js does",
+      "runs": [
+        "none",
+        "none",
+        "none"
+      ]
+    },
+    {
+      "id": "typo-board",
+      "repo": "board",
+      "should": false,
+      "group": "plain-code",
+      "prompt": "fix the typo in README.md",
+      "runs": [
+        "none",
+        "none",
+        "none"
+      ]
+    },
+    {
+      "id": "unit-test-board",
+      "repo": "board",
+      "should": false,
+      "group": "plain-code",
+      "prompt": "write a unit test for the add function in main.js",
+      "runs": [
+        "none",
+        "none",
+        "none"
+      ]
+    },
+    {
+      "id": "rebase-board",
+      "repo": "board",
+      "should": false,
+      "group": "plain-code",
+      "prompt": "what does git rebase do?",
+      "runs": [
+        "none",
+        "none",
+        "none"
+      ]
+    },
+    {
+      "id": "let-const-board",
+      "repo": "board",
+      "should": false,
+      "group": "plain-code",
+      "prompt": "what's the difference between let and const in JavaScript?",
+      "runs": [
+        "none",
+        "none",
+        "none"
+      ]
+    },
+    {
+      "id": "tidy-board",
+      "repo": "board",
+      "should": false,
+      "group": "plain-code",
+      "prompt": "tidy up the formatting in main.js",
+      "runs": [
+        "none",
+        "none",
+        "none"
+      ]
+    },
+    {
+      "id": "backup-script-board",
+      "repo": "board",
+      "should": false,
+      "group": "plain-code",
+      "prompt": "write a bash script that backs up the data folder",
+      "runs": [
+        "none",
+        "none",
+        "none"
+      ]
+    }
+  ]
+}

@@ -35,8 +35,8 @@ and the planner writes the owner's choice into `review:`:
 What earns more than `quick` is in the planner's step 7. Then the owner's
 answer stands, and:
 
-- **When the owner has asked for speed, stop offering.** "Ini cuma mock", "buat
-  MVP dulu", "yang penting jalan", "jangan lama-lama" settle it for the work
+- **When the owner has asked for speed, stop offering.** "It's just a mock",
+  "MVP first", "as long as it runs", "don't take long" settle it for the work
   that follows: use `quick` and say nothing further about levels.
 - **Ask once per ticket.** Declined is settled.
 - **Never raise the level silently.** A review that costs ten minutes when the

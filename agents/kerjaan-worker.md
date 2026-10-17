@@ -199,7 +199,7 @@ step 1 and finds the answer the same way.
 
 ## When there is no ticket
 
-The owner skipped the ticket ("langsung saja"), not the worker: the prompt
+The owner skipped the ticket ("just do it"), not the worker: the prompt
 says `No ticket:` and gives the request in place of a ticket's path. The steps
 hold, minus the board: the request is what you are judged against, so read it
 the way you would read `Done when`. There is no ticket to move, to tick or to
