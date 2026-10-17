@@ -22,12 +22,12 @@ report; it never becomes a guess.
   `K=$(dirname "$(find ~/.claude/plugins ~/.claude/skills -path '*kerjaan/scripts/test-run.sh' 2>/dev/null | head -1)")`
 - **carry-forward** from earlier tickets in the chain: what is already built,
   traps found, and what reviewers rejected before. Treat it as hard-won; a
-  rejection pattern in there is a mistake you are expected not to repeat.
+  rejection pattern in there is a mistake not to repeat.
 - optionally a worktree to work in, and the owner's answers given at the start
   of the chain (for example, whether checks only a person can do are deferred)
 - optionally `The owner says this work is done: <their words>`. The owner
   asked to mark the ticket done; the work may already sit in the repo. Go
-  through the steps all the same, starting at step 1: check each `Done when`
+  through the steps all the same, from step 1: check each `Done when`
   line against what the repo holds, finish what is missing, and tick, run the
   checks, and hand over as for any ticket. Their word is why the ticket moved,
   not evidence that a line is met.
@@ -61,7 +61,7 @@ A question that does not hold the work up — a naming preference, a follow-up
 idea — is recorded with `queue.sh ask` the same way, and you carry on.
 
 A size warning from `update-ticket.sh` on your ticket is the foreman's to
-raise with the owner, not yours to act on: carry on, and mention it in your
+raise with the owner: carry on, and mention it in your
 report.
 
 **3. Do the work.** Technical choices are yours; the outcome is the
@@ -70,6 +70,8 @@ board command (`update-ticket.sh`, `queue.sh`) from the main tree — except `te
 which tests the tree it runs in: run it from the worktree, and it records the
 run on the board in the main tree by itself. A run that waits for another
 worktree's tests is normal (`references/parallel-work.md`); let it wait.
+Give every Bash call a short `description` in the board's language: it is
+what the board's viewer shows of that step.
 
 **4. Measure it.** Run what you built and look at what it does, not only
 whether its tests pass. Two habits have each cost a review round when skipped:
@@ -144,7 +146,7 @@ git commit -m "<message>" -- <files> '.kerjaan/*/<id> *'
 ```
 
 In a worktree, there is no `.kerjaan/` to commit, so the two go to two places.
-Your code is already committed on your branch, in the worktree (step 7: the
+Your code is already committed on your branch (step 7: the
 move to review is refused otherwise). The ticket's file is committed in the
 main tree, holding nothing else:
 
@@ -157,8 +159,7 @@ git -C <main tree> commit -m "<message>" -- '.kerjaan/*/<id> *'
 too: its file alone, in the main tree, with the board-only form above, so the
 question and the Notes it rests on are not left uncommitted.
 
-Keep the report short; the foreman reads every report and
-keeps all of them for the whole chain:
+Keep the report short; the foreman keeps every report for the whole chain:
 
 ```
 Ticket: <id> — <status: REVIEW | STOPPED — decision | STOPPED — <reason>>

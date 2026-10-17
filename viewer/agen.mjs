@@ -11,9 +11,11 @@
 // made out simply has none. Nothing here throws.
 //
 // What leaves this module is a short label per step and never what the step
-// carried: no command, no tool result, no thinking, no message text. A label
-// is a tool's own `description` (Bash and the like), or the name of the file a
-// tool opened; any other tool shows only its name.
+// carried: no tool result, no thinking, no message text, and of a command only
+// the name of the program it runs. A label is a tool's own `description`
+// (Bash and the like); for a Bash step without one, the program's name alone,
+// never its arguments, assignments or anything else on the line; or the name
+// of the file a tool opened. Any other tool shows only its name.
 
 import fs from 'node:fs';
 import os from 'node:os';
@@ -82,12 +84,81 @@ const time = (v) => {
 
 const clean = (s) => String(s).replace(/[\u0000-\u001f\u007f]+/g, ' ').replace(/\s+/g, ' ').trim().slice(0, LABEL_MAX);
 
+// A command line read as the shell would split it, as words and the operators
+// between commands. Quotes are taken off; what is inside them stays one word.
+// Only the program names are ever kept from this (programName, below).
+function shellTokens(command) {
+  const out = [];
+  let word = null;
+  const push = () => { if (word !== null) out.push({ word }); word = null; };
+  for (let k = 0; k < command.length; k++) {
+    const c = command[k];
+    if (c === "'") {
+      const end = command.indexOf("'", k + 1);
+      word = (word ?? '') + command.slice(k + 1, end < 0 ? command.length : end);
+      k = end < 0 ? command.length : end;
+    } else if (c === '"') {
+      let w = '';
+      for (k++; k < command.length && command[k] !== '"'; k++) w += command[k] === '\\' ? command[++k] ?? '' : command[k];
+      word = (word ?? '') + w;
+    } else if (c === '`' || (c === '$' && command[k + 1] === '(')) {
+      // A substitution stays inside the word it is part of, however it nests.
+      let depth = 0;
+      let end = k;
+      if (c === '`') end = command.indexOf('`', k + 1);
+      else for (end = k + 1; end < command.length; end++) {
+        if (command[end] === '(') depth++;
+        else if (command[end] === ')' && --depth === 0) break;
+      }
+      if (end < 0) end = command.length;
+      word = (word ?? '') + command.slice(k, end + 1);
+      k = end;
+    } else if (c === '\\') {
+      if (command[k + 1] !== '\n') word = (word ?? '') + (command[k + 1] ?? '');
+      k++;
+    } else if (c === '\n' || c === ';' || c === '&' || c === '|' || c === '(' || c === ')') {
+      push();
+      out.push({ op: c === '\n' ? ';' : c });
+      if ((c === '&' || c === '|') && command[k + 1] === c) k++;
+    } else if (/\s/.test(c)) push();
+    else if (c === '#' && word === null) {
+      while (k + 1 < command.length && command[k + 1] !== '\n') k++;
+    } else word = (word ?? '') + c;
+  }
+  push();
+  return out;
+}
+
+// The program a Bash command runs, by name only: "node" for
+// `API_TOKEN=x node --test`, "test-run.sh" for `"$K/test-run.sh" 2610...`.
+// Assignments before the program are skipped, and so is a leading `cd <dir>`
+// with its operator, since the program after it says more. A name that is not
+// a plain word once its folder is dropped (a variable, a substitution, a
+// quoted phrase) gives no label at all rather than any part of itself.
+const PROGRAM = /^[A-Za-z0-9_][A-Za-z0-9._+-]{0,39}$/;
+const ASSIGNMENT = /^[A-Za-z_][A-Za-z0-9_]*=/;
+export function programName(command) {
+  if (typeof command !== 'string') return '';
+  let first = '';
+  let skipping = false;
+  for (const t of shellTokens(command)) {
+    if (t.op) { skipping = false; continue; }
+    if (skipping || ASSIGNMENT.test(t.word) || t.word === '{' || t.word === '!') continue;
+    const name = t.word.slice(t.word.lastIndexOf('/') + 1);
+    const shown = PROGRAM.test(name) ? name : '';
+    if (name === 'cd' || name === 'pushd') { first ||= name; skipping = true; continue; }
+    return shown;
+  }
+  return first;
+}
+
 // The one place a step's label is made. Only these fields are ever read.
 export function stepLabel(name, input, projectDir) {
   const tool = clean(typeof name === 'string' && name ? name : '?');
   if (tool === 'SubagentHandback') return { tool, label: 'menyerahkan laporan' };
   const i = input && typeof input === 'object' ? input : {};
   if (typeof i.description === 'string' && i.description.trim()) return { tool, label: clean(i.description) };
+  if (tool === 'Bash') return { tool, label: programName(i.command) };
   const file = typeof i.file_path === 'string' ? i.file_path : typeof i.notebook_path === 'string' ? i.notebook_path : null;
   if (file) {
     const rel = path.isAbsolute(file) && projectDir ? path.relative(projectDir, file) : null;

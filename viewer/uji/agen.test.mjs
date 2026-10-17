@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
-import { readAgents, encodeProject, stepLabel, STEPS } from '../agen.mjs';
+import { readAgents, encodeProject, stepLabel, programName, STEPS } from '../agen.mjs';
 import { agentState, agentLine, agentSteps, span, ago, clock, QUIET, GONE } from '../web/agen.js';
 import { tempRoot, agentLog, appendLog, line } from './bantu.mjs';
 
@@ -74,11 +74,14 @@ test('ID tiket dari baris Ticket: di prompt pertama bila keterangan agen tidak m
   assert.deepEqual([...readAgents(project, { claudeDir: claude }).keys()], [ID.c]);
 });
 
-test('keterangan langkah: hanya description atau nama berkas; isi perintah tidak pernah', () => {
+test('step label: the description, a file name, or for Bash only the program name; never the command itself', () => {
   const p = '/proj';
   const cases = [
     ['Bash', { command: 'cat RAHASIA', description: 'Jalankan uji' }, 'Jalankan uji'],
-    ['Bash', { command: 'cat RAHASIA' }, ''],
+    ['Bash', { command: 'cat RAHASIA' }, 'cat'],
+    ['Bash', { command: 'cat RAHASIA', description: '  ' }, 'cat'],
+    ['Bash', {}, ''],
+    ['Bash', { command: ['cat', 'RAHASIA'] }, ''],
     ['Read', { file_path: '/proj/viewer/app.mjs' }, 'viewer/app.mjs'],
     ['Edit', { file_path: '/proj/a.md', old_string: 'RAHASIA', new_string: 'RAHASIA' }, 'a.md'],
     ['Write', { file_path: '/lain/tempat/b.txt', content: 'RAHASIA' }, 'b.txt'],
@@ -100,6 +103,52 @@ test('keterangan langkah: hanya description atau nama berkas; isi perintah tidak
       assert.ok(got.label.length <= 160, 'dipotong');
     }
   }
+});
+
+// Each shape of command a Bash step can carry without a description: only
+// the program's name is shown, and nothing else on the line, RAHASIA standing
+// for whatever must never reach the panel.
+test('Bash step without a description: the program name alone, for every shape of command', () => {
+  const cases = [
+    ['argument', 'cat RAHASIA.txt', 'cat'],
+    ['options and arguments', 'node --test --test-timeout=RAHASIA viewer/uji/RAHASIA.test.mjs', 'node'],
+    ['token in an argument', 'curl -H "Authorization: Bearer RAHASIA" https://x/RAHASIA', 'curl'],
+    ['variable set before the program', 'API_TOKEN=RAHASIA node --test', 'node'],
+    ['several, quoted and substituted, before the program', 'A="RAHASIA b" B=\'RAHASIA\' C=$(cat /RAHASIA) D=`cat RAHASIA` npm test', 'npm'],
+    ['only an assignment', 'RAHASIA_TOKEN=RAHASIA', ''],
+    ['a cd first', 'cd /home/RAHASIA && git status RAHASIA', 'git'],
+    ['several cd first, then a newline', 'cd "/RAHASIA dir"; cd RAHASIA\n"$K/test-run.sh" RAHASIA', 'test-run.sh'],
+    ['a cd only', 'cd /RAHASIA', 'cd'],
+    ['program given by its path', '/home/RAHASIA/bin/tool --key RAHASIA', 'tool'],
+    ['program in a variable', '$RAHASIA arg', ''],
+    ['program in braces', '${RAHASIA}/bin x', 'bin'],
+    ['program from a substitution', '$(echo RAHASIA) x', ''],
+    ['program from backticks', '`echo RAHASIA` x', ''],
+    ['program quoted with a space', '"RAHASIA prog" x', ''],
+    ['leading option-like word', '--RAHASIA', ''],
+    ['comment before the program', '# RAHASIA\nls -la RAHASIA', 'ls'],
+    ['subshell', '(cd RAHASIA && make RAHASIA)', 'make'],
+    ['pipeline', 'echo "RAHASIA|x" | grep RAHASIA', 'echo'],
+    ['heredoc', "cat > RAHASIA.md <<'EOF'\nRAHASIA\nEOF", 'cat'],
+    ['negated group', '! { grep -q RAHASIA f; }', 'grep'],
+    ['nothing but spaces', '   ', ''],
+  ];
+  for (const [shape, command, want] of cases) {
+    const got = stepLabel('Bash', { command }, '/proj');
+    assert.equal(got.tool, 'Bash');
+    assert.ok(!got.label.includes('RAHASIA'), `${shape}: ${got.label}`);
+    if (want !== null) assert.equal(got.label, want, shape);
+    assert.equal(got.label, programName(command), shape);
+  }
+});
+
+test('Bash step without a description, read from an agent log: the panel gets the program name', () => {
+  const { project, claude } = setup();
+  const t0 = Date.now();
+  agentLog(claude, project, { id: 'tanpa', description: `Kerjakan tiket ${ID.a}`, lines: [line.prompt(t0, 'x'), line.step(t0 + 1, 'Bash', { command: 'GH_TOKEN=RAHASIA gh pr list --search RAHASIA' }), line.step(t0 + 2, 'Bash', { command: 'ls RAHASIA', description: 'List the folder' })] });
+  const a = readAgents(project, { claudeDir: claude }).get(ID.a);
+  assert.deepEqual(a.steps.map((s) => [s.tool, s.label]), [['Bash', 'gh'], ['Bash', 'List the folder']]);
+  assert.ok(!JSON.stringify(a).includes('RAHASIA'));
 });
 
 test('akhir agen: laporan diserahkan, pesan penutup, tanda selesai di meta, dan dihentikan', () => {

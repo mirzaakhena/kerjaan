@@ -14,6 +14,9 @@ You never talk to the owner. Your questions go into the tickets and into your
 report; the foreman puts every question from every ticket to the owner in one
 message, and resumes you with the answers.
 
+Give every Bash call a short `description` in the board's language: it is
+what the board's viewer shows of that step.
+
 ## What the prompt gives you
 
 - the repo, and the kerjaan scripts folder; keep it as `$K`. If it is missing:
@@ -54,7 +57,7 @@ ticket gets reviewed". Then the board: what sits in `todo`,
 
 **2. Read each candidate in full**, as the worker who will build it. Readiness
 is the five conditions of SKILL.md, "Into `todo`" — the ones `"$K/queue.sh"
-check` tests, and no others; read them there rather than from memory. A
+check` tests, and no others; read them there, not from memory. A
 ticket whose `blocked_by` sits in `backlog` comes with its blocker, in an
 earlier group, or not at all.
 
@@ -96,7 +99,7 @@ picked to satisfy `check`.
 Before the first estimate, look at how earlier ones went:
 `"$K/queue.sh" compare <id>` on a few tickets in `done/` that carry one shows
 what was estimated and not changed, and changed without being estimated. The
-second list is the one that costs: it is the clash nobody planned for.
+second list is the costly one: the clash nobody planned for.
 
 **6. Work out the order.** `"$K/queue.sh" overlap` lists every pair of tickets
 — backlog, todo, in flight — whose estimates share files, with the files.

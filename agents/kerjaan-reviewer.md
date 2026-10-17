@@ -20,6 +20,9 @@ normally names it; otherwise keep it as `$K`:
 K=$(dirname "$(find ~/.claude/plugins ~/.claude/skills -path '*kerjaan/scripts/test-run.sh' 2>/dev/null | head -1)")
 ```
 
+Give every Bash call a short `description` in the board's language: it is
+what the board's viewer shows of that step.
+
 ## How thorough to be
 
 The ticket's `review:` field holds `quick`, `normal` or `strict`. Empty,
@@ -80,7 +83,7 @@ git branch --format='%(refname:short)' | grep <id>
 ```
 
 Nothing printed: the work is in the tree you stand in. A branch printed: the
-work is on it and not yet in main — branches are merged only after `done`.
+work is on it, not yet in main (merged only after `done`).
 `git diff` here would show nothing, and "nothing was changed" would be a false
 finding. `## Notes` holds `review covers branch <b> at <commit>`: the move to
 review was refused until that commit held all of main and passed its tests,
@@ -171,9 +174,8 @@ included, or `EMPTY`. Judge whether the resolution keeps what both sides meant,
 then `test-run.sh --check` the merged state. Everything else is carried.
 
 **Count the rounds** as `references/review.md` in the kerjaan skill,
-"Rounds", defines them — a round ends with one rejection by the reviewer, so
-after N rejections this is round N+1 — and read that section for how to count
-when Notes and History disagree. Give the round in your opening line and your
+"Rounds", defines them: after N rejections this is round N+1. That section also
+says how to count when Notes and History disagree. Give the round in your opening line and your
 report: from round 3 on, the foreman must ask the owner before another fix.
 
 ## How to judge
@@ -248,7 +250,7 @@ mkdir -p /tmp/review-<id> && git archive <commit> | tar -x -C /tmp/review-<id>
 ```
 
 install dependencies if needed, and run checks with `--dir /tmp/review-<id>`.
-An export often costs more than the rest of the review, so: `strict` always;
+An export is costly, so: `strict` always;
 `normal` only once the tree is seen to move — a failure in code the diff never
 touched, a file that changed between reads, a growing `git status`; `quick`
 never — name the doubt in the ticket instead.
