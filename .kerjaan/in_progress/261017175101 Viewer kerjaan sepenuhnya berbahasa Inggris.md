@@ -6,7 +6,7 @@ labels: [sesi-8e6130e0, viewer]
 reporter: mirza
 assign_to: claude
 created: 2026-10-17 17:51:37
-updated: 2026-10-17 19:05:11
+updated: 2026-10-17 20:05:56
 related: [261017113003, 261017155801, 261017184401, 261017184402]
 blocked_by: [261017113003]
 ---
@@ -31,6 +31,7 @@ Viewer kerjaan sepenuhnya berbahasa Inggris: teks yang terlihat, alamat halaman,
 ## History
 - 2026-10-17 17:51:37 8e6130e0-0828-4d64-b383-ba0d1c9f4b02 backlog
 - 2026-10-17 18:45:42 8e6130e0-0828-4d64-b383-ba0d1c9f4b02 todo
+- 2026-10-17 20:05:56 8e6130e0-0828-4d64-b383-ba0d1c9f4b02 in_progress
 
 ## Notes
 - 2026-10-17: lahir dari permintaan pemilik di sesi 8e6130e0-0828-4d64-b383-ba0d1c9f4b02 (`claude --resume 8e6130e0-0828-4d64-b383-ba0d1c9f4b02`): "Jangan ada bahasa indonesia dalam skill ini. Saya menemukan ada bahasa indonesia pada viewer board yaitu \"diam\"". Keputusan pemilik lewat pilihan: cakupan seluruhnya (teks terlihat, nama berkas/folder/identifier, komentar, nama uji); viewer selalu Inggris tanpa terjemahan; isi papan repo ini tetap Indonesia; dikerjakan di akhir antrean, setelah 261017113003, karena mengubah hampir semua berkas viewer. Tiket yang sedang berjalan saat itu sudah diminta menulis teks baru dalam bahasa Inggris.
