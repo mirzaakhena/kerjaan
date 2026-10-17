@@ -6,7 +6,7 @@ labels: [sesi-8e6130e0, viewer]
 reporter: mirza
 assign_to: claude
 created: 2026-10-17 17:51:37
-updated: 2026-10-17 21:13:02
+updated: 2026-10-17 21:13:58
 related: [261017113003, 261017155801, 261017184401, 261017184402]
 blocked_by: [261017113003]
 ---
@@ -78,3 +78,4 @@ Viewer kerjaan sepenuhnya berbahasa Inggris: teks yang terlihat, alamat halaman,
 ### Suggested follow-up
 
 - **Uji browser viewer kadang gagal saat mesin sibuk.** Dalam run penuh, uji Chrome (riwayat, order.md, berkas bersama) sesekali gagal karena halaman tidak selesai dimuat tepat waktu, lalu lulus saat diulang; pengerja dan peninjau sama-sama melihatnya. Layak tiket: cari penyebab lambatnya (misalnya fon dari Google yang dimuat halaman) dan buat uji tidak bergantung padanya.
+- 2026-10-17 21:13:58: landed on main as d28cc173a7d57419f86c0b6d500105de830dcd38, merging tiket-261017175101 at 664f7b7da2c38025300baa5a24550fd0f3cced3f; tests carried from the run on this exact content, not run again.
