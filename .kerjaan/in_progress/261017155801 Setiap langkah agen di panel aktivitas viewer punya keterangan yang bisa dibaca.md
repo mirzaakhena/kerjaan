@@ -6,7 +6,7 @@ labels: [sesi-8e6130e0, viewer]
 reporter: mirza
 assign_to: claude
 created: 2026-10-17 15:58:20
-updated: 2026-10-17 19:05:55
+updated: 2026-10-17 19:06:13
 related: [261016084202]
 blocked_by: []
 ---
@@ -40,6 +40,7 @@ Setiap langkah di panel aktivitas punya keterangan yang bisa dibaca. Agen kerjaa
 - 2026-10-17 18:45:41 8e6130e0-0828-4d64-b383-ba0d1c9f4b02 in_progress
 - 2026-10-17 18:55:47 8e6130e0-0828-4d64-b383-ba0d1c9f4b02 review
 - 2026-10-17 19:05:55 8e6130e0-0828-4d64-b383-ba0d1c9f4b02 done
+- 2026-10-17 19:06:13 8e6130e0-0828-4d64-b383-ba0d1c9f4b02 in_progress
 
 ## Notes
 - 2026-10-17: lahir dari pertanyaan pemilik di sesi 8e6130e0-0828-4d64-b383-ba0d1c9f4b02 (`claude --resume 8e6130e0-0828-4d64-b383-ba0d1c9f4b02`) sambil melihat tangkapan layar panel aktivitas nukitu-mockup. Pemilik setuju kedua lapis: aturan keterangan di definisi agen, dan cadangan nama program di viewer (melonggarkan aturan "tidak ada isi perintah" sebatas nama program). Pemilik khawatir soal tambahan context: tambahannya sekitar 5-10 token per perintah dan satu kalimat per definisi agen; cadangan di viewer tidak menambah context agen sama sekali. Pemilik minta tiket ini langsung masuk todo.
@@ -125,3 +126,4 @@ Setiap langkah di panel aktivitas punya keterangan yang bisa dibaca. Agen kerjaa
   Catatan (tidak menghalangi):
   - Kata kunci shell dan pembungkus tetap tampil sebagai program, misalnya `env`, `sudo`, `time`, `if` dan `for`. Tidak ada yang bocor, tetapi label itu kurang memberi tahu.
   - Main sudah bergerak setelah 261017113001 mendarat, dan tiket itu juga mengubah `agents/kerjaan-planner.md`. Penggabungan ke main perlu disinkronkan saat mendarat. Ini urusan penggabungan, bukan temuan tinjauan ini.
+- 2026-10-17 19:06:13: merge postponed — main changed since tiket-261017155801 last took it in (README.md agents/kerjaan-planner.md agents/kerjaan-reviewer.md skills/kerjaan/SKILL.md skills/kerjaan/references/foreman.md skills/kerjaan/references/ordering-the-queue.md skills/kerjaan/scripts/board.mjs skills/kerjaan/scripts/queue.sh skills/kerjaan/scripts/repair.sh skills/kerjaan/scripts/update-ticket.sh uji/commit-papan.test.mjs uji/kunci-papan.test.mjs uji/queue.test.mjs uji/real-order/old.md uji/real-order/rewritten.md uji/repair.test.mjs uji/update-ticket.test.mjs viewer/uji/urutan.test.mjs); back to in_progress to be brought up to date with main, tested and reviewed again.
