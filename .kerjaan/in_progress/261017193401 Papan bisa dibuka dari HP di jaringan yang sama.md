@@ -6,7 +6,7 @@ labels: [sesi-8e6130e0, viewer]
 reporter: mirza
 assign_to: claude
 created: 2026-10-17 19:34:30
-updated: 2026-10-17 19:47:08
+updated: 2026-10-17 19:47:23
 related: [261006121501]
 blocked_by: []
 ---
@@ -28,6 +28,7 @@ Saat viewer dijalankan dengan pilihan tambahan untuk jaringan, papan bisa dibuka
 ## History
 - 2026-10-17 19:34:30 8e6130e0-0828-4d64-b383-ba0d1c9f4b02 backlog
 - 2026-10-17 19:47:08 8e6130e0-0828-4d64-b383-ba0d1c9f4b02 todo
+- 2026-10-17 19:47:23 8e6130e0-0828-4d64-b383-ba0d1c9f4b02 in_progress
 
 ## Notes
 - 2026-10-17: lahir dari permintaan pemilik di sesi 8e6130e0-0828-4d64-b383-ba0d1c9f4b02 (`claude --resume 8e6130e0-0828-4d64-b383-ba0d1c9f4b02`): "saya ingin bisa akses via HP, yang mana HP ini masih di network yang sama dengan macbook ini". Keputusan pemilik lewat pilihan: diaktifkan dengan opsi `--lan` (bawaan tetap 127.0.0.1); tanpa pengaman (tidak ada kunci di alamat); dikerjakan sekarang, berdampingan dengan 261017113002. Viewer tetap hanya-baca. Pemilik juga meminta tidak ada bahasa Indonesia di skill: semua teks baru (pesan server, README, nama opsi) berbahasa Inggris.
