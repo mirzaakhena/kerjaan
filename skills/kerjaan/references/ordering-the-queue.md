@@ -29,7 +29,7 @@ nothing else.
 
 ## The lines it may hold
 
-Every line of the file is one of five, and `"$K/queue.sh" check` refuses any
+Every line of the file is one of six, and `"$K/queue.sh" check` refuses any
 other by its line number, rewriting nothing:
 
 | Line | Shape | Where |
@@ -37,6 +37,7 @@ other by its line number, rewriting nothing:
 | goal line | `**Goal.** <one sentence>` — the same word on a board in any language | at most one, as the first line; no ticket under it |
 | lead-in | `**<bold>** <the reason, one sentence>`, on one line | opens a group; at least one ticket line under it |
 | lands-first line | `<!-- lands-first: <id>, <id> -->` | inside a group, at most one per group |
+| wait-for-owner line | `<!-- wait-for-owner -->`: the group starts only with the owner's yes (`references/foreman.md`, "How far the chain runs") | inside a group, at most one per group |
 | ticket line | `- <id> <title>` | inside a group |
 | blank line | | anywhere |
 
@@ -97,10 +98,8 @@ they are not the same question:
 
 Which files a ticket will change comes from its estimate (`"$K/queue.sh"
 estimate <id> <path>...`), not its title; `"$K/queue.sh" overlap` lists every
-pair whose estimates share files. `"$K/queue.sh" check` refuses an `order.md` where a
-group holds a ticket together with one it waits for, where a ticket sits before
-one it waits for, or where two tickets of one group share files and the
-group's lands-first line does not say which of them lands first.
+pair whose estimates share files, and `"$K/queue.sh" check` refuses a group
+breaking either rule.
 
 ## Saying which lands first
 
@@ -127,25 +126,10 @@ whose order matters.
 
 The line may sit anywhere in the group; put it under the lead-in. One line per
 group, exactly as above: `lands-first` in lower case, the colon, twelve-digit
-IDs with commas between them; spaces may vary. The prose is never read for the
-order. `check` refuses, by line number, a line it cannot read (`<!-- lands
+IDs with commas between them; spaces may vary. `check` refuses, by line number, a line it cannot read (`<!-- lands
 first: ... -->`, an ID in backticks, IDs without commas), a second line in one
 group, an ID listed twice or not in the group, and names a pair sharing files
 that no line orders.
-
-`update-ticket.sh` keeps the line in step: a ticket that is done, cancelled
-or back in `backlog` comes off it, the others keep their order, and a line
-left naming nobody goes. A ticket in `in_progress` or `review` stays on it.
-
-## Why this is not a banned index
-
-`order.md` holds what exists nowhere else — the sequence, the parallelism and
-the reasons — and is kept in step by `update-ticket.sh` ("While tickets are
-worked on"), which also rewrites the title on a rename. A ticket promoted
-*into* `todo` needs a place only a human can choose, so the script says so.
-`check` names a ticket in `todo/` the file never lists, an entry whose ticket
-has finished, a title differing from its ticket's, and every line outside the
-grammar.
 
 ## Starting it, and refilling it
 

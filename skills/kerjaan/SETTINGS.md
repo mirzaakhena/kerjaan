@@ -8,6 +8,8 @@ lock_timeout:
 test_lock_timeout:
 worktree_setup:
 worktree_teardown:
+chain:
+max_parallel:
 ---
 
 Settings for this board, read by the kerjaan skill, its reviewer, and
@@ -54,6 +56,27 @@ Settings for this board, read by the kerjaan skill, its reviewer, and
   database or folders that belong to this ticket or slot. It removes only
   what this worktree owns, never shared data. When it fails, the worktree is
   kept. Empty means nothing is run.
+- `chain` — where the main session stops working the queue and waits for the
+  owner: `queue` runs on until `todo` is empty; `group` stops once every
+  ticket of an `order.md` group has passed, before the next group starts;
+  `ticket` stops after each ticket passes, and runs one ticket at a time, even
+  inside a group. Empty or missing means `queue`. A stop for a decision, a
+  second rejection or a failed ticket others stand on happens whatever this
+  says.
+- `max_parallel` — the most tickets worked side by side, each in its own
+  worktree. `worktree.sh add` refuses a worktree past it, naming those in use,
+  and creates nothing; `1` works every ticket one after another. Empty or
+  missing means no limit: a whole group at once. Under `chain: ticket` the
+  limit is 1 whatever this says.
+
+Two more things bound the chain besides these two settings, and the order
+between them is fixed: **what the owner says when starting the chain beats a
+mark in `order.md`, and the mark beats these settings.** The mark is the line
+`<!-- wait-for-owner -->` under a group's lead-in: that group starts only with
+the owner's yes, which may be given when the chain starts and is then not asked
+for again. "Just one ticket" from the owner is one ticket, whatever `chain`
+says. `references/foreman.md`, "How far the chain runs", has the rules, and
+`queue.sh check` reports a value of `chain` or `max_parallel` it cannot read.
 
 The test command and both worktree commands see `KERJAAN_TICKET` (the ticket
 ID), `KERJAAN_SLOT` (0 in the main tree; 1, 2, ... in linked worktrees, never

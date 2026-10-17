@@ -150,6 +150,58 @@ kerjaan_setting_list() {
     | sed -e 's/^[[:space:]"'"'"']*//' -e 's/[[:space:]"'"'"']*$//' -e '/^$/d'
 }
 
+# --- how far the chain runs ------------------------------------------------
+# Two settings bound the foreman's chain (SETTINGS.md): `chain` says where it
+# stops for the owner, and `max_parallel` how many tickets run side by side,
+# each in its own linked worktree. Both are read here, so worktree.sh, which
+# enforces the limit, and queue.sh check, which reports a value it cannot
+# read, read them alike.
+
+# Prints the `chain` setting of <settings>: queue, group or ticket; empty or
+# missing is queue. Any other value is named on stderr, and returns 2.
+kerjaan_chain_mode() {
+  local v
+  v="$(kerjaan_setting "$1" chain)"
+  case "$v" in
+    '') echo queue ;;
+    queue | group | ticket) echo "$v" ;;
+    *)
+      echo "chain in settings.md is '$v': write queue, group or ticket, or leave it empty (queue)." >&2
+      return 2
+      ;;
+  esac
+}
+
+# Prints the `max_parallel` setting of <settings>: a whole number from 1 up,
+# or nothing when it is empty or missing (no limit). Any other value is named
+# on stderr, and returns 2.
+kerjaan_max_parallel() {
+  local v
+  v="$(kerjaan_setting "$1" max_parallel)"
+  case "$v" in
+    *[!0-9]* | 0*)
+      echo "max_parallel in settings.md is '$v': write a whole number from 1 up, or leave it empty (no limit)." >&2
+      return 2
+      ;;
+  esac
+  [ -z "$v" ] || echo "$v"
+}
+
+# Prints how many linked worktrees may exist at once under <settings>:
+# `max_parallel`, or 1 under `chain: ticket` (one ticket at a time, even
+# inside a group); nothing when there is no limit. Returns 2 when either
+# setting cannot be read.
+kerjaan_parallel_limit() {
+  local v mode
+  v="$(kerjaan_max_parallel "$1")" || return 2
+  mode="$(kerjaan_chain_mode "$1")" || return 2
+  if [ "$mode" = ticket ]; then
+    echo 1
+  elif [ -n "$v" ]; then
+    echo "$v"
+  fi
+}
+
 # Prints the ticket IDs in the blocked_by field of ticket <file>, one per line.
 kerjaan_blockers() {
   kerjaan_field "$1" blocked_by | grep -oE '[0-9]{12}' || true

@@ -6,7 +6,8 @@ ticket at a time is the normal way to work.
 Two tickets in the same group of `order.md` have been declared able to run
 together, and that is the licence to run them side by side: two
 `kerjaan-worker` subagents, each in its own git worktree, so neither sees the
-other's half-finished files. The foreman creates the worktrees, moves both
+other's half-finished files, at most `max_parallel` at once (`settings.md`).
+The foreman creates the worktrees, moves both
 tickets to `in_progress`, dispatches both workers with a `Worktree:` line, and
 handles each report and verdict as it arrives (`references/foreman.md`).
 
@@ -147,12 +148,9 @@ Kept to, two tickets pass in whichever order they are tested.
 ## Nothing is remembered
 
 Git already holds the list of worktrees, so `update-ticket.sh` does the
-noticing. **When a ticket reaches `done` or `cancel`** and a branch whose name
-carries its ID still holds commits outside `HEAD`, it warns that the board
-claims finished work nobody merged (a branch named without the ID is caught by
-the start gate, "Branches nobody merged"). **When a move empties the board** —
-nothing in `todo`, `in_progress` or `review` — it lists any worktree still
-checked out.
+noticing: it warns when a ticket reaches `done` or `cancel` while a branch
+carrying its ID holds commits outside `HEAD`, and names every worktree still
+checked out when a move empties the board.
 
 ## Back into main: tested together, merged one at a time
 

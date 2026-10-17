@@ -772,7 +772,7 @@ const lineB = `- ${B} Tiket ${B}`;
 
 test('check: a free paragraph, a lead-in wrapped over two lines, or a ticket under no lead-in is reported by its line number', () => {
   const root = grammarBoard();
-  const none = 'is none of the lines order.md holds \\(a goal line, a lead-in, a lands-first line, a ticket line, a blank line\\)';
+  const none = 'is none of the lines order.md holds \\(a goal line, a lead-in, a lands-first line, a wait-for-owner line, a ticket line, a blank line\\)';
   for (const [text, ln, what, n = 1] of [
     [`A free note at the head of the file.\n\n**Together.**\n\n${lineA}\n${lineB}\n`, 1, none],
     [`**First.**\n\n${lineA}\n\nAlready done: ${C}.\n\n**Then.**\n\n${lineB}\n`, 5, none],
@@ -797,6 +797,114 @@ test('check: a free paragraph, a lead-in wrapped over two lines, or a ticket und
     assert.match(r.out, new RegExp(`NOT READY: ${n} problem`), `${text}\n${r.out}`);
     assert.equal(fs.readFileSync(path.join(root, '.kerjaan', 'order.md'), 'utf8'), text, 'check rewrites nothing');
   }
+});
+
+// The wait-for-owner line (261017113002): <!-- wait-for-owner --> under a
+// group's lead-in, one per group, marks a group the foreman starts only with
+// the owner's yes. check accepts it as a line of the grammar, names the
+// groups that wait, and refuses one outside a group, a second one in a group,
+// and one that only looks like it.
+const waitLine = '<!-- wait-for-owner -->';
+const waits = (lead, ln) => new RegExp(`\\n  the group of line ${lead} waits for the owner \\(line ${ln}\\): it starts only with their yes\\n`);
+
+test('check: a wait-for-owner line inside a group is a line of the grammar, anywhere in it and in any spacing; check names the group that waits', () => {
+  const root = grammarBoard();
+  for (const [text, lead, ln] of [
+    [`**First.** The reason.\n\n${lineA}\n\n**Then, after the owner tried it.** The reason.\n${waitLine}\n\n${lineB}\n`, 5, 6],
+    [`**Goal.** One batch.\n\n**First.**\n${waitLine}\n${lineA}\n${lineB}\n`, 3, 4],
+    [`**Together.**\n\n${lineA}\n${lineB}\n${waitLine}\n`, 1, 5],
+    [`**Together.**\n<!--wait-for-owner-->\n${lineA}\n${lineB}\n`, 1, 2],
+    [`**Together.**\n  <!--   wait-for-owner   -->  \n${lineA}\n${lineB}\n`, 1, 2],
+  ]) {
+    order(root, text);
+    const r = q(root, 'check');
+    assert.equal(r.code, 0, `${text}\n${r.out}`);
+    assert.match(r.out, waits(lead, ln), `${text}\n${r.out}`);
+    assert.match(r.out, /in step with todo\nREADY/);
+    assert.equal(fs.readFileSync(path.join(root, '.kerjaan', 'order.md'), 'utf8'), text, 'check rewrites nothing');
+  }
+  // One in each of two groups is not a second one; each group is named.
+  order(root, `**First.**\n${waitLine}\n\n${lineA}\n\n**Then.**\n${waitLine}\n\n${lineB}\n`);
+  const r = q(root, 'check');
+  assert.equal(r.code, 0, r.out);
+  assert.match(r.out, waits(1, 2));
+  assert.match(r.out, waits(6, 7));
+  // Without the line, no group is named.
+  order(root, `**First.**\n\n${lineA}\n${lineB}\n`);
+  assert.doesNotMatch(q(root, 'check').out, /waits for the owner/);
+});
+
+test('check: a second wait-for-owner line in one group, one outside any group, and one check cannot read are each reported by line number', () => {
+  const root = grammarBoard();
+  const unreadable = 'is not a wait-for-owner line check can read: write it as <!-- wait-for-owner -->';
+  for (const [text, ln, what] of [
+    [`**Together.**\n${waitLine}\n${waitLine}\n\n${lineA}\n${lineB}\n`, 3, 'is a second wait-for-owner line in its group, after line 2: one is enough'],
+    [`**Together.**\n${waitLine}\n\n${lineA}\n${lineB}\n<!--wait-for-owner-->\n`, 6, 'is a second wait-for-owner line in its group, after line 2'],
+    [`${waitLine}\n**Together.**\n\n${lineA}\n${lineB}\n`, 1, 'is a wait-for-owner line outside any group: put it under the lead-in of the group that waits'],
+    [`**Goal.** One batch.\n${waitLine}\n\n**Together.**\n\n${lineA}\n${lineB}\n`, 2, 'is a wait-for-owner line outside any group'],
+    ...[
+      '<!-- wait for owner -->',
+      '<!-- waitforowner -->',
+      '<!-- Wait-For-Owner -->',
+      '<!-- WAIT_FOR_OWNER -->',
+      '<!-- wait-for-owner: yes -->',
+      `<!-- wait-for-owner ${A} -->`,
+      '<!-- wait-for-owner',
+      '<!-- wait-for-owner --> until Monday',
+    ].map((line) => [`**Together.**\n${line}\n\n${lineA}\n${lineB}\n`, 2, unreadable]),
+  ]) {
+    order(root, text);
+    const r = q(root, 'check');
+    assert.equal(r.code, 1, `${text}\n${r.out}`);
+    assert.match(r.out, new RegExp(`  - order\\.md line ${ln} ${what.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`), `${text}\n${r.out}`);
+    assert.match(r.out, /NOT READY: 1 problem/, `${text}\n${r.out}`);
+    assert.equal(fs.readFileSync(path.join(root, '.kerjaan', 'order.md'), 'utf8'), text, 'check rewrites nothing');
+  }
+});
+
+test('check: a group that waits for the owner and already has a ticket in flight is named as started', () => {
+  const root = grammarBoard();
+  add(root, C, { status: 'in_progress' });
+  order(root, `**First.**\n\n${lineA}\n\n**Then.**\n${waitLine}\n\n- ${C} Tiket ${C}\n${lineB}\n`);
+  let r = q(root, 'check');
+  assert.equal(r.code, 0, r.out);
+  assert.match(r.out, /\n  the group of line 5 waits for the owner \(line 6\), and has started: a ticket of it is in flight\n/);
+  assert.doesNotMatch(r.out, /it starts only with their yes/);
+  fs.renameSync(fileOf(root, C), path.join(root, '.kerjaan', 'review', path.basename(fileOf(root, C))));
+  r = q(root, 'check');
+  assert.match(r.out, /waits for the owner \(line 6\), and has started/);
+});
+
+// How far the chain runs is two settings (SETTINGS.md); a value the foreman
+// and worktree.sh cannot read is reported before the chain starts on it.
+test('check: settings.md chain and max_parallel are read as written, and a value outside them is reported', () => {
+  const root = todoBoard();
+  order(root, `**Bebas.**\n\n- ${A} Tiket ${A}\n- ${B} Tiket ${B}\n`);
+  const settingsFile = path.join(root, '.kerjaan', 'settings.md');
+  const base = fs.readFileSync(settingsFile, 'utf8');
+  const write = (lines) => fs.writeFileSync(settingsFile, base.replace(/\n---\n$/, `\n${lines}---\n`));
+  for (const ok of ['', 'chain:\nmax_parallel:\n', 'chain: queue\n', 'chain: group\nmax_parallel: 2\n', 'chain: ticket\nmax_parallel: 1\n', 'max_parallel: 12\n']) {
+    write(ok);
+    const r = q(root, 'check');
+    assert.equal(r.code, 0, `${ok}\n${r.out}`);
+    assert.doesNotMatch(r.out, /settings\.md\n/);
+  }
+  for (const [bad, said, n = 1] of [
+    ['chain: tickets\n', /\nsettings\.md\n  - chain in settings\.md is 'tickets': write queue, group or ticket, or leave it empty \(queue\)\.\n/],
+    ['chain: Group\n', /chain in settings\.md is 'Group'/],
+    ['max_parallel: 0\n', /\nsettings\.md\n  - max_parallel in settings\.md is '0': write a whole number from 1 up, or leave it empty \(no limit\)\.\n/],
+    ['max_parallel: unlimited\n', /max_parallel in settings\.md is 'unlimited'/],
+    ['chain: all\nmax_parallel: 2.5\n', /chain in settings\.md is 'all'[^]*max_parallel in settings\.md is '2\.5'/, 2],
+  ]) {
+    write(bad);
+    const r = q(root, 'check');
+    assert.equal(r.code, 1, `${bad}\n${r.out}`);
+    assert.match(r.out, said, r.out);
+    assert.match(r.out, new RegExp(`NOT READY: ${n} problem`), r.out);
+  }
+  // Checking named tickets is about the tickets alone.
+  write('chain: tickets\n');
+  assert.equal(q(root, 'check', A).code, 0);
 });
 
 test('check: one goal line at the top is accepted, written only as Goal; a second one, or one below the top, is reported by its line number', () => {
@@ -1152,6 +1260,41 @@ test('docs: the guide, the planner and the README describe the grammar, a lead-i
       assert.ok(!text.includes(old), `${name}: ${old}`);
     }
   }
+});
+
+// How far the chain runs (261017113002), said in the settings guide and the
+// foreman guide alike: the three chain choices, the parallel limit, the
+// wait-for-owner line, and which of them wins.
+test('docs: SETTINGS.md and the foreman guide explain chain, max_parallel and the wait-for-owner line, and their order', () => {
+  const ws = (t) => t.replace(/\s+/g, ' ');
+  const settingsGuide = doc('skills', 'kerjaan', 'SETTINGS.md');
+  const front = settingsGuide.split('---')[1];
+  assert.match(front, /\nchain:\n/);
+  assert.match(front, /\nmax_parallel:\n/);
+  const sg = ws(settingsGuide);
+  for (const phrase of ['- `chain` —', '`queue` runs on until `todo` is empty', '`group` stops once every ticket', '`ticket` stops after each ticket passes, and runs one ticket at a time, even inside a group', 'Empty or missing means `queue`',
+    '- `max_parallel` —', '`worktree.sh add` refuses a worktree past it', '`1` works every ticket one after another', 'Empty or missing means no limit', 'Under `chain: ticket` the limit is 1',
+    '<!-- wait-for-owner -->', 'what the owner says when starting the chain beats a mark in `order.md`, and the mark beats these settings.', 'not asked for again']) {
+    assert.ok(sg.includes(phrase), `SETTINGS.md: ${phrase}`);
+  }
+  const section = ws(doc('skills', 'kerjaan', 'references', 'foreman.md').split('## How far the chain runs')[1].split('\n## ')[0]);
+  for (const phrase of ['what they say when starting ("just one ticket") wins over a `<!-- wait-for-owner -->` line in `order.md`, which wins over `chain` in `settings.md`',
+    '**`queue`**, or empty: on until `todo` is empty', '**`group`**: pause once every ticket of a group has passed', '**`ticket`**: pause after each ticket; one at a time, even inside a group',
+    'starts only with their yes', 'is not asked again', '**`max_parallel`** caps the tickets worked side by side; `worktree.sh add` refuses one past it']) {
+    assert.ok(section.includes(phrase), `foreman.md: ${phrase}`);
+  }
+  // The foreman asks about the waiting groups in the one message before the chain starts.
+  assert.match(ws(doc('skills', 'kerjaan', 'references', 'foreman.md').split('**2. Ask everything in one message**')[1].split('**3. ')[0]), /each group the chain will reach that `check` names as waiting for the owner: may it start without asking again\?/);
+  // The line the grammar documents is the one check reads.
+  const row = doc('skills', 'kerjaan', 'references', 'ordering-the-queue.md').split('\n').find((l) => l.startsWith('| wait-for-owner line |'));
+  assert.ok(row && row.includes('inside a group, at most one per group'), row);
+  const line = row.match(/`(<!-- wait-for-owner -->)`/)[1];
+  const root = repo();
+  readyTicket(root, A, { status: 'todo' });
+  order(root, `**First.** The reason.\n${line}\n\n- ${A} Tiket ${A}\n`);
+  const r = q(root, 'check');
+  assert.equal(r.code, 0, r.out);
+  assert.match(r.out, /the group of line 1 waits for the owner \(line 2\)/);
 });
 
 test('docs: the complete example in the guide, the planner and the README is one check calls READY', () => {

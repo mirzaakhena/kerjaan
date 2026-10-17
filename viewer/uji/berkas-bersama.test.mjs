@@ -44,9 +44,9 @@ test('kelompok order.md: dari satu kalimat tebal ke berikutnya, hanya baris `- <
     `- ${ID.c}`,
   ].join('\n');
   assert.deepEqual(readOrderGroups(text), [
-    { start: 0, end: 2, ids: [ID.g] },
-    { start: 2, end: 9, ids: [ID.a, ID.b] },
-    { start: 11, end: 13, ids: [ID.c] },
+    { start: 0, end: 2, ids: [ID.g], waitForOwner: false },
+    { start: 2, end: 9, ids: [ID.a, ID.b], waitForOwner: false },
+    { start: 11, end: 13, ids: [ID.c], waitForOwner: false },
   ]);
   assert.deepEqual(readOrderGroups(''), []);
 });

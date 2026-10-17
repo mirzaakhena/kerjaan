@@ -115,10 +115,9 @@ foreman moves no ticket into `todo` and writes no line of `order.md`.
 **1. Settle what the chain covers.** The tickets the user named, or `todo` in
 the order `order.md` gives. That order is already the owner's decision: take
 the first ticket, or any ticket in its first group, without asking which —
-counting only lines whose ticket is still in `todo`: a ticket in flight keeps
-its line until it is done, so its group's lands-first line still says which
-lands first. With no `order.md`, any ticket in `todo`. Ask only when the order no longer fits
-what the board shows, and name that one problem. A ticket in `backlog` that
+counting only tickets still in `todo`. With no `order.md`, any ticket in
+`todo`. Ask only when the order no longer fits what the board shows, and name
+that one problem. A ticket in `backlog` that
 the user names explicitly is the user's own move; take it.
 
 **2. Ask everything in one message**, before any worker starts: the user may
@@ -133,6 +132,8 @@ join this message. Also in it:
   **deferred** (the worker writes a hand scenario, the item is marked as
   awaiting the owner, and the reviewer does not reject the ticket for it) or
   **holding** (the chain stops at that ticket until the owner has checked it);
+- each group the chain will reach that `check` names as waiting for the
+  owner: may it start without asking again?
 - unmerged branches the start gate will name, if any (step 1 below);
 - a split the owner would rather undo: `update-ticket.sh <id> --accept-size`,
   on the owner's word only.
@@ -152,6 +153,25 @@ which tickets, and start.
 **3. Keep a progress log** outside `.kerjaan/` — the scratchpad, or the
 conversation itself — one line per event: ticket, worker and reviewer agent
 IDs, commits, verdict and round, questions.
+
+## How far the chain runs
+
+Where the chain pauses for the owner: what they say when starting ("just one
+ticket") wins over a `<!-- wait-for-owner -->` line in `order.md`, which wins
+over `chain` in `settings.md`:
+
+- **`queue`**, or empty: on until `todo` is empty.
+- **`group`**: pause once every ticket of a group has passed.
+- **`ticket`**: pause after each ticket; one at a time, even inside a group.
+
+**A group that waits for the owner** starts only with their yes. A yes given
+at the start goes into its tickets' Notes and is not asked again; a group with
+a ticket in flight has started.
+
+**`max_parallel`** caps the tickets worked side by side; `worktree.sh add`
+refuses one past it. Only the owner raises it.
+
+A pause is a stop ("When the chain stops"): the summary, then the owner's word.
 
 ## One ticket, start to finish
 
@@ -285,9 +305,7 @@ The chain stops itself, and reports to the user, in three cases:
 2. **The reviewer rejected the same ticket twice.** Put the choice to the
    owner as `references/review.md` describes.
 3. **A ticket others stand on did not pass**: one another ticket in the chain
-   lists in `blocked_by`. A dependency a lead-in of `order.md` names is in
-   `blocked_by` too (`references/ordering-the-queue.md`, "Where everything
-   else goes").
+   lists in `blocked_by`.
 
 A question that does not hold the work up never stops the chain; collect it
 for the summary.

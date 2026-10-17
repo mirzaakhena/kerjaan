@@ -148,6 +148,50 @@ test('readOrderGroups and queue.sh check read the same groups, the goal line ope
   assert.deepEqual(readOrderGroups(misplaced).map((g) => g.ids), [[ID.a, ID.b]]);
 });
 
+// A wait-for-owner line (261017113002) is a line of the grammar that changes
+// no group, in either reader, and both name the same groups as waiting: check
+// by the lead-in's line number, the viewer by the group's start.
+test('readOrderGroups and queue.sh check agree on the groups that wait for the owner, and the line splits no group', () => {
+  const wait = '<!-- wait-for-owner -->';
+  const text = [
+    '**Goal.** One batch.',
+    '',
+    '**First.** Alone.',
+    '',
+    `- ${ID.a} One`,
+    '',
+    '**Then, once the owner tried it.** Together.',
+    wait,
+    '',
+    `- ${ID.b} Two`,
+    `- ${ID.c} Three`,
+    '',
+    '**Last.** Also waits; the line sits under the tickets.',
+    `- ${ID.d} Four`,
+    `  <!--wait-for-owner-->`,
+    `- ${ID.e} Five`,
+    '',
+    '**Not waiting.** A look-alike is no wait-for-owner line.',
+    '<!-- Wait for owner -->',
+    `- ${ID.f} Six`,
+    '',
+  ].join('\n');
+  const files = { 'order.md': text };
+  for (const [, id, title] of text.matchAll(/^- (\d{12}) (.+)$/gm)) files[`todo/${id} ${title}.md`] = ticket();
+  const root = tempRoot();
+  makeBoard(root, 'p', files);
+  const r = spawnSync('bash', [queue, 'check'], { cwd: path.join(root, 'p'), encoding: 'utf8' });
+  const byCheck = [...r.stdout.matchAll(/the group of line (\d+) waits for the owner/g)].map((m) => Number(m[1]));
+  const groups = readOrderGroups(text);
+  assert.deepEqual(groups.map((g) => g.ids), [[ID.a], [ID.b, ID.c], [ID.d, ID.e], [ID.f]]);
+  assert.deepEqual(groups.filter((g) => g.waitForOwner).map((g) => g.start + 1), byCheck, r.stdout);
+  assert.deepEqual(byCheck, [7, 13], r.stdout);
+  assert.match(r.stdout, /order\.md line 19 is not a wait-for-owner line check can read/);
+  // Above the first lead-in there is no group to wait: check refuses the line, the viewer marks nothing.
+  const above = `${wait}\n- ${ID.a} One\n\n**First.**\n- ${ID.b} Two\n`;
+  assert.deepEqual(readOrderGroups(above).map((g) => g.waitForOwner), [false, false]);
+});
+
 // ---------- in a real browser ----------
 
 const browserTest = (name, files, fn) => test(name, { skip: chromePath() ? false : 'Chrome tidak terpasang' }, async () => {
