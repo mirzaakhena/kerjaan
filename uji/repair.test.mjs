@@ -183,6 +183,19 @@ test('its line in order.md follows it; the line of the one keeping the ID stays'
   assert.doesNotMatch(r.out, /order\.md/, 'nothing left to read in order.md');
 });
 
+for (const status of ['in_progress', 'review']) {
+  test(`its line in order.md follows it in ${status} too, where a ticket keeps its line until it finishes`, () => {
+    const root = repo();
+    add(root, ID, 'Old', { created: '2026-10-17 12:00:00' });
+    add(root, ID, 'New', { created: '2026-10-17 12:30:00', status });
+    const order = path.join(root, '.kerjaan', 'order.md');
+    fs.writeFileSync(order, `**Group 1, together.**\n- ${ID} Old\n- ${ID} New\n`);
+    const r = run(root, repair, 'duplicate-id', ID);
+    assert.equal(r.code, 0, r.err);
+    assert.equal(fs.readFileSync(order, 'utf8'), `**Group 1, together.**\n- ${ID} Old\n- 261017120006 New\n`);
+  });
+}
+
 test('references that could mean either ticket are listed with their lines, and left as they are', () => {
   const root = repo();
   add(root, ID, 'Lama', { created: '2026-10-17 12:00:00' });

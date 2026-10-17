@@ -223,11 +223,13 @@ test('satu tiket biasa di main tree, dari mulai sampai done, menjadi tiga commit
   ].sort());
 
   reviewerDecides(r, 'passed');
-  // Verdict: the ticket's file alone.
+  // Verdict: the ticket's file, and order.md, which loses its line once it is done.
   assert.deepEqual(filesOf(r, 'HEAD'), [
     `A\t.kerjaan/done/${T} Tiket yang dikerjakan.md`,
     `D\t.kerjaan/review/${T} Tiket yang dikerjakan.md`,
+    'M\t.kerjaan/order.md',
   ].sort());
+  assert.equal(git(r.root, 'show', 'HEAD:.kerjaan/order.md'), '');
   assert.match(git(r.root, 'show', `HEAD:.kerjaan/done/${T} Tiket yang dikerjakan.md`), /Reviewed at level quick, round 1, at commit abc: passed\./);
 
   assert.equal(Number(git(r.root, 'rev-list', '--count', `${r.start}..HEAD`).trim()), 3);
@@ -309,7 +311,7 @@ test('docs: the foreman guide gives the three commits and who makes each, SKILL.
   // One form of the command, in SKILL.md and in each agent.
   const form = block(section, '**Every commit names its paths**');
   assert.equal(form, workerMain());
-  assert.equal(reviewerVerdict(), form.replaceAll('<files> ', ''));
+  assert.equal(reviewerVerdict(), form.replaceAll('<files> ', '').replaceAll("'.kerjaan/*/<id> *'", "'.kerjaan/*/<id> *' .kerjaan/order.md"));
   assert.equal(workerWorktree(), form.replaceAll('<files> ', '').replaceAll('git ', 'git -C <main tree> '));
   for (const text of [form, foremanStart(), workerMain(), workerWorktree(), reviewerVerdict()]) {
     assert.doesNotMatch(text, /git add (-A|\.)\s*$/m);
@@ -319,7 +321,7 @@ test('docs: the foreman guide gives the three commits and who makes each, SKILL.
 test('docs: the reviewer commits its verdict and nothing else, and the foreman leaves it to the reviewer', () => {
   const reviewer = doc('agents', 'kerjaan-reviewer.md');
   assert.doesNotMatch(reviewer.replace(/\s+/g, ' '), /\bno `commit`/i);
-  assert.match(reviewer, /the only\ncommit you make is your verdict's, holding that ticket alone/);
+  assert.match(reviewer, /the only\ncommit you make is your verdict's, holding that ticket and `order\.md` alone/);
   assert.match(reviewer, /\*\*Commit your verdict\*\*, either way, right after the move/);
   const foreman = doc('skills', 'kerjaan', 'references', 'foreman.md');
   assert.match(foreman, /its reviewer committed the\n {2}verdict; there is nothing of it for you to commit/);

@@ -58,7 +58,7 @@ The rules that are broken most often:
 ├── review/       done, not yet verified
 ├── done/         passed review
 ├── cancel/       abandoned
-├── order.md      the order to pick `todo` up in — optional
+├── order.md      the order of the work in todo and in flight — optional
 └── settings.md   language, test command, long-lived branches, limits
 ```
 

@@ -10,7 +10,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { readOrder } from '../../skills/kerjaan/scripts/board.mjs';
+import { readOrder, readOrderGroups } from '../../skills/kerjaan/scripts/board.mjs';
 import { ticket, makeBoard, tempRoot, startViewer } from './bantu.mjs';
 import { openBrowser, chromePath } from './peramban.mjs';
 
@@ -82,11 +82,11 @@ const SAMPLE = [
   '',
 ].join('\n');
 
-// The ids queue.sh check reads as listed: with todo empty, it names each
-// listed one as "not in todo", in the order of the file.
+// The ids queue.sh check reads as listed: with no ticket on the board, it
+// names each listed one as stale, in the order of the file.
 function queueReads(board) {
   const r = spawnSync('bash', [queue, 'check'], { cwd: path.dirname(board), encoding: 'utf8' });
-  const ids = [...r.stdout.matchAll(/order\.md lists (\d{12}), which is not in todo/g)].map((m) => m[1]);
+  const ids = [...r.stdout.matchAll(/order\.md lists (\d{12}), which is not in todo, in_progress or review/g)].map((m) => m[1]);
   assert.ok(r.stdout.includes('order.md'), `queue.sh check membaca order.md:\n${r.stdout}${r.stderr}`);
   return [...new Set(ids)];
 }
@@ -96,6 +96,56 @@ test('viewer dan queue.sh check membaca daftar ID yang sama dari satu order.md c
   const viewer = readOrder(board);
   assert.deepEqual(viewer, [ID.c, ID.a, ID.b, ID.d], 'yang dibaca viewer');
   assert.deepEqual(queueReads(board), viewer, 'queue.sh check membaca daftar yang sama');
+});
+
+// order.md also lists the tickets in flight (in_progress, review), which keep
+// their line until they finish. The viewer ranks todo only, in the order
+// check reads, so a ticket in flight above them takes no rank from todo.
+test('an order.md that also lists tickets in flight: the viewer and queue.sh check read the same todo order', () => {
+  const root = tempRoot();
+  const board = makeBoard(root, 'p', {
+    [`in_progress/${ID.a} One.md`]: ticket(),
+    [`review/${ID.b} Two.md`]: ticket(),
+    [`todo/${ID.c} Three.md`]: ticket(),
+    [`todo/${ID.d} Four.md`]: ticket(),
+    [`todo/${ID.e} Five.md`]: ticket(),
+    'order.md': `**Goal.** One batch.\n\n**First, side by side.** Both change the menu.\n<!-- lands-first: ${ID.a} -->\n\n- ${ID.a} One\n- ${ID.b} Two\n- ${ID.d} Four\n\n**Then.** After the menu.\n\n- ${ID.c} Three\n- ${ID.e} Five\n`,
+  });
+  const viewer = readOrder(board);
+  assert.deepEqual(viewer, [ID.a, ID.b, ID.d, ID.c, ID.e]);
+  // check reads the same groups: it calls the board ready, so nothing listed is
+  // stale and every todo ticket has its place; the todo ones, in that order.
+  const r = spawnSync('bash', [queue, 'check'], { cwd: root + '/p', encoding: 'utf8' });
+  assert.match(r.stdout, /\norder\.md\n  in step with todo\n/, r.stdout);
+  assert.doesNotMatch(r.stdout, /order\.md lists|has no place|order\.md line/, r.stdout);
+  const inTodo = new Set([ID.c, ID.d, ID.e]);
+  assert.deepEqual(viewer.filter((id) => inTodo.has(id)), [ID.d, ID.c, ID.e]);
+});
+
+// The viewer's groups (readOrderGroups) and queue.sh check's are the same:
+// every listed ticket estimates one shared file and no group says which lands
+// first, so check names exactly the pairs that share a group. Read on the
+// real order.md rewritten in the grammar, on one with tickets right under the
+// goal line, and on one with a goal line below the top: it opens no group in
+// either reader.
+test('readOrderGroups and queue.sh check read the same groups, the goal line opening none', () => {
+  const real = fs.readFileSync(path.join(here, '..', '..', 'uji', 'real-order', 'rewritten.md'), 'utf8');
+  const crafted = `**Goal.** One batch.\n- ${ID.a} One\n- ${ID.b} Two\n\n**First.** The reason.\n\n- ${ID.c} Three\n- ${ID.d} Four\n- ${ID.e} Five\n\n**Then.** Another.\n\n- ${ID.f} Six\n`;
+  const shared = '## Notes\n- 2026-10-17 11:36:22: files estimated to change: `src/shared.js`';
+  // A goal line out of place is reported by check, and still splits no group.
+  const misplaced = `**First.** The reason.\n\n- ${ID.a} One\n**Goal.** Below the top.\n- ${ID.b} Two\n`;
+  for (const text of [real, crafted, misplaced, `${real}\n${crafted.replace('**Goal.**', '**Then, more.**')}`]) {
+    const files = { 'order.md': text };
+    for (const [, id, title] of text.matchAll(/^- (\d{12}) (.+)$/gm)) files[`todo/${id} ${title}.md`] = ticket({ body: shared });
+    const root = tempRoot();
+    makeBoard(root, 'p', files);
+    const r = spawnSync('bash', [queue, 'check'], { cwd: path.join(root, 'p'), encoding: 'utf8' });
+    const byCheck = [...r.stdout.matchAll(/(\d{12}) and (\d{12}) share a group and the files/g)].map((m) => `${m[1]} ${m[2]}`).sort();
+    const byViewer = readOrderGroups(text).flatMap((g) => g.ids.flatMap((a) => g.ids.filter((b) => a < b).map((b) => `${a} ${b}`))).sort();
+    assert.deepEqual(byViewer, byCheck, r.stdout);
+  }
+  assert.deepEqual(readOrderGroups(crafted).map((g) => g.ids), [[ID.a, ID.b], [ID.c, ID.d, ID.e], [ID.f]]);
+  assert.deepEqual(readOrderGroups(misplaced).map((g) => g.ids), [[ID.a, ID.b]]);
 });
 
 // ---------- in a real browser ----------
@@ -121,7 +171,7 @@ const todo = (id, title, o) => ({ [`todo/${id} ${title}.md`]: ticket(o) });
 browserTest('langkah di tiket: B hanya disebut di kalimat, A didaftar — A #1 di atas, B di bawahnya tanpa lencana', {
   ...todo(ID.a, 'Satu', { priority: 'low' }),
   ...todo(ID.b, 'Dua', { priority: 'high' }),
-  'order.md': `Tiket ${ID.b} sengaja belum diurutkan.\n\n- ${ID.a} Satu\n`,
+  'order.md': `Tiket ${ID.b} sengaja belum diurutkan.\n\n- ${ID.a} One\n`,
 }, async (v, page) => {
   assert.deepEqual(await page.eval(todoColumn), [[ID.a, '#1'], [ID.b, null]]);
 });
@@ -129,18 +179,29 @@ browserTest('langkah di tiket: B hanya disebut di kalimat, A didaftar — A #1 d
 browserTest('kalimat tebal, kalimat biasa, dan lands-first tidak memberi lencana; beberapa kelompok diurut dari atas ke bawah', {
   ...todo(ID.a, 'Satu'),
   ...todo(ID.b, 'Dua'),
-  ...todo(ID.c, 'Tiga'),
-  ...todo(ID.d, 'Empat', { priority: 'high' }),
-  ...todo(ID.e, 'Lima', { priority: 'low' }),
+  ...todo(ID.c, 'Three'),
+  ...todo(ID.d, 'Four', { priority: 'high' }),
+  ...todo(ID.e, 'Five', { priority: 'low' }),
   ...todo(ID.f, 'Enam'),
   ...todo(ID.g, 'Tujuh'),
-  'order.md': `Sudah dibahas: ${ID.f}.\n\n**Pertama, setelah ${ID.g}.**\n\n- ${ID.c} Tiga\n\n**Lalu dua ini.**\n<!-- lands-first: ${ID.e}, ${ID.a} -->\n\n- ${ID.a} Satu\n- ${ID.e} Lima\n\n**Terakhir.** Tanpa ${ID.d}.\n\n- ${ID.b} Dua\n`,
+  'order.md': `Sudah dibahas: ${ID.f}.\n\n**Pertama, setelah ${ID.g}.**\n\n- ${ID.c} Three\n\n**Lalu dua ini.**\n<!-- lands-first: ${ID.e}, ${ID.a} -->\n\n- ${ID.a} One\n- ${ID.e} Five\n\n**Terakhir.** Tanpa ${ID.d}.\n\n- ${ID.b} Two\n`,
 }, async (v, page) => {
   // The rest by priority, then id: d (high) before f, g (medium).
   assert.deepEqual(await page.eval(todoColumn), [
     [ID.c, '#1'], [ID.a, '#2'], [ID.e, '#3'], [ID.b, '#4'],
     [ID.d, null], [ID.f, null], [ID.g, null],
   ]);
+});
+
+browserTest('tickets in flight still listed in order.md take no todo rank', {
+  ...todo(ID.c, 'Three'),
+  ...todo(ID.d, 'Four'),
+  ...todo(ID.e, 'Five', { priority: 'high' }),
+  [`in_progress/${ID.a} One.md`]: ticket(),
+  [`review/${ID.b} Two.md`]: ticket(),
+  'order.md': `**Goal.** One batch.\n\n**First, side by side.**\n<!-- lands-first: ${ID.a} -->\n\n- ${ID.a} One\n- ${ID.b} Two\n- ${ID.d} Four\n\n**Then.**\n\n- ${ID.c} Three\n`,
+}, async (v, page) => {
+  assert.deepEqual(await page.eval(todoColumn), [[ID.d, '#1'], [ID.c, '#2'], [ID.e, null]]);
 });
 
 browserTest('order.md tanpa baris daftar: todo menurut prioritas lalu ID, tautan "urut order.md" membuka berkasnya', {

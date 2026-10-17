@@ -88,10 +88,10 @@ export function readOrder(board) {
   return [...new Set(lines.map((l) => l.match(/^- (\d{12})(?: |$)/)?.[1]).filter(Boolean))];
 }
 
-// order.md's groups: a group runs from one bold lead-in line (`**...`) to the
-// next, and holds the tickets of its list lines `- <id> <title>`, the same
-// reading queue.sh check uses. List lines above the first lead-in form a group
-// of their own. Only groups that hold a list line are returned, as
+// order.md's groups: a group runs from one bold lead-in line (`**...`, other
+// than the goal line `**Goal.**`) to the next, and holds the tickets of its
+// list lines `- <id> <title>`, the same reading queue.sh check uses. List
+// lines above the first lead-in form a group of their own. Only groups that hold a list line are returned, as
 // { start, end, ids }: start is the lead-in's line index (0 for the group
 // above the first lead-in), end the index of the next lead-in or the line
 // count, so the text of a group is lines.slice(start, end).
@@ -101,6 +101,8 @@ export function readOrderGroups(text) {
   let cur = { start: 0, ids: [] };
   const close = (end) => { if (cur.ids.length) groups.push({ ...cur, end }); };
   lines.forEach((line, i) => {
+    // The goal line (`**Goal.**`) opens no group, as queue.sh check reads it.
+    if (/^\*\*Goal\.\*\*/.test(line)) return;
     if (line.startsWith('**')) {
       close(i);
       cur = { start: i, ids: [] };

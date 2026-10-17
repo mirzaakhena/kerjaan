@@ -182,7 +182,8 @@ for f in "${renumber[@]}"; do
 
   # Its own line in order.md is the one naming its title; with two tickets of
   # one title it could be either, and is listed below instead.
-  if [ -f "$order" ] && [ "$(basename "$(dirname "$dest")")" = todo ]; then
+  case "$(basename "$(dirname "$dest")")" in todo | in_progress | review) listed=1 ;; *) listed=0 ;; esac
+  if [ -f "$order" ] && [ "$listed" -eq 1 ]; then
     same_title=0
     for k in "${kept[@]}"; do
       [ "$(basename "$k" | cut -c14-)" = "${name:13}" ] && same_title=1
