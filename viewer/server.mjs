@@ -2,10 +2,14 @@
 // Starts the viewer: every project with a .kerjaan/ board directly under the
 // scanned folder, each at http://127.0.0.1:<port>/<folder name>/.
 //
-//   node viewer/server.mjs --scan ~/Workspace [--project <name>] [--port 4321] [--open]
+//   node viewer/server.mjs --scan ~/Workspace [--project <name>] [--port 4321] [--lan] [--open]
 //
 // --project only picks the address printed and opened: that project's kanban
 // rather than the front page.
+//
+// --lan also lets other devices on the same network (a phone on the same
+// Wi-Fi) open it, at this machine's network address, which it prints. There
+// is no key: anyone on that network can read the boards while it runs.
 //
 // Tickets in progress and in review also show what their Claude Code agent is
 // doing, read from the logs under $CLAUDE_CONFIG_DIR (default ~/.claude)/projects;
@@ -18,6 +22,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import { spawn } from 'node:child_process';
 import { createViewer, findProjects } from './app.mjs';
+import { lanLines } from './lan.mjs';
 
 const args = process.argv.slice(2);
 const option = (name) => {
@@ -27,7 +32,7 @@ const option = (name) => {
 
 const scan = option('--scan');
 if (!scan) {
-  console.error('Pakai: node viewer/server.mjs --scan <folder> [--project <nama>] [--port 4321] [--open]');
+  console.error('Pakai: node viewer/server.mjs --scan <folder> [--project <nama>] [--port 4321] [--lan] [--open]');
   console.error('  <folder>  folder yang subfoldernya dipindai mencari .kerjaan/');
   process.exit(1);
 }
@@ -38,6 +43,7 @@ if (!fs.existsSync(root) || !fs.statSync(root).isDirectory()) {
 }
 const port = Number(option('--port') ?? 4321);
 const project = option('--project');
+const lan = args.includes('--lan');
 
 const server = createViewer({ root });
 server.on('error', (err) => {
@@ -49,10 +55,12 @@ server.on('error', (err) => {
   process.exit(1);
 });
 
-// Loopback only: ticket bodies are the repos' private notes.
-server.listen(port, '127.0.0.1', () => {
-  const address = `http://127.0.0.1:${server.address().port}/${project ? `${encodeURIComponent(project)}/` : ''}`;
+// Loopback only unless --lan: ticket bodies are the repos' private notes.
+server.listen(port, lan ? '0.0.0.0' : '127.0.0.1', () => {
+  const at = (host) => `http://${host}:${server.address().port}/${project ? `${encodeURIComponent(project)}/` : ''}`;
+  const address = at('127.0.0.1');
   console.log(`kerjaan viewer: ${address}`);
+  if (lan) for (const line of lanLines(at)) console.log(line);
   const projects = findProjects(root);
   console.log(`memindai ${root} — ${projects.length} proyek: ${projects.map((p) => p.name).join(', ') || '(belum ada)'}`);
   if (args.includes('--open')) {
