@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
-import { readAgents, encodeProject, stepLabel, STEPS } from '../agen.mjs';
+import { readAgents, encodeProject, stepLabel, programName, STEPS } from '../agen.mjs';
 import { agentState, agentLine, agentSteps, span, ago, clock, QUIET, GONE } from '../web/agen.js';
 import { tempRoot, agentLog, appendLog, line } from './bantu.mjs';
 
@@ -74,11 +74,14 @@ test('ID tiket dari baris Ticket: di prompt pertama bila keterangan agen tidak m
   assert.deepEqual([...readAgents(project, { claudeDir: claude }).keys()], [ID.c]);
 });
 
-test('keterangan langkah: hanya description atau nama berkas; isi perintah tidak pernah', () => {
+test('step label: the description, a file name, or for Bash only the program name; never the command itself', () => {
   const p = '/proj';
   const cases = [
     ['Bash', { command: 'cat RAHASIA', description: 'Jalankan uji' }, 'Jalankan uji'],
-    ['Bash', { command: 'cat RAHASIA' }, ''],
+    ['Bash', { command: 'cat RAHASIA' }, 'cat'],
+    ['Bash', { command: 'cat RAHASIA', description: '  ' }, 'cat'],
+    ['Bash', {}, ''],
+    ['Bash', { command: ['cat', 'RAHASIA'] }, ''],
     ['Read', { file_path: '/proj/viewer/app.mjs' }, 'viewer/app.mjs'],
     ['Edit', { file_path: '/proj/a.md', old_string: 'RAHASIA', new_string: 'RAHASIA' }, 'a.md'],
     ['Write', { file_path: '/lain/tempat/b.txt', content: 'RAHASIA' }, 'b.txt'],
@@ -100,6 +103,92 @@ test('keterangan langkah: hanya description atau nama berkas; isi perintah tidak
       assert.ok(got.label.length <= 160, 'dipotong');
     }
   }
+});
+
+// Each shape of command a Bash step can carry without a description: only
+// the program's name is shown, and nothing else on the line, RAHASIA standing
+// for whatever must never reach the panel.
+test('Bash step without a description: the program name alone, for every shape of command', () => {
+  const cases = [
+    ['argument', 'cat RAHASIA.txt', 'cat'],
+    ['options and arguments', 'node --test --test-timeout=RAHASIA viewer/uji/RAHASIA.test.mjs', 'node'],
+    ['token in an argument', 'curl -H "Authorization: Bearer RAHASIA" https://x/RAHASIA', 'curl'],
+    ['variable set before the program', 'API_TOKEN=RAHASIA node --test', 'node'],
+    ['several, quoted and substituted, before the program', 'A="RAHASIA b" B=\'RAHASIA\' C=$(cat /RAHASIA) D=`cat RAHASIA` npm test', 'npm'],
+    ['single-quoted value with a space', "A='RAHASIA b' node x", 'node'],
+    ['escaped space in a value', 'A=RAHASIA\\ b node x', 'node'],
+    ['only an assignment', 'RAHASIA_TOKEN=RAHASIA', ''],
+    ['a cd first', 'cd /home/RAHASIA && git status RAHASIA', 'git'],
+    ['several cd first, then a newline', 'cd "/RAHASIA dir"; cd RAHASIA\n"$K/test-run.sh" RAHASIA', 'test-run.sh'],
+    ['a cd only', 'cd /RAHASIA', 'cd'],
+    ['program given by its path', '/home/RAHASIA/bin/tool --key RAHASIA', 'tool'],
+    ['program in a variable', '$RAHASIA arg', ''],
+    ['program in braces', '${RAHASIA}/bin x', 'bin'],
+    ['program from a substitution', '$(echo RAHASIA) x', ''],
+    ['program from backticks', '`echo RAHASIA` x', ''],
+    ['program quoted with a space', '"RAHASIA prog" x', ''],
+    ['leading option-like word', '--RAHASIA', ''],
+    ['comment before the program', '# RAHASIA\nls -la RAHASIA', 'ls'],
+    ['subshell', '(cd RAHASIA && make RAHASIA)', 'make'],
+    ['pipeline', 'echo "RAHASIA|x" | grep RAHASIA', 'echo'],
+    ['heredoc', "cat > RAHASIA.md <<'EOF'\nRAHASIA\nEOF", 'cat'],
+    ['negated group', '! { grep -q RAHASIA f; }', 'grep'],
+    ['nothing but spaces', '   ', ''],
+    // Array assignments, whole, whatever is inside the parentheses.
+    ['array assignment alone', 'TOKENS=(RAHASIA other)', ''],
+    ['array assignment before the program', 'A=(RAHASIA b) node', 'node'],
+    ['array appended to before the program', 'X+=(RAHASIA "RAHASIA b") node', 'node'],
+    ['array element set before the program', 'a[RAHASIA]=RAHASIA node', 'node'],
+    ['array assignment, then a command', 'P=(RAHASIA.md); git add -- "${P[@]}"', 'git'],
+    // Redirections and their targets, before the program or on a leading cd.
+    ['stderr redirected before the program', '2>/tmp/RAHASIA.log cat x', 'cat'],
+    ['input redirected before the program', '</tmp/RAHASIA.txt wc -l', 'wc'],
+    ['output redirected before the program', '>/tmp/RAHASIA cat', 'cat'],
+    ['appended before the program', '>> RAHASIA cat', 'cat'],
+    ['both streams before the program', '&>>RAHASIA cat', 'cat'],
+    ['clobbering before the program', '>|RAHASIA cat', 'cat'],
+    ['read-write before the program', '3<>RAHASIA cat', 'cat'],
+    ['named descriptor before the program', '{fd}>RAHASIA cat', 'cat'],
+    ['here-string before the program', '<<<RAHASIA cat', 'cat'],
+    ['process substitution before the program', '< <(cat RAHASIA) wc', 'wc'],
+    ['both streams on a cd', 'cd /x &>/tmp/RAHASIA.log && ls', 'ls'],
+    ['descriptor duplicated to a file on a cd', 'cd /x >&/tmp/RAHASIA && ls', 'ls'],
+    ['stderr into stdout on a cd', 'cd RAHASIA 2>&1; ls', 'ls'],
+    ['both streams on a cd, then more words', 'cd /x &>/dev/null RAHASIA', 'cd'],
+    ['stderr into stdout on a cd, then more words', 'cd /x 2>&1 RAHASIA', 'cd'],
+    ['clobbering on a cd, then more words', 'cd /x >|RAHASIA.log RAHASIA', 'cd'],
+    ['descriptor closed on a cd', 'cd RAHASIA >&- ; ls', 'ls'],
+    ['redirection glued to the program', 'cat>RAHASIA', 'cat'],
+    ['heredoc on a cd', 'cd x <<EOF\nRAHASIA\nEOF\nls', 'ls'],
+    ['indented heredoc on a cd', 'cd x <<-EOF\n\tRAHASIA\n\tEOF\nls', 'ls'],
+    ['heredoc on a cd, to the end', "cd x <<'EOF'\nRAHASIA\nEOF", 'cd'],
+    // Lines that cannot be read with confidence show nothing.
+    ['arithmetic', '((RAHASIA++))', ''],
+    ['test brackets', '[[ -f RAHASIA ]] && ls', ''],
+    ['function definition', 'f() { RAHASIA; }', ''],
+    ['quote left open before the program', 'A="RAHASIA node', ''],
+    ['quote left open after a cd', 'cd /x; A="RAHASIA node', ''],
+    ['substitution left open before the program', 'A=$(RAHASIA node', ''],
+    ['quote left open after the program', 'node "RAHASIA', 'node'],
+    ['ANSI-C quoting with an escaped quote', "A=$'RAHASIA\\'s' node", 'node'],
+    ['substitution with quotes inside a quoted value', 'A="$(cat "RAHASIA b")" node', 'node'],
+  ];
+  for (const [shape, command, want] of cases) {
+    const got = stepLabel('Bash', { command }, '/proj');
+    assert.equal(got.tool, 'Bash');
+    assert.ok(!got.label.includes('RAHASIA'), `${shape}: ${got.label}`);
+    assert.equal(got.label, want, shape);
+    assert.equal(got.label, programName(command), shape);
+  }
+});
+
+test('Bash step without a description, read from an agent log: the panel gets the program name', () => {
+  const { project, claude } = setup();
+  const t0 = Date.now();
+  agentLog(claude, project, { id: 'tanpa', description: `Kerjakan tiket ${ID.a}`, lines: [line.prompt(t0, 'x'), line.step(t0 + 1, 'Bash', { command: 'GH_TOKEN=RAHASIA gh pr list --search RAHASIA' }), line.step(t0 + 2, 'Bash', { command: 'ls RAHASIA', description: 'List the folder' })] });
+  const a = readAgents(project, { claudeDir: claude }).get(ID.a);
+  assert.deepEqual(a.steps.map((s) => [s.tool, s.label]), [['Bash', 'gh'], ['Bash', 'List the folder']]);
+  assert.ok(!JSON.stringify(a).includes('RAHASIA'));
 });
 
 test('akhir agen: laporan diserahkan, pesan penutup, tanda selesai di meta, dan dihentikan', () => {
