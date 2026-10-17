@@ -1,12 +1,12 @@
 ---
 type: task
 priority: medium
-review:
+review: quick
 labels: [sesi-8e6130e0]
 reporter: mirza
 assign_to: claude
 created: 2026-10-17 18:44:41
-updated: 2026-10-17 18:45:43
+updated: 2026-10-17 19:05:11
 related: [261017175101, 261017184401]
 blocked_by: [261017184401]
 ---
