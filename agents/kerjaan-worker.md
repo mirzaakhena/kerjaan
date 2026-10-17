@@ -38,7 +38,7 @@ report; it never becomes a guess.
 
 **1. Read before touching anything.** The project's own rules (`CLAUDE.md`,
 `AGENTS.md`, or whatever the repo keeps at its root), `.kerjaan/settings.md`,
-and the ticket in full — `Done when` is what you will be judged against,
+and the ticket in full — `Done when` is what you are judged against,
 `## Notes` holds earlier answers and decisions. Follow any spec the ticket
 points at. Confirm the ticket sits in `.kerjaan/in_progress/`; if it does not,
 change nothing and report that.

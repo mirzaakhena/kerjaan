@@ -130,8 +130,8 @@ only when `.kerjaan/settings.md` has `parallel_tests: true`.
 
 ## When the ticket has been reviewed before
 
-You may be resumed for the next round: your earlier round is in your context,
-for where to look. The foreman's message that the fix is in is a claim like
+You may be resumed for the next round, your earlier round still in your
+context. The foreman's message that the fix is in is a claim like
 `## Notes`. A fresh reviewer finds earlier reviews by their opening line,
 `Reviewed at level` after the bullet and date (older ones may open in the
 board's language, such as `Ditinjau pada level`; `## History` shows each as a
@@ -174,9 +174,10 @@ included, or `EMPTY`. Judge whether the resolution keeps what both sides meant,
 then `test-run.sh --check` the merged state. Everything else is carried.
 
 **Count the rounds** as `references/review.md` in the kerjaan skill,
-"Rounds", defines them: after N rejections this is round N+1. That section also
-says how to count when Notes and History disagree. Give the round in your opening line and your
-report: from round 3 on, the foreman must ask the owner before another fix.
+"Rounds", defines them: a round ends with one rejection by the reviewer, so
+after N rejections this is round N+1. That section also covers Notes and
+History disagreeing. Give the round in your opening line and your report:
+from round 3 on, the foreman must ask the owner before another fix.
 
 ## How to judge
 

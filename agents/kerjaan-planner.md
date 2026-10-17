@@ -118,7 +118,7 @@ be recovered, what a customer hits first, or a change you are unsure of earns
 more than `quick`. When `review:` is already filled in, say whether it fits. The suggestion goes in the report only — the field is the owner's
 to set.
 
-**8. Report and end** (the shape is below). Change nothing beyond the tickets'
+**8. Report and end** (shape below). Change nothing beyond the tickets'
 `## Notes`, the splits and the estimates: the proposal is the owner's to
 approve.
 
