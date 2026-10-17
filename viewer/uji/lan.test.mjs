@@ -159,3 +159,16 @@ for (const [name, w, h] of [['phone 360×740', 360, 740], ['phone 390×844', 390
     }
   });
 }
+
+// ---------- written down ----------
+
+test('README and the skill\'s viewer section say how to open the board from a phone', () => {
+  const read = (p) => fs.readFileSync(new URL(`../../${p}`, import.meta.url), 'utf8').replace(/\s+/g, ' ');
+  const readme = read('README.md');
+  const viewer = readme.slice(readme.indexOf('## The viewer'), readme.indexOf('## ', readme.indexOf('## The viewer') + 3));
+  assert.match(viewer, /server\.mjs --scan \S+ (--port \d+ )?--lan/, 'README gives the command');
+  assert.match(viewer, /phone/);
+  assert.match(viewer, /anyone on the same network can read/, 'README warns');
+  const skill = read('skills/kerjaan/SKILL.md');
+  assert.match(skill.slice(skill.indexOf('**The viewer.**')), /^.{0,600}phone on the same Wi-Fi, add `--lan`/, 'the skill\'s viewer section names --lan');
+});
