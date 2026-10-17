@@ -6,7 +6,7 @@ labels: [sesi-8e6130e0, viewer]
 reporter: mirza
 assign_to: claude
 created: 2026-10-17 15:58:20
-updated: 2026-10-17 18:04:50
+updated: 2026-10-17 18:45:41
 related: [261016084202]
 blocked_by: []
 ---
@@ -29,14 +29,15 @@ Setiap langkah di panel aktivitas punya keterangan yang bisa dibaca. Agen kerjaa
 ## Done when
 - [ ] Langkah di reproduksi di atas menampilkan keterangan singkat dalam bahasa papan pada hampir setiap baris Bash, bukan "—" — menunggu mirza: skenario tangan di Notes
 - [x] Panduan pengerja, peninjau, dan penyusun antrean masing-masing meminta keterangan itu dalam satu kalimat, tanpa menambah aturan lain
-- [x] Langkah Bash tanpa keterangan menampilkan nama program saja, dan tidak pernah argumen, nama berkas, isi variabel, atau teks lain dari perintahnya
-- [x] Perintah yang memuat rahasia (misalnya token di argumen atau variabel lingkungan di depan perintah) tetap tidak memperlihatkan rahasia itu di panel
+- [ ] Langkah Bash tanpa keterangan menampilkan nama program saja, dan tidak pernah argumen, nama berkas, isi variabel, atau teks lain dari perintahnya
+- [ ] Perintah yang memuat rahasia (misalnya token di argumen atau variabel lingkungan di depan perintah) tetap tidak memperlihatkan rahasia itu di panel
 
 ## History
 - 2026-10-17 15:58:20 8e6130e0-0828-4d64-b383-ba0d1c9f4b02 backlog
 - 2026-10-17 16:01:22 8e6130e0-0828-4d64-b383-ba0d1c9f4b02 todo
 - 2026-10-17 17:47:40 8e6130e0-0828-4d64-b383-ba0d1c9f4b02 in_progress
 - 2026-10-17 18:04:50 8e6130e0-0828-4d64-b383-ba0d1c9f4b02 review
+- 2026-10-17 18:45:41 8e6130e0-0828-4d64-b383-ba0d1c9f4b02 in_progress
 
 ## Notes
 - 2026-10-17: lahir dari pertanyaan pemilik di sesi 8e6130e0-0828-4d64-b383-ba0d1c9f4b02 (`claude --resume 8e6130e0-0828-4d64-b383-ba0d1c9f4b02`) sambil melihat tangkapan layar panel aktivitas nukitu-mockup. Pemilik setuju kedua lapis: aturan keterangan di definisi agen, dan cadangan nama program di viewer (melonggarkan aturan "tidak ada isi perintah" sebatas nama program). Pemilik khawatir soal tambahan context: tambahannya sekitar 5-10 token per perintah dan satu kalimat per definisi agen; cadangan di viewer tidak menambah context agen sama sekali. Pemilik minta tiket ini langsung masuk todo.
@@ -71,3 +72,23 @@ Setiap langkah di panel aktivitas punya keterangan yang bisa dibaca. Agen kerjaa
 - 2026-10-17 18:01:53: test run — `node --test --test-timeout=900000 --test-force-exit` exited 1 after 2m47s, on content fingerprint ee6fd6eb849cd40ec68ea0e2295031a0197b6094 (the same before and after the run; .kerjaan/ left out). Waited 0m47s for the test lock first, held by another run (ticket 261017113001, slot 1, /Users/mirza/Workspace/kerjaan-order-tata-bahasa).
 - 2026-10-17 18:04:46: test run — `node --test --test-timeout=900000 --test-force-exit` exited 0 after 2m31s, on content fingerprint 895645f3c8f344ed59467c3281287faab29040f9 (the same before and after the run; .kerjaan/ left out).
 - 2026-10-17 18:04:50: review covers branch tiket-261017155801 at a94071275d8bb14b3bd9f2555c38fb93aa7b05ab, which holds main at 7eb507886afb995280765e76fbc9f4bda79a98aa (code outside .kerjaan/); the latest test run passed on exactly this content.
+- 2026-10-17: Reviewed at level normal, round 1, at commit a94071275d8bb14b3bd9f2555c38fb93aa7b05ab: sent back.
+  Level normal di sini berarti: uji lengkap tidak dijalankan ulang karena `test-run.sh --check 261017155801 a940712` menjawab SAME (jalan 2026-10-17 18:04:46, exit 0, sidik 895645f3c8f344ed59467c3281287faab29040f9); setiap butir dibuktikan dengan menjalankan sesuatu, yaitu `stepLabel` dari worktree `/Users/mirza/Workspace/kerjaan-keterangan-langkah` dipanggil langsung dengan bentuk perintah di luar daftar uji; uji dibaca untuk asersi yang tidak bisa gagal. Tidak ada ekspor bersih karena pohon kerja tidak bergerak. Proyek ini tidak punya CLAUDE.md atau AGENTS.md.
+  - Butir 1 (keterangan di hampir setiap baris pada reproduksi): menunggu mirza. Keputusan pemilik bertanggal 2026-10-17 16:01:21 ada di Notes, skenario tangan ada dan berakhir pada apa yang harus terlihat, dan butir ini memang baru bisa dilihat setelah rilis. Bukan penghalang.
+  - Butir 2 (satu kalimat di tiap panduan): terpenuhi. Kalimat yang sama ada tepat sekali di `agents/kerjaan-worker.md`, `agents/kerjaan-reviewer.md` dan `agents/kerjaan-planner.md` (`grep -c` memberi 1 di tiap berkas; dijaga `uji/bash-description.test.mjs`). Kalimat lain yang dipadatkan hanya diringkas; tidak ada aturan baru dan tidak ada aturan yang hilang.
+  - Butir 3 (nama program saja, tidak pernah argumen, nama berkas, isi variabel atau teks lain): TIDAK terpenuhi. Contoh hasil `stepLabel('Bash', { command }, '/p').label`:
+    - `TOKENS=(RAHASIA other)` menjadi "RAHASIA"
+    - `2>/tmp/RAHASIA.log cat x` menjadi "RAHASIA.log"
+    - `</tmp/RAHASIA.txt wc -l` menjadi "RAHASIA.txt"
+    - `>/tmp/RAHASIA cat` menjadi "RAHASIA"
+    - `cd /x &>/tmp/RAHASIA.log && ls` menjadi "RAHASIA.log"
+    - `cd /x >&/tmp/RAHASIA && ls` menjadi "RAHASIA"
+    - `cd RAHASIA 2>&1; ls` menjadi "1"
+  - Butir 4 (rahasia di argumen atau variabel di depan perintah tidak terlihat): TIDAK terpenuhi, karena isi penetapan variabel bisa bocor. `TOKENS=(RAHASIA other)` menampilkan "RAHASIA", dan `A=(RAHASIA b) node` juga menampilkan "RAHASIA". Bash menjalankan bentuk kedua (`bash -c 'A=(x y) echo hi'` mencetak "hi").
+  Yang tersisa, dikelompokkan menurut jenis kesalahan:
+  - **Penetapan array dipecah di `(`.** `shellTokens` memperlakukan `(` di dalam kata `A=(` sebagai operator subshell, sehingga isi array terbaca sebagai program. Instance: `X=(…)` sendirian, `X=(…)` di depan program, dan `X+=(…)`. Uji daftar bentuk perintah tidak punya kasus penetapan array.
+  - **Pengalihan (redirection) dibaca sebagai program.** Kata yang diawali `>`, `<`, `2>`, `&>` atau `>&` dianggap kata biasa. Setelah foldernya dibuang, nama berkas tujuannya lolos `PROGRAM`. Selain itu, `&` di dalam `&>`, `>&` dan `2>&1` dipotong sebagai operator, sehingga kata sesudahnya dianggap awal perintah baru. Ini terutama terjadi setelah `cd` yang dilewati. Instance: pengalihan sebelum program (`2>f cmd`, `<f cmd`, `>f cmd`) dan pengalihan pada `cd` di depan (`cd x &>f && …`, `cd x >&f`, `cd x 2>&1; …`). Uji daftar bentuk perintah tidak punya kasus pengalihan sebelum program.
+  Catatan (tidak menghalangi):
+  - Uji di `viewer/uji/agen.test.mjs` tidak hampa. Setiap kasus memeriksa label persis dan juga ketiadaan RAHASIA. Cabang `if (want !== null)` selalu berjalan karena tidak ada kasus dengan `want` null, jadi cabang itu tidak berguna.
+  - Kata kunci shell muncul sebagai "program", misalnya `if`, `for`, `case`, `time`, `sudo`, `env` dan `export`. Tidak ada yang bocor, tetapi kata itu kurang memberi tahu.
+  - Kata pertama yang lolos `PROGRAM` selalu tampil, sampai 40 karakter. Token yang ditempel sebagai kata pertama, misalnya karena salah tempel, akan terlihat. Ini sesuai dengan aturan "nama program", tetapi patut diketahui.
