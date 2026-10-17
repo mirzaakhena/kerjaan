@@ -115,6 +115,8 @@ test('Bash step without a description: the program name alone, for every shape o
     ['token in an argument', 'curl -H "Authorization: Bearer RAHASIA" https://x/RAHASIA', 'curl'],
     ['variable set before the program', 'API_TOKEN=RAHASIA node --test', 'node'],
     ['several, quoted and substituted, before the program', 'A="RAHASIA b" B=\'RAHASIA\' C=$(cat /RAHASIA) D=`cat RAHASIA` npm test', 'npm'],
+    ['single-quoted value with a space', "A='RAHASIA b' node x", 'node'],
+    ['escaped space in a value', 'A=RAHASIA\\ b node x', 'node'],
     ['only an assignment', 'RAHASIA_TOKEN=RAHASIA', ''],
     ['a cd first', 'cd /home/RAHASIA && git status RAHASIA', 'git'],
     ['several cd first, then a newline', 'cd "/RAHASIA dir"; cd RAHASIA\n"$K/test-run.sh" RAHASIA', 'test-run.sh'],
