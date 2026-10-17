@@ -6,7 +6,7 @@ labels: [sesi-8e6130e0, order-md, viewer]
 reporter: mirza
 assign_to: claude
 created: 2026-10-17 11:30:54
-updated: 2026-10-17 20:04:37
+updated: 2026-10-17 20:05:29
 related: [261017113001, 261017113002, 261017113004]
 blocked_by: [261017113001, 261017113002]
 ---
@@ -29,6 +29,7 @@ Nomor di kartu menunjukkan urutan kelompok di order.md: tiket dalam satu kelompo
 - 2026-10-17 11:41:31 8e6130e0-0828-4d64-b383-ba0d1c9f4b02 todo
 - 2026-10-17 19:49:19 8e6130e0-0828-4d64-b383-ba0d1c9f4b02 in_progress
 - 2026-10-17 20:04:37 8e6130e0-0828-4d64-b383-ba0d1c9f4b02 review
+- 2026-10-17 20:05:29 8e6130e0-0828-4d64-b383-ba0d1c9f4b02 done
 
 ## Notes
 - 2026-10-17: lahir dari pembahasan pemilik dengan Claude tentang aturan dan format order.md, sesi 8e6130e0-0828-4d64-b383-ba0d1c9f4b02 (`claude --resume 8e6130e0-0828-4d64-b383-ba0d1c9f4b02`). Empat tiket dari sesi ini: 261017113001, 261017113002, 261017113003, 261017113004.
@@ -43,3 +44,13 @@ Nomor di kartu menunjukkan urutan kelompok di order.md: tiket dalam satu kelompo
 - 2026-10-17 20:00:41: test run — `node --test --test-timeout=900000 --test-force-exit` exited 0 after 2m53s, on content fingerprint fcc4cd66a9395ec47ff1f69461e737fe1b25c12b (the same before and after the run; .kerjaan/ left out). Waited 0m44s for the test lock first, held by another run (ticket 261017193401, slot 2, /Users/mirza/Workspace/kerjaan-lan).
 - 2026-10-17 20:04:29: test run — `node --test --test-timeout=900000 --test-force-exit` exited 0 after 3m30s, on content fingerprint a1f56506af588b0e59c2108047dd76f64f1f2fa2 (the same before and after the run; .kerjaan/ left out).
 - 2026-10-17 20:04:37: review covers branch tiket-261017113003 at 2c5988940656f809f16b5fc5423f79e27ff82a2e, which holds main at b337ace399fcb0cf278f8b1923cb7df067a66782 (code outside .kerjaan/); the latest test run passed on exactly this content.
+- 2026-10-17: Reviewed at level quick, round 1, at commit 2c5988940656f809f16b5fc5423f79e27ff82a2e: passed.
+  Level quick: uji dijalankan sekali (dibawa dari putaran pekerja), dan perubahan dibaca baris demi baris terhadap Done when. Tidak ada server yang dijalankan.
+  - Uji: `test-run.sh --check 261017113003 2c59889` menjawab SAME — `node --test --test-timeout=900000 --test-force-exit` keluar 0 pada 2026-10-17 20:04:29, sidik isi a1f56506af588b0e59c2108047dd76f64f1f2fa2. Tidak dijalankan ulang.
+  - Kriteria 1 (satu kelompok, satu nomor): `orderPlaces` di board.mjs menaikkan `n` sekali per kelompok dan memberi semua tiketnya nomor itu; uji "the tickets of one group share a number" dan uji peramban yang diubah (`#2, #2, #3`) memeriksanya.
+  - Kriteria 2 (in_progress/review tetap bernomor): `LIVE` = todo, in_progress, review; proyek.js kini memberi lencana di semua kolom dari `board.places`. Uji "keep their group number" dan uji peramban kolom in progress/review (`#1`).
+  - Kriteria 3 (kelompok berikutnya jadi #1): kelompok tanpa tiket hidup dilewati (`if (!held.length) continue`); uji untuk done, cancel, backlog dan tiket tak ada, serta uji peramban "a group finished moves the next group up to #1".
+  - Kriteria 4 (tanda menunggu pemilik): label kuning "waits for the owner's go-ahead" dengan tooltip, bahasa Inggris sesuai keputusan pemilik; uji peramban memeriksa teks, tooltip, dan hilangnya tanda saat satu tiket kelompok pindah ke in_progress.
+  - Kriteria 5 (aturan sama dengan pemeriksaan antrean): kelompok dibaca oleh `readOrderGroups` yang sudah diuji setara dengan check; aturan "sudah dimulai" sama dengan queue.sh baris 615–625 (ada tiket di in_progress/review). Uji baru menjalankan `queue.sh check` pada empat keadaan papan dan membandingkan kelompok bertanda/tidak dengan barisnya.
+  - Catatan: tidak ada. Teks Indonesia lama di proyek.js ("belum digabung", "rusak") bukan bagian tiket ini.
+  - Tidak diverifikasi dengan menjalankan sesuatu oleh peninjau: kelima kriteria dinilai dari membaca diff dan uji, dengan satu-satunya bukti jalan berupa run uji pekerja yang dibawa lewat SAME. Sabotase yang dilaporkan pekerja tidak diulang.
