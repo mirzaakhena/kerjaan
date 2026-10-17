@@ -6,7 +6,7 @@ labels: [sesi-8e6130e0]
 reporter: mirza
 assign_to: claude
 created: 2026-10-17 22:28:57
-updated: 2026-10-17 23:52:02
+updated: 2026-10-17 23:52:32
 related: [261017184401, 261016183501]
 blocked_by: []
 ---
@@ -74,3 +74,4 @@ Hasil uji yang lulus berarti semua uji benar-benar dijalankan. Penyebab berhenti
 
 - **Pengingat peninjau salah membaca ID tiket bila path skrip memuat angka 12 digit.** on-ticket-review.sh mengambil angka 12 digit pertama dalam perintah sebagai ID, jadi `bash /tmp/review-261017222801/.../update-ticket.sh 261011070001 --status review` dibaca sebagai tiket 261017222801. Akibatnya seluruh rangkaian uji gagal 11 uji bila dijalankan dari salinan di `/tmp/review-<id>`, path yang justru dianjurkan instruksi peninjau, dan di pemakaian nyata pengingat bisa menunjuk tiket yang salah. Layak dibuat tiket: ambil ID dari argumen setelah `update-ticket.sh`, bukan angka pertama di baris.
 - **Pesan penjaga uji tidak menyebut timer yang tertinggal.** tests/complete-runs.mjs menyaring `Timeout` dari daftar sumber yang menahan proses (supaya timernya sendiri tidak terhitung), sehingga interval yang tertinggal dilaporkan sebagai "PipeWrap". Layak dibuat tiket kecil: kecualikan hanya timer penjaga sendiri.
+- 2026-10-17 23:52:32: landed on main as f1ceb3393bac792c47df15ccd8ed4e61217cb16d, merging tiket-261017222801 at 75af90f6b2fef54a902138fa26824a13e02d6c07; tests carried from the run on this exact content, not run again.
