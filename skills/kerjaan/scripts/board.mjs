@@ -75,11 +75,17 @@ export function readTicket(board, status, file) {
   };
 }
 
-// The ids order.md names, in the order it names them. It only ranks todo.
+// The ids order.md lists, top to bottom. It only ranks todo. Only a list line
+// `- <id> <title>` is a place, read with the rule queue.sh check uses
+// (references/ordering-the-queue.md); an id named in a lead-in, in prose or
+// on a lands-first line is never one. viewer/uji/urutan.test.mjs holds the two
+// readers to the same list.
 export function readOrder(board) {
   const orderFile = path.join(board, 'order.md');
   if (!fs.existsSync(orderFile)) return null;
-  return [...new Set(fs.readFileSync(orderFile, 'utf8').match(/\b\d{12}\b/g) || [])];
+  // Split on \n alone, as awk does, so a stray \r reads the same in both.
+  const lines = fs.readFileSync(orderFile, 'utf8').split('\n');
+  return [...new Set(lines.map((l) => l.match(/^- (\d{12})(?: |$)/)?.[1]).filter(Boolean))];
 }
 
 export function readBoard(board) {

@@ -35,7 +35,9 @@ The format is four rules:
   else on the board. The group runs from one bold lead-in to the next; a bold
   paragraph that introduces no ticket is ordinary prose, left alone.
 - **A bullet is exactly `- <id> <title>` and nothing else**, so the script can
-  edit it safely. Reasoning belongs in the lead-in.
+  edit it safely. Reasoning belongs in the lead-in. Only bullets are read as
+  the order — by `queue.sh check`, the scripts and the viewer alike — so an ID
+  named in a lead-in or any other prose is safe: it never takes a place.
 
 ## What may share a group
 
@@ -113,7 +115,7 @@ the reasons — and is kept in step: `update-ticket.sh` removes a ticket's line
 when it leaves `todo` (with the group's lead-in once its last ticket is gone)
 and rewrites the title on a rename. A ticket promoted *into* `todo` needs a
 place only a human can choose, so the script says so on stderr.
-`"$K/queue.sh" check` names a ticket in `todo/` the file never mentions and an
+`"$K/queue.sh" check` names a ticket in `todo/` the file never lists and an
 entry whose ticket has moved on. A title edited by hand is the one drift
 nothing reports.
 

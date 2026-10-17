@@ -6,7 +6,7 @@ labels: [viewer, order-md]
 reporter: mirza
 assign_to: claude
 created: 2026-10-17 07:08:38
-updated: 2026-10-17 07:11:44
+updated: 2026-10-17 07:17:22
 related: [261016141912]
 blocked_by: []
 ---
@@ -50,19 +50,19 @@ prioritas lalu ID seperti sekarang. Panduan skill menyebut dengan jelas bahwa
 viewer pun hanya membaca baris daftar.
 
 ## Done when
-- [ ] Langkah di atas menghasilkan A sebagai `#1` di paling atas, sedangkan B
+- [x] Langkah di atas menghasilkan A sebagai `#1` di paling atas, sedangkan B
       tampil di bawahnya tanpa lencana peringkat
-- [ ] ID yang disebut di kalimat tebal pembuka kelompok, di kalimat biasa, atau
+- [x] ID yang disebut di kalimat tebal pembuka kelompok, di kalimat biasa, atau
       di baris `<!-- lands-first: … -->` tidak pernah memberi peringkat
-- [ ] Urutan di viewer sama dengan urutan baris daftar dari atas ke bawah,
+- [x] Urutan di viewer sama dengan urutan baris daftar dari atas ke bawah,
       termasuk bila tiket tersebar di beberapa kelompok
-- [ ] Papan dengan order.md yang tidak memuat baris daftar menampilkan todo
+- [x] Papan dengan order.md yang tidak memuat baris daftar menampilkan todo
       menurut prioritas lalu ID, dan tautan "urut order.md" di kolom todo tetap
       membuka berkasnya
-- [ ] Aturan pembacaan viewer dan pemeriksaan antrean tidak bisa berselisih
+- [x] Aturan pembacaan viewer dan pemeriksaan antrean tidak bisa berselisih
       diam-diam: ada uji yang memakai satu berkas order.md contoh dan
       menegaskan keduanya membaca daftar ID yang sama
-- [ ] `references/ordering-the-queue.md` menyatakan bahwa hanya baris daftar
+- [x] `references/ordering-the-queue.md` menyatakan bahwa hanya baris daftar
       yang dibaca mesin (pemeriksaan antrean, skrip, dan viewer), sedangkan
       ID di kalimat penjelasan aman ditulis
 
@@ -70,6 +70,28 @@ viewer pun hanya membaca baris daftar.
 - 2026-10-17 07:08:38 274ec161-5783-448b-9b14-9ef25dd7d5f9 backlog
 - 2026-10-17 07:09:02 274ec161-5783-448b-9b14-9ef25dd7d5f9 todo
 - 2026-10-17 07:11:44 e97c38bb-2b6f-487d-a8b0-2fdab5809ee3 in_progress
+- 2026-10-17 07:17:22 e97c38bb-2b6f-487d-a8b0-2fdab5809ee3 review
 
 ## Notes
 - 2026-10-17 07:09:01: files estimated to change: `skills/kerjaan/references/ordering-the-queue.md`, `skills/kerjaan/scripts/board.mjs`, `viewer/uji/`, `viewer/web/proyek.js`, `viewer/web/saring.js`
+- 2026-10-17: dikerjakan. `readOrder` di `skills/kerjaan/scripts/board.mjs` kini
+  hanya membaca baris `- <ID>` diikuti spasi atau akhir baris, dengan aturan
+  yang sama persis seperti awk `queue.sh check` (dibelah per `\n` saja, jadi
+  `\r` tersisa dibaca sama). Uji baru `viewer/uji/urutan.test.mjs`: per jenis
+  sebutan (kalimat biasa, kalimat tebal, lands-first, beberapa kelompok, tanpa
+  daftar, bentuk mirip daftar), satu order.md contoh yang dibaca viewer dan
+  `queue.sh check` (todo kosong, ID dari pesan "order.md lists … not in todo")
+  harus sama, dan tiga uji di Chrome sungguhan: langkah reproduksi tiket
+  (A `#1`, B tanpa lencana), tujuh tiket di tiga kelompok, serta order.md tanpa
+  daftar (prioritas lalu ID, tautan "urut order.md" membuka laci order.md di
+  `/alpha/urutan`). Panduan `ordering-the-queue.md`: satu kalimat di aturan
+  bullet, dan "never mentions" jadi "never lists".
+- Bukti uji bisa merah: (1) `readOrder` dikembalikan ke regex lama
+  `\b\d{12}\b` — 10 dari 10 uji di urutan.test.mjs merah; (2) `readOrder`
+  dilonggarkan menerima indentasi dan `\r` — uji bentuk-persis dan uji
+  kesamaan dengan queue.sh merah; (3) awk `queue.sh` dilonggarkan dengan cara
+  sama — uji kesamaan merah. Ketiganya dipulihkan dari salinan.
+- Berkas di luar estimasi: tidak ada di luar `viewer/uji/`; `viewer/web/proyek.js`
+  dan `saring.js` tidak perlu diubah (peringkat sudah dihitung dari
+  `board.order`).
+- 2026-10-17 07:17:16: test run — `node --test --test-timeout=900000 --test-force-exit` exited 0 after 2m18s, on content fingerprint fe52d127ec1edf005de3507c5fd30be7c25cfafe (the same before and after the run; .kerjaan/ left out).
