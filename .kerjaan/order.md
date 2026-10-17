@@ -1,8 +1,6 @@
-**Pertama, dua tiket ini berdampingan.** Keduanya tidak saling menunggu hasil; 261017113001 dan 261017113004 sama-sama mengubah board.mjs dan README.md, dan 261017113001 digabung ke main lebih dulu karena aturan kelompoknya menjadi dasar laci 261017113004.
-<!-- lands-first: 261017113001 -->
+**Sekarang, sendiri, berdampingan dengan yang sedang berjalan.** Tidak menunggu dan tidak ditunggu tiket mana pun; 261017155801 berbagi agents/kerjaan-planner.md dengan 261017113001 yang sedang dikerjakan, jadi 261017113001 digabung ke main lebih dulu.
 
-- 261017113001 Isi order.md hanya memuat bentuk baris yang dikenal dan mengikuti tiket sampai selesai
-- 261017113004 Laci order.md di viewer menunjukkan berkas yang dibagi antar-tiket
+- 261017155801 Setiap langkah agen di panel aktivitas viewer punya keterangan yang bisa dibaca
 
 **Lalu yang ini, sendiri.** Tanda "menunggu pemilik" adalah bentuk baris baru dalam tata bahasa order.md dari 261017113001.
 
