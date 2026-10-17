@@ -87,8 +87,8 @@ const clean = (s) => String(s).replace(/[\u0000-\u001f\u007f]+/g, ' ').replace(/
 // A command line read as the shell would split it: words, the operators
 // between commands, and redirections. Quotes are taken off; a substitution, an
 // array's parentheses or an arithmetic `((...))` stay inside their word, raw. A
-// redirection's target and a heredoc's body are marked so they are never taken
-// for a program. Past anything left unclosed the line is not understood, and
+// redirection's target is marked and a heredoc's body passed over, so neither
+// is ever taken for a program. Past anything left unclosed the line is not understood, and
 // a `broken` mark ends the list.
 // Only program names are ever kept from this (programName, below).
 function closing(s, k) {
