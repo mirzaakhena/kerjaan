@@ -1,6 +1,6 @@
 ---
 language: Bahasa Indonesia
-test_command: node --test --test-timeout=900000 --test-force-exit
+test_command: node --test --test-timeout=900000 --import=./tests/complete-runs.mjs
 long_lived_branches: []
 ---
 
