@@ -6,7 +6,7 @@ labels: [mandor, konteks]
 reporter: mirza
 assign_to: claude
 created: 2026-10-26 15:22:13
-updated: 2026-10-26 17:20:42
+updated: 2026-10-26 17:24:59
 related: [261011064201, 261026150401]
 blocked_by: [261026150401]
 ---
@@ -31,6 +31,7 @@ Papan punya mekanisme serah terima sebelum konteks diringkas: saat pemakaian kon
 - 2026-10-26 15:34:53 9be5acfb-f0e7-4547-926f-85a864635294 todo
 - 2026-10-26 16:59:10 9be5acfb-f0e7-4547-926f-85a864635294 in_progress
 - 2026-10-26 17:20:42 9be5acfb-f0e7-4547-926f-85a864635294 review
+- 2026-10-26 17:24:59 9be5acfb-f0e7-4547-926f-85a864635294 done
 ## Notes
 - Permintaan mirza, 2026-10-26: "sepertinya mekanisme handoff juga perlu di buat untuk skill kerjaan … sebuah pesan khusus yang mungkin lokasinya setara dengan order.md dan settings.md yang menjelaskan hal-hal penting sebelum terjadi compacting … jika sudah mencapai n% yang didefinisikan dalam settings.md (defaultnya 80%) maka main agent harus membuat sebuah file bernama handoff.md. Seketika setelah terjadi compacting, main agent di sesi baru perlu membaca handoff.md … setelah itu dia harus menghapus file itu." Format berkas ditentukan saat pengerjaan.
 - Catatan untuk pengerja (bukan keharusan): sesi utama tidak selalu tahu persentase konteksnya sendiri; periksa apa yang disediakan Claude Code (mis. hook sebelum ringkasan, hook saat sesi dimulai setelah ringkasan, atau info pemakaian konteks) untuk memicu penulisan dan pembacaan secara andal, bukan bergantung pada ingatan model.
@@ -62,3 +63,23 @@ Papan punya mekanisme serah terima sebelum konteks diringkas: saat pemakaian kon
     6. Jalankan `/compact` sekali lagi. Yang terlihat: tidak ada apa pun tentang handoff.
     7. Kembalikan `handoff_at` ke nilai semula.
 - 2026-10-26 17:20:33: test run — `node --test --test-timeout=900000 --import=./tests/complete-runs.mjs` exited 0 after 3m53s, on content fingerprint ffa89f4b0adb9382d20e8388a2ce0f863d800b60 (the same before and after the run; .kerjaan/ left out).
+- 2026-10-26: Reviewed at level normal, round 1, at commit 366c7d6: passed.
+  - Level normal di sini: `test_command` tidak dijalankan ulang (dibawa dari run pengerja, lihat di bawah), tiap kriteria dibuktikan dengan menjalankan hook sungguhan pada salinan bersih (`git archive 366c7d6` ke folder sementara dengan git sendiri, supaya `.git/info/exclude` repo utama tidak tersentuh), dan uji `tests/handoff.test.mjs` dibaca untuk mencari asersi yang tidak bisa gagal. Saya melangkah sedikit lebih jauh: hook dijalankan pada log percakapan nyata milik pemilik (termasuk sesi video-system-design dan sesi yang benar-benar diringkas otomatis) untuk melihat format penanda peringkasan, waktu jalan, dan perkiraan jendela.
+  - Uji: `test-run.sh --check 261026152201` → SAME; run 2026-10-26 17:20:33, `node --test --test-timeout=900000 --import=./tests/complete-runs.mjs` exit 0, sidik ffa89f4b0adb9382d20e8388a2ce0f863d800b60. Dibawa, tidak dijalankan ulang.
+  - Kriteria 1 (setelan, bawaan 80%) — terpenuhi. `kerjaan_handoff_at` pada settings tanpa kunci → `80`; `handoff_at: 70%` + `context_window: 300k` → `70` dan `300000`. Templat SETTINGS.md memuat `handoff_at: 80` dan `context_window:`. Nilai rusak (`abc`/`zz`) membuat hook diam dan kembali ke 80, dan `queue.sh check` menamainya (uji).
+  - Kriteria 2 (menulis handoff.md di batas) — menunggu mirza: keputusan pemilik bertanggal 2026-10-26 15:34:34 (jawaban #3) ada, skenario tangan 7 langkah di Notes bisa diikuti dan berakhir pada yang harus terlihat. Bagian yang bisa dijalankan sudah saya buktikan: pada log nyata sesi video-system-design (55ce84d0, Opus 5.5) hook berkata "kerjaan: context at about 91% — write handoff.md." dengan templat enam judul; bagian Merge queue merujuk ke `merge.sh queue`, tidak menyalin.
+  - Kriteria 3 (memperbarui, bukan berkas kedua) — menunggu mirza (skenario yang sama). Terbukti sebagian: dengan handoff.md sudah ada, hook berkata "update handoff.md" dan menyuruh menulis ulang di tempat; panggilan kedua tanpa kenaikan 5 poin diam.
+  - Kriteria 4 (dibaca sesudah ringkasan, lalu dihapus, tidak dua kali) — menunggu mirza (skenario yang sama). Terbukti sebagian: SessionStart `startup` → diam; `compact` → isi berkas diserahkan dengan perintah bertindak dulu lalu menghapus; `compact` lagi tanpa perubahan → "stale handoff.md named for deletion"; setelah berkas dihapus → diam. Penanda peringkasan nyata di log pemilik (`"type":"system","subtype":"compact_boundary"`, nukitu-mockup e148b20a) sama dengan yang dibaca hook.
+  - Kriteria 5 (bukan tiket, diabaikan papan dan git) — terpenuhi. Di salinan bersih: `queue.sh check` sebelum dan sesudah handoff.md ada → keluaran identik, exit 0; setelah hook berjalan sekali `git status --short` tidak menampilkan handoff.md, dan `.git/info/exclude` memuat `/.kerjaan/handoff.md`. Viewer hanya membaca folder status dan order.md (`viewer/app.mjs`); uji membuktikan pembaca papan `board.mjs` hanya melihat tiket.
+  - Kriteria 6 (panduan sesi utama dan setelan) — terpenuhi: foreman.md bagian "Before the context is summarized", SETTINGS.md (`handoff_at`, `context_window`), aturan 8 di SKILL.md diberi pengecualian, README. Potongan untuk anggaran kata di SKILL.md, foreman.md dan parallel-work.md saya baca satu per satu: yang hilang hanya alasan; tiap aturan ("in_progress sebelum perubahan pertama", "jangan tulis jawaban ke berkas", "tidak ada yang pindah sebelum pemilik menyetujui", "hanya tiket worktree yang tumpang tindih") tetap ada.
+  - Kriteria 7 (skenario diuji atau punya skenario tangan) — terpenuhi: uji "scenario: limit reached → handoff written → updated → summarized → handed over, deleted, not read twice" ada dan berisi asersi nyata, ditambah skenario tangan di Notes.
+  - Uji dibaca: asersi memeriksa keluaran hook sungguhan, isi exclude, `git status`, dan hasil `queue.sh`/`repair.sh`/`board.mjs`; tidak ada asersi pada literal atau yang dibungkus kondisi yang tidak pernah berjalan.
+  - Catatan pengerja yang diminta diperiksa: (a) `context_window` beralasan — hook memang tidak diberi ukuran jendela, dan setelan itu terdokumentasi di SETTINGS.md beserta urutan cadangannya; (b) `.git/info/exclude` sesuai jawaban #2 dan tidak menambah berkas yang harus di-commit; (c) kecepatan: hook pada log 17 MB selesai dalam 0,24 detik, pada log 1,2 MB 0,10–0,15 detik; masukan rusak, kosong, log yang tidak ada, dan `agent_id` (subagen) semuanya exit 0 tanpa keluaran; (d) muatan SessionStart "compact" nyata memang belum pernah dilihat, tetapi penanda di log yang dibaca hook sudah saya cocokkan dengan log nyata.
+  - Catatan (tidak memblokir):
+    - SETTINGS.md: baris kosong sebelum paragraf "Two more things bound the chain..." ikut terhapus, sehingga di Markdown paragraf itu kini menempel ke butir `max_parallel`. Hanya tampilan; tidak ada aturan yang hilang.
+    - Di log lama pemilik (10–14 Oktober, Opus 5.5) sembilan peringkasan terjadi pada 226 rb–607 rb token, yaitu 23–61% dari jendela 1M yang dipakai hook; dengan `handoff_at: 80` pengingat tidak akan muncul sebelum peringkasan-peringkasan itu. Setelan pemilik sekarang `autoCompactEnabled: false`, dan sesi video-system-design mencapai 91% tanpa diringkas, jadi untuk cara kerja sekarang hook tepat. Bila peringkasan otomatis dinyalakan lagi pada ukuran lebih kecil, `context_window` adalah jalan keluarnya — sudah terdokumentasi.
+    - Hook berlaku di setiap sesi utama di repo yang punya `.kerjaan/`, juga sesi yang bukan mandor; sesi seperti itu pun akan diminta menulis handoff.md.
+
+### Suggested follow-up
+
+- **Pengingat handoff bisa terlambat bila peringkasan otomatis terjadi jauh sebelum 80% jendela.** Di sesi lama pemilik, Claude Code meringkas pada 23–61% dari jendela 1M; hook baru mengingatkan di 80%, jadi handoff tidak sempat ditulis. Layak dibuat tiket: hook memakai ambang peringkasan yang sebenarnya (mis. membaca setelan peringkasan Claude Code), atau setidaknya memperingatkan sekali ketika log menunjukkan peringkasan terjadi di bawah `handoff_at`.
