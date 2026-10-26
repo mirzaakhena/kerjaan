@@ -6,7 +6,7 @@ labels: [merge, worktree]
 reporter: mirza
 assign_to: claude
 created: 2026-10-26 15:04:42
-updated: 2026-10-26 15:25:57
+updated: 2026-10-26 15:27:42
 related: [261016130801, 261017113002]
 blocked_by: []
 ---
@@ -28,6 +28,7 @@ Tiket yang sudah lolos tinjauan masuk ke antrean penggabungan dan digabung ke ma
 ## History
 - 2026-10-26 15:04:42 55ce84d0-5e6a-481d-a7c3-df4acf92bf37 backlog
 - 2026-10-26 15:25:57 9be5acfb-f0e7-4547-926f-85a864635294 todo
+- 2026-10-26 15:27:42 9be5acfb-f0e7-4547-926f-85a864635294 in_progress
 ## Notes
 - Permintaan mirza, 2026-10-26: "Apakah problem semacam ini bisa kerap terjadi lagi dimasa depan? Apakah solusi yang kamu jalankan bisa di generalisir untuk bisa diapply di case berikutnya? karena jika iya, saya ingin kamu buat tiket untuk skill kerjaan."
 - Yang dilakukan sesi utama di video-system-design sebagai jalan sementara: tiket yang lolos dicatat dalam antrean di log sesi; hanya tiket terdepan yang diminta sync → buat-indeks → test-run → pindah ke review; tiket lain diminta menunggu; setelah land, tiket berikutnya baru diminta sync.
