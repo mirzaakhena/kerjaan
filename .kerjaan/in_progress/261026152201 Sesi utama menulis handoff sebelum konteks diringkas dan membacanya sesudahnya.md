@@ -6,7 +6,7 @@ labels: [mandor, konteks]
 reporter: mirza
 assign_to: claude
 created: 2026-10-26 15:22:13
-updated: 2026-10-26 15:34:53
+updated: 2026-10-26 16:59:10
 related: [261011064201, 261026150401]
 blocked_by: [261026150401]
 ---
@@ -29,6 +29,7 @@ Papan punya mekanisme serah terima sebelum konteks diringkas: saat pemakaian kon
 ## History
 - 2026-10-26 15:22:13 55ce84d0-5e6a-481d-a7c3-df4acf92bf37 backlog
 - 2026-10-26 15:34:53 9be5acfb-f0e7-4547-926f-85a864635294 todo
+- 2026-10-26 16:59:10 9be5acfb-f0e7-4547-926f-85a864635294 in_progress
 ## Notes
 - Permintaan mirza, 2026-10-26: "sepertinya mekanisme handoff juga perlu di buat untuk skill kerjaan … sebuah pesan khusus yang mungkin lokasinya setara dengan order.md dan settings.md yang menjelaskan hal-hal penting sebelum terjadi compacting … jika sudah mencapai n% yang didefinisikan dalam settings.md (defaultnya 80%) maka main agent harus membuat sebuah file bernama handoff.md. Seketika setelah terjadi compacting, main agent di sesi baru perlu membaca handoff.md … setelah itu dia harus menghapus file itu." Format berkas ditentukan saat pengerjaan.
 - Catatan untuk pengerja (bukan keharusan): sesi utama tidak selalu tahu persentase konteksnya sendiri; periksa apa yang disediakan Claude Code (mis. hook sebelum ringkasan, hook saat sesi dimulai setelah ringkasan, atau info pemakaian konteks) untuk memicu penulisan dan pembacaan secara andal, bukan bergantung pada ingatan model.
