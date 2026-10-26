@@ -1,12 +1,12 @@
 ---
 type: feature
 priority: high
-review: normal
+review: strict
 labels: [merge, worktree]
 reporter: mirza
 assign_to: claude
 created: 2026-10-26 15:04:42
-updated: 2026-10-26 15:25:02
+updated: 2026-10-26 15:25:57
 related: [261016130801, 261017113002]
 blocked_by: []
 ---
@@ -18,7 +18,7 @@ Saat banyak tiket dikerjakan berdampingan di worktree, beberapa tiket bisa lolos
 Tiket yang sudah lolos tinjauan masuk ke antrean penggabungan dan digabung ke main satu per satu dengan urutan yang jelas. Hanya tiket di depan antrean yang diselaraskan dan diuji ulang, sehingga setiap tiket paling banyak diselaraskan sekali sebelum masuk dan tidak ada tiket yang tertunda berulang karena tiket lain menyalip. Urutannya adalah urutan lolos tinjauan: yang lolos lebih dulu digabung lebih dulu; tiket yang keluar dari antrean lalu lolos lagi masuk di belakang. Antrean dicatat di berkas papan dan keluaran skrip yang dibaca sesi utama; tampilan di viewer dan "kereta penggabungan" tidak termasuk tiket ini.
 
 ## Done when
-- [ ] Saat beberapa tiket lolos tinjauan berdekatan, berkas papan dan keluaran skrip menunjukkan urutan penggabungannya, dan sesi utama mengikuti urutan itu tanpa harus menyusunnya sendiri (pemilik memeriksanya sendiri pada pemakaian nyata; rantai menunggu sampai itu dilihat)
+- [ ] Saat beberapa tiket lolos tinjauan berdekatan, berkas papan dan keluaran skrip menunjukkan urutan penggabungannya, dan sesi utama mengikuti urutan itu tanpa harus menyusunnya sendiri (pemakaian nyata ditunda: skenario manual di Notes, dicek pemilik pada batch berdampingan berikutnya)
 - [ ] Selama tiket di depan antrean sedang diselaraskan dan diuji ulang, tidak ada tiket lain yang digabung ke main lebih dulu
 - [ ] Tiket di belakang antrean tidak diminta menyelaraskan sebelum gilirannya, sehingga dengan N tiket lolos bersamaan jumlah penyelarasan paling banyak N, bukan bertambah setiap kali ada tiket yang masuk
 - [ ] Pembuatan dan perbaikan tiket lain tetap berjalan berdampingan; hanya langkah masuk ke main yang antre
@@ -27,6 +27,7 @@ Tiket yang sudah lolos tinjauan masuk ke antrean penggabungan dan digabung ke ma
 
 ## History
 - 2026-10-26 15:04:42 55ce84d0-5e6a-481d-a7c3-df4acf92bf37 backlog
+- 2026-10-26 15:25:57 9be5acfb-f0e7-4547-926f-85a864635294 todo
 ## Notes
 - Permintaan mirza, 2026-10-26: "Apakah problem semacam ini bisa kerap terjadi lagi dimasa depan? Apakah solusi yang kamu jalankan bisa di generalisir untuk bisa diapply di case berikutnya? karena jika iya, saya ingin kamu buat tiket untuk skill kerjaan."
 - Yang dilakukan sesi utama di video-system-design sebagai jalan sementara: tiket yang lolos dicatat dalam antrean di log sesi; hanya tiket terdepan yang diminta sync → buat-indeks → test-run → pindah ke review; tiket lain diminta menunggu; setelah land, tiket berikutnya baru diminta sync.
@@ -44,4 +45,7 @@ Tiket yang sudah lolos tinjauan masuk ke antrean penggabungan dan digabung ke ma
   answer, 2026-10-26 15:24:42: (b) "Tahan rantai" — rantai menunggu sampai pemilik melihat sendiri pemakaian nyata (kriteria 1) saat beberapa tiket berjalan berdampingan.
 - 2026-10-26 15:10:26: files estimated to change: `agents/kerjaan-reviewer.md`, `agents/kerjaan-worker.md`, `README.md`, `skills/kerjaan/references/foreman.md`, `skills/kerjaan/references/parallel-work.md`, `skills/kerjaan/scripts/lib.sh`, `skills/kerjaan/scripts/merge.sh`, `skills/kerjaan/scripts/on-ticket-review.sh`, `skills/kerjaan/scripts/update-ticket.sh`, `tests/merge.test.mjs`, `tests/update-ticket.test.mjs`
 - Catatan penyusun antrean untuk pengerja (2026-10-26): (1) gerbang mulai di update-ticket.sh kini menolak memulai tiket baru selama ada cabang tiket done yang belum masuk main, kecuali yang ditahan untuk pemilik; tiket yang menunggu di antrean penggabungan harus dikecualikan juga, atau butir 4 gagal. (2) Panduan skill dibatasi anggaran kata yang diuji tests/skill-size.test.mjs, dan teks skill harus berbahasa Inggris (tests/english-only.test.mjs). (3) Estimasi belum memuat berkas viewer; bila pemilik memilih tampilan di viewer (pertanyaan 1), estimasi diperbarui.
-- 2026-10-26 15:25:02: open question: Jawaban #5 (tahan rantai) bertemu satu kendala: antrean baru bisa dipakai sungguhan setelah tiket ini masuk main dan plugin yang terpasang, padahal butir yang ditahan membuat peninjau tidak boleh meluluskannya sebelum pemilik melihat pemakaian nyata. Jalan mana? (a) tiket boleh lolos dan digabung berdasarkan uji otomatis, lalu rantai berhenti setelahnya: tiket berdampingan berikutnya tidak dimulai sampai pemilik sudah melihat antrean bekerja pada batch berdampingan pertama, dan butir 1 dicentang saat itu; (b) sebelum lolos, pengerja menyiapkan peragaan sungguhan di proyek percobaan dengan beberapa tiket berdampingan, dan pemilik menontonnya sebelum tinjauan selesai; (c) kembali ke 'ditunda'. Saran: (a), karena itu tetap menahan rantai seperti keinginan pemilik tanpa membuat tiket ini menunggu fitur yang baru ada setelah ia sendiri masuk main.
+- 2026-10-26 15:25:02: answered question: Jawaban #5 (tahan rantai) bertemu satu kendala: antrean baru bisa dipakai sungguhan setelah tiket ini masuk main dan plugin yang terpasang, padahal butir yang ditahan membuat peninjau tidak boleh meluluskannya sebelum pemilik melihat pemakaian nyata. Jalan mana? (a) tiket boleh lolos dan digabung berdasarkan uji otomatis, lalu rantai berhenti setelahnya: tiket berdampingan berikutnya tidak dimulai sampai pemilik sudah melihat antrean bekerja pada batch berdampingan pertama, dan butir 1 dicentang saat itu; (b) sebelum lolos, pengerja menyiapkan peragaan sungguhan di proyek percobaan dengan beberapa tiket berdampingan, dan pemilik menontonnya sebelum tinjauan selesai; (c) kembali ke 'ditunda'. Saran: (a), karena itu tetap menahan rantai seperti keinginan pemilik tanpa membuat tiket ini menunggu fitur yang baru ada setelah ia sendiri masuk main.
+  answer, 2026-10-26 15:25:44: Tidak relevan lagi: jawaban #5 diubah ke "Ditunda" (setara opsi c).
+- 2026-10-26: koreksi jawaban pertanyaan 5 dari pemilik, menggantikan "(b) Tahan rantai" di atas: (a) "Ditunda" — skenario otomatis di kriteria 6 cukup untuk lulus; pemakaian nyata dicatat sebagai skenario manual di Notes dan dicek pemilik pada batch berdampingan berikutnya. Rantai tidak ditahan. Tingkat review diubah pemilik ke strict.
+- Skenario manual (ditunda, kriteria 1): pada batch berdampingan berikutnya, saat dua tiket atau lebih lolos tinjauan berdekatan, pemilik melihat bahwa urutan penggabungan tertulis di papan/keluaran skrip, sesi utama menggabungkannya menurut urutan itu tanpa menyusun sendiri, dan tiap tiket diselaraskan paling banyak sekali.
