@@ -6,7 +6,7 @@ labels: [merge, worktree]
 reporter: mirza
 assign_to: claude
 created: 2026-10-26 15:04:42
-updated: 2026-10-26 16:48:20
+updated: 2026-10-26 16:58:39
 related: [261016130801, 261017113002]
 blocked_by: []
 ---
@@ -30,6 +30,7 @@ Tiket yang sudah lolos tinjauan masuk ke antrean penggabungan dan digabung ke ma
 - 2026-10-26 15:25:57 9be5acfb-f0e7-4547-926f-85a864635294 todo
 - 2026-10-26 15:27:42 9be5acfb-f0e7-4547-926f-85a864635294 in_progress
 - 2026-10-26 16:48:20 9be5acfb-f0e7-4547-926f-85a864635294 review
+- 2026-10-26 16:58:39 9be5acfb-f0e7-4547-926f-85a864635294 done
 ## Notes
 - Permintaan mirza, 2026-10-26: "Apakah problem semacam ini bisa kerap terjadi lagi dimasa depan? Apakah solusi yang kamu jalankan bisa di generalisir untuk bisa diapply di case berikutnya? karena jika iya, saya ingin kamu buat tiket untuk skill kerjaan."
 - Yang dilakukan sesi utama di video-system-design sebagai jalan sementara: tiket yang lolos dicatat dalam antrean di log sesi; hanya tiket terdepan yang diminta sync → buat-indeks → test-run → pindah ke review; tiket lain diminta menunggu; setelah land, tiket berikutnya baru diminta sync.
@@ -66,3 +67,23 @@ Tiket yang sudah lolos tinjauan masuk ke antrean penggabungan dan digabung ke ma
   4. Perhatikan sesi utama: ia me-land tiket terdepan, lalu tiket yang disebut baris `MERGE QUEUE:` berikutnya, tanpa menyusun urutan sendiri; tiket di belakang hanya mendapat `WAITING`, tidak pernah `MERGE POSTPONED` sebelum gilirannya.
   5. Setelah batch selesai, hitung baris `merge postponed` di tiap tiket: paling banyak satu per tiket (kecuali tiket yang keluar antrean karena ditolak atau ujinya gagal).
 - 2026-10-26 16:48:14: test run — `node --test --test-timeout=900000 --import=./tests/complete-runs.mjs` exited 0 after 3m44s, on content fingerprint 57570610be1bc16b399878f547170ee953506631 (the same before and after the run; .kerjaan/ left out).
+- 2026-10-26: Reviewed at level strict, round 1, at commit ed7fd44: passed.
+  Pada level strict, perubahan dibaca baris demi baris terhadap Done when, uji ditulis ulang di salinan bersih (`git archive ed7fd44` ke /tmp/review-261026150401), dan enam penjaga terpenting sengaja dirusak satu per satu untuk melihat ujinya merah. Tidak ada CLAUDE.md/AGENTS.md di repo ini.
+  - Uji: `test-run.sh --check 261026150401 ed7fd44` menjawab SAME — run 2026-10-26 16:48:14 (`node --test --test-timeout=900000 --import=./tests/complete-runs.mjs`, exit 0, 3m44s, sidik 57570610be1bc16b399878f547170ee953506631) berlaku untuk isi yang ditinjau; tidak dijalankan ulang. Di salinan bersih, `node --test --test-name-pattern='queue|two landings' tests/merge.test.mjs` lewat `test-run.sh --review --dir`: 7 lulus, 0 gagal.
+  - Butir 1: menunggu mirza. Keputusan pemilik tercatat ("koreksi jawaban pertanyaan 5 … Ditunda", 2026-10-26), skenario tangan 5 langkah ada di Notes dan berakhir pada apa yang harus terlihat; butir ini memang butuh batch berdampingan sungguhan dengan plugin terpasang, jadi tidak bisa saya jalankan. Bagian otomatisnya (urutan di Notes tiap tiket dan di `merge.sh queue`, baris `MERGE QUEUE: next to land is …`) dibuktikan oleh uji "tickets passing review together land in the order they passed…".
+  - Butir 2: `land` memeriksa tiket terdepan di bawah kunci merge (merge.sh, `front != id` → WAITING, exit 5); tiket terdepan yang ditunda tetap memegang nomornya (baris `merge postponed` tidak mengakhiri tempat). Uji memastikan HEAD tidak bergerak saat B di in_progress dan di review. Sabotase S1 (gerbang terdepan diganti `if false`): 3 uji merah.
+  - Butir 3: WAITING tidak mengubah apa pun; uji memastikan C tidak pernah ditunda sebelum gilirannya, tip cabangnya sama, dan hitungan penundaan [0, 1, 1] untuk tiga tiket. Sabotase S5 (urutan antrean dibalik, `sort -rn`): 7 uji merah. Sabotase S6 (pindah ke done tidak memasukkan antrean): 6 uji merah.
+  - Butir 4: gerbang mulai melewatkan cabang tiket yang antre dan menolak tiket yang blocked_by tiket antre. Sabotase S4 (lewati-cabang-antre dimatikan): 1 uji merah ("new work starts while tickets wait…").
+  - Butir 5: keluar saat uji gagal (test-run.sh) dan saat review→in_progress (update-ticket.sh); masuk lagi di belakang dengan nomor baru. Sabotase S2 (keluar saat uji gagal dimatikan): 1 uji merah; S3 (keluar saat review→in_progress dihapus): 1 uji merah.
+  - Butir 6: foreman.md (baris `WAITING`, aturan `MERGE QUEUE:`), kerjaan-worker.md (`STOPPED — left the merge queue`), parallel-work.md ("The merge queue"), README dan on-ticket-review.sh menjelaskan antrean; delapan uji otomatis menjalankan skenario beberapa tiket lolos bersamaan.
+  - Perubahan di luar perkiraan diperiksa: test-run.sh (bagian dari butir 5) dan tests/board-lock.test.mjs (assert tanggal `2026-10-1x` yang memang kedaluwarsa, dilonggarkan ke tanggal apa pun; assert bahwa tanggal lama tidak tersisa tetap ada). Uji tabrakan dua landing kini menuntut A selalu masuk dan B WAITING atau MERGE POSTPONED: keduanya urutan yang benar menurut antrean.
+  Catatan (tidak memblokir):
+  - Pemadatan parallel-work.md menghapus dari panduan dua hal yang tidak tertulis di tempat lain: kunci yang prosesnya sudah mati diambil alih seketika, dan skrip yang menjalankan skrip lain sambil memegang kunci papan berbagi gilirannya. Perilakunya tetap di kode.
+  - Tiket antre yang dipindah dengan tangan dari done ke in_progress (dibuka ulang, bukan ditunda oleh land) tetap memegang depan antrean, karena update-ticket.sh tidak bisa membedakannya dari merge postponed; `merge.sh queue` lalu menyebutnya "back with its worker". Jalan keluarnya ada (pindah ke todo/backlog/cancel atau uji gagal), tetapi tidak tertulis.
+  - Commit langsung di pohon utama (tiket tanpa worktree) saat tiket terdepan sedang diselaraskan tetap menggeser main dan bisa menunda tiket terdepan lagi; antrean hanya mengatur landing.
+  - Baris baru di agents/kerjaan-reviewer.md ("any `MERGE QUEUE:` line your move printed …") melebihi lebar baris di sekitarnya.
+
+### Suggested follow-up
+
+- **Membuka ulang tiket antre dengan tangan membuatnya memegang depan antrean.** Bila seseorang memindah tiket dari done ke in_progress sendiri, tiket lain tidak bisa landing sampai tiket itu lolos lagi atau dipindah keluar. Layak tiket: bedakan pemindahan oleh `merge.sh land` dari pemindahan tangan, atau tulis di panduan cara mengeluarkannya.
+- **Panduan kehilangan dua detail kunci.** Pengambilalihan kunci yang prosesnya mati dan berbagi giliran kunci papan tidak lagi disebut di skill. Layak tiket: pindahkan ke SETTINGS.md atau tempat lain yang tidak dihitung anggaran kata.
