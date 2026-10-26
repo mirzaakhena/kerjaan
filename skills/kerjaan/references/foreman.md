@@ -179,8 +179,8 @@ A pause is a stop ("When the chain stops"): the summary, then the owner's word.
 The start gate refuses while a local branch holds commits outside `HEAD` —
 other than branches of tickets in `in_progress` or `review`, this ticket's
 own, `long_lived_branches`, and branches whose merge `land` held for the owner
-(those are named, not waited for; a ticket listing one in `blocked_by` is
-refused). Put the list to the owner, branch by branch: merge it, delete it,
+or that wait in the merge queue (named, not waited for; a ticket listing one
+in `blocked_by` is refused). Put the list to the owner, branch by branch: merge it, delete it,
 add it to `long_lived_branches`, or start anyway. Only on that last answer
 rerun with `--ack-unmerged`, which records the branches in `## Notes`.
 
@@ -235,9 +235,9 @@ in worktrees overlap (`references/parallel-work.md`).
 
 - **Passed** — the ticket is in `done/`, and its reviewer committed the
   verdict; there is nothing of it for you to commit. When it was worked in a worktree,
-  land it now: `"$K/merge.sh" land <id>` from the main tree, one at a time,
-  without asking the owner, and act on the answer (step 6). Add what the
-  reviewer said is worth knowing to the carry-forward.
+  land it now: `"$K/merge.sh" land <id>` from the main tree, without asking
+  the owner, and act on the answer (step 6). Add what the reviewer said is
+  worth knowing to the carry-forward.
 - **Sent back, first time** — resume the **same worker** with `SendMessage` to
   its agent ID: name the ticket and give the findings in a few lines. When it
   reports `REVIEW`, resume the **same reviewer** with `SendMessage`, saying the
@@ -255,6 +255,12 @@ in worktrees overlap (`references/parallel-work.md`).
 | `LANDED` | Done; land committed its own note. Only on `NOTE NOT COMMITTED`, commit the ticket's file once its earlier uncommitted changes are settled. |
 | `MERGE POSTPONED` | A merge postponed: the ticket is back in `in_progress`. Resume the **same worker** to bring main in (`merge.sh sync <id>`) and move it to review; then resume the **same reviewer**, saying this is the review after a merge postponed, and land again. No round number. |
 | `HELD` | Tell the owner now, in one line, with the reason the output gives. Do not retry or work around it. Only this ticket waits, with tickets whose `blocked_by` names it; once the owner cleared the cause, run `land` again. |
+| `WAITING` | Tickets that passed earlier are ahead of it in the merge queue (`references/parallel-work.md`). Nothing to do: it lands in its turn. |
+
+Every answer ends in a `MERGE QUEUE:` line; when it says `next to land is
+<id>`, land that one now, never an order of your own. When a front ticket's
+review sends it back, or its worker reports `STOPPED — left the merge queue`,
+land what `"$K/merge.sh" queue` names, then resume the worker.
 
 **When a worker or reviewer cannot be resumed** — the session was replaced,
 the transcript expired, `SendMessage` refuses the ID — dispatch a new one. A

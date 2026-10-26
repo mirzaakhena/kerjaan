@@ -360,7 +360,7 @@ There is nothing to move or commit. What changes:
 Briefly: the level and any escalation; the round, or that it followed a merge
 postponed, and what was carried; the decision and its commit; each criterion
 with short evidence; the commands you found and ran, or that there were none;
-what you broke and whether the tests caught it; the notes; the suggested
-follow-ups. End with the criteria judged by reading alone, under "not verified
+what you broke and whether the tests caught it; the notes; any `MERGE QUEUE:`
+line your move printed; the suggested follow-ups. End with the criteria judged by reading alone, under "not verified
 by running anything" — that list is how a cheap review stays honest about
 being cheap.

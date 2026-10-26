@@ -17,10 +17,14 @@
 #      (`check`, called by update-ticket.sh). The reviewer therefore judges
 #      what main will get.
 #   3. Once the reviewer has passed it — or the owner accepted it over a
-#      second rejection — the foreman lands it (`land`), one ticket at a time. If main's code moved meanwhile, the ticket goes back
-#      to in_progress to be brought up to date and reviewed again; nothing
-#      untested reaches main. Anything else that stops the merge holds this one
-#      ticket for the owner, and every other ticket carries on.
+#      second rejection — it waits in the merge queue (lib.sh), and the
+#      foreman lands it (`land`) when it reaches the front, one ticket at a
+#      time. If main's code moved meanwhile, the ticket goes back to
+#      in_progress to be brought up to date and reviewed again, keeping its
+#      place at the front; nothing untested reaches main, and no ticket
+#      further back is synced for a landing that is not its turn. Anything
+#      else that stops the merge holds this one ticket for the owner, and the
+#      queue goes on without it.
 #
 # "Main" is the branch the main tree has checked out. Commits that touch only
 # `.kerjaan/` do not count as main having moved: the board is committed on
@@ -30,12 +34,13 @@
 #   merge.sh sync <id>        in the ticket's worktree: merge main into its branch
 #   merge.sh check <id>       is the branch ready to be reviewed and landed?
 #   merge.sh land <id>        from the main tree: merge a ticket in done/ into main
+#   merge.sh queue            the merge queue, front first, and what it asks for
 #   merge.sh resolution <id>  what changed since the previous review, beyond
 #                             what merging main brought in by itself
 #
 # Exit status: 0 done or ready; 1 held for the owner, or refused; 2 usage;
 # 3 main moved (land: a merge postponed, the ticket is back in in_progress);
-# 4 not tested.
+# 4 not tested; 5 waiting (land: other tickets are ahead in the merge queue).
 
 set -euo pipefail
 
@@ -48,6 +53,7 @@ usage() {
 Usage: merge.sh sync <id>
        merge.sh check <id> [--gate]
        merge.sh land <id>
+       merge.sh queue
        merge.sh resolution <id>
 
   sync        run in the ticket's worktree: merge the main branch into the
@@ -57,16 +63,35 @@ Usage: merge.sh sync <id>
               otherwise. --gate prints the record update-ticket.sh keeps.
   land        run from the main tree, for a ticket in done/: merge its branch
               into main, one merge at a time, then remove its worktree and
-              branch. MERGE POSTPONED sends the ticket back to in_progress
-              (no rejection, no new round); HELD keeps
-              it for the owner, with the reason in its Notes. Each note it
-              writes in the ticket is committed at once, on its own.
+              branch. Only the ticket at the front of the merge queue lands;
+              any other answers WAITING and changes nothing. MERGE POSTPONED
+              sends the ticket back to in_progress (no rejection, no new
+              round), keeping its place; HELD keeps it for the owner, with
+              the reason in its Notes, and out of the queue. Each note it
+              writes in the ticket is committed at once, on its own. Its
+              last line says what the merge queue asks for next.
+  queue       the tickets waiting to land, front first, and what to do now.
   resolution  the diff between merging main into the commit reviewed last
               time and the branch now: the part the review after a merge
               postponed has to read.
 USAGE
   exit 2
 }
+
+# The merge queue, read from the tickets; it takes no ID.
+if [ "${1:-}" = queue ]; then
+  [ "$#" -eq 1 ] || usage
+  git rev-parse --git-dir > /dev/null 2>&1 || { echo "Not inside a git repository." >&2; exit 2; }
+  board="$(kerjaan_main_tree)/.kerjaan"
+  [ -d "$board" ] || { echo "No .kerjaan/ in $(kerjaan_main_tree)" >&2; exit 2; }
+  queue="$(kerjaan_merge_queue "$board")"
+  if [ -n "$queue" ]; then
+    echo "The merge queue, front first: each lands only once every ticket above it has landed or left."
+    printf '%s\n' "$queue" | awk -F '\t' '{ printf "  %d. %s (number %s, in %s/)\n", NR, $2, $1, $3 }'
+  fi
+  kerjaan_queue_next "$board" "$here"
+  exit 0
+fi
 
 [ "$#" -ge 2 ] || usage
 cmd="$1"
@@ -205,11 +230,6 @@ case "$cmd" in
       echo "REFUSED: $id is in $status/. Only a ticket in done/ lands on main: passed by its reviewer, or accepted by the owner." >&2
       exit 2
     fi
-    if [ -z "$branch" ]; then
-      echo "NOTHING TO LAND: no branch carries $id; its work is already in the main tree."
-      exit 0
-    fi
-
     # Every note land writes into the ticket is committed at once, in a commit
     # of its own holding only the ticket's file, so land leaves the main tree
     # as clean as it found it. A note left uncommitted would sit in the main
@@ -257,6 +277,10 @@ case "$cmd" in
     # Each note and the update-ticket.sh run after it are made under the board
     # lock (lib.sh), so a ticket being moved from elsewhere at that moment
     # cannot write its copy back over the note.
+    #
+    # A held ticket leaves the merge queue (the held line itself ends its
+    # place, lib.sh), so the ticket behind it moves to the front; once the
+    # owner has cleared the cause, land joins it at the back again.
     held() {
       kerjaan_board_lock "$board" "merge.sh land $id recording a held merge"
       kerjaan_append_note "$ticket" "- $(now): merge held for the owner — $1"
@@ -265,8 +289,19 @@ case "$cmd" in
       save_note "Board: $id merge held for the owner"
       echo "HELD: ticket $id was not merged into ${main:-main} and waits for the owner."
       echo "Reason: $1"
-      echo "Only this ticket waits; tickets that do not depend on it carry on."
+      echo "Only this ticket waits, out of the merge queue; tickets that do not depend on it carry on."
+      kerjaan_queue_next "$board" "$here"
       exit 1
+    }
+    # A ticket in the queue whose work turns out to be on main already leaves
+    # it without a landing, so it cannot hold the front for ever.
+    leave_queue() {
+      [ -n "$(kerjaan_queue_number "$ticket")" ] || return 0
+      kerjaan_board_lock "$board" "merge.sh land $id leaving the merge queue"
+      kerjaan_queue_leave "$ticket" "$1"
+      (cd "$main_tree" && "$here/update-ticket.sh" "$id" > /dev/null 2>&1) || true
+      kerjaan_lock_release board
+      save_note "Board: $id left the merge queue"
     }
     # A merge postponed: main moved, or the branch changed after its review. The
     # ticket goes back to its worker, and through review again, without the
@@ -282,18 +317,48 @@ case "$cmd" in
       echo "MERGE POSTPONED: ticket $id was not merged into $main, and is in in_progress again."
       echo "Reason: $1."
       echo "Its worker brings $main in (merge.sh sync $id), tests, commits and moves it to review; the review after a merge postponed is level quick, gets no round number, and is no rejection."
+      echo "It keeps its place at the front of the merge queue: nothing else lands until it lands or leaves."
       exit 3
     }
 
+    trap 'kerjaan_lock_release board; kerjaan_lock_release merge' EXIT
+
+    if [ -z "$branch" ]; then
+      echo "NOTHING TO LAND: no branch carries $id; its work is already in the main tree."
+      leave_queue "no branch carries it, so there is nothing to land"
+      kerjaan_queue_next "$board" "$here"
+      exit 0
+    fi
+
     [ -n "$main" ] || held "the main tree is on no branch (a detached HEAD), so there is no main to merge into"
 
-    trap 'kerjaan_lock_release board; kerjaan_lock_release merge' EXIT
     kerjaan_lock_acquire merge "merge.sh land $id"
 
     tip="$(git rev-parse "$branch^{commit}")"
     if git merge-base --is-ancestor "$tip" HEAD; then
       echo "ALREADY IN $main: $branch is part of it."
+      leave_queue "its branch is already part of $main"
     else
+      # Its turn in the merge queue. A ticket in done/ that is not in it —
+      # its merge was held, or it passed before the queue existed — joins at
+      # the back now. Only the front lands; any other ticket is left exactly
+      # as it is, its branch not synced, until the landing before it names it.
+      if [ -z "$(kerjaan_queue_number "$ticket")" ]; then
+        kerjaan_board_lock "$board" "merge.sh land $id joining the merge queue"
+        joined="$(kerjaan_queue_join "$board" "$ticket")"
+        (cd "$main_tree" && "$here/update-ticket.sh" "$id" > /dev/null 2>&1) || true
+        kerjaan_lock_release board
+        echo "MERGE QUEUE: $id ${joined#*: merge queue: }"
+      fi
+      front="$(kerjaan_merge_queue "$board" | head -1 | cut -f2)"
+      if [ "$front" != "$id" ]; then
+        ahead="$(kerjaan_merge_queue "$board" | cut -f2 | awk -v id="$id" '$0 == id { exit } { print }' | paste -sd ' ' - | sed 's/ /, /g')"
+        [ -z "${joined:-}" ] || save_note "Board: $id joined the merge queue"
+        echo "WAITING: ticket $id was not merged; it waits in the merge queue behind $ahead."
+        echo "Nothing was changed, and its branch needs no sync now: the landing before it names it when its turn comes."
+        exit 5
+      fi
+
       stale="$(stale_files)"
       [ -z "$stale" ] || postpone "$main changed since $branch last took it in ($(printf '%s' "$stale" | tr '\n' ' ' | sed 's/ $//'))"
 
@@ -347,13 +412,14 @@ case "$cmd" in
     # the next ticket's merge need not wait for it.
     if git worktree list --porcelain | grep -qx "branch refs/heads/$branch"; then
       KERJAAN_BRANCH_DELETED_NEXT=1 "$here/worktree.sh" remove "$id" \
-        || { echo "WARNING: the worktree of $branch was not removed; see above. Remove it, then: git branch -d $branch"; exit 0; }
+        || { echo "WARNING: the worktree of $branch was not removed; see above. Remove it, then: git branch -d $branch"; kerjaan_queue_next "$board" "$here"; exit 0; }
     fi
     if git branch -d "$branch" > /dev/null 2>&1; then
       echo "Branch $branch is merged into $main and deleted."
     else
       echo "WARNING: branch $branch could not be deleted; delete it once it is not needed."
     fi
+    kerjaan_queue_next "$board" "$here"
     exit 0
     ;;
 

@@ -192,6 +192,9 @@ fi
 #     wrote "merge held for the owner" last): the owner has already been told,
 #     and only that ticket waits — every ticket that does not depend on it
 #     carries on. One that does depend on it, through blocked_by, is refused.
+#   - branches of tickets waiting in the merge queue (lib.sh): they passed
+#     review and land in their turn, so new work goes on beside them. A
+#     ticket blocked_by one of them is refused until it has landed.
 # A repo without git, or a move that is not a start, is left entirely alone. A
 # ticket coming back from review or done — rejected by its reviewer, or a
 # merge postponed by merge.sh land — is not new work, so it is not a start.
@@ -224,16 +227,28 @@ if [ "$dest_status" = "in_progress" ] && [ "$current_status" != "in_progress" ] 
   && git rev-parse --verify -q HEAD > /dev/null 2>&1; then
 
   held_blockers=()
+  queued_blockers=()
   while IFS= read -r bid; do
     [ -n "$bid" ] || continue
     bfile="$(kerjaan_ticket_file "$board" "$bid" 2> /dev/null || true)"
-    [ "$(kerjaan_merge_state "$bfile")" = "held" ] && held_blockers+=("$bid")
+    if [ "$(kerjaan_merge_state "$bfile")" = "held" ]; then
+      held_blockers+=("$bid")
+    elif [ -n "$(kerjaan_queue_number "$bfile")" ]; then
+      queued_blockers+=("$bid")
+    fi
   done < <(kerjaan_blockers "$file")
   if [ "${#held_blockers[@]}" -gt 0 ]; then
     echo "REFUSED: $id was not moved to in_progress." >&2
     echo "It is blocked_by ${held_blockers[*]}, whose merge into main is held for the" >&2
     echo "owner, so the work it depends on is not on main yet. It waits until the" >&2
     echo "owner has settled that merge (see the Notes of ${held_blockers[*]})." >&2
+    exit 1
+  fi
+  if [ "${#queued_blockers[@]}" -gt 0 ]; then
+    echo "REFUSED: $id was not moved to in_progress." >&2
+    echo "It is blocked_by ${queued_blockers[*]}, which waits in the merge queue, so the" >&2
+    echo "work it depends on is not on main yet. It starts once that has landed" >&2
+    echo "(\"$here/merge.sh\" queue shows the queue)." >&2
     exit 1
   fi
 
@@ -271,6 +286,11 @@ if [ "$dest_status" = "in_progress" ] && [ "$current_status" != "in_progress" ] 
       bfile="$(kerjaan_ticket_file "$board" "$bid" 2> /dev/null || true)"
       if [ "$(kerjaan_merge_state "$bfile")" = "held" ]; then
         echo "Note: $branch is not in HEAD, but its merge is held for the owner (ticket $bid); not waiting for it." >&2
+        continue
+      fi
+      bnum="$(kerjaan_queue_number "$bfile")"
+      if [ -n "$bnum" ]; then
+        echo "Note: $branch is not in HEAD, but ticket $bid waits in the merge queue (number $bnum); not waiting for it." >&2
         continue
       fi
     fi
@@ -323,6 +343,31 @@ if [ "$dest_status" = "review" ] && [ "$current_status" != "review" ]; then
       echo "REFUSED: $id was not moved to review; see above." >&2
       exit 1
     fi
+  fi
+fi
+
+# --- the merge queue ---------------------------------------------------------
+# A ticket passing review with its work on a branch not yet in main joins the
+# back of the merge queue (lib.sh): it lands when every ticket that passed
+# before it has landed or left. Its place survives a merge postponed, which
+# sends it from done to in_progress and back through review. It leaves when it
+# stops being a passed ticket waiting to land: sent back from review, or moved
+# to backlog, todo or cancel. A failed test run (test-run.sh), a landing or a
+# merge held (merge.sh land) take it out too.
+queue_join=0
+queue_leave=""
+if [ "$dest_status" != "$current_status" ] && git rev-parse --verify -q HEAD > /dev/null 2>&1; then
+  queue_number="$(kerjaan_queue_number "$file")"
+  if [ -n "$queue_number" ]; then
+    case "$current_status:$dest_status" in
+      review:in_progress) queue_leave="sent back from review to in_progress" ;;
+      *:backlog | *:todo | *:cancel) queue_leave="moved to $dest_status" ;;
+    esac
+  elif [ "$dest_status" = "done" ]; then
+    while IFS= read -r branch; do
+      [ -n "$branch" ] || continue
+      git merge-base --is-ancestor "refs/heads/$branch" HEAD 2> /dev/null || queue_join=1
+    done < <(git for-each-ref --format='%(refname:short)' refs/heads | grep -F "$id" || true)
   fi
 fi
 
@@ -425,9 +470,22 @@ if [ "$accept_size" -eq 1 ]; then
   kerjaan_append_note "$file" "- $now: $KERJAAN_SIZE_ACCEPTED"
 fi
 
+queue_said=""
+if [ "$queue_join" -eq 1 ]; then
+  queue_said="$(kerjaan_queue_join "$board" "$file")"
+  queue_said="MERGE QUEUE: $id ${queue_said#*: merge queue: }"
+elif [ -n "$queue_leave" ]; then
+  kerjaan_queue_leave "$file" "$queue_leave"
+  queue_said="MERGE QUEUE: $id left the merge queue ($queue_leave); once it passes review again, it joins at the back."
+fi
+
 # --- move or rename if needed ----------------------------------------------
 if [ "$dest" != "$file" ]; then
   mv "$file" "$dest"
+fi
+if [ -n "$queue_said" ]; then
+  echo "$queue_said" >&2
+  kerjaan_queue_next "$board" "$here" >&2
 fi
 
 # --- keep the ordering file in step ----------------------------------------
@@ -551,7 +609,9 @@ case "$dest_status" in
             echo "Note: $branch is merged, but its worktree is still checked out." >&2
             echo "  $here/worktree.sh remove $id && git branch -d $branch" >&2
           fi
-        else
+        # Not for a ticket waiting in the merge queue: it is unmerged on
+        # purpose, and the MERGE QUEUE line above said where it stands.
+        elif [ -z "$(kerjaan_queue_number "$dest")" ]; then
           echo "WARNING: $branch holds commits that are not in HEAD, and the ticket" >&2
           echo "  has just been moved to '$dest_status'. That work is unmerged:" >&2
           echo "  git log --oneline HEAD..$branch" >&2

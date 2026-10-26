@@ -238,6 +238,11 @@ resolve, then steps 5 to 10 for what you changed: run `test-run.sh` last,
 move to `review`, commit, report. The reviewer will read only what you did
 beyond the automatic merge, so keep it to what the merge needs.
 
+The ticket holds the front of the merge queue meanwhile, and nothing else
+lands. When a run fails, `test-run.sh` says it `left the merge queue`: report
+`STOPPED — left the merge queue` with what failed, and fix it once resumed,
+so the next ticket lands first.
+
 ## Never
 
 - dispatch a reviewer, review your own work, or move a ticket to `done`

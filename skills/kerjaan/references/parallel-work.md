@@ -16,9 +16,9 @@ may share a group is `references/ordering-the-queue.md`, "What may share a
 group". Two that share files conflict when they meet, and the one that lands
 second resolves it when it brings main in ("Back into main"); the foreman
 tells each worker which (`Shares files with:`). The lands-first order is the
-plan, not a lock: if the ticket named second passes first, it lands first. If
-it turns out mid-work that one waits for the other's result, they never
-belonged in one group: the second waits.
+plan, not a lock: tickets land in the order they pass ("The merge queue"). If
+one turns out to wait for the other's result, they never belonged in one
+group: the second waits.
 
 ```bash
 "$K/worktree.sh" add 260905160401 ../<repo>-<topic>      # from the main tree
@@ -26,7 +26,6 @@ belonged in one group: the second waits.
 "$K/merge.sh" land 260905160401                          # from the main tree, once done
 ```
 
-`land` merges the branch into main and removes the worktree and the branch;
 `"$K/worktree.sh" remove <id>` is for a worktree given up on.
 
 `add` creates the worktree on a new branch, keeps `.kerjaan/` out of its
@@ -59,29 +58,20 @@ the worktree, and nothing reports it. Two guards prevent it:
 - **The scripts refuse to run from a linked worktree**, naming the main tree,
   so nobody writes one. This also catches worktrees made by hand.
 
-`worktree.sh` sets the pattern `'/*' '!/.kerjaan/'` in non-cone mode, which
-newer git calls deprecated while it keeps working. A project already using
-sparse-checkout must merge this pattern into what it has.
+A project already using sparse-checkout must merge `worktree.sh`'s pattern,
+`'/*' '!/.kerjaan/'` (non-cone mode), into what it has.
 
 ## Tests take turns
 
 Worktrees separate files, not ports, local databases, fixed paths in `/tmp`
 or caches, so two suites running at once can fail each other while both
 changes are fine. By default **the work runs side by side and the tests
-queue**: `test-run.sh` holds a repository-wide lock (in `.git/kerjaan-locks/`,
-shared by every worktree) while `test_command` runs. A second run waits, says
-whose run it waits for, and its line in `## Notes` ends with how long it
-waited and behind which ticket. A lock whose process is gone is taken over at
-once; after `test_lock_timeout` seconds (default 3600) a waiting run gives up
-without running anything and names the run it waited for.
-
-The reviewer's runs (`"$K/test-run.sh" --review <id>`, in the worktree or with
-`--dir` in an export) queue on the same lock and record nothing in the
-ticket, so the latest run there stays the worker's, which `--check` compares.
-
-A project whose tests share nothing between worktrees sets
-`parallel_tests: true` in `settings.md`, and the runs overlap — only once its
-tests really choose their port, database and temp folders per worktree.
+queue**: `test-run.sh` holds a repository-wide lock (in `.git/kerjaan-locks/`)
+while `test_command` runs. A second run waits, says for whom, and its line in
+`## Notes` says how long it waited; past `test_lock_timeout` it gives up
+without running anything. The reviewer's runs (`"$K/test-run.sh" --review
+<id>`) queue on the same lock and record nothing. A project whose tests choose
+their port, database and temp folders per worktree sets `parallel_tests: true`.
 
 **Every worktree has a slot**: `0` for the main tree, the lowest free number
 from `1` up for each linked worktree, freed when it is removed. The test
@@ -100,15 +90,10 @@ it runs in; a worktree made by hand gets one the first time it is asked.
 
 ## Changes to the board take turns too
 
-Every script that writes the board — `update-ticket.sh`, the record
-`test-run.sh` makes, the notes `merge.sh land` writes, `queue.sh estimate`,
-`ask` and `answer` — does it under one `board` lock in `.git/kerjaan-locks/`,
-so two writes at nearly the same moment cannot undo each other. A script
-that runs another while holding it shares its turn. A wait longer than
-`lock_timeout` seconds (default 120) ends with a message naming who holds the
-board, and nothing changed; a test run that gives up this way still prints its
-result. Both limits are in `settings.md`; `0` waits without limit. `new-ticket.sh` keeps its own lock while it
-picks an ID.
+Every script that writes the board does it under one `board` lock in
+`.git/kerjaan-locks/`, so two writes at nearly the same moment cannot undo
+each other. A wait longer than `lock_timeout` ends with a message naming who
+holds the board, and nothing changed.
 
 ## Setup and teardown
 
@@ -125,8 +110,8 @@ does not reach a new worktree. Two settings close that:
   the teardown runs. What setup creates inside the worktree belongs in
   `.gitignore`.
 
-Both run with the variables above, set to the worktree's own ticket and slot,
-never taken from the caller's environment.
+Both get the variables above for the worktree's own ticket and slot, never
+the caller's.
 
 ## Who owns test data
 
@@ -145,13 +130,6 @@ teardown. The owner's rule is that **each ticket carries its own data**:
 
 Kept to, two tickets pass in whichever order they are tested.
 
-## Nothing is remembered
-
-Git already holds the list of worktrees, so `update-ticket.sh` does the
-noticing: it warns when a ticket reaches `done` or `cancel` while a branch
-carrying its ID holds commits outside `HEAD`, and names every worktree still
-checked out when a move empties the board.
-
 ## Back into main: tested together, merged one at a time
 
 Two changes that pass alone can break each other once both are on main, and
@@ -169,26 +147,21 @@ main's code and the latest test run passed on exactly the committed content
 they ran on). The move records in `## Notes`: `review covers branch <b> at
 <commit>, which holds main at <commit>`.
 
-**2. Once the reviewer passes it, the foreman lands it — at once, without
-asking the owner.** `"$K/merge.sh" land <id>`, from the main tree, for a ticket
-in `done/`. Landings take turns under a `merge` lock. It merges only when all
-three hold:
+**2. Once the reviewer passes it, it joins the merge queue, and the foreman
+lands it in its turn, without asking the owner** ("The merge queue"):
+`"$K/merge.sh" land <id>`, from the main tree. Landings take turns under a
+`merge` lock. It merges only when all three hold:
 
 - main's code has not moved since the branch took it in,
 - the branch is still the commit the move to review recorded,
 - the latest test run passed on exactly that content.
 
-Then the merged content is exactly what was tested, so **the tests are not
-run again**. Land checks that once more just before it commits, then removes
-the worktree (teardown included) and deletes the branch. Commits that touch
-only `.kerjaan/` never count as main moving.
-
-**Land commits its own notes** — `landed on main`, `merge postponed` with the
-move back to `in_progress`, `merge held for the owner` — in a commit of its own
-(`Board: <id> …`) holding only that ticket's file. Everything else uncommitted
-in the main tree stays as it was. When the ticket's file itself already had
-uncommitted changes, the note is written but not committed, and the output
-says `NOTE NOT COMMITTED`.
+Then what merges is exactly what was tested, so **the tests are not run
+again**. Land checks that once more just before it commits, then removes the
+worktree (teardown included) and the branch. Commits that touch only
+`.kerjaan/` never count as main moving. **Land commits its own notes** in a
+commit of its own (`Board: <id> …`) holding only that ticket's file, or says
+`NOTE NOT COMMITTED` when that file already had uncommitted changes.
 
 **3. A merge postponed: the ticket goes back — not the owner's problem.** When
 main moved, `land` answers `MERGE POSTPONED` (exit 3), records why in
@@ -197,9 +170,8 @@ Its worker brings main in (step 1) and moves it to review again. That review
 is level `quick` and reads only what the worker did beyond the automatic
 merge: `"$K/merge.sh" resolution <id>` prints the conflict resolution and any
 fix the tests demanded, or `EMPTY`. A merge clean in git that breaks the tests
-is caught too: the run after `sync` goes red, and the move to review is
-refused until it is fixed. A merge postponed is not a rejection
-(`references/review.md`, "Rounds").
+is caught too: the run after `sync` goes red. A merge postponed is not a
+rejection (`references/review.md`, "Rounds").
 
 **When a merge fails, only that ticket waits for the owner.** Anything else
 that stops `land` — uncommitted changes git refuses over, a failing hook, the
@@ -208,10 +180,27 @@ answers `HELD` (exit 1), writes `merge held for the owner — <reason>` into
 `## Notes`, and leaves the ticket in `done/`. What follows is
 `references/foreman.md`, step 6.
 
+## The merge queue
+
+Tickets land in the order they passed review. The move to `done` puts a
+ticket whose branch is not on main at the back of the queue (`merge queue:
+joined as number <n>, behind <ids>` in its Notes); `"$K/merge.sh" queue` lists
+it. **Only the front lands**: `land` on any other answers `WAITING` (exit 5)
+and touches nothing, so a ticket is synced only in its turn — N tickets, at
+most N syncs. A merge postponed keeps the front's place; nothing else lands
+meanwhile.
+
+It **leaves** when its review sends it back, a test run fails while it is in
+`in_progress`, its merge is held, or it moves to backlog, todo or cancel; the
+next is at the front at once, and the one that left joins at the back once it
+passes again. Each join, leave and `land` answer ends in a `MERGE QUEUE:` line
+saying what to do now. Waiting tickets do not stop the start gate; one
+`blocked_by` a waiting ticket starts once it has landed.
+
 ## Branches nobody merged
 
-A branch can still be left behind — a worktree made by hand, a `land` nobody
-ran. Closing it is the foreman's: `land` it. The start gate is the net:
-`update-ticket.sh` refuses the next move to `in_progress` while such a branch
-holds work outside `HEAD`, whatever it is named (`references/foreman.md`, "One
-ticket, start to finish", step 1).
+Nothing is recorded; git is asked. `update-ticket.sh` warns when a ticket
+reaches `done` or `cancel` with unmerged work outside the merge queue, names
+worktrees left when a move empties the board, and refuses the next start while
+a left-behind branch holds work outside `HEAD` (`references/foreman.md`, "One
+ticket, start to finish", step 1). Closing it is the foreman's: `land` it.

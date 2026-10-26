@@ -6,7 +6,7 @@ labels: [merge, worktree]
 reporter: mirza
 assign_to: claude
 created: 2026-10-26 15:04:42
-updated: 2026-10-26 15:27:42
+updated: 2026-10-26 16:48:20
 related: [261016130801, 261017113002]
 blocked_by: []
 ---
@@ -18,17 +18,18 @@ Saat banyak tiket dikerjakan berdampingan di worktree, beberapa tiket bisa lolos
 Tiket yang sudah lolos tinjauan masuk ke antrean penggabungan dan digabung ke main satu per satu dengan urutan yang jelas. Hanya tiket di depan antrean yang diselaraskan dan diuji ulang, sehingga setiap tiket paling banyak diselaraskan sekali sebelum masuk dan tidak ada tiket yang tertunda berulang karena tiket lain menyalip. Urutannya adalah urutan lolos tinjauan: yang lolos lebih dulu digabung lebih dulu; tiket yang keluar dari antrean lalu lolos lagi masuk di belakang. Antrean dicatat di berkas papan dan keluaran skrip yang dibaca sesi utama; tampilan di viewer dan "kereta penggabungan" tidak termasuk tiket ini.
 
 ## Done when
-- [ ] Saat beberapa tiket lolos tinjauan berdekatan, berkas papan dan keluaran skrip menunjukkan urutan penggabungannya, dan sesi utama mengikuti urutan itu tanpa harus menyusunnya sendiri (pemakaian nyata ditunda: skenario manual di Notes, dicek pemilik pada batch berdampingan berikutnya)
-- [ ] Selama tiket di depan antrean sedang diselaraskan dan diuji ulang, tidak ada tiket lain yang digabung ke main lebih dulu
-- [ ] Tiket di belakang antrean tidak diminta menyelaraskan sebelum gilirannya, sehingga dengan N tiket lolos bersamaan jumlah penyelarasan paling banyak N, bukan bertambah setiap kali ada tiket yang masuk
-- [ ] Pembuatan dan perbaikan tiket lain tetap berjalan berdampingan; hanya langkah masuk ke main yang antre
-- [ ] Bila tiket di depan antrean ditolak saat ditinjau ulang atau ujinya gagal, ia keluar dari antrean dan tiket berikutnya maju tanpa menunggu; setelah diperbaiki dan lolos lagi ia masuk di belakang antrean
-- [ ] Panduan sesi utama dan pengerja menjelaskan antrean ini, dan skenario dengan beberapa tiket lolos bersamaan diuji otomatis
+- [ ] Saat beberapa tiket lolos tinjauan berdekatan, berkas papan dan keluaran skrip menunjukkan urutan penggabungannya, dan sesi utama mengikuti urutan itu tanpa harus menyusunnya sendiri (pemakaian nyata ditunda: skenario manual di Notes, dicek pemilik pada batch berdampingan berikutnya) — menunggu mirza: skenario tangan di Notes
+- [x] Selama tiket di depan antrean sedang diselaraskan dan diuji ulang, tidak ada tiket lain yang digabung ke main lebih dulu
+- [x] Tiket di belakang antrean tidak diminta menyelaraskan sebelum gilirannya, sehingga dengan N tiket lolos bersamaan jumlah penyelarasan paling banyak N, bukan bertambah setiap kali ada tiket yang masuk
+- [x] Pembuatan dan perbaikan tiket lain tetap berjalan berdampingan; hanya langkah masuk ke main yang antre
+- [x] Bila tiket di depan antrean ditolak saat ditinjau ulang atau ujinya gagal, ia keluar dari antrean dan tiket berikutnya maju tanpa menunggu; setelah diperbaiki dan lolos lagi ia masuk di belakang antrean
+- [x] Panduan sesi utama dan pengerja menjelaskan antrean ini, dan skenario dengan beberapa tiket lolos bersamaan diuji otomatis
 
 ## History
 - 2026-10-26 15:04:42 55ce84d0-5e6a-481d-a7c3-df4acf92bf37 backlog
 - 2026-10-26 15:25:57 9be5acfb-f0e7-4547-926f-85a864635294 todo
 - 2026-10-26 15:27:42 9be5acfb-f0e7-4547-926f-85a864635294 in_progress
+- 2026-10-26 16:48:20 9be5acfb-f0e7-4547-926f-85a864635294 review
 ## Notes
 - Permintaan mirza, 2026-10-26: "Apakah problem semacam ini bisa kerap terjadi lagi dimasa depan? Apakah solusi yang kamu jalankan bisa di generalisir untuk bisa diapply di case berikutnya? karena jika iya, saya ingin kamu buat tiket untuk skill kerjaan."
 - Yang dilakukan sesi utama di video-system-design sebagai jalan sementara: tiket yang lolos dicatat dalam antrean di log sesi; hanya tiket terdepan yang diminta sync → buat-indeks → test-run → pindah ke review; tiket lain diminta menunggu; setelah land, tiket berikutnya baru diminta sync.
@@ -50,3 +51,18 @@ Tiket yang sudah lolos tinjauan masuk ke antrean penggabungan dan digabung ke ma
   answer, 2026-10-26 15:25:44: Tidak relevan lagi: jawaban #5 diubah ke "Ditunda" (setara opsi c).
 - 2026-10-26: koreksi jawaban pertanyaan 5 dari pemilik, menggantikan "(b) Tahan rantai" di atas: (a) "Ditunda" — skenario otomatis di kriteria 6 cukup untuk lulus; pemakaian nyata dicatat sebagai skenario manual di Notes dan dicek pemilik pada batch berdampingan berikutnya. Rantai tidak ditahan. Tingkat review diubah pemilik ke strict.
 - Skenario manual (ditunda, kriteria 1): pada batch berdampingan berikutnya, saat dua tiket atau lebih lolos tinjauan berdekatan, pemilik melihat bahwa urutan penggabungan tertulis di papan/keluaran skrip, sesi utama menggabungkannya menurut urutan itu tanpa menyusun sendiri, dan tiap tiket diselaraskan paling banyak sekali.
+- Catatan pengerja, 2026-10-26 — rancangan: antrean penggabungan disimpan di tiket itu sendiri, bukan berkas baru, dengan baris tetap berbahasa Inggris di Notes: `merge queue: joined as number <n>, behind <id>, …` dan `merge queue: left — <alasan>`. Alasan: tidak ada berkas bersama yang bisa berselisih dengan tiketnya, dan baris itu ikut commit putusan peninjau. Nomor hanya naik di seluruh papan, jadi tiket yang keluar lalu lolos lagi selalu di belakang. Tiket keluar juga oleh baris `landed on` / `merge held for the owner` yang sudah ditulis land.
+- Yang dibangun: lib.sh (`kerjaan_queue_number`, `kerjaan_merge_queue`, `kerjaan_queue_join`, `kerjaan_queue_leave`, `kerjaan_queue_next`); update-ticket.sh memasukkan tiket ke antrean saat pindah ke done bila cabangnya belum di main, mengeluarkannya bila review→in_progress atau pindah ke backlog/todo/cancel, gerbang mulai melewatkan cabang tiket yang antre, dan menolak tiket yang blocked_by tiket antre; merge.sh `land` hanya menggabung tiket terdepan (lainnya `WAITING`, exit 5, tanpa mengubah apa pun), tiket done di luar antrean (bekas held) masuk di belakang saat land, ALREADY IN / NOTHING TO LAND mengeluarkannya; `merge.sh queue` baru; test-run.sh mengeluarkan tiket antre di in_progress yang ujinya gagal. Setiap keluaran berakhir dengan baris `MERGE QUEUE:` yang menyebut tiket berikutnya untuk di-land.
+- Keputusan: pengerja yang uji setelah sync-nya gagal langsung melapor `STOPPED — left the merge queue`, supaya mandor langsung me-land tiket berikutnya ("maju tanpa menunggu"); mandor lalu melanjutkan pengerja itu untuk memperbaiki.
+- Anggaran kata skill (18.000) sudah hampir habis (17.957) sebelum tiket ini; aturan baru dibayar dengan memadatkan parallel-work.md: bagian "Tests take turns" dan "Changes to the board take turns too" (detail setelan yang sudah ada di SETTINGS.md), pola sparse-checkout, bagian "Nothing is remembered" digabung ke "Branches nobody merged", dan kalimat "lands-first is the plan … if the ticket named second passes first, it lands first" diganti aturan antrean. Total kini 17.997.
+- Di luar perkiraan: `skills/kerjaan/scripts/test-run.sh` (keluar antrean saat uji gagal) dan `tests/board-lock.test.mjs` (satu assert mengunci tanggal `2026-10-1x` dan gagal sejak 20-10-2026; diganti pola tanggal apa pun, tidak terkait antrean).
+- Penjaga yang sengaja dirusak (salin berkas, rusak, jalankan tests/merge.test.mjs, pulihkan dari salinan), semuanya merah: gerbang tiket terdepan di land (3 uji merah); masuk antrean saat pindah ke done (6); tidak masuk ulang selama masih antre (3); keluar saat review→in_progress (1); keluar saat pindah ke backlog, todo, cancel — tiap kasus dirusak sendiri-sendiri, masing-masing 1 merah; keluar saat uji gagal di test-run.sh (1); baris held mengakhiri tempat (2); baris landed mengakhiri tempat (10); keluar saat ALREADY IN (1) dan NOTHING TO LAND (1); gerbang mulai melewatkan cabang antre (1); blocked_by tiket antre ditolak (1); baris MERGE QUEUE setelah HELD (1); urutan menurut nomor (12); WARNING unmerged tidak muncul untuk tiket antre (1); hanya pindah ke done yang memasukkan antrean (1).
+- Uji "to review only when the branch holds all of main's code…" sekali merah saat dijalankan berbarengan beban lain, lalu hijau tiga kali berturut-turut dan hijau pula dengan penjaga yang sama dirusak: uji lama yang kadang goyah, bukan karena tiket ini.
+- Tidak diubah: viewer (di luar tiket ini, jawaban #1) masih menandai tiket done yang antre sebagai "not merged", yang memang benar; worktree tiket yang antre tetap dihitung oleh `max_parallel` seperti sebelumnya.
+- Skenario tangan untuk butir 1 (menunggu mirza, pada batch berdampingan berikutnya setelah tiket ini masuk main dan plugin terpasang):
+  1. Jalankan antrean dengan dua tiket atau lebih dalam satu grup order.md, masing-masing di worktree-nya.
+  2. Saat dua di antaranya lolos tinjauan berdekatan, buka Notes tiap tiket di `.kerjaan/done/`: masing-masing punya baris `merge queue: joined as number <n>, behind <id …>`, nomor sesuai urutan lolos.
+  3. Minta sesi utama menjalankan `merge.sh queue` (atau baca jawabannya sendiri): daftar menurut nomor itu dan baris `MERGE QUEUE: next to land is <id terdepan>`.
+  4. Perhatikan sesi utama: ia me-land tiket terdepan, lalu tiket yang disebut baris `MERGE QUEUE:` berikutnya, tanpa menyusun urutan sendiri; tiket di belakang hanya mendapat `WAITING`, tidak pernah `MERGE POSTPONED` sebelum gilirannya.
+  5. Setelah batch selesai, hitung baris `merge postponed` di tiap tiket: paling banyak satu per tiket (kecuali tiket yang keluar antrean karena ditolak atau ujinya gagal).
+- 2026-10-26 16:48:14: test run — `node --test --test-timeout=900000 --import=./tests/complete-runs.mjs` exited 0 after 3m44s, on content fingerprint 57570610be1bc16b399878f547170ee953506631 (the same before and after the run; .kerjaan/ left out).

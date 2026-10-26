@@ -191,7 +191,9 @@ EOF_COUNTS
           "in_progress/ itself. Do not review this ticket yourself. Ticket " +
           "\($id) is handed off now: nobody changes the code it covers. When " +
           "the verdict comes back, read \($foreman) for what to do with it; a " +
-          "pass is landed again with merge.sh land."
+          "pass is landed again with merge.sh land, since the ticket kept its " +
+          "place at the front of the merge queue, and a rejection takes it " +
+          "out of the queue, so land the ticket merge.sh queue names next."
         )
       },
       systemMessage: ($lead_sys_ + "Ticket \($id) re-entered review after a merge postponed — resuming its reviewer.")

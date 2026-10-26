@@ -294,8 +294,22 @@ fi
 ticket="$(kerjaan_ticket_file "$board" "$id" || true)"
 [ -n "$ticket" ] || { echo "Ticket $id disappeared during the run; nothing recorded." >&2; echo "$note" >&2; exit 2; }
 kerjaan_append_note "$ticket" "$note"
+# A ticket at the front of the merge queue, back in in_progress to be brought
+# up to date, whose run fails leaves the queue at once, so the ticket behind it
+# need not wait for the fix (lib.sh, "the merge queue"). Once it passes review
+# again it joins at the back.
+left_queue=0
+if [ "$code" -ne 0 ] && [ "$(basename "$(dirname "$ticket")")" = in_progress ] \
+    && [ -n "$(kerjaan_queue_number "$ticket")" ]; then
+  kerjaan_queue_leave "$ticket" "its test run failed (exit $code)"
+  left_queue=1
+fi
 (cd "$main_tree" && "$here/update-ticket.sh" "$id" > /dev/null)
 kerjaan_lock_release board
 
 echo "$note" >&2
+if [ "$left_queue" -eq 1 ]; then
+  echo "MERGE QUEUE: $id left the merge queue because this run failed; once fixed and passed again, it joins at the back." >&2
+  kerjaan_queue_next "$board" "$here" >&2
+fi
 exit "$code"

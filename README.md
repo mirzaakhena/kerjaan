@@ -172,7 +172,8 @@ $K/test-run.sh --check 260905160401 HEAD  # SAME / DIFFERENT / NO EVIDENCE
 # a worktree for working two tickets side by side, and bringing its work back
 $K/worktree.sh add 260905160401 ../repo-topic
 $K/merge.sh sync 260905160401             # in the worktree: merge main in, before review
-$K/merge.sh land 260905160401             # passed review: into main, one at a time
+$K/merge.sh land 260905160401             # passed review: into main, in its turn in the merge queue
+$K/merge.sh queue                         # the merge queue, front first, and what to land next
 $K/merge.sh resolution 260905160401       # what the review after a merge postponed reads
 $K/worktree.sh remove 260905160401        # a worktree given up on
 $K/test-run.sh --review 260905160401      # the reviewer's run, queued with the rest
@@ -474,13 +475,29 @@ branch reaches main only after it was tested with all of main inside it. The
 worker merges main in (`merge.sh sync`), resolves any conflict itself, and
 tests that state; the move to review is refused until the branch holds all of
 main's code and its latest test run covers exactly what is committed. Once the
-reviewer passes it, the foreman lands it with `merge.sh land`, right away and
-without asking the owner, one merge at a time — and without running the tests
-again, since what lands is exactly what was tested. When main has moved in
-the meantime, the ticket goes back to its worker to merge again, and the
-reviewer looks briefly at only the conflict resolution. A merge that fails
-for any other reason holds that one ticket for the owner, with the reason in
-its Notes; everything else carries on.
+reviewer passes it, the foreman lands it with `merge.sh land`, without asking
+the owner, one merge at a time — and without running the tests again, since
+what lands is exactly what was tested. When main has moved in the meantime,
+the ticket goes back to its worker to merge again, and the reviewer looks
+briefly at only the conflict resolution. A merge that fails for any other
+reason holds that one ticket for the owner, with the reason in its Notes;
+everything else carries on.
+
+When several tickets pass review close together, they land through a merge
+queue, in the order they passed. Each ticket's Notes say when it joined and
+who was ahead of it (`merge queue: joined as number 3, behind …`), and
+`merge.sh queue` lists the queue front first. Only the ticket at the front
+lands; `land` on any other answers `WAITING` and changes nothing, so a ticket
+is brought up to date only when its turn comes, and N tickets passing together
+cost at most N syncs instead of one more every time another ticket slips in
+first. While the front is being brought up to date and reviewed again, nothing
+else lands. When its review sends it back or its tests fail, it leaves the
+queue at once, the next ticket moves up, and it joins at the back once it
+passes again; a held merge, or a move to backlog, todo or cancel, takes a
+ticket out too. Every answer ends with a `MERGE QUEUE:` line naming what to
+land next, so the main session follows the queue rather than arranging it.
+Only the landing waits: tickets waiting in the queue do not stop new tickets
+from starting, except one whose `blocked_by` names a ticket still waiting.
 
 A worktree separates files, not the ports, local databases and caches a test
 suite uses, so test runs from different worktrees take turns: `test-run.sh`

@@ -312,7 +312,7 @@ test('update-ticket.sh run by test-run.sh does not wait for the lock test-run.sh
   assert.equal(res.code, 0, res.err);
   assert.ok(Date.now() - t0 < 2000 + 1500, `took ${Date.now() - t0}ms`);
   assert.doesNotMatch(res.err, /Waiting for the board lock/);
-  assert.match(read(r, X), /\nupdated: 2026-10-1\d \d\d:\d\d:\d\d\n/);
+  assert.match(read(r, X), /\nupdated: \d{4}-\d\d-\d\d \d\d:\d\d:\d\d\n/);
   assert.doesNotMatch(read(r, X), /\nupdated: 2026-10-16 20:00:00\n/);
 });
 

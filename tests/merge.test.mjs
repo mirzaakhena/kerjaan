@@ -651,9 +651,13 @@ test('two landings started at the same moment take turns', async () => {
     passReview(r, id);
   }
   const both = await Promise.all([runAsync(mergeSh, r.root, ['land', A]), runAsync(mergeSh, r.root, ['land', B])]);
-  // Whichever went first changed main's code, so the other is sent back.
-  assert.deepEqual(both.map((x) => x.code).sort(), [0, 3], both.map((x) => x.out + x.err).join('\n'));
-  assert.equal(git(r.root, 'log', '--merges', '--format=%s').trim().split('\n').length, 1);
+  // A passed first, so A lands, whichever landing got the merge lock first.
+  // B, behind it, either waits (it went first) or is sent back to be brought
+  // up to date (A had landed by then).
+  const said = both.map((x) => x.out + x.err).join('\n');
+  assert.equal(both[0].code, 0, said);
+  assert.ok([3, 5].includes(both[1].code), said);
+  assert.equal(git(r.root, 'log', '--merges', '--format=%s').trim(), `Merge ticket-${A} into main (ticket ${A})`);
 });
 
 test('the reviewer\'s tests queue on the same tests lock as the worker\'s, and are not recorded', async () => {
@@ -942,4 +946,237 @@ test('"mark it done" on a ticket in todo: straight to review is refused, through
   assert.match(notes(r, C), /test run — `.*` exited 0 after .*, on content fingerprint [0-9a-f]+/);
   passReview(r, C);
   assert.equal(where(r, C), 'done');
+});
+
+// --- the merge queue (261026150401) ------------------------------------------
+// Tickets that passed review land one at a time, in the order they passed.
+// Only the ticket at the front is landed, and only it is ever sent back to be
+// brought up to date; the ones behind it wait untouched, so with N tickets
+// passing together there are at most N syncs, however long each one takes.
+
+const E = '261016300005';
+const queueSh = (r) => run(mergeSh, r.root, ['queue']);
+const postponements = (r, id) => (notes(r, id).match(/: merge postponed — /g) || []).length;
+const tipOf = (r, id) => git(r.root, 'rev-parse', `ticket-${id}`).trim();
+
+// A, B and C each worked in a worktree, tested, and passed review in that
+// order; none of them landed yet.
+function threePassed(r) {
+  assert.equal(move(r, C, 'in_progress').code, 0);
+  const wts = { [A]: add(r, A), [B]: add(r, B), [C]: add(r, C) };
+  work(wts[A], { 'code.txt': 'def single\ndef two\n', 'uses.txt': 'single\n' });
+  work(wts[B], { 'uses-b.txt': 'two\n' });
+  work(wts[C], { 'uses-c.txt': 'two\n' });
+  const said = {};
+  for (const id of [A, B, C]) {
+    assert.equal(run(testRun, wts[id], [id]).code, 0);
+    toReview(r, id);
+    const done = move(r, id, 'done');
+    assert.equal(done.code, 0, done.err);
+    said[id] = done.err;
+  }
+  return { wts, said };
+}
+
+// The worker's part after a merge postponed: bring main in, test, hand over.
+function bringUpToDate(r, wt, id) {
+  assert.equal(run(mergeSh, wt, ['sync', id]).code, 0);
+  assert.equal(run(testRun, wt, [id]).code, 0);
+  toReview(r, id);
+}
+
+test('tickets passing review together land in the order they passed, each brought up to date at most once', () => {
+  const r = repo();
+  const { wts, said } = threePassed(r);
+
+  // The order is written in the tickets, and said on the move that made it.
+  assert.match(notes(r, A), /: merge queue: joined as number 1, behind nobody\./);
+  assert.match(notes(r, B), new RegExp(`: merge queue: joined as number 2, behind ${A}\\.`));
+  assert.match(notes(r, C), new RegExp(`: merge queue: joined as number 3, behind ${A}, ${B}\\.`));
+  assert.match(said[C], new RegExp(`MERGE QUEUE: ${C} joined as number 3, behind ${A}, ${B}\\.`));
+  assert.doesNotMatch(said[C], /WARNING: .* holds commits that are not in HEAD/);
+  // ... and the script reads it back, saying which one to land.
+  const q = queueSh(r);
+  assert.equal(q.code, 0, q.err);
+  assert.match(q.out, new RegExp(`1\\. ${A} \\(number 1, in done/\\)\\n {2}2\\. ${B} \\(number 2, in done/\\)\\n {2}3\\. ${C} \\(number 3, in done/\\)`));
+  assert.match(q.out, new RegExp(`MERGE QUEUE: next to land is ${A}; land it now: ".*/merge.sh" land ${A}`));
+
+  // A ticket behind the front does not land, and is not sent back either.
+  const before = head(r);
+  const tipC = tipOf(r, C);
+  for (const id of [C, B]) {
+    const early = run(mergeSh, r.root, ['land', id]);
+    assert.equal(early.code, 5, early.out + early.err);
+    assert.match(early.out, new RegExp(`WAITING: ticket ${id} was not merged; it waits in the merge queue behind ${A}`));
+    assert.equal(where(r, id), 'done');
+  }
+  assert.equal(head(r), before);
+
+  // The front lands, and land names the next one.
+  const first = run(mergeSh, r.root, ['land', A]);
+  assert.equal(first.code, 0, first.out + first.err);
+  assert.match(first.out, new RegExp(`MERGE QUEUE: next to land is ${B}; land it now`));
+
+  // B is sent back to be brought up to date. While it is — with its worker,
+  // then in review — nothing else lands, and C is left untouched.
+  assert.equal(run(mergeSh, r.root, ['land', B]).code, 3);
+  assert.equal(where(r, B), 'in_progress');
+  assert.match(queueSh(r).out, new RegExp(`MERGE QUEUE: ${B} is at the front, back with its worker in in_progress/; nothing else lands`));
+  const mainWhileB = head(r);
+  let wait = run(mergeSh, r.root, ['land', C]);
+  assert.equal(wait.code, 5, wait.out + wait.err);
+  assert.match(wait.out, new RegExp(`behind ${B}\\.`));
+  bringUpToDate(r, wts[B], B);
+  assert.match(queueSh(r).out, new RegExp(`MERGE QUEUE: ${B} is at the front, in review again`));
+  wait = run(mergeSh, r.root, ['land', C]);
+  assert.equal(wait.code, 5, wait.out + wait.err);
+  assert.equal(head(r), mainWhileB, 'a ticket landed while the front was being brought up to date');
+  passReview(r, B);
+  assert.match(notes(r, B), /: merge queue: joined as number 2,/);
+  assert.equal((notes(r, B).match(/merge queue: joined/g) || []).length, 1, 'B joined again after its merge postponed');
+  const second = run(mergeSh, r.root, ['land', B]);
+  assert.equal(second.code, 0, second.out + second.err);
+  assert.match(second.out, new RegExp(`MERGE QUEUE: next to land is ${C}; land it now`));
+
+  // C was never asked to sync before its turn, and is brought up to date once.
+  assert.equal(postponements(r, C), 0);
+  assert.equal(tipOf(r, C), tipC);
+  assert.equal(run(mergeSh, r.root, ['land', C]).code, 3);
+  bringUpToDate(r, wts[C], C);
+  passReview(r, C);
+  const third = run(mergeSh, r.root, ['land', C]);
+  assert.equal(third.code, 0, third.out + third.err);
+  assert.match(third.out, /MERGE QUEUE: empty; no ticket waits to land\./);
+  assert.match(queueSh(r).out, /^MERGE QUEUE: empty/);
+
+  // Three tickets, at most three syncs: A none, B and C one each.
+  assert.deepEqual([A, B, C].map((id) => postponements(r, id)), [0, 1, 1]);
+  for (const f of ['uses.txt', 'uses-b.txt', 'uses-c.txt']) assert.ok(show(r, 'HEAD', f));
+  const checkMain = spawnSync('sh', ['check.sh'], { cwd: r.root, encoding: 'utf8' });
+  assert.equal(checkMain.status, 0, checkMain.stdout);
+});
+
+test('a front ticket whose tests fail, or whose review sends it back, leaves the queue at once and joins at the back once it passes again', () => {
+  const r = repo();
+  const { wts } = threePassed(r);
+  assert.equal(run(mergeSh, r.root, ['land', A]).code, 0);
+
+  // B, at the front, is brought up to date and its tests fail: it leaves, and
+  // C is at the front without waiting for B's fix.
+  assert.equal(run(mergeSh, r.root, ['land', B]).code, 3);
+  assert.equal(run(mergeSh, wts[B], ['sync', B]).code, 0);
+  const red = run(testRun, wts[B], [B], { TEST_FAIL: '1' });
+  assert.equal(red.code, 1);
+  assert.match(red.err, new RegExp(`MERGE QUEUE: ${B} left the merge queue because this run failed`));
+  assert.match(red.err, new RegExp(`MERGE QUEUE: next to land is ${C}; land it now`));
+  assert.match(notes(r, B), /: merge queue: left — its test run failed \(exit 1\)\./);
+  assert.equal(run(mergeSh, r.root, ['land', C]).code, 3, 'C did not move to the front');
+
+  // B, fixed and passed again, joins behind C.
+  assert.equal(run(testRun, wts[B], [B]).code, 0);
+  toReview(r, B);
+  passReview(r, B);
+  assert.match(notes(r, B), new RegExp(`: merge queue: joined as number 4, behind ${C}\\.`));
+  assert.equal(run(mergeSh, r.root, ['land', B]).code, 5);
+
+  // C, at the front, is sent back by its review: it leaves, and B lands — it
+  // took in main after A landed, and nothing landed since.
+  assert.equal(run(mergeSh, wts[C], ['sync', C]).code, 0);
+  assert.equal(run(testRun, wts[C], [C]).code, 0);
+  toReview(r, C);
+  const back = move(r, C, 'in_progress');
+  assert.equal(back.code, 0, back.err);
+  assert.match(back.err, new RegExp(`MERGE QUEUE: ${C} left the merge queue \\(sent back from review to in_progress\\)`));
+  assert.match(back.err, new RegExp(`MERGE QUEUE: next to land is ${B}`));
+  const landB = run(mergeSh, r.root, ['land', B]);
+  assert.equal(landB.code, 0, landB.out + landB.err);
+  assert.equal(postponements(r, B), 1);
+
+  // C, fixed — bringing in B as part of the fix — and passed again, joins at
+  // the back of an empty queue and lands as it stands.
+  bringUpToDate(r, wts[C], C);
+  passReview(r, C);
+  assert.match(notes(r, C), /: merge queue: joined as number 5, behind nobody\./);
+  const landC = run(mergeSh, r.root, ['land', C]);
+  assert.equal(landC.code, 0, landC.out + landC.err);
+  assert.match(queueSh(r).out, /^MERGE QUEUE: empty/);
+});
+
+test('a held front ticket leaves the queue for the one behind it, and joins at the back when landed again', () => {
+  const r = repo();
+  threePassed(r);
+  fs.writeFileSync(path.join(r.root, 'uses.txt'), 'one\n# owner note\n');
+  const held = run(mergeSh, r.root, ['land', A]);
+  assert.equal(held.code, 1, held.out + held.err);
+  assert.match(held.out, new RegExp(`MERGE QUEUE: next to land is ${B}`));
+  assert.equal(run(mergeSh, r.root, ['land', B]).code, 0);
+  fs.writeFileSync(path.join(r.root, 'uses.txt'), 'one\n');
+  const again = run(mergeSh, r.root, ['land', A]);
+  assert.equal(again.code, 5, again.out + again.err);
+  assert.match(again.out, new RegExp(`MERGE QUEUE: ${A} joined as number 4, behind ${C}\\.`));
+  assert.match(again.out, new RegExp(`WAITING: .* behind ${C}\\.`));
+  assert.match(notes(r, A), /: merge queue: joined as number 4,/);
+});
+
+test('a ticket in the queue whose work is already on main, or has no branch, leaves it instead of holding the front', () => {
+  const r = repo();
+  threePassed(r);
+  git(r.root, 'merge', '-q', '--no-edit', `ticket-${A}`);
+  const already = run(mergeSh, r.root, ['land', A]);
+  assert.equal(already.code, 0, already.out + already.err);
+  assert.match(already.out, /ALREADY IN main/);
+  assert.match(notes(r, A), /: merge queue: left — its branch is already part of main\./);
+  assert.match(already.out, new RegExp(`MERGE QUEUE: next to land is ${B}`));
+  run(worktreeSh, r.root, ['remove', B]);
+  git(r.root, 'branch', '-D', `ticket-${B}`);
+  const none = run(mergeSh, r.root, ['land', B]);
+  assert.equal(none.code, 0, none.out + none.err);
+  assert.match(none.out, /NOTHING TO LAND/);
+  assert.match(notes(r, B), /: merge queue: left — no branch carries it, so there is nothing to land\./);
+  assert.match(none.out, new RegExp(`MERGE QUEUE: next to land is ${C}`));
+});
+
+test('new work starts while tickets wait in the merge queue; work that depends on one of them waits for it to land', () => {
+  const r = repo();
+  fs.writeFileSync(path.join(r.k, 'todo', `${E} Fifth ticket.md`), ticket('Fifth ticket'));
+  const { wts } = threePassed(r);
+  // Every one of the three branches holds work outside HEAD, on purpose.
+  const start = move(r, E, 'in_progress');
+  assert.equal(start.code, 0, start.err);
+  for (const [id, n] of [[A, 1], [B, 2], [C, 3]]) {
+    assert.match(start.err, new RegExp(`Note: ticket-${id} is not in HEAD, but ticket ${id} waits in the merge queue \\(number ${n}\\); not waiting for it\\.`));
+  }
+  assert.doesNotMatch(notes(r, E), /ack-unmerged/);
+  // The next ticket is worked side by side while they wait.
+  const we = add(r, E);
+  work(we, { 'uses-e.txt': 'two\n' });
+  assert.equal(run(testRun, we, [E]).code, 0);
+  // D is blocked_by A, which has not landed yet.
+  const dependent = move(r, D, 'in_progress');
+  assert.equal(dependent.code, 1);
+  assert.match(dependent.err, new RegExp(`blocked_by ${A}, which waits in the merge queue`));
+  assert.equal(where(r, D), 'todo');
+  assert.equal(run(mergeSh, r.root, ['land', A]).code, 0);
+  const started = move(r, D, 'in_progress');
+  assert.equal(started.code, 0, started.err);
+  assert.ok(wts[B]);
+});
+
+test('a ticket in the queue moved out of the work leaves the queue; one worked in the main tree never joins it', () => {
+  const r = repo();
+  threePassed(r);
+  // Each way out of the work, one ticket each; the next moves to the front.
+  for (const [id, to, next] of [[A, 'cancel', `next to land is ${B}`], [B, 'backlog', `next to land is ${C}`], [C, 'todo', 'empty']]) {
+    const out = move(r, id, to);
+    assert.equal(out.code, 0, out.err);
+    assert.match(out.err, new RegExp(`MERGE QUEUE: ${id} left the merge queue \\(moved to ${to}\\)`));
+    assert.match(out.err, new RegExp(`MERGE QUEUE: ${next}`));
+    assert.match(notes(r, id), new RegExp(`: merge queue: left — moved to ${to}\\.`));
+  }
+  // D, worked in the main tree, passes without a branch: nothing to queue.
+  fs.writeFileSync(path.join(r.k, 'in_progress', `${E} Fifth ticket.md`), ticket('Fifth ticket'));
+  toReview(r, E);
+  const done = move(r, E, 'done');
+  assert.equal(done.code, 0, done.err);
+  assert.doesNotMatch(done.err + notes(r, E), /merge queue/i);
 });

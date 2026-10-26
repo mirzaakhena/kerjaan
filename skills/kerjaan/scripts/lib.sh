@@ -34,6 +34,11 @@
 #   kerjaan_append_note <file> <note>  a line at the end of ## Notes
 #   kerjaan_history_line <time> <st>   one ## History line, naming the session
 #   kerjaan_merge_state <file>         held / postponed / landed (merge.sh)
+#   kerjaan_queue_number <file>        the ticket's place in the merge queue
+#   kerjaan_merge_queue <board>        the merge queue, front first
+#   kerjaan_queue_join <board> <file>  put a ticket at the back of it
+#   kerjaan_queue_leave <file> <why>   take a ticket out of it
+#   kerjaan_queue_next <board> <scripts>  what the queue asks for now
 #   kerjaan_estimate <file>            the files a ticket is estimated to change
 #   kerjaan_estimate_kind <file>       paths / none / nothing: was one recorded
 #   kerjaan_questions <file>           every question asked, numbered for answering
@@ -601,6 +606,81 @@ kerjaan_merge_state() {
         -e 's/^merge postponed .*/postponed/' \
         -e 's/^landed on .*/landed/' \
     || true
+}
+
+# --- the merge queue ------------------------------------------------------------
+# Tickets that passed review land on main one at a time, in the order they
+# passed (references/parallel-work.md, "The merge queue"). Only the ticket at
+# the front is landed, and only it is ever sent back to be brought up to date,
+# so a ticket further back is never synced for a landing it does not get. The
+# queue is kept in the tickets themselves, in fixed English lines of ## Notes
+# whatever the board's language, so no file of its own can disagree with them:
+#
+#   - 2026-10-26 15:40:00: merge queue: joined as number 7, behind 261026150401, 261026150402.
+#   - 2026-10-26 16:02:13: merge queue: left — <why>.
+#
+# A ticket is in the queue while the latest of these lines, and of land's own
+# `landed on` and `merge held for the owner` lines, is a `joined`. Its number
+# is its place: lower lands first. Numbers only grow, across the whole board,
+# so a ticket that left and passed again joins behind everyone waiting.
+# Joining and leaving are written under the board lock.
+
+KERJAAN_QUEUE_RECORD='^- [0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}: (merge queue: (joined|left)|merge held for the owner|landed on) '
+
+# Prints the place of ticket <file> in the merge queue, or nothing when it is
+# not in it.
+kerjaan_queue_number() {
+  [ -f "$1" ] || return 0
+  kerjaan_unfenced_lines "$1" | grep -E "$KERJAAN_QUEUE_RECORD" | tail -1 \
+    | sed -nE 's/^- [^:]*:[0-9]{2}:[0-9]{2}: merge queue: joined as number ([0-9]+),.*/\1/p' || true
+}
+
+# Prints the merge queue of <board>, front first: "<number>\t<id>\t<status>".
+kerjaan_merge_queue() {
+  local f n b
+  { grep -lE 'merge queue: joined as number ' "$1"/*/[0-9]*.md 2> /dev/null || true; } | while IFS= read -r f; do
+    n="$(kerjaan_queue_number "$f")"
+    [ -n "$n" ] || continue
+    b="$(basename "$f")"
+    printf '%s\t%s\t%s\n' "$n" "${b:0:12}" "$(basename "$(dirname "$f")")"
+  done | sort -n -k1,1 -k2,2
+}
+
+# Puts ticket <file> at the back of the merge queue of <board> and prints the
+# line it wrote. Run it under the board lock.
+kerjaan_queue_join() {
+  local board="$1" file="$2" n ahead note
+  n="$({ grep -hoE 'merge queue: joined as number [0-9]+' "$board"/*/*.md 2> /dev/null || true; } \
+    | awk '{ if ($NF + 0 > max) max = $NF + 0 } END { print max + 1 }')"
+  ahead="$(kerjaan_merge_queue "$board" | cut -f2 | paste -sd ' ' - | sed 's/ /, /g')"
+  note="- $(date '+%Y-%m-%d %H:%M:%S'): merge queue: joined as number $n, behind ${ahead:-nobody}."
+  kerjaan_append_note "$file" "$note"
+  printf '%s\n' "$note"
+}
+
+# Takes ticket <file> out of the merge queue, saying <why>. Run it under the
+# board lock.
+kerjaan_queue_leave() {
+  kerjaan_append_note "$1" "- $(date '+%Y-%m-%d %H:%M:%S'): merge queue: left — $2."
+}
+
+# Prints, in one line, what the merge queue of <board> asks for now: land the
+# ticket at the front, wait for it, or nothing. <scripts> is the folder the
+# command it names lives in.
+kerjaan_queue_next() {
+  local front n id st
+  front="$(kerjaan_merge_queue "$1" | head -1)"
+  if [ -z "$front" ]; then
+    echo "MERGE QUEUE: empty; no ticket waits to land."
+    return 0
+  fi
+  IFS=$'\t' read -r n id st <<< "$front"
+  case "$st" in
+    done) echo "MERGE QUEUE: next to land is $id; land it now: \"$2/merge.sh\" land $id" ;;
+    in_progress) echo "MERGE QUEUE: $id is at the front, back with its worker in in_progress/; nothing else lands until it lands or leaves the queue." ;;
+    review) echo "MERGE QUEUE: $id is at the front, in review again; nothing else lands until it lands or leaves the queue." ;;
+    *) echo "MERGE QUEUE: $id is at the front but sits in $st/, where nothing lands; move it with update-ticket.sh, which takes it out of the queue." ;;
+  esac
 }
 
 # --- what the queue planner writes into a ticket ------------------------------
