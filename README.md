@@ -33,9 +33,11 @@ there is no service to run, host, or pay for.
 ├── done/         passed review
 ├── cancel/       abandoned
 ├── order.md      the order of the work in todo and in flight — optional
-└── settings.md   language, test command, long-lived branches,
-                  side-by-side tests and worktree setup, how far
-                  the chain runs
+├── settings.md   language, test command, long-lived branches,
+│                 side-by-side tests and worktree setup, how far
+│                 the chain runs, when the handoff is written
+└── handoff.md    the foreman's handoff across a summary — only for
+                  a moment, ignored by git
 ```
 
 `settings.md` is written once, the first time the board is used: Claude
@@ -248,6 +250,26 @@ records the question, the options and its recommendation in the ticket,
 numbered the same way as the planner's questions, and never guesses), the same ticket rejected twice by its reviewer, or a ticket the others build
 on failing. A question that does not hold the work up is written into its
 ticket and waits for the summary.
+
+**When the foreman's context fills up.** Claude Code summarizes a long
+conversation to make room, and the summary can drop what only the foreman
+holds: which workers and reviewers are running and their agent IDs, a decision
+you gave in conversation that no ticket records yet, a reminder meant for you.
+So the plugin's `handoff.sh` hook works out from the conversation's transcript
+how full the context is. Around `handoff_at` (80% by default; `context_window`
+when the window it works out is wrong, both in `settings.md`) it tells the
+foreman to write `.kerjaan/handoff.md` in a fixed form — the agents running,
+each with its ticket, role, agent ID and what is awaited from it; the merge
+queue, as a pointer to `merge.sh queue` rather than a copy; your decisions not
+yet in a ticket; questions waiting for you; reminders for you; next steps —
+and to rewrite that same file as the context keeps growing. Right after the
+summary, the hook hands the file's content to the foreman with the
+instruction to act on it before anything else and then delete it; a file
+already handed over and left unchanged is named stale, not acted on twice.
+The percentage is an estimate and can be off by a few percent. The hook adds
+the file to the repository's own `.git/info/exclude`, so git ignores it and
+nothing commits it; no board script reads it as a ticket, and `queue.sh
+check` passes over it. `"$K/handoff.sh" template` prints the form.
 
 **What you get at the end.** One summary: which tickets passed and in which
 round, which stopped and why, every question the workers left, and every

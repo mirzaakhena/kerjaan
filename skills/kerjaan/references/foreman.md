@@ -92,8 +92,7 @@ Just finished: <tickets passed this session, with the carry-forward>
 **2. Put its questions to the owner in one message**, together with the
 proposal: the order, which tickets run together and why, the splits it made,
 anything sharing files with work in flight, and the review level it suggests
-for each ticket with its reason. The level is the planner's suggestion because
-the planner read the code; the foreman relays it and adds none of its own.
+for each ticket with its reason. The level is the planner's suggestion; the foreman relays it and adds none of its own.
 Every question is already in its ticket under a number (`#2`); keep the
 number with each answer.
 
@@ -105,9 +104,8 @@ the board, and reports `QUEUED` — or `CHANGED — needs the owner`, moving
 nothing: back to step 2 with only what changed. A planner that cannot be
 resumed is replaced by a new one, told which answers to write.
 
-Nothing moves before the owner approves: filling `todo` is deciding what the
-next batch is, and that is the owner's call even when the reasoning looks
-obvious. "Looks fine" about the questions is not yes to the batch. The
+Nothing moves before the owner approves the batch, even when the reasoning
+looks obvious; "looks fine" about the questions is not yes to the batch. The
 foreman moves no ticket into `todo` and writes no line of `order.md`.
 
 ## Starting the chain
@@ -228,8 +226,8 @@ the work.
 
 **4. Wait for the verdict before the next worker starts**: the reviewer may be
 judging the working tree, which must sit still, and a rejection is the most
-valuable thing the next worker can be told. Only tickets that run side by side
-in worktrees overlap (`references/parallel-work.md`).
+valuable thing the next worker can be told. Only worktree tickets overlap
+(`references/parallel-work.md`).
 
 **5. Act on the verdict.**
 
@@ -388,3 +386,13 @@ Before the conversation ends, without waiting to be asked:
    ticket it carries. `NO RELEASE`, or only board-only tickets: say nothing.
 3. Dispatch the planner for the next batch ("Filling the queue"), with what
    just finished and the carry-forward, and relay its proposal.
+
+## Before the context is summarized
+
+A hook, `handoff.sh`, estimates your context use. Near `handoff_at`
+(`settings.md`, 80% by default) it says to write `.kerjaan/handoff.md` in the
+form it gives: agents running (ticket, role, agent ID, what you await), a
+pointer to `merge.sh queue`, never a copy, owner decisions not yet in a
+ticket, questions and reminders for the owner, next steps. A later reminder:
+rewrite it in place. After the summary the hook hands it back: act on it
+first, then delete it. Git ignores it; it is no ticket or status page.

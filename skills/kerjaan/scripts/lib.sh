@@ -19,6 +19,8 @@
 #   kerjaan_field <file> <key>         one value from a file's frontmatter
 #   kerjaan_setting <file> <key>       the same, read from settings.md
 #   kerjaan_setting_list <file> <key>  a [a, b] value, one item per line
+#   kerjaan_handoff_at <settings>      when to remind about handoff.md, in percent
+#   kerjaan_context_window <settings>  the context window the percent is of
 #   kerjaan_blockers <file>            the IDs in a ticket's blocked_by
 #   kerjaan_lock_acquire <name> <who>  wait for a named lock shared by every
 #   kerjaan_lock_release <name>        worktree of this repository, then hold it
@@ -205,6 +207,65 @@ kerjaan_parallel_limit() {
   elif [ -n "$v" ]; then
     echo "$v"
   fi
+}
+
+# --- the handoff before the context is summarized ----------------------------
+# Two settings (SETTINGS.md) tell handoff.sh when to remind the main session to
+# write .kerjaan/handoff.md: `handoff_at`, a share of `context_window`. Read
+# here, so handoff.sh and queue.sh check, which reports a value it cannot
+# read, read them alike.
+
+# Prints a token count written `200000`, `200,000`, `200k` or `1M`, or a bare
+# 100 to 1000 meaning thousands, the way Claude Code reads its own window.
+# Prints nothing, and returns 2, for anything else.
+kerjaan_token_count() {
+  local v n
+  v="$(printf '%s' "$1" | tr -d ' ,_' | tr 'KM' 'km')"
+  case "$v" in
+    '' ) return 2 ;;
+    *[!0-9km]* | *k*k* | *m*m* | *k*m* | *m*k* | [km]* ) return 2 ;;
+    *k) n="${v%k}"; case "$n" in *[!0-9]*|'') return 2 ;; esac; echo $((10#$n * 1000)) ;;
+    *m) n="${v%m}"; case "$n" in *[!0-9]*|'') return 2 ;; esac; echo $((10#$n * 1000000)) ;;
+    *[!0-9]*) return 2 ;;
+    *) if [ "$((10#$v))" -ge 100 ] && [ "$((10#$v))" -le 1000 ]; then echo $((10#$v * 1000)); else echo $((10#$v)); fi ;;
+  esac
+}
+
+# Prints the `handoff_at` setting of <settings>, a whole percentage from 1 to
+# 100 (`80` or `80%`); empty or missing is 80. Any other value is named on
+# stderr, and returns 2.
+kerjaan_handoff_at() {
+  local v
+  v="$(kerjaan_setting "$1" handoff_at)"
+  v="${v%\%}"
+  case "$v" in
+    '') echo 80 ;;
+    *[!0-9]* | 0*)
+      echo "handoff_at in settings.md is '$v': write a percentage from 1 to 100, such as 80, or leave it empty (80)." >&2
+      return 2
+      ;;
+    *)
+      if [ "$v" -gt 100 ]; then
+        echo "handoff_at in settings.md is '$v': write a percentage from 1 to 100, such as 80, or leave it empty (80)." >&2
+        return 2
+      fi
+      echo "$v"
+      ;;
+  esac
+}
+
+# Prints the `context_window` setting of <settings> in tokens, or nothing when
+# it is empty or missing (handoff.sh then works the window out itself). A
+# value that is not a token count is named on stderr, and returns 2.
+kerjaan_context_window() {
+  local v n
+  v="$(kerjaan_setting "$1" context_window)"
+  [ -n "$v" ] || return 0
+  if ! n="$(kerjaan_token_count "$v")" || [ "$n" -lt 1000 ]; then
+    echo "context_window in settings.md is '$v': write the tokens the context holds, such as 200000, 200k or 1M, or leave it empty (worked out from the session)." >&2
+    return 2
+  fi
+  echo "$n"
 }
 
 # Prints the ticket IDs in the blocked_by field of ticket <file>, one per line.

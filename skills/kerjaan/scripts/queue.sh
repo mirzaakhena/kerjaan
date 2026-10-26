@@ -398,12 +398,15 @@ if [ "$whole" -eq 1 ]; then
     cat "$tmpdir/waiting"
   fi
 fi
-# How far the chain runs (lib.sh): a value the foreman and worktree.sh cannot
-# read is named here, before the chain starts on it.
+# How far the chain runs, and when the handoff is due (lib.sh): a value the
+# foreman, worktree.sh or handoff.sh cannot read is named here, before the
+# chain starts on it.
 if [ "$whole" -eq 1 ]; then
   : > "$tmpdir/settings"
   kerjaan_chain_mode "$board/settings.md" 2>> "$tmpdir/settings" > /dev/null || true
   kerjaan_max_parallel "$board/settings.md" 2>> "$tmpdir/settings" > /dev/null || true
+  kerjaan_handoff_at "$board/settings.md" 2>> "$tmpdir/settings" > /dev/null || true
+  kerjaan_context_window "$board/settings.md" 2>> "$tmpdir/settings" > /dev/null || true
   if [ -s "$tmpdir/settings" ]; then
     echo "settings.md"
     while IFS= read -r msg; do problem "$msg"; done < "$tmpdir/settings"

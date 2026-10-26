@@ -46,7 +46,8 @@ The rules that are broken most often:
    only the foreman dispatches it.
 7. **Never pass `--ack-unmerged` or `--accept-size` on your own.** Those
    decisions are the owner's.
-8. Never write a status summary, index or dashboard into `.kerjaan/`.
+8. Never write a status summary, index or dashboard into `.kerjaan/`; only
+   `handoff.md`, briefly (`references/foreman.md`, "Before the context is summarized").
 
 ## The board
 
@@ -136,8 +137,7 @@ Messages that arrive together must all still get a reply, with none lost.
 Poor: a Background of "`notifier.py` still uses a polling loop, causing a race
 condition", a Request to "refactor to async using `asyncio.Queue`", and a
 Done when of "`test_notifier.py` passes" — legible only to someone who knows
-the repo. Technical detail is not forbidden; technical decisions belong to
-whoever executes the work, not baked into the ticket from the start.
+the repo. Technical decisions belong to whoever executes the work.
 
 | Field | Value |
 |---|---|
@@ -283,9 +283,7 @@ then do as they say. Filling `todo` from `backlog` is the planner's
 ### Into `in_progress`, `review`, and out of it
 
 **Move the ticket to `in_progress` before the first change to the repo** —
-even when you expect to finish in one sitting: work stops half-done more often
-than anyone plans, and a board saying `todo` beside a changed tree tells
-nobody what was going on. The script refuses the start while other work sits
+even when you expect to finish in one sitting. The script refuses the start while other work sits
 unmerged; what to do then is in `references/foreman.md`, step 1 of "One
 ticket, start to finish".
 
@@ -333,7 +331,7 @@ before its summary when the chain ends.
 
 Read the folders directly (`ls .kerjaan/review/`, `grep -l 'priority: high'
 .kerjaan/todo/*.md`) and answer in conversation. Never write the answer to a
-file: an index or status summary starts going stale the moment it exists.
+file.
 
 **Who moved it, and why.** A History line's session id opens the conversation
 that made the move, its subagents included: `claude --resume <session-id>`,

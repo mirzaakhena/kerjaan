@@ -1,7 +1,6 @@
 # Working two tickets at once
 
-Read this only when two tickets are actually going to run side by side. One
-ticket at a time is the normal way to work.
+Read this only when two tickets are actually going to run side by side.
 
 Two tickets in the same group of `order.md` have been declared able to run
 together, and that is the licence to run them side by side: two
@@ -50,8 +49,7 @@ board, and none on main carries the ticket's code until it lands.
 ## The board has one home
 
 A worktree's own copy of `.kerjaan/` would be a second board, frozen when the
-branch was cut: the ticket says `in_progress` in the main tree and `todo` in
-the worktree, and nothing reports it. Two guards prevent it:
+branch was cut. Two guards prevent it:
 
 - **A sparse checkout takes `.kerjaan/` out of the worktree's checkout** —
   out of that tree, not out of git, so nobody reads a stale board.
