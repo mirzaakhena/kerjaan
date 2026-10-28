@@ -6,7 +6,7 @@ labels: [viewer, agen]
 reporter: mirza
 assign_to: claude
 created: 2026-10-28 11:27:23
-updated: 2026-10-28 16:58:34
+updated: 2026-10-28 17:05:29
 related: [261016084202, 261017155801, 261028102201, 261028121401]
 blocked_by: []
 ---
@@ -69,6 +69,7 @@ review; jalan uji yang sudah selesai tidak disimpan.
 - 2026-10-28 12:47:44 a185f853-6a65-4f44-919d-97ba97774e43 todo
 - 2026-10-28 16:32:33 a185f853-6a65-4f44-919d-97ba97774e43 in_progress
 - 2026-10-28 16:58:34 a185f853-6a65-4f44-919d-97ba97774e43 review
+- 2026-10-28 17:05:29 a185f853-6a65-4f44-919d-97ba97774e43 done
 
 ## Notes
 - Diminta Mirza 28 Okt 2026 dari sesi nukitu-mockup, sambil menunggu pengerja tiket POC tarif. Usulnya sendiri: SSE ke web, terpadu dengan papan, tombol untuk melihat log atau hijau/merah tiap uji. Viewer sudah memakai SSE (`viewer/app.mjs`).
@@ -101,3 +102,27 @@ review; jalan uji yang sudah selesai tidak disimpan.
   - Saring status aktif dipasang di dua tempat (`runsOf` hanya ID aktif, dan `boardSummary` per status); merusak satu saja tetap hijau karena yang lain menahan, merusak keduanya -> uji kanban merah.
 - 2026-10-28 16:58:00: test run — `node --test --test-timeout=900000 --import=./tests/complete-runs.mjs` exited 0 after 3m52s, on content fingerprint 2f90190eaa8dfd1f4fb7b37b061755e3365fec78 (the same before and after the run; .kerjaan/ left out).
 - 2026-10-28 16:58:34: review covers branch ticket-261028112701 at 60d22824a0e71a670f0ccd15350f8613b058f15a, which holds main at ed456777cb607a3e820cddf56f0235e7988bc155 (code outside .kerjaan/); the latest test run passed on exactly this content.
+- 2026-10-28: Reviewed at level strict, round 1, at commit 60d2282: passed.
+  Level strict di sini: jalan uji pengerja dibawa (SAME), tiap butir dibuktikan dengan menjalankan sesuatu, uji dibaca, peninjauan di salinan bersih `git archive 60d2282`, dan enam penjaga dirusak dengan sengaja di salinan masing-masing.
+  - Jalan uji: `test-run.sh --check 261028112701 60d2282` -> SAME: jalan 2026-10-28 16:58:00, `node --test --test-timeout=900000 --import=./tests/complete-runs.mjs` keluar 0, sidik jari 2f90190eaa8dfd1f4fb7b37b061755e3365fec78. Tidak dijalankan ulang. Di salinan bersih, `tests/test-run.test.mjs` dan `viewer/tests/runs.test.mjs` (termasuk uji peramban, tidak ada yang dilewati): 35/35 lulus.
+  - Dibuktikan ujung ke ujung di repo buatan di /tmp dengan `test-run.sh` dan viewer dari salinan bersih: selagi jalan uji pengerja (perintah 6 dtk, keluar 4) berjalan, `api/board` membawa `runs` tanpa keluaran, `api/progress/<id>` membawa baris-baris terbaru (stdout dan stderr), SSE `progress` mengirim ukuran yang bertambah; sesudahnya kode keluar tetap 4, stdout dan stderr tetap di alirannya masing-masing, catatan Notes "exited 4", map `kerjaan-progress` kosong, `api/progress` -> `{"runs":[]}`. Jalan peninjau (`--review ... -- <perintah>`, keluar 9) dari worktree tertaut: tampil sebagai `who: reviewer` di viewer proyek utama, kode warna dibuang, keluar 9, berkas dihapus. `api/progress/..%2F..%2Fetc` -> 404.
+  - Butir 1 (tombol di kartu membuka Kemajuan): uji peramban 1280x800 dan 390x844 lulus di salinan bersih; tombol di bawah kartu, laci terbuka di bagian Progress yang terlihat dan terfokus.
+  - Butir 2 (baris terbaru, bertambah sendiri): uji peramban (baris baru muncul tanpa muat ulang, `window.__kept` tetap) dan SSE di atas.
+  - Butir 3 (lama berjalan, detik sejak keluaran terakhir, macet tampak berbeda): uji tampilan dan peramban (hijau/kuning/merah, "output 10 min ago" merah pada jalan yang diam).
+  - Butir 5 (jalan peninjau, termasuk sabotase): jalan `--review` dengan perintah sendiri ujung ke ujung di atas, dan uji peninjau.
+  - Butir 7 (rahasia sesuai keputusan pemilik): keluaran apa adanya sesuai jawaban 28 Okt; README menyebut keluaran tampil di halaman dan, dengan `--lan`, di jaringan. Keluaran di-escape (uji `<script>` lulus).
+  - Kode keluar dan menggantung (alasan strict): salinan lewat process substitution, `$?` milik subshell perintah; diuji dengan /bin/bash 3.2 (bash di PATH). Tidak ada pipa yang statusnya bisa menggantikan perintah; tunggu salinan dibatasi 5 dtk.
+  - Path dari permintaan: ID hanya dibandingkan dengan nama dari `readdirSync`, tidak pernah digabung ke path; ID harus 12 digit dan tiket aktif.
+  - Sabotase (tiap satu di salinan sendiri, uji penjaganya saja):
+    - `code=$(( $? != 0 ))` (status 7 jadi 1) -> 13 uji test-run merah.
+    - tunggu salinan tanpa batas -> "a process the command leaves behind ... does not keep the run waiting" merah.
+    - salinan stderr dikirim ke stdout -> uji jalan pengerja merah.
+    - `alive()` selalu benar (jalan mati tampil) -> 6 uji runs merah.
+    - `runsMark` tanpa ukuran (keluaran baru tidak diambil) -> 2 uji peramban merah.
+    - saring tiket aktif di `api/progress` dibuang -> uji api/progress merah.
+  - Catatan (tidak menghalangi): stdout dan stderr kini lewat dua `tee` terpisah, jadi urutan relatif keduanya di terminal gabungan bisa sedikit bergeser dari sebelumnya; pembersihan sisa hanya dipicu oleh `.json`, sehingga `.log` atau `.tmp` yatim (bila proses mati tepat di antara penulisan) tidak pernah dihapus; pid yang dipakai ulang membuat sisa jalan mati tampak hidup sampai jalan berikutnya.
+
+### Suggested follow-up
+
+- **Sisa berkas kemajuan yang yatim tidak pernah dibersihkan.** Bila `test-run.sh` dimatikan tepat sesudah membuat `.log` tetapi sebelum `.json` (atau meninggalkan `.tmp`), berkas itu tetap di `.git/kerjaan-progress/` selamanya karena pembersihan hanya melihat `*.json`. Layak satu tiket kecil: bersihkan juga `.log`/`.tmp` yang pid-nya sudah mati.
+- 2026-10-28 17:05:29: merge queue: joined as number 2, behind nobody.
