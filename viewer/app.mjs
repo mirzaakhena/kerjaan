@@ -19,7 +19,8 @@
 //   /<project>/api/ticket/<id>     one ticket in full
 //   /<project>/api/agent/<id>      the agent on one ticket, with its steps
 //   /<project>/api/progress/<id>   the test runs going on for one ticket, with
-//                                  their latest output (see runs.mjs)
+//                                  their latest output and, when the project
+//                                  reports them, their tests (see runs.mjs)
 //   /<project>/events              live changes (server-sent events)
 
 import http from 'node:http';

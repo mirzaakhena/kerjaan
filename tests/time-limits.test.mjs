@@ -80,10 +80,11 @@ const many = (f) => `import test from 'node:test';\n` +
   Array.from({ length: MANY_TESTS }, (_, i) => `test('file ${f} test ${i} ${'x'.repeat(200)}', () => {});\n`).join('');
 
 // Paths the command gives relative to the top of the repository (the
-// --import of tests/complete-runs.mjs), made absolute so they still hold in
-// the throwaway folder the command runs in.
+// --import of tests/complete-runs.mjs, the reporter that lists each test on
+// the board), made absolute so they still hold in the throwaway folder the
+// command runs in.
 const top = path.join(here, '..');
-const absolute = (a) => a.replace(/^(--import=)(\.\.?\/.*)$/, (_, flag, rel) => flag + path.join(top, rel));
+const absolute = (a) => a.replace(/^(--import=|--test-reporter=)(\.\.?\/.*)$/, (_, flag, rel) => flag + path.join(top, rel));
 
 // Runs test_command on throwaway test files — one source, or { name: source } —
 // its time limit set to `limitMs`; resolves { code, out, ms }, or { hung } after
@@ -94,8 +95,9 @@ async function runCommand(source, limitMs, giveUpMs) {
     const files = typeof source === 'string' ? { 'sample.test.mjs': source } : source;
     for (const [name, text] of Object.entries(files)) fs.writeFileSync(path.join(dir, name), text);
     const args = command.split(/\s+/).slice(1).map((a) => (a.startsWith('--test-timeout=') ? `--test-timeout=${limitMs}` : absolute(a)));
-    // Without this variable the inner run believes it is part of this one.
-    const env = { ...process.env };
+    // Without this variable the inner run believes it is part of this one;
+    // without the other, its tests would be listed on the board as this run's.
+    const env = { ...process.env, KERJAAN_TEST_REPORT: '' };
     delete env.NODE_TEST_CONTEXT;
     const start = Date.now();
     const child = spawn(process.execPath, args, { cwd: dir, env, stdio: ['ignore', 'pipe', 'pipe'] });

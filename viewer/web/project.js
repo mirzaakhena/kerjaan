@@ -4,7 +4,7 @@ import { readFilter, writeFilter, matches, columnOrder, choices, FILTER_KEYS, re
 import { pills } from './pills.js';
 import { drawerHead, drawerFacts, drawerAgent, drawerRuns, agentHeadHtml, agentBodyHtml, runBodyHtml } from './drawer.js';
 import { agentLine, AGENT_STATUSES } from './agent.js';
-import { runButton, runHead, runsMark } from './run.js';
+import { runButton, runHead, runsMark, testTime } from './run.js';
 import { ARCHIVED_KEY, loadArchived } from './archive.js';
 import { switchList } from './switcher.js';
 
@@ -459,14 +459,29 @@ function drawRuns(t, now) {
     for (const pre of slot.querySelectorAll('[data-run-output]')) {
       if (pre.scrollHeight - pre.scrollTop - pre.clientHeight > 4) kept.set(pre.dataset.runOutput, pre.scrollTop);
     }
+    // The list of tests keeps where it was scrolled to; at its end, or never
+    // scrolled, it follows the tests as they come, like the output.
+    const keptTests = new Map();
+    for (const list of slot.querySelectorAll('.run-tests .test-files')) {
+      if (list.scrollHeight - list.scrollTop - list.clientHeight > 4) keptTests.set(list.parentElement.dataset.runTests, list.scrollTop);
+    }
     slot.innerHTML = runBodyHtml(t, state.openRuns, { ...drawerCtx, now: () => now });
     slot.dataset.mark = mark;
     for (const pre of slot.querySelectorAll('[data-run-output]')) {
       pre.scrollTop = kept.has(pre.dataset.runOutput) ? kept.get(pre.dataset.runOutput) : pre.scrollHeight;
     }
+    for (const list of slot.querySelectorAll('.run-tests .test-files')) {
+      const id = list.parentElement.dataset.runTests;
+      list.scrollTop = keptTests.has(id) ? keptTests.get(id) : list.scrollHeight;
+    }
     return;
   }
   for (const r of state.openRuns) fill(slot.querySelector(`[data-run-head="${CSS.escape(r.run)}"]`), runHead(r, now));
+  // A test still running counts its time on, as the run's own does.
+  for (const el of slot.querySelectorAll('[data-test-since]')) {
+    const text = testTime(Math.max(0, now - Number(el.dataset.testSince)));
+    if (el.textContent !== text) el.textContent = text;
+  }
 }
 setInterval(refreshAgents, 1000);
 

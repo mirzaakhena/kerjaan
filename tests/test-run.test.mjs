@@ -10,7 +10,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { spawnSync } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -355,3 +355,99 @@ test('a process the command leaves behind, holding its output open, does not kee
   assert.match(fs.readFileSync(path.join(seen, 'out'), 'utf8'), /started\n/);
   assert.deepEqual(progressFiles(root), []);
 });
+
+// ---------------------------------------------------------------------------
+// Each test reported one by one, for the viewer's list (261028121401)
+// ---------------------------------------------------------------------------
+// The command is told where to report (KERJAAN_TEST_REPORT, beside the copy
+// of its output) and where kerjaan's connector for `node --test` is
+// (KERJAAN_NODE_REPORTER). The report is removed with the copy, and nothing
+// the command writes there, or fails to, changes the run's exit status.
+
+const reporterPath = path.join(here, '..', 'skills', 'kerjaan', 'scripts', 'reporters', 'node.mjs');
+const envLine = (seen) => `printf '%s\\n%s\\n' "$KERJAAN_TEST_REPORT" "$KERJAAN_NODE_REPORTER" > ${seen}/env`;
+
+for (const who of ['worker', 'reviewer']) {
+  test(`a ${who}'s run is told where to report each test, beside its output's copy, and the report is gone once it ends`, () => {
+    const seen = scratch();
+    const cmd = `${envLine(seen)}; echo '{"file":"t.js","name":"x","state":"start"}' >> "$KERJAAN_TEST_REPORT"; ls "$(dirname "$KERJAAN_TEST_REPORT")" > ${seen}/ls; echo not-json >> "$KERJAAN_TEST_REPORT"; exit 4`;
+    const root = repo(who === 'worker' ? cmd : 'true', '(none yet)');
+    const r = who === 'worker' ? run(root, A) : run(root, '--review', A, '--', cmd);
+    assert.equal(r.code, 4, r.err);
+    const [report, connector] = fs.readFileSync(path.join(seen, 'env'), 'utf8').split('\n');
+    assert.match(report, new RegExp(`/\\.git/kerjaan-progress/${A}\\.\\d+\\.tests$`));
+    assert.equal(fs.realpathSync(connector), fs.realpathSync(reporterPath), 'the connector of this copy of kerjaan');
+    const names = fs.readFileSync(path.join(seen, 'ls'), 'utf8').trim().split('\n');
+    assert.deepEqual(names.map((n) => n.replace(/\.\d+\./, '.N.')), [`${A}.N.json`, `${A}.N.log`, `${A}.N.tests`]);
+    assert.equal(path.basename(report), names[2]);
+    assert.deepEqual(progressFiles(root), [], 'nothing is kept');
+  });
+}
+
+test('with no copy of the output, there is nowhere to report: an outer run\'s report is not passed on', () => {
+  const seen = scratch();
+  const root = repo(`${envLine(seen)}; exit 6`, '(none yet)');
+  fs.writeFileSync(progressDir(root), 'not a folder\n');
+  const outer = path.join(seen, 'outer.tests');
+  const r = spawnSync('bash', [testRun, A], { cwd: root, encoding: 'utf8', env: { ...gitEnv, KERJAAN_TEST_REPORT: outer } });
+  assert.equal(r.status, 6, r.stderr);
+  const [report, connector] = fs.readFileSync(path.join(seen, 'env'), 'utf8').split('\n');
+  assert.equal(report, '');
+  assert.ok(fs.existsSync(connector), 'the connector is still named');
+  assert.equal(fs.existsSync(outer), false);
+});
+
+test('a report left by a run that was killed is removed with its copy', () => {
+  const root = repo('true', '(none yet)');
+  fs.mkdirSync(progressDir(root));
+  const dead = spawnSync('true').pid;
+  for (const ext of ['json', 'log', 'tests']) fs.writeFileSync(path.join(progressDir(root), `${A}.${dead}.${ext}`), ext === 'json' ? JSON.stringify({ ticket: A, pid: dead }) : 'x\n');
+  assert.equal(run(root, A).code, 0);
+  assert.deepEqual(progressFiles(root), []);
+});
+
+test('a report left under this run\'s own name (a pid used again) is cleared before the command starts', async () => {
+  const seen = scratch();
+  const root = repo(`if [ -e "$KERJAAN_TEST_REPORT" ]; then cat "$KERJAAN_TEST_REPORT"; else echo none; fi > ${seen}/found`, '(none yet)');
+  fs.mkdirSync(progressDir(root));
+  const child = spawn('bash', [testRun, A], { cwd: root, env: gitEnv, stdio: 'ignore' });
+  fs.writeFileSync(path.join(progressDir(root), `${A}.${child.pid}.tests`), '{"file":"old.js","name":"from before","state":"fail"}\n');
+  const code = await new Promise((r) => child.on('exit', r));
+  assert.equal(code, 0);
+  assert.equal(fs.readFileSync(path.join(seen, 'found'), 'utf8'), 'none\n');
+});
+
+// The whole way, as a project following SETTINGS.md would: node --test with
+// the connector, under test-run.sh. Half-way through, the report holds the
+// tests done so far and the one running; the run fails as node --test says.
+for (const [what, last, want] of [['fails', `throw new Error('red')`, 1], ['passes', '', 0]]) {
+  test(`node --test, connected as SETTINGS.md says, reports each test while it runs; a run that ${what} keeps its status`, () => {
+    const seen = scratch();
+    const guide = fs.readFileSync(path.join(here, '..', 'skills', 'kerjaan', 'SETTINGS.md'), 'utf8')
+      .split('## Reporting each test to the board')[1].match(/```\n(node --test [^\n]+)\n```/)[1];
+    const root = repo(`${guide} --test-timeout=60000`, '(none yet)');
+    fs.writeFileSync(path.join(root, 'one.test.mjs'), `import test from 'node:test';
+import fs from 'node:fs';
+test('first', () => {});
+// The runner hears of a test a moment after it happens.
+test('looks at its own report', async () => {
+  const report = process.env.KERJAAN_TEST_REPORT;
+  for (let i = 0; i < 100 && !/looks at its own report","state":"start/.test(fs.existsSync(report) ? fs.readFileSync(report, 'utf8') : ''); i++) await new Promise((r) => setTimeout(r, 50));
+  fs.copyFileSync(report, ${JSON.stringify(path.join(seen, 'half'))});
+});
+test('last', () => { ${last} });
+`);
+    git(root, 'add', '-A');
+    git(root, 'commit', '-q', '-m', 'tests');
+    const env = { ...gitEnv };
+    delete env.NODE_TEST_CONTEXT;
+    const r = spawnSync('bash', [testRun, A], { cwd: root, encoding: 'utf8', env });
+    assert.equal(r.status, want, r.stdout + r.stderr);
+    assert.match(r.stdout, /ok 1 - first/, 'the run prints as node --test does');
+    const half = fs.readFileSync(path.join(seen, 'half'), 'utf8').trim().split('\n').map((l) => JSON.parse(l));
+    assert.deepEqual(half.filter((l) => l.name).map((l) => `${l.name} ${l.state}`), ['first start', 'first pass', 'looks at its own report start']);
+    assert.ok(half.every((l) => l.file === 'one.test.mjs'));
+    assert.deepEqual(progressFiles(root), []);
+    assert.ok(records(root)[0].includes(` exited ${want} after `), records(root)[0]);
+  });
+}

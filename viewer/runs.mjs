@@ -3,6 +3,15 @@
 //
 //   <git common dir>/kerjaan-progress/<id>.<pid>.json   { ticket, pid, who, startedAt, command }
 //   <git common dir>/kerjaan-progress/<id>.<pid>.log    what the run has printed so far
+//   <git common dir>/kerjaan-progress/<id>.<pid>.tests  each test's start and end, when
+//                                                     the project reports per test
+//
+// The .tests file holds one JSON object per line, in the format the kerjaan
+// skill's SETTINGS.md sets out, "Reporting each test to the board" (ticket
+// 261028121401), which a project's test
+// tool writes while it runs (skills/kerjaan/scripts/reporters/node.mjs for
+// `node --test`). No such file means the project does not report per test,
+// and the run is shown by its output alone.
 //
 // test-run.sh removes both when the run ends, so a run is shown only while
 // it goes; nothing is kept. A pair whose process is gone (a run killed before
@@ -107,9 +116,113 @@ function tail(file, size) {
   }
 }
 
+// How much of a .tests file is read, from its start, and how long a name may
+// be; past either, what is left out is left out.
+export const TESTS_BYTES = 8 * 1024 * 1024;
+const NAME_MAX = 500;
+
+const TEST_STATES = new Set(['start', 'pass', 'fail', 'skip', 'group']);
+const FILE_STATES = new Set(['start', 'end', 'fail']);
+
+// The per-test list from the lines of a .tests file:
+//   { files: [{ file, state, tests: [{ name, state, ms?, at? }] }], counts }
+// A file's state: 'running', 'ended', or 'failed' (on its own, apart from its
+// tests). A test's: 'running', 'pass', 'fail', 'skip', or 'unfinished' (its
+// file failed while it ran). A group is not listed, unless it failed on its
+// own. counts: { pass, fail, skip, running }, `fail` counting files that
+// failed on their own too. Lines that do not fit the format are skipped.
+export function readTestLines(text) {
+  const files = new Map();
+  const fileOf = (name) => {
+    if (!files.has(name)) files.set(name, { file: name, state: 'running', tests: [], open: [] });
+    return files.get(name);
+  };
+  for (const raw of text.split('\n')) {
+    if (!raw.trim()) continue;
+    let line;
+    try { line = JSON.parse(raw); } catch { continue; }
+    if (!line || typeof line.file !== 'string' || !line.file || typeof line.state !== 'string') continue;
+    const f = fileOf(line.file.slice(0, NAME_MAX));
+    const ms = Number.isFinite(line.ms) && line.ms >= 0 ? line.ms : undefined;
+    if (line.name === undefined || line.name === null || line.name === '') {
+      if (!FILE_STATES.has(line.state)) continue;
+      if (line.state === 'start') { if (f.state !== 'failed') f.state = 'running'; }
+      else if (line.state === 'end') { if (f.state !== 'failed') f.state = 'ended'; }
+      else f.state = 'failed';
+      continue;
+    }
+    if (typeof line.name !== 'string' || !TEST_STATES.has(line.state)) continue;
+    const name = line.name.slice(0, NAME_MAX);
+    // The earliest entry of that name still open: a test that ends, or a
+    // group, is that one.
+    const open = f.open.find((t) => t.name === name);
+    if (line.state === 'start') {
+      const t = { name, state: 'running' };
+      if (Number.isFinite(line.at)) t.at = line.at;
+      f.tests.push(t);
+      f.open.push(t);
+    } else if (line.state === 'group') {
+      if (open) open.group = true;
+      else {
+        const t = { name, state: 'running', group: true };
+        f.tests.push(t);
+        f.open.push(t);
+      }
+    } else {
+      let t = open;
+      if (t) f.open.splice(f.open.indexOf(t), 1);
+      else {
+        t = { name };
+        f.tests.push(t);
+      }
+      t.state = line.state;
+      if (ms !== undefined) t.ms = ms;
+      // A group that passed is only its tests; one that failed on its own is
+      // listed as a failure.
+      if (t.group && line.state === 'fail') delete t.group;
+    }
+  }
+  const counts = { pass: 0, fail: 0, skip: 0, running: 0 };
+  const out = [];
+  for (const f of files.values()) {
+    const tests = [];
+    for (const t of f.tests) {
+      if (t.group) continue;
+      if (t.state === 'running' && f.state === 'failed') t.state = 'unfinished';
+      if (t.state in counts) counts[t.state]++;
+      tests.push(t);
+    }
+    if (f.state === 'failed') counts.fail++;
+    out.push({ file: f.file, state: f.state, tests });
+  }
+  return { files: out, counts };
+}
+
+function readTests(file, size) {
+  let fd;
+  try {
+    fd = fs.openSync(file, 'r');
+    const buf = Buffer.alloc(Math.min(size, TESTS_BYTES));
+    let got = 0;
+    while (got < buf.length) {
+      const n = fs.readSync(fd, buf, got, buf.length - got, got);
+      if (n === 0) break;
+      got += n;
+    }
+    // A line still being written is no JSON yet, so it is skipped until done.
+    return readTestLines(buf.subarray(0, got).toString('utf8'));
+  } catch {
+    return null;
+  } finally {
+    if (fd !== undefined) try { fs.closeSync(fd); } catch {}
+  }
+}
+
 // Returns Map<ticketId, run[]> for the tickets named in `ids`, each run
-//   { run, who, command, startedAt, lastAt, size }
-// with `lines` and `cut` added when `withLines`. `lastAt` is when the run last
+//   { run, who, command, startedAt, lastAt, size, testsSize }
+// with `lines`, `cut` and `tests` added when `withLines`. `testsSize` is the
+// size of the run's .tests file, or -1 when there is none: the project does
+// not report per test. `tests` is the list readTestLines makes of it, or null. `lastAt` is when the run last
 // printed anything (its log's last change), `startedAt` when it began; both in
 // ms. Runs of one ticket are oldest first.
 export function readRuns(projectDir, { ids, withLines = false } = {}) {
@@ -135,8 +248,14 @@ export function readRuns(projectDir, { ids, withLines = false } = {}) {
         startedAt: Number.isFinite(meta.startedAt) ? meta.startedAt : st.birthtimeMs,
         lastAt: st.mtimeMs,
         size: st.size,
+        testsSize: -1,
       };
-      if (withLines) Object.assign(run, tail(log, st.size));
+      const testsFile = path.join(dir, `${m[1]}.${m[2]}.tests`);
+      try { run.testsSize = fs.statSync(testsFile).size; } catch {}
+      if (withLines) {
+        Object.assign(run, tail(log, st.size));
+        run.tests = run.testsSize >= 0 ? readTests(testsFile, run.testsSize) : null;
+      }
       if (!out.has(m[1])) out.set(m[1], []);
       out.get(m[1]).push(run);
     } catch {

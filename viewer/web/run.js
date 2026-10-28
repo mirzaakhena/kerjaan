@@ -3,7 +3,8 @@
 // drawer with each run's latest output.
 //
 // The server sends each run's start, when it last printed, whose run it is,
-// its command and, for the open ticket, its last lines (see viewer/runs.mjs).
+// its command and, for the open ticket, its last lines and its tests, one by
+// one, when the project reports them (see viewer/runs.mjs).
 // How long ago that was is judged here, against the page's own clock, so a run
 // that stops printing turns from "working" to "quiet" to "no output" while
 // nothing at all arrives.
@@ -73,12 +74,59 @@ export function runOutput(run) {
   return `<pre class="run-output" data-run-output="${esc(run.run)}">${cut}${text}</pre>`;
 }
 
-// One run: its head, its command, its output. Room is left after the output
-// for what a later part may add per run.
+// How long a test took: "8 ms", "1.4 s", then as `span` says it.
+export const testTime = (ms) => (ms < 1000 ? `${Math.round(ms)} ms` : ms < 10000 ? `${(ms / 1000).toFixed(1)} s` : span(ms));
+
+const TEST_WORD = { running: 'running', pass: 'passed', fail: 'failed', skip: 'skipped', unfinished: 'did not finish' };
+const FILE_WORD = { running: 'running', ended: 'done', failed: 'failed on its own' };
+
+// One test: its state as a mark, its name as its author wrote it, and how long
+// it took, or has run so far; the page counts the latter on every second
+// (data-test-since).
+function testItem(t, now) {
+  const time = t.state === 'running'
+    ? (Number.isFinite(t.at) ? `<span class="test-time" data-test-since="${t.at}">${testTime(Math.max(0, now - t.at))}</span>` : '')
+    : (Number.isFinite(t.ms) ? `<span class="test-time">${testTime(t.ms)}</span>` : '');
+  return `<li class="test ${t.state}" title="${esc(TEST_WORD[t.state] || t.state)}">` +
+    `<span class="mark" aria-label="${esc(TEST_WORD[t.state] || t.state)}"></span>` +
+    `<span class="test-name">${esc(t.name)}</span>${time}</li>`;
+}
+
+// The tally so far: green and red always, the others when there are any.
+export function testCounts(counts) {
+  const c = counts || {};
+  return `<p class="test-counts">` +
+    `<span class="pass">${c.pass || 0} passed</span>` +
+    `<span class="fail">${c.fail || 0} failed</span>` +
+    (c.running ? `<span class="running">${c.running} running</span>` : '') +
+    (c.skip ? `<span class="skip">${c.skip} skipped</span>` : '') +
+    `</p>`;
+}
+
+// The run's tests, one by one, under the file each is in; or, for a project
+// that does not report per test, a line saying so, its output shown below as
+// for any run.
+export function runTests(run, now) {
+  if (!run.tests) {
+    return `<p class="run-tests-none" data-run-tests="${esc(run.run)}" title="How a project reports per test: test_command in the kerjaan skill's SETTINGS.md">` +
+      `This project does not report per test yet; its live output is below.</p>`;
+  }
+  const { files, counts } = run.tests;
+  const list = files.length
+    ? files.map((f) => `<li class="test-file ${f.state}"><p class="file-head"><code>${esc(f.file)}</code>` +
+        (f.state === 'ended' ? '' : `<span class="file-state">${esc(FILE_WORD[f.state] || f.state)}</span>`) + `</p>` +
+        (f.tests.length ? `<ul>${f.tests.map((t) => testItem(t, now)).join('')}</ul>` : '') + `</li>`).join('')
+    : '<li class="muted">No test has started yet.</li>';
+  return `<div class="run-tests" data-run-tests="${esc(run.run)}">${testCounts(counts)}` +
+    `<ul class="test-files">${list}</ul></div>`;
+}
+
+// One run: its head, its command, its tests, its output.
 export function runPart(run, now) {
   return `<div class="run" data-run="${esc(run.run)}">` +
     `<p class="run-head" data-run-head="${esc(run.run)}">${runHead(run, now)}</p>` +
     (run.command ? `<p class="run-command"><code>${esc(run.command)}</code></p>` : '') +
+    runTests(run, now) +
     runOutput(run) +
     `</div>`;
 }
@@ -91,5 +139,6 @@ export function runSection(runs, now) {
 }
 
 // What, of the runs, changes the section's content rather than only its
-// times: which runs there are and how much each has printed.
-export const runsMark = (runs) => (runs || []).map((r) => `${r.run}|${r.size}`).join(',');
+// times: which runs there are, how much each has printed, and how far its
+// tests have got.
+export const runsMark = (runs) => (runs || []).map((r) => `${r.run}|${r.size}|${r.testsSize ?? -1}`).join(',');

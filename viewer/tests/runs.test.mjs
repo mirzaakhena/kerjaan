@@ -9,8 +9,8 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { ticket, makeBoard, tempRoot, startViewer, listenEvents } from './helpers.mjs';
 import { openBrowser, chromePath } from './browser.mjs';
-import { readRuns, terminalLines, LINES } from '../runs.mjs';
-import { runState, runButton, runSection, runHead, RUN_QUIET, RUN_STALLED } from '../web/run.js';
+import { readRuns, readTestLines, terminalLines, LINES } from '../runs.mjs';
+import { runState, runButton, runSection, runHead, runTests, runsMark, testTime, RUN_QUIET, RUN_STALLED } from '../web/run.js';
 
 const MIN = 60 * 1000;
 const ID = {
@@ -21,16 +21,32 @@ const ID = {
 // A pid that has certainly ended.
 const deadPid = () => spawnSync('true').pid;
 
-// Writes the pair of files test-run.sh writes for a run going on.
-function fakeRun(project, id, { pid = process.pid, who = 'worker', startedAt = Date.now() - 3 * MIN, command = 'node --test', output = '', lastAt } = {}) {
+// Writes the files test-run.sh writes for a run going on; with `tests`, the
+// report its test command writes too (one object per line).
+function fakeRun(project, id, { pid = process.pid, who = 'worker', startedAt = Date.now() - 3 * MIN, command = 'node --test', output = '', lastAt, tests } = {}) {
   const dir = path.join(project, '.git', 'kerjaan-progress');
   fs.mkdirSync(dir, { recursive: true });
   const log = path.join(dir, `${id}.${pid}.log`);
   fs.writeFileSync(log, output);
   fs.writeFileSync(path.join(dir, `${id}.${pid}.json`), JSON.stringify({ ticket: id, pid, who, startedAt, command }) + '\n');
   if (lastAt) fs.utimesSync(log, new Date(lastAt), new Date(lastAt));
-  return { log, json: path.join(dir, `${id}.${pid}.json`) };
+  const report = path.join(dir, `${id}.${pid}.tests`);
+  if (tests) fs.writeFileSync(report, tests.map((l) => JSON.stringify(l) + '\n').join(''));
+  return { log, json: path.join(dir, `${id}.${pid}.json`), tests: report };
 }
+
+const T0 = Date.now() - 2 * MIN;
+// What the worker's run has reported so far: two files, one test running.
+const WORKER_TESTS = [
+  { file: 'tests/cart.test.mjs', state: 'start', at: T0 },
+  { file: 'tests/cart.test.mjs', name: 'an empty cart costs nothing', state: 'start', at: T0 },
+  { file: 'tests/cart.test.mjs', name: 'an empty cart costs nothing', state: 'pass', ms: 12 },
+  { file: 'tests/cart.test.mjs', name: '<img src=x onerror=alert(1)> is shown as text', state: 'start', at: T0 },
+  { file: 'tests/cart.test.mjs', name: '<img src=x onerror=alert(1)> is shown as text', state: 'fail', ms: 1500 },
+  { file: 'tests/cart.test.mjs', state: 'end' },
+  { file: 'tests/pay.test.mjs', state: 'start', at: T0 },
+  { file: 'tests/pay.test.mjs', name: 'a card is charged once', state: 'start', at: Date.now() - 65000 },
+];
 
 function setup() {
   const root = tempRoot();
@@ -48,7 +64,7 @@ function setup() {
   const project = path.dirname(board);
   const lines = Array.from({ length: 30 }, (_, i) => `ok ${i + 1} - test number ${i + 1}`).join('\n') + '\n';
   const runs = {
-    worker: fakeRun(project, ID.worker, { output: `\x1b[32m${lines}\x1b[0m<script>alert(1)</script>\n` }),
+    worker: fakeRun(project, ID.worker, { output: `\x1b[32m${lines}\x1b[0m<script>alert(1)</script>\n`, tests: WORKER_TESTS }),
     reviewer: fakeRun(project, ID.reviewer, { who: 'reviewer', command: 'node --test viewer/tests/runs.test.mjs', output: 'sabotage run\n' }),
     todo: fakeRun(project, ID.todo, { output: 'x\n' }),
     done: fakeRun(project, ID.done, { output: 'x\n' }),
@@ -122,6 +138,84 @@ test('the last lines only, and a mark that earlier ones were left out', () => {
   assert.deepEqual([r.lines, r.cut], [['a', 'b'], false]);
 });
 
+// ---------- each test, as the project reports it (261028121401) ----------
+
+const L = (o) => JSON.stringify(o) + '\n';
+const shown = (list) => list.files.map((f) => [f.file, f.state, f.tests.map((t) => `${t.state} ${t.name}${t.ms !== undefined ? ` ${t.ms}` : ''}`)]);
+
+test('the report, line by line: each state of a test and of a file, as the format says', () => {
+  const f = 'a.test.js';
+  const list = readTestLines([
+    L({ file: f, state: 'start', at: 5 }),
+    // A test that starts and passes; one that fails; one skipped; one running.
+    L({ file: f, name: 'passes', state: 'start', at: 10 }), L({ file: f, name: 'passes', state: 'pass', ms: 3 }),
+    L({ file: f, name: 'fails', state: 'start' }), L({ file: f, name: 'fails', state: 'fail', ms: 4 }),
+    L({ file: f, name: 'skipped', state: 'start' }), L({ file: f, name: 'skipped', state: 'skip' }),
+    L({ file: f, name: 'running', state: 'start', at: 20 }),
+    // Reported only at its end.
+    L({ file: f, name: 'only an end', state: 'pass', ms: 1 }),
+    // Two of one name: each end goes to the earliest still open.
+    L({ file: f, name: 'twin', state: 'start' }), L({ file: f, name: 'twin', state: 'start' }),
+    L({ file: f, name: 'twin', state: 'pass' }), L({ file: f, name: 'twin', state: 'fail' }),
+    // A group that passed is only its tests; one that failed on its own is listed red.
+    L({ file: f, name: 'suite', state: 'start' }), L({ file: f, name: 'suite', state: 'group' }),
+    L({ file: f, name: 'suite > inner', state: 'start' }), L({ file: f, name: 'suite > inner', state: 'pass' }),
+    L({ file: f, name: 'suite', state: 'pass' }),
+    L({ file: f, name: 'broken', state: 'start' }), L({ file: f, name: 'broken', state: 'group' }),
+    L({ file: f, name: 'broken', state: 'fail', ms: 9 }),
+    L({ file: f, name: 'declared group', state: 'group' }),
+    L({ file: f, state: 'end' }),
+    // A second file that fails on its own while a test runs.
+    L({ file: 'b.test.js', state: 'start' }), L({ file: 'b.test.js', name: 'cut short', state: 'start' }),
+    L({ file: 'b.test.js', name: 'done before', state: 'pass' }),
+    L({ file: 'b.test.js', state: 'end' }), L({ file: 'b.test.js', state: 'fail' }), L({ file: 'b.test.js', state: 'start' }),
+    // Tests of a file never said to start; a file still going.
+    L({ file: 'c.test.js', name: 'no file line', state: 'pass' }),
+    L({ file: 'd.test.js', state: 'start' }),
+  ].join(''));
+  assert.deepEqual(shown(list), [
+    ['a.test.js', 'ended', ['pass passes 3', 'fail fails 4', 'skip skipped', 'running running', 'pass only an end 1', 'pass twin', 'fail twin', 'pass suite > inner', 'fail broken 9']],
+    ['b.test.js', 'failed', ['unfinished cut short', 'pass done before']],
+    ['c.test.js', 'running', ['pass no file line']],
+    ['d.test.js', 'running', []],
+  ]);
+  assert.equal(list.files[0].tests[0].at, 10);
+  assert.equal(list.files[0].tests[3].at, 20);
+  assert.deepEqual(list.counts, { pass: 6, fail: 4, skip: 1, running: 1 }, 'a file failed on its own is one red; a test cut short is no count');
+});
+
+test('lines that do not fit the format are skipped, and a name too long is cut', () => {
+  const list = readTestLines([
+    'not json', '[]', 'null', '42', L({ name: 'no file', state: 'pass' }), L({ file: '', name: 'empty file', state: 'pass' }),
+    L({ file: 'a.js', name: 'unknown state', state: 'won' }), L({ file: 'a.js', state: 'pass' }), L({ file: 'a.js', name: 7, state: 'pass' }),
+    L({ file: 'a.js', name: 'no state' }), L({ file: 'a.js', name: 'kept', state: 'pass', ms: -5 }), L({ file: 'a.js', name: 'x'.repeat(5000), state: 'fail', ms: 'slow' }),
+    '{"file":"a.js","name":"half a line","sta',
+  ].join('\n'));
+  assert.deepEqual(list.files.map((f) => [f.file, f.state, f.tests.map((t) => [t.name.length, t.state, t.ms])]), [['a.js', 'running', [[4, 'pass', undefined], [500, 'fail', undefined]]]]);
+  assert.deepEqual(list.counts, { pass: 1, fail: 1, skip: 0, running: 0 });
+  assert.deepEqual(readTestLines(''), { files: [], counts: { pass: 0, fail: 0, skip: 0, running: 0 } });
+});
+
+test('a run\'s report: its size on the board (-1 when the project does not report), its list with the output; a line still being written waits', () => {
+  const s = setup();
+  let got = readRuns(s.project, { ids: [ID.worker, ID.reviewer] });
+  assert.ok(got.get(ID.worker)[0].testsSize > 0);
+  assert.equal(got.get(ID.reviewer)[0].testsSize, -1);
+  assert.ok(!('tests' in got.get(ID.worker)[0]), 'no list on the board');
+  got = readRuns(s.project, { ids: [ID.worker, ID.reviewer], withLines: true });
+  assert.equal(got.get(ID.reviewer)[0].tests, null);
+  const w = got.get(ID.worker)[0].tests;
+  assert.deepEqual(w.files.map((f) => [f.file, f.state, f.tests.map((t) => t.state)]), [['tests/cart.test.mjs', 'ended', ['pass', 'fail']], ['tests/pay.test.mjs', 'running', ['running']]]);
+  assert.deepEqual(w.counts, { pass: 1, fail: 1, skip: 0, running: 1 });
+  fs.appendFileSync(s.runs.worker.tests, '{"file":"tests/pay.test.mjs","name":"a card is charged once","state":"pa');
+  assert.deepEqual(readRuns(s.project, { ids: [ID.worker], withLines: true }).get(ID.worker)[0].tests.counts, w.counts);
+  fs.appendFileSync(s.runs.worker.tests, 'ss","ms":70000}\n');
+  assert.deepEqual(readRuns(s.project, { ids: [ID.worker], withLines: true }).get(ID.worker)[0].tests.counts, { pass: 2, fail: 1, skip: 0, running: 0 });
+  // An empty report: the project reports, no test has started yet.
+  fs.writeFileSync(s.runs.reviewer.tests, '');
+  assert.deepEqual(readRuns(s.project, { ids: [ID.reviewer], withLines: true }).get(ID.reviewer)[0].tests.files, []);
+});
+
 // ---------- through the server ----------
 
 test('kanban: tickets in progress and in review carry their live runs, without output; todo, done, killed runs do not', async () => {
@@ -187,6 +281,41 @@ test('live: the page hears within seconds when a run prints, starts and ends, th
   } finally { await v.close(); }
 });
 
+test('api/progress and the ticket carry each run\'s tests, or null for a project that does not report; the board only their size', async () => {
+  const s = setup();
+  const v = await startViewer(s.root);
+  try {
+    const p = await (await v.get(`/alpha/api/progress/${ID.worker}`)).json();
+    assert.deepEqual(p.runs[0].tests.counts, { pass: 1, fail: 1, skip: 0, running: 1 });
+    assert.equal(p.runs[0].tests.files[1].tests[0].name, 'a card is charged once');
+    const [t] = await (await v.get(`/alpha/api/ticket/${ID.worker}`)).json();
+    assert.deepEqual(t.runs[0].tests, p.runs[0].tests);
+    assert.equal((await (await v.get(`/alpha/api/progress/${ID.reviewer}`)).json()).runs[0].tests, null);
+    const b = byId(await (await v.get('/alpha/api/board')).json());
+    assert.ok(b[ID.worker].runs[0].testsSize > 0);
+    assert.equal(b[ID.reviewer].runs[0].testsSize, -1);
+    assert.ok(!('tests' in b[ID.worker].runs[0]));
+  } finally { await v.close(); }
+});
+
+test('live: the page hears when a test is reported, though the run printed nothing new', async () => {
+  const s = setup();
+  const v = await startViewer(s.root);
+  try {
+    const before = fs.statSync(s.runs.worker.tests).size;
+    const sizeOf = (text) => text.split('event: progress\ndata: ').slice(1).map((b) => JSON.parse(b.split('\n')[0])).at(-1)?.[ID.worker]?.[0]?.testsSize;
+    let waiting = listenEvents(`${v.base}/alpha/events`, (x) => sizeOf(x) > before, 6000);
+    await new Promise((r) => setTimeout(r, 300));
+    fs.appendFileSync(s.runs.worker.tests, JSON.stringify({ file: 'tests/pay.test.mjs', name: 'a card is charged once', state: 'pass', ms: 3 }) + '\n');
+    assert.ok((await waiting).ok);
+    // A run whose project starts reporting partway.
+    waiting = listenEvents(`${v.base}/alpha/events`, (x) => x.split('event: progress\ndata: ').slice(1).map((b) => JSON.parse(b.split('\n')[0])).at(-1)?.[ID.reviewer]?.[0]?.testsSize === 0, 6000);
+    await new Promise((r) => setTimeout(r, 300));
+    fs.writeFileSync(s.runs.reviewer.tests, '');
+    assert.ok((await waiting).ok);
+  } finally { await v.close(); }
+});
+
 // ---------- as the page draws it ----------
 
 test('a run\'s state, by how long since it last printed: each tone and the times it shows', () => {
@@ -222,6 +351,50 @@ test('the Progress section: each run, whose it is, its command, its output escap
   assert.match(html, /earlier output not shown/);
   assert.match(html, /No output yet/);
   assert.equal(runSection([], now), '');
+});
+
+test('the tests, as the page draws them: grouped by file, each with its mark, name as written and time; the tally of green and red', () => {
+  const now = Date.now();
+  const run = readRuns(setup().project, { ids: [ID.worker], withLines: true }).get(ID.worker)[0];
+  const html = runTests(run, now);
+  assert.match(html, /<span class="pass">1 passed<\/span><span class="fail">1 failed<\/span><span class="running">1 running<\/span>/);
+  assert.doesNotMatch(html, /skipped/, 'no skipped count when none was');
+  const files = [...html.matchAll(/<li class="test-file (\w+)"><p class="file-head"><code>([^<]+)<\/code>/g)].map((m) => [m[1], m[2]]);
+  assert.deepEqual(files, [['ended', 'tests/cart.test.mjs'], ['running', 'tests/pay.test.mjs']]);
+  const tests = [...html.matchAll(/<li class="test (\w+)"[^>]*>.*?<span class="test-name">(.*?)<\/span>(?:<span class="test-time"( data-test-since="\d+")?>([^<]+)<\/span>)?<\/li>/g)].map((m) => [m[1], m[2], m[4], !!m[3]]);
+  assert.deepEqual(tests, [
+    ['pass', 'an empty cart costs nothing', '12 ms', false],
+    ['fail', '&lt;img src=x onerror=alert(1)&gt; is shown as text', '1.5 s', false],
+    ['running', 'a card is charged once', '1 min', true],
+  ]);
+  assert.doesNotMatch(html, /<img/);
+  // Each state has its own look; a file that failed on its own says so.
+  const all = runTests({ run: 'r', tests: readTestLines([
+    L({ file: 'f.js', name: 'a', state: 'skip' }), L({ file: 'f.js', name: 'b', state: 'start' }), L({ file: 'f.js', state: 'fail' }),
+    L({ file: '<b>bold</b>.js', name: 'c', state: 'pass' }),
+  ].join('')) }, now);
+  assert.match(all, /<code>&lt;b&gt;bold&lt;\/b&gt;\.js<\/code>/);
+  assert.doesNotMatch(all, /<b>/);
+  assert.match(all, /class="test skip" title="skipped"/);
+  assert.match(all, /class="test unfinished" title="did not finish"/);
+  assert.match(all, /<li class="test-file failed">.*<span class="file-state">failed on its own<\/span>/);
+  assert.match(all, /<span class="pass">1 passed<\/span><span class="fail">1 failed<\/span><span class="skip">1 skipped<\/span>/);
+  assert.match(runTests({ run: 'r', tests: readTestLines('') }, now), /No test has started yet/);
+  assert.deepEqual([testTime(0), testTime(999), testTime(1000), testTime(9949), testTime(12000), testTime(61000)], ['0 ms', '999 ms', '1.0 s', '9.9 s', '12 s', '1 min']);
+});
+
+test('a project that does not report per test: the Progress says so, and shows its output as before', () => {
+  const now = Date.now();
+  const html = runSection([{ run: 'a', who: 'reviewer', command: 'make check', startedAt: now - MIN, lastAt: now, size: 3, testsSize: -1, lines: ['all fine'], cut: false, tests: null }], now);
+  assert.match(html, /This project does not report per test yet/);
+  assert.match(html, /<pre class="run-output"[^>]*>all fine<\/pre>/);
+  assert.doesNotMatch(html, /class="run-tests"/);
+});
+
+test('the Progress is drawn again when a test is reported, though the output did not grow', () => {
+  const run = { run: 'a', size: 10, testsSize: 40 };
+  assert.notEqual(runsMark([run]), runsMark([{ ...run, testsSize: 80 }]));
+  assert.notEqual(runsMark([{ ...run, testsSize: -1 }]), runsMark([{ ...run, testsSize: 0 }]), 'a report that appears');
 });
 
 // ---------- in a real browser ----------
@@ -361,4 +534,63 @@ browserTest('the reviewer\'s runs: both shown in its Progress, each with its com
   await page.until(`() => document.querySelector('#drawer-body .runs .run-output')?.textContent === 'sabotage run'`);
   assert.equal(await page.eval(`() => document.getElementById('drawer-body').scrollTop`), 0);
   assert.equal(await page.eval(`() => document.activeElement?.matches('#drawer-head [data-close]')`), true, 'the focus goes where opening a ticket puts it');
+});
+
+for (const [name, w, h] of [['window 1280×800', 1280, 800], ['phone 390×844', 390, 844]]) {
+  browserTest(`${name}: the Progress lists the run's tests one by one, which grow and count on by themselves`, async (s, v, page) => {
+    await page.size(w, h);
+    await page.goto(`${v.base}/alpha/ticket/${ID.worker}`);
+    await page.until(`() => !!document.querySelector('#drawer-body .run-tests')`);
+    await page.eval(`() => { window.__kept = 1; }`);
+    const read = () => {
+      const box = document.querySelector('#drawer-body .run-tests');
+      return {
+        counts: box.querySelector('.test-counts').textContent,
+        files: [...box.querySelectorAll('.test-file')].map((f) => [f.querySelector('code').textContent, [...f.querySelectorAll('.test')].map((t) => [t.className.replace('test ', ''), t.querySelector('.test-name').textContent, t.querySelector('.test-time')?.textContent || ''])]),
+        colours: [...box.querySelectorAll('.test .mark')].map((m) => getComputedStyle(m).backgroundColor),
+        output: document.querySelector('#drawer-body .run-output').textContent.length > 0,
+        images: document.querySelectorAll('#drawer img').length,
+        wide: document.documentElement.scrollWidth > innerWidth,
+      };
+    };
+    let got = await page.eval(read);
+    assert.equal(got.counts.replace(/\s+/g, ' '), '1 passed1 failed1 running');
+    assert.deepEqual(got.files.map((f) => [f[0], f[1].map((t) => t.slice(0, 2))]), [
+      ['tests/cart.test.mjs', [['pass', 'an empty cart costs nothing'], ['fail', '<img src=x onerror=alert(1)> is shown as text']]],
+      ['tests/pay.test.mjs', [['running', 'a card is charged once']]],
+    ]);
+    assert.deepEqual(got.files[0][1].map((t) => t[2]), ['12 ms', '1.5 s']);
+    assert.match(got.files[1][1][0][2], /^1 min$/);
+    const css = (v) => page.eval(`() => { const el = document.createElement('i'); el.style.color = 'var(${v})'; document.body.append(el); const c = getComputedStyle(el).color; el.remove(); return c; }`);
+    assert.deepEqual(got.colours.slice(0, 2), [await css('--agent-working'), await css('--agent-stopped')], 'green, then red');
+    assert.equal(got.output, true, 'the output is still there below');
+    assert.equal(got.images, 0, 'a name is text, never markup');
+    assert.equal(got.wide, false);
+
+    // A test that has run under a minute counts on, every second, with no event.
+    fs.appendFileSync(s.runs.worker.tests, JSON.stringify({ file: 'tests/pay.test.mjs', name: 'a card is charged once', state: 'pass', ms: 65000 }) + '\n' +
+      JSON.stringify({ file: 'tests/pay.test.mjs', name: 'a refund', state: 'start', at: Date.now() - 3000 }) + '\n');
+    await page.until(`() => [...document.querySelectorAll('#drawer-body .test.running .test-name')].map((t) => t.textContent).join() === 'a refund'`, 8000);
+    got = await page.eval(read);
+    assert.equal(got.counts.replace(/\s+/g, ' '), '2 passed1 failed1 running');
+    assert.deepEqual(got.files[1][1].map((t) => t.slice(0, 2)), [['pass', 'a card is charged once'], ['running', 'a refund']]);
+    const first = got.files[1][1][1][2];
+    assert.match(first, /^\d\.\d s$/);
+    await page.until(`() => document.querySelector('#drawer-body .test.running .test-time').textContent !== ${JSON.stringify(first)}`, 4000);
+    fs.appendFileSync(s.runs.worker.tests, JSON.stringify({ file: 'tests/pay.test.mjs', name: 'a refund', state: 'fail', ms: 4100 }) + '\n');
+    await page.until(`() => document.querySelector('#drawer-body .test-counts').textContent.includes('2 failed')`, 8000);
+    assert.equal(await page.eval('() => window.__kept'), 1, 'the page was not reloaded');
+  });
+}
+
+browserTest('a project that does not report per test: its Progress says so, and its live output goes on', async (s, v, page) => {
+  await page.size(1280, 800);
+  await page.goto(`${v.base}/alpha/ticket/${ID.reviewer}`);
+  await page.until(`() => !!document.querySelector('#drawer-body .run-tests-none')`);
+  assert.match(await page.eval(`() => document.querySelector('#drawer-body .run-tests-none').textContent`), /^This project does not report per test yet/);
+  fs.appendFileSync(s.runs.reviewer.log, 'still going\n');
+  await page.until(`() => document.querySelector('#drawer-body .run-output').textContent.endsWith('still going')`, 8000);
+  // It starts reporting: the list takes the line's place.
+  fs.writeFileSync(s.runs.reviewer.tests, JSON.stringify({ file: 'x.test.js', name: 'now reported', state: 'pass', ms: 2 }) + '\n');
+  await page.until(`() => document.querySelector('#drawer-body .run-tests .test-name')?.textContent === 'now reported' && !document.querySelector('#drawer-body .run-tests-none')`, 8000);
 });

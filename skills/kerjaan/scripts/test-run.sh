@@ -55,12 +55,24 @@
 # stand in for the command's. Making the copy is best-effort: when it cannot
 # be made, the run goes exactly as it would without it.
 #
+# The run's tests may also report one by one, for the viewer's list of them:
+# the test command's reporter writes each test's start and end to the file
+# KERJAAN_TEST_REPORT names, <id>.<pid>.tests beside the other two, removed
+# with them. The format, and how a project connects its test tool, are in
+# SETTINGS.md, "Reporting each test to the board"; reporters/node.mjs
+# connects `node --test`. Nothing here reads that file, so what a reporter writes, or
+# fails to, never changes the run's exit status or its fingerprint.
+#
 # The test command sees, in its environment:
 #   KERJAAN_TICKET     the ticket ID given to this script
 #   KERJAAN_SLOT       0 in the main tree; 1, 2, ... in linked worktrees, never
 #                      the same for two worktrees that exist at once
 #   KERJAAN_WORKTREE   the top of the tree being tested
 #   KERJAAN_MAIN_TREE  the top of the main tree, where the board lives
+#   KERJAAN_TEST_REPORT  the file the tests report to one by one, or empty
+#                      when the run's progress cannot be shown
+#   KERJAAN_NODE_REPORTER  the path of reporters/node.mjs, the connector
+#                      for `node --test`, in this copy of kerjaan
 
 set -euo pipefail
 
@@ -140,7 +152,7 @@ test_command="$(kerjaan_setting "$board/settings.md" test_command)"
 tmpdir="$(mktemp -d)"
 progress=""
 progress_end() {
-  [ -z "$progress" ] || rm -f "$progress.json" "$progress.log" "$progress.tmp" 2> /dev/null || true
+  [ -z "$progress" ] || rm -f "$progress.json" "$progress.log" "$progress.tests" "$progress.tmp" 2> /dev/null || true
   progress=""
 }
 trap 'progress_end; rm -rf "$tmpdir"' EXIT
@@ -255,6 +267,7 @@ case "$(kerjaan_setting "$board/settings.md" parallel_tests)" in
 esac
 
 export KERJAAN_TICKET="$id" KERJAAN_SLOT="$slot" KERJAAN_WORKTREE="$top" KERJAAN_MAIN_TREE="$main_tree"
+export KERJAAN_NODE_REPORTER="$here/reporters/node.mjs" KERJAAN_TEST_REPORT=""
 
 # The copy of the output, for the viewer (see the top of this file).
 progress_start() {  # <who: worker | reviewer>
@@ -268,9 +281,10 @@ progress_start() {  # <who: worker | reviewer>
     pid="${f%.json}"
     pid="${pid##*.}"
     case "$pid" in '' | *[!0-9]*) continue ;; esac
-    kill -0 "$pid" 2> /dev/null || rm -f "$f" "${f%.json}.log"
+    kill -0 "$pid" 2> /dev/null || rm -f "$f" "${f%.json}.log" "${f%.json}.tests"
   done
   progress="$dir/$id.$$"
+  rm -f "$progress.tests" 2> /dev/null || true
   if ! { : > "$progress.log"; } 2> /dev/null \
       || ! printf '{"ticket":"%s","pid":%s,"who":"%s","startedAt":%s000,"command":"%s"}\n' \
         "$id" "$$" "$1" "$(date +%s)" "$(json_text "$test_command")" > "$progress.tmp" 2> /dev/null \
@@ -278,6 +292,9 @@ progress_start() {  # <who: worker | reviewer>
     rm -f "$progress.tmp" "$progress.log" 2> /dev/null || true
     progress=""
   fi
+  # Where the tests report one by one; empty when there is no copy, so a value
+  # inherited from an outer run is never written to.
+  export KERJAAN_TEST_REPORT="${progress:+$progress.tests}"
   return 0
 }
 # A string as JSON may hold it between quotes: control characters become

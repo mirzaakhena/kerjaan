@@ -1,6 +1,6 @@
 ---
 language: Bahasa Indonesia
-test_command: node --test --test-timeout=900000 --import=./tests/complete-runs.mjs
+test_command: node --test --test-timeout=900000 --import=./tests/complete-runs.mjs --test-reporter=tap --test-reporter-destination=stdout --test-reporter=./skills/kerjaan/scripts/reporters/node.mjs --test-reporter-destination=/dev/null
 long_lived_branches: []
 ---
 

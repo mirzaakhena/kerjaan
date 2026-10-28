@@ -339,6 +339,39 @@ body.board-page .bar .live { flex: none; }
   white-space: pre-wrap; overflow-wrap: anywhere;
 }
 .drawer .run-output .cut, .drawer .run-output .muted { color: var(--muted); font-style: italic; }
+/* A run's tests, one by one under their file, when the project reports them:
+   a green mark for passed, red for failed, a pulsing ring while one runs; the
+   tally of green and red above. A project that does not report says so in one
+   muted line, and its output follows as for any run. */
+.drawer .run-tests-none { margin: 0 0 6px; color: var(--muted); font-style: italic; }
+.drawer .run-tests { margin: 0 0 8px; }
+.drawer .test-counts { display: flex; flex-wrap: wrap; gap: 0 10px; margin: 0 0 4px; font-variant-numeric: tabular-nums; }
+.drawer .test-counts .pass { color: var(--agent-working); font-weight: 600; }
+.drawer .test-counts .fail { color: var(--agent-stopped); font-weight: 600; }
+.drawer .test-counts .running, .drawer .test-counts .skip { color: var(--muted); }
+.drawer .test-files {
+  list-style: none; margin: 0; padding: 4px 8px; max-height: min(50vh, 420px); overflow: auto;
+  border: 1px solid var(--line); border-radius: 6px;
+}
+.drawer .test-file + .test-file { margin-top: 4px; }
+.drawer .file-head { display: flex; flex-wrap: wrap; gap: 0 8px; margin: 0; overflow-wrap: anywhere; }
+.drawer .file-head code { font: 11.5px/1.5 var(--mono); color: var(--muted); min-width: 0; }
+.drawer .file-state { color: var(--muted); }
+.drawer .test-file.failed .file-state { color: var(--agent-stopped); font-weight: 600; }
+.drawer .test-file ul { list-style: none; margin: 0; padding: 0 0 0 4px; }
+.drawer .test { display: flex; align-items: baseline; gap: 0 6px; min-width: 0; }
+.drawer .test .mark {
+  flex: none; width: 8px; height: 8px; border-radius: 50%; align-self: center;
+  background: var(--faint); border: 1px solid transparent;
+}
+.drawer .test.pass .mark { background: var(--agent-working); }
+.drawer .test.fail .mark { background: var(--agent-stopped); }
+.drawer .test.running .mark { background: transparent; border-color: var(--agent-working); animation: pulse 1.6s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .drawer .test.running .mark { animation: none; } }
+.drawer .test.fail .test-name { color: var(--agent-stopped); }
+.drawer .test.skip .test-name, .drawer .test.unfinished .test-name { color: var(--muted); }
+.drawer .test-name { flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; }
+.drawer .test-time { flex: none; color: var(--muted); font-variant-numeric: tabular-nums; }
 
 /* ---------- ticket drawer ---------- */
 .drawer {

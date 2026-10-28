@@ -15,7 +15,8 @@
 // doing, read from the logs under $CLAUDE_CONFIG_DIR (default ~/.claude)/projects;
 // see agents.mjs. Without those logs the board looks as it always did.
 // A test run going on through test-run.sh shows its output so far, read from
-// the copy it keeps under .git/kerjaan-progress/ while it runs; see runs.mjs.
+// the copy it keeps under .git/kerjaan-progress/ while it runs, and its tests
+// one by one when the project reports them there; see runs.mjs.
 //
 // Read-only: it never writes to any board. No dependencies beyond Node 18+.
 

@@ -448,6 +448,18 @@ with `--lan`, on the network). `test-run.sh` copies the output to
 passed or failed: nothing is kept, and the ticket's Notes still hold the
 run's one line.
 
+When the project's tests report one by one, the Progress section lists them
+above the output, grouped by test file: each test by the name its author gave
+it, a pulsing ring while it runs, green once passed, red once failed, how long
+it took, and the count of green and red so far, all growing as the run goes.
+kerjaan brings the connector for `node --test`, which `test_command` adds
+through `KERJAAN_NODE_REPORTER`; any other test tool reports by writing one
+line per test to the file in `KERJAAN_TEST_REPORT`. Both, and the format, are
+in `skills/kerjaan/SETTINGS.md`, "Reporting each test to the board". A project
+that does not report shows its output as before, under the line "This project
+does not report per test yet"; nothing fails because of it. This repository's
+own suite reports.
+
 A card in `done` whose code is not on the main line yet says so: "not
 merged", with the name of every branch that carries its ID and holds
 commits outside `HEAD` — the same rule `update-ticket.sh` applies when it

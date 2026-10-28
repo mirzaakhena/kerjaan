@@ -31,7 +31,9 @@ Settings for this board, read by the kerjaan skill, its reviewer, and
   delivered, and the run then passes with tests missing: let the run end by
   itself, stop a hung test with a time limit, and end a process that stays
   open only after its output is out. The kerjaan repository does this for
-  `node --test` in `tests/complete-runs.mjs`.
+  `node --test` in `tests/complete-runs.mjs`. While the command runs, the
+  board shows its live output; it shows each test as well once the command
+  reports them, as "Reporting each test to the board" below sets out.
 - `long_lived_branches` — branches that hold work outside `HEAD` on purpose,
   so starting a ticket is not refused because of them. Glob patterns work:
   `[develop, release/*]`. List the main branch too if work usually happens on
@@ -119,3 +121,63 @@ ID), `KERJAAN_SLOT` (0 in the main tree; 1, 2, ... in linked worktrees, never
 the same for two worktrees at once), `KERJAAN_WORKTREE` and
 `KERJAAN_MAIN_TREE`. Who owns which test data is set out in
 `references/parallel-work.md` in the kerjaan skill.
+
+## Reporting each test to the board
+
+While `test-run.sh` runs `test_command`, the board's viewer shows the run in
+the ticket's Progress section: its live output, and, for a project whose
+tests report to it, each test one by one, grouped by test file, with its name
+as its author wrote it, whether it runs, passed (green) or failed (red), how
+long it took, and the count of green and red so far. A project whose tests do
+not report gets the live output alone and the line "This project does not
+report per test yet"; nothing fails because of it. Nothing is kept after the
+run.
+
+**`node --test`.** kerjaan brings the connector, and `test-run.sh` gives its
+path in `KERJAAN_NODE_REPORTER`, so `test_command` never names the plugin's
+folder, which changes with each version. Add it beside the reporter that
+prints the run, which must then be named too, since naming one reporter
+replaces node's own choice (`tap` when the output is not a terminal, as under
+`test-run.sh`):
+
+```
+node --test ${KERJAAN_NODE_REPORTER:+--test-reporter=tap --test-reporter-destination=stdout --test-reporter="$KERJAAN_NODE_REPORTER" --test-reporter-destination=/dev/null}
+```
+
+Run by hand, outside `test-run.sh`, the variable is empty and the command is
+plain `node --test`. Every test, new ones included, then reports by itself.
+Tests inside a `describe` or a test with subtests are named after it:
+`outer > inner`. The runner reports a file's tests in the order the files were
+given, so the tests of a file that runs beside an earlier one appear once that
+one is done; the file itself shows as running from its start.
+
+**Any other test tool** reports by writing lines to the file named in
+`KERJAAN_TEST_REPORT`, from a reporter, plugin or hook of that tool, with no
+change to kerjaan. The variable is empty when there is nowhere to report:
+write nothing then. Append, one JSON object per line, each line written
+whole:
+
+```
+{"file":"tests/cart.test.js","state":"start","at":1761627600000}
+{"file":"tests/cart.test.js","name":"an empty cart costs nothing","state":"start","at":1761627600010}
+{"file":"tests/cart.test.js","name":"an empty cart costs nothing","state":"pass","ms":12}
+{"file":"tests/cart.test.js","state":"end"}
+```
+
+- `file` — the test file, as the project names it. Required on every line.
+- `name` — the test's name as its author wrote it. A line without one is
+  about the file as a whole: `start` when it begins, `end` when it is done,
+  `fail` when it failed apart from its tests (it could not load, it stopped
+  before its tests had finished), which counts as one red, and marks its tests
+  still running as not finished.
+- `state` for a test — `start`; then `pass`, `fail` or `skip`. An end goes to
+  the earliest test of that file and name that has started and not ended; with
+  none, it is a test reported only at its end. `group` says that the test
+  started under that name holds others: it is not listed, and a later `fail`
+  for it is listed and counted only when it failed apart from the tests in it.
+- `at` — on `start`, when it started, in milliseconds since 1970: the board
+  counts its time on from there. `ms` — on an end, how long it took.
+
+Lines that do not fit are skipped. Whatever a reporter writes, or fails to
+write, the run's exit status stays the test command's own, so a reporter
+should drop what it cannot write rather than fail the run.
