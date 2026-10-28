@@ -6,7 +6,7 @@ labels: [viewer, agen]
 reporter: mirza
 assign_to: claude
 created: 2026-10-28 12:06:46
-updated: 2026-10-28 12:07:07
+updated: 2026-10-28 12:16:51
 related: [261028112701, 261016084202]
 blocked_by: []
 ---
@@ -47,3 +47,5 @@ keadaan itu, tanpa isi pikirannya ditampilkan.
 - Diminta Mirza 28 Okt 2026 dari sesi nukitu-mockup, dipisah dari 261028112701 karena tiket itu sudah berisi 8 butir Done when.
 - Dugaan cara membedakannya (belum diukur): di catatan langkah agen, alat yang sudah dipanggil tapi belum ada hasilnya berarti sedang berjalan; sesudah hasilnya tercatat dan belum ada langkah baru, agen sedang menghasilkan jawaban. Waktu antrean di sisi server Anthropic tidak bisa dibedakan dari berpikir lewat catatan ini, jadi keduanya tampil sebagai "berpikir atau menulis".
 - Skrip ukur yang dipakai untuk angka di Background ada di scratchpad sesi nukitu-mockup itu (`waktu-pengerja/ukur.mjs`), tidak dirawat; kategorinya ditebak dari kata di keterangan perintah.
+- 2026-10-28 12:15:48: files estimated to change: `viewer/agents.mjs`, `viewer/tests/agent-board.test.mjs`, `viewer/tests/agents.test.mjs`, `viewer/web/agent.js`, `viewer/web/style.css`
+- 2026-10-28 12:16:51: open question: Butir 'Pemilik melihat kedua keadaan itu bergantian pada kartu sebuah tiket yang sedang dikerjakan' hanya bisa dicek orang. Saran: ditunda (skenario tangan, rantai berjalan terus); pemilik akan melihatnya sendiri saat tiket berikutnya dikerjakan. Pilihan lain: rantai berhenti sampai pemilik mengeceknya.
