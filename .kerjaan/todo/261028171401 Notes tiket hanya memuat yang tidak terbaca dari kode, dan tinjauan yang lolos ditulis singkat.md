@@ -6,7 +6,7 @@ labels: [agen, sesi-a185f853]
 reporter: mirza
 assign_to: claude
 created: 2026-10-28 17:14:00
-updated: 2026-10-28 17:14:50
+updated: 2026-10-28 17:17:09
 related: []
 blocked_by: []
 ---
@@ -46,9 +46,11 @@ selesai jauh lebih pendek tanpa kehilangan keputusan dan alasannya.
 
 ## History
 - 2026-10-28 17:14:00 a185f853-6a65-4f44-919d-97ba97774e43 backlog
+- 2026-10-28 17:17:09 a185f853-6a65-4f44-919d-97ba97774e43 todo
 
 ## Notes
 - Diminta mirza, 2026-10-28, sesi a185f853-6a65-4f44-919d-97ba97774e43, setelah bertanya apakah isi tiket (terutama catatan) bermanfaat bagi agen atau hanya memboroskan token. Pemilik memilih membuat tiket ini ke backlog; tiket lama dibiarkan.
 - Ukuran yang mendasari: Notes 76% (kerjaan) dan 66% (nukitu-mockup) dari seluruh kata tiket. Satu pengerja di sesi ini memakai 100rb–190rb token dan satu peninjau 30rb–75rb token, sedangkan membaca satu tiket sedang sekitar 2rb–4rb token. Jadi penghematan membaca kecil (perkiraan 3–5% per tiket); manfaat utamanya lebih sedikit yang ditulis agen dan tiket yang lebih mudah dibaca pemilik.
 - Yang tetap dipertahankan: jawaban dan keputusan pemilik, keputusan pengerja beserta alasannya, baris mekanis yang ditulis skrip, dan temuan peninjau saat menolak (bahan pengerja di ronde berikutnya).
 - Batas kata hampir penuh: skill 17.925 dari 18.000 kata, panduan peninjau 2.994 dari 3.000 kata (per 2026-10-28; 261028121401 mungkin mengubahnya).
+- 2026-10-28 17:17:01: files estimated to change: `agents/kerjaan-reviewer.md`, `agents/kerjaan-worker.md`, `tests/bash-description.test.mjs`
