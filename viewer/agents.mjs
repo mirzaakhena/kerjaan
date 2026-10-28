@@ -239,7 +239,12 @@ function isInterrupt(message) {
   return Array.isArray(c) && c.some((b) => b && b.type === 'text' && typeof b.text === 'string' && b.text.startsWith(INTERRUPTED));
 }
 
-// Folds one log line into the running state: { steps, lastAt, ended, firstAt }.
+// Folds one log line into the running state: { steps, lastAt, ended, firstAt,
+// open, thinkingSince }. `open` holds the calls made and not yet answered, by
+// their ID and the ID of the message that made them; of a result only that ID
+// is read, never what it holds. `thinkingSince` is when the agent last had
+// nothing running: since then it has been thinking or writing.
+const OPEN_MAX = 64;
 function fold(state, line, projectDir) {
   let o;
   try { o = JSON.parse(line); } catch { return; }
@@ -253,9 +258,26 @@ function fold(state, line, projectDir) {
     state.ended = 'interrupted';
     return;
   }
+  if (o.type === 'user') {
+    const c = o.message?.content;
+    const answered = Array.isArray(c) ? c.filter((b) => b && b.type === 'tool_result' && typeof b.tool_use_id === 'string').map((b) => b.tool_use_id) : [];
+    if (answered.length) {
+      state.open = state.open.filter((x) => !answered.includes(x.id));
+      if (!state.open.length && at !== null) state.thinkingSince = at;
+    } else if (state.thinkingSince === null && !state.open.length && at !== null) {
+      // The prompt that starts the agent: it thinks from here.
+      state.thinkingSince = at;
+    }
+    return;
+  }
   if (o.type !== 'assistant') return;
   const content = o.message?.content;
   if (!Array.isArray(content)) return;
+  // A new message means every call of an earlier one was answered, also when
+  // the answer is missing from the log. Without a message ID, each line is
+  // taken for a new message, so at worst a call made alongside is missed.
+  const msg = typeof o.message?.id === 'string' ? o.message.id : null;
+  state.open = msg ? state.open.filter((x) => x.msg === msg) : [];
   // A step means the agent is at work again (a resumed agent included); its
   // report handed back, or a closing message, means it is done. Thinking and
   // text in between change neither.
@@ -264,6 +286,7 @@ function fold(state, line, projectDir) {
     if (!b || b.type !== 'tool_use') continue;
     const { tool, label } = stepLabel(b.name, b.input, projectDir);
     state.steps.push({ at, tool, label });
+    if (typeof b.id === 'string') state.open = [...state.open, { id: b.id, msg }].slice(-OPEN_MAX);
     state.ended = tool === 'SubagentHandback' ? 'finished' : null;
     stepped = true;
   }
@@ -326,7 +349,7 @@ function readLog(file, projectDir) {
     let state;
     if (hit && st.size > hit.next && hit.next > 0 && st.size >= hit.size) {
       // Grown since the last look: read only the new part.
-      state = { ...hit, steps: [...hit.steps] };
+      state = { ...hit, steps: [...hit.steps], open: [...hit.open] };
       const { list, next } = lines(readRange(fd, hit.next, st.size), hit.next, false);
       for (const l of list) fold(state, l, projectDir);
       state.next = next;
@@ -337,7 +360,7 @@ function readLog(file, projectDir) {
       let win = TAIL_START;
       for (;;) {
         const from = Math.max(0, st.size - win);
-        state = { steps: [], lastAt: null, firstAt: null, ended: null, ...head };
+        state = { steps: [], lastAt: null, firstAt: null, ended: null, open: [], thinkingSince: null, ...head };
         const { list, next } = lines(readRange(fd, from, st.size), from, from > 0);
         for (const l of list) fold(state, l, projectDir);
         state.next = next;
@@ -368,7 +391,8 @@ const kindOf = (agentType) => {
 
 // Returns Map<ticketId, agent> holding, for each ticket named in `ids`, the
 // agent most recently active on it. `agent` is what the page may show:
-//   { kind, startedAt, lastAt, ended: null|'finished'|'interrupted', step, steps }
+//   { kind, startedAt, lastAt, ended: null|'finished'|'interrupted',
+//     phase: null|'tool'|'thinking', phaseAt, step, steps }
 export function readAgents(projectDir, { claudeDir = defaultClaudeDir(), ids } = {}) {
   const out = new Map();
   try {
@@ -418,14 +442,27 @@ function readOne(metaFile, logFile, projectDir, wanted) {
     // resumed after that writes to its log again, which outdates the mark.
     if (!ended && meta.finished && lastAt <= meta.mtimeMs + 5000) ended = 'finished';
     const steps = log.steps.filter((s) => s.at !== null);
+    const step = steps[steps.length - 1] || null;
+    const startedAt = log.startedAt ?? log.firstAt;
+    // What it is doing now: running a tool (its last step, since that began)
+    // or thinking and writing (since its last call was answered). Nothing
+    // once it has ended.
+    let phase = null;
+    let phaseAt = null;
+    if (!ended) {
+      if (log.open.length && step) { phase = 'tool'; phaseAt = step.at; }
+      else { phase = 'thinking'; phaseAt = log.thinkingSince ?? step?.at ?? startedAt ?? lastAt; }
+    }
     return {
       ids,
       agent: {
         kind: kindOf(meta.agentType),
-        startedAt: log.startedAt ?? log.firstAt,
+        startedAt,
         lastAt,
         ended,
-        step: steps[steps.length - 1] || null,
+        phase,
+        phaseAt,
+        step,
         steps,
       },
     };
