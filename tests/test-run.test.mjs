@@ -384,6 +384,73 @@ for (const who of ['worker', 'reviewer']) {
   });
 }
 
+// The progress folder is made by kerjaan_make_dir (lib.sh), as the lock folder
+// is: output cut short can leave text in front of the path a script works out,
+// and such a path must never become a folder. Each kind of path it refuses,
+// and the ones it takes.
+const lib = path.join(path.dirname(testRun), 'lib.sh');
+const listAll = (dir) => fs.readdirSync(dir, { recursive: true }).sort();
+
+test('kerjaan_make_dir refuses a path with a newline, a relative one, or one whose parent is missing, and creates nothing', () => {
+  const base = scratch();
+  const cwd = scratch();
+  fs.mkdirSync(path.join(base, 'odd\nname'));
+  fs.mkdirSync(path.join(cwd, 'here'));
+  const cases = [
+    ['a newline, its parent there', path.join(base, 'odd\nname', 'kerjaan-progress')],
+    ['a newline before the path, as cut output leaves', `Cut text:\n${base}/kerjaan-progress`],
+    ['not absolute', 'kerjaan-progress'],
+    ['not absolute, its parent there from where it runs', 'here/kerjaan-progress'],
+    ['not absolute, cut text in front with no newline', `A and B share:${base}/kerjaan-progress`],
+    ['its parent missing', path.join(base, 'missing', 'kerjaan-progress')],
+  ];
+  for (const [what, p] of cases) {
+    const before = [listAll(base), listAll(cwd)];
+    const r = spawnSync('bash', ['-c', '. "$0"; kerjaan_make_dir "$1"', lib, p], { cwd, encoding: 'utf8' });
+    assert.equal(r.status, 1, `${what}: ${r.stderr}`);
+    assert.deepEqual([listAll(base), listAll(cwd)], before, what);
+  }
+  for (const [what, p, made] of [
+    ['a new folder whose parent is there', path.join(base, 'fresh'), true],
+    ['a folder already there', path.join(base, 'fresh'), true],
+    ['a file in its place', path.join(base, 'file'), false],
+  ]) {
+    if (what === 'a file in its place') fs.writeFileSync(p, 'x\n');
+    const r = spawnSync('bash', ['-c', '. "$0"; kerjaan_make_dir "$1"', lib, p], { encoding: 'utf8' });
+    assert.equal(r.status, made ? 0 : 1, what);
+    assert.equal(fs.statSync(p).isDirectory(), made, what);
+  }
+});
+
+test('a run whose progress folder would hold a newline makes no folder, and runs as it would without a copy', () => {
+  const seen = scratch();
+  const root = repo('true', '(none yet)');
+  const settings = path.join(root, '.kerjaan', 'settings.md');
+  fs.writeFileSync(settings, fs.readFileSync(settings, 'utf8').replace('long_lived_branches: []\n', 'long_lived_branches: []\nparallel_tests: true\n'));
+  // git names a common dir holding a newline, as cut output left in front of
+  // it would: a real folder, so only the newline stands in the way.
+  const odd = path.join(seen, 'Cut text:\nmore');
+  fs.mkdirSync(odd);
+  const bin = path.join(seen, 'bin');
+  fs.mkdirSync(bin);
+  const realGit = spawnSync('bash', ['-c', 'command -v git'], { encoding: 'utf8' }).stdout.trim();
+  fs.writeFileSync(path.join(bin, 'git'), `#!/bin/bash
+[ "$1 $2" = "rev-parse --git-common-dir" ] && { printf '%s\\n' "$FAKE_COMMON"; exit 0; }
+exec "${realGit}" "$@"
+`, { mode: 0o755 });
+  const r = spawnSync('bash', [testRun, '--review', A, '--', `${envLine(seen)}; echo ran; exit 5`], {
+    cwd: root, encoding: 'utf8',
+    env: { ...gitEnv, PATH: `${bin}:${gitEnv.PATH}`, FAKE_COMMON: odd, KERJAAN_TEST_REPORT: path.join(seen, 'outer.tests') },
+  });
+  assert.equal(r.status, 5, r.stderr);
+  assert.match(r.stdout, /^ran$/m);
+  assert.match(r.stderr, /Reviewer's run in .*exited 5 after/);
+  assert.equal(fs.readFileSync(path.join(seen, 'env'), 'utf8').split('\n')[0], '', 'nowhere to report');
+  assert.deepEqual(fs.readdirSync(odd), [], 'no folder made under the odd path');
+  assert.equal(fs.existsSync(progressDir(root)), false);
+  assert.equal(fs.existsSync(path.join(seen, 'outer.tests')), false);
+});
+
 test('with no copy of the output, there is nowhere to report: an outer run\'s report is not passed on', () => {
   const seen = scratch();
   const root = repo(`${envLine(seen)}; exit 6`, '(none yet)');

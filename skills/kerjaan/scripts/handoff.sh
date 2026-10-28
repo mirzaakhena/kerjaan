@@ -48,7 +48,8 @@
 # What was reminded and handed over is remembered per session under
 # $KERJAAN_HOOK_STATE (default: $TMPDIR/kerjaan-review-hook), the folder the
 # review hook uses, in files whose names start with a dot so they never meet
-# an agent ID.
+# an agent ID. That folder is made only at an absolute path whose parent
+# exists; otherwise nothing is remembered, and the hook still answers.
 #
 # Anything that does not apply exits 0 and prints nothing: this hook runs with
 # every prompt and every tool call.
@@ -120,7 +121,9 @@ settings="$board/settings.md"
 safe() { printf '%s' "$1" | tr -cd 'A-Za-z0-9_-'; }
 session=$(safe "$(field '.session_id // ""')")
 [ -n "$session" ] || session=nosession
-state_dir="${KERJAAN_HOOK_STATE:-${TMPDIR:-/tmp}/kerjaan-review-hook}/$session"
+state_base="${KERJAAN_HOOK_STATE:-${TMPDIR:-/tmp}/kerjaan-review-hook}"
+state_base="${state_base%/}"
+state_dir="$state_base/$session"
 reminded="$state_dir/.handoff-reminded"
 delivered="$state_dir/.handoff-delivered"
 
@@ -134,9 +137,15 @@ ignore_handoff() {
   common="$(git -C "$repo" rev-parse --git-common-dir 2> /dev/null)" || return 0
   case "$common" in /*) ;; *) common="$repo/$common" ;; esac
   exclude="$common/info/exclude"
-  mkdir -p "$(dirname "$exclude")" 2> /dev/null || return 0
+  kerjaan_make_dir "$common/info" || return 0
   printf '%s\n' '/.kerjaan/handoff.md' >> "$exclude" 2> /dev/null || true
 }
+
+# The session's state folder, and the one above it, each made only where the
+# folder above already exists (kerjaan_make_dir, lib.sh). A path refused there
+# costs the memory of what was reminded or handed over, never the hook's
+# answer.
+make_state_dir() { kerjaan_make_dir "$state_base" && kerjaan_make_dir "$state_dir"; }
 
 fingerprint() { cksum < "$1" | tr -s ' \t' ' '; }
 
@@ -160,7 +169,7 @@ if [ "$event" = "SessionStart" ]; then
       "kerjaan: stale handoff.md named for deletion."
     exit 0
   fi
-  mkdir -p "$state_dir" 2> /dev/null && printf '%s\n' "$fp" > "$delivered" 2> /dev/null || true
+  make_state_dir && printf '%s\n' "$fp" > "$delivered" 2> /dev/null || true
   size=$(wc -c < "$file" | tr -d ' ')
   if [ "$size" -le 8000 ]; then
     body="Its content, in full:
@@ -226,7 +235,7 @@ fi
 if [ -n "$last" ] && [ "$pct" -lt $((last + STEP)) ]; then
   exit 0
 fi
-mkdir -p "$state_dir" 2> /dev/null && printf '%s\n' "$pct" > "$reminded" 2> /dev/null || true
+make_state_dir && printf '%s\n' "$pct" > "$reminded" 2> /dev/null || true
 ignore_handoff
 
 lead="The context is at about $pct% of its window (handoff_at is $at% in $settings; an estimate, it may be off by a few percent). It may be summarized soon, and what only this conversation holds would be lost."

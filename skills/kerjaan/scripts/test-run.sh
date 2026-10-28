@@ -272,9 +272,12 @@ export KERJAAN_NODE_REPORTER="$here/reporters/node.mjs" KERJAAN_TEST_REPORT=""
 # The copy of the output, for the viewer (see the top of this file).
 progress_start() {  # <who: worker | reviewer>
   local dir f pid
+  # The folder is checked before anything in it is touched: a path refused by
+  # kerjaan_make_dir (lib.sh) -- output cut short can leave text in front of
+  # it -- is never built or cleaned, and the run goes on without a copy.
   dir="$(cd "$(git rev-parse --git-common-dir)" 2> /dev/null && pwd -P)" || return 0
   dir="$dir/kerjaan-progress"
-  mkdir -p "$dir" 2> /dev/null || return 0
+  kerjaan_make_dir "$dir" || return 0
   # Files left by a run that was killed before it could remove them: every
   # <id>.<pid>.<kind> whose pid is no longer alive, whatever its kind, since a
   # run killed half-way may leave any of them without the others.

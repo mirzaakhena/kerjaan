@@ -369,6 +369,72 @@ test('a handoff written without a reminder is ignored by git as soon as it is ha
   assert.equal(git(r.dir, 'status', '--porcelain', '--untracked-files=all').stdout, '');
 });
 
+// The folders the hook makes -- its state folder, and git's info/ for the
+// exclude file -- are made by kerjaan_make_dir (lib.sh), as the lock folder
+// is: a path with a newline, a relative one, or one whose parent is missing is
+// refused and nothing is built, and the hook answers as it always does.
+const listAll = (dir) => fs.readdirSync(dir, { recursive: true }).sort();
+
+test('a state folder with a newline, not absolute, or with no parent is refused; the reminder still comes, and nothing is built', () => {
+  const r = repo();
+  const out = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'kerjaan-handoff-odd-')));
+  fs.mkdirSync(path.join(out, 'odd\nname'));
+  fs.mkdirSync(path.join(r.dir, 'here'));
+  answer(r, 165000);
+  for (const [what, state] of [
+    ['a newline', path.join(out, 'odd\nname', 'state')],
+    ['cut text in front', `Cut text:\n${out}/state`],
+    ['not absolute', 'state'],
+    ['not absolute, its parent there from where the hook runs', 'here/state'],
+    ['its parent missing', path.join(out, 'missing', 'state')],
+  ]) {
+    const before = [listAll(out), listAll(r.dir)];
+    for (let i = 0; i < 2; i++) {
+      assert.match(told(prompt(r, { KERJAAN_HOOK_STATE: state })), /Write .*handoff\.md now/, what);
+    }
+    fs.writeFileSync(r.file, '# Handoff\n');
+    assert.match(told(run(r, 'SessionStart', { source: 'compact' }, { KERJAAN_HOOK_STATE: state })), /Before any other action, read it/, what);
+    fs.rmSync(r.file);
+    assert.deepEqual([listAll(out), listAll(r.dir)], before, what);
+  }
+  // A state folder whose parent is there is made, and remembers.
+  const fresh = path.join(out, 'fresh');
+  assert.ok(prompt(r, { KERJAAN_HOOK_STATE: fresh }));
+  assert.equal(prompt(r, { KERJAAN_HOOK_STATE: fresh }), null);
+  assert.ok(fs.existsSync(path.join(fresh, SESSION, '.handoff-reminded')));
+});
+
+test('a git common dir with a newline or with no parent gets no info/ folder; the reminder still comes', () => {
+  const r = repo();
+  const out = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'kerjaan-handoff-odd-')));
+  const bin = path.join(out, 'bin');
+  fs.mkdirSync(bin);
+  const realGit = spawnSync('bash', ['-c', 'command -v git'], { encoding: 'utf8' }).stdout.trim();
+  // git -C <repo> rev-parse --git-common-dir answers what the test says.
+  fs.writeFileSync(path.join(bin, 'git'), `#!/bin/bash
+[ "$3 $4" = "rev-parse --git-common-dir" ] && { printf '%s\\n' "$FAKE_COMMON"; exit 0; }
+exec "${realGit}" "$@"
+`, { mode: 0o755 });
+  fs.mkdirSync(path.join(out, 'odd\nname'));
+  answer(r, 165000);
+  let n = 0;
+  for (const [what, common] of [
+    ['a newline', path.join(out, 'odd\nname')],
+    ['cut text in front', `Cut text:\n${out}`],
+    ['its parent missing', path.join(out, 'missing', 'common')],
+  ]) {
+    const before = [listAll(out), listAll(r.dir)];
+    const env = { PATH: `${bin}:${gitEnv.PATH}`, FAKE_COMMON: common, KERJAAN_HOOK_STATE: path.join(r.state, `s${n++}`) };
+    assert.match(told(prompt(r, env)), /Write .*handoff\.md now/, what);
+    fs.rmSync(path.join(r.state, `s${n - 1}`), { recursive: true });
+    assert.deepEqual([listAll(out), listAll(r.dir)], before, what);
+  }
+  // With git's own answer, a missing info/ is made, and the exclude written.
+  fs.rmSync(path.join(r.dir, '.git', 'info'), { recursive: true, force: true });
+  assert.ok(prompt(r));
+  assert.match(fs.readFileSync(path.join(r.dir, '.git', 'info', 'exclude'), 'utf8'), /^\/\.kerjaan\/handoff\.md$/m);
+});
+
 test('the queue check, the duplicate-ID check and the board reader pass over handoff.md', async () => {
   const r = repo();
   fs.writeFileSync(r.file, '# Handoff\n\n## Agents running\n- 261026100001 — worker — agent a1 — waiting for: REVIEW\n');

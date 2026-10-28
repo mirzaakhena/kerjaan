@@ -296,6 +296,24 @@ kerjaan_blockers() {
 # spaces); a child finding its lock there, still owned by that live PID, goes
 # ahead without taking it again, and its release leaves it alone.
 
+# Makes sure <path> is a folder, creating it if need be, but never a folder
+# above it: plain `mkdir`, not `mkdir -p`. A path that holds a newline, is not
+# absolute, or whose parent folder does not exist is refused (status 1, nothing
+# created): such a path is not one a script worked out, but text left over from
+# output cut short (see kerjaan_locks_dir, below) or a setting gone wrong, and
+# built as a folder it would land wherever the script happens to run.
+kerjaan_make_dir() {  # <path>
+  local parent
+  case "$1" in
+    *$'\n'*) return 1 ;;
+    /*) ;;
+    *) return 1 ;;
+  esac
+  parent="${1%/*}"
+  [ -d "${parent:-/}" ] || return 1
+  mkdir "$1" 2> /dev/null || [ -d "$1" ]
+}
+
 # Sets kerjaan_locks to the folder the locks live in, creating that folder but
 # never the ones above it. Called without $(...): once a pipe the script
 # writes to is closed (output cut short with `| head`), bash 3.2 keeps the
@@ -315,12 +333,7 @@ kerjaan_locks_dir() {
     base="$(pwd -P)/.kerjaan"
     kerjaan_locks="$base/.locks"
   fi
-  case "$base" in
-    *$'\n'*) ;;
-    /*) if [ -d "$base" ]; then
-          mkdir "$kerjaan_locks" 2> /dev/null || [ -d "$kerjaan_locks" ] && return 0
-        fi ;;
-  esac
+  kerjaan_make_dir "$kerjaan_locks" && return 0
   echo "Could not find the folder for kerjaan's locks (got '$base'); no lock was taken." >&2
   kerjaan_locks=""
   return 1
