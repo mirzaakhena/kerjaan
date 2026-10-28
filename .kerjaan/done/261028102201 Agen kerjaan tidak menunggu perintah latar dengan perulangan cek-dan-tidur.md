@@ -6,7 +6,7 @@ labels: [agen]
 reporter: mirza
 assign_to: claude
 created: 2026-10-28 10:22:50
-updated: 2026-10-28 11:03:52
+updated: 2026-10-28 11:04:46
 related: []
 blocked_by: []
 ---
@@ -55,6 +55,7 @@ proyek atau ingatan sesi utama.
 - 2026-10-28 10:48:03 a185f853-6a65-4f44-919d-97ba97774e43 todo
 - 2026-10-28 10:48:19 a185f853-6a65-4f44-919d-97ba97774e43 in_progress
 - 2026-10-28 11:03:52 a185f853-6a65-4f44-919d-97ba97774e43 review
+- 2026-10-28 11:04:46 a185f853-6a65-4f44-919d-97ba97774e43 done
 
 ## Notes
 - Diminta Mirza 28 Okt 2026 dari sesi nukitu-mockup: aturan ini harus hidup di skill, bukan di CLAUDE.md atau memori proyek, supaya berlaku di semua proyek.
@@ -77,3 +78,12 @@ proyek atau ingatan sesi utama.
   4. Amati terminal/panel aktivitas: skrip berjalan di latar depan dengan batas waktu panjang (atau dipecah), tanpa perintah `pgrep`/`perl select`/`sleep` berulang, dan pengerja baru melapor sesudah skrip selesai.
 - 2026-10-28 10:54:29: test run — `node --test --test-timeout=900000 --import=./tests/complete-runs.mjs` exited 1 after 3m41s, on content fingerprint d79bf0e65c4f1a71dbcf987afc79e7bd800f535a (the same before and after the run; .kerjaan/ left out).
 - 2026-10-28 11:03:41: test run — `node --test --test-timeout=900000 --import=./tests/complete-runs.mjs` exited 0 after 4m15s, on content fingerprint 0ed22031f39504f4075fc317c85e89d5c8fa22df (the same before and after the run; .kerjaan/ left out).
+- 2026-10-28: Reviewed at level quick, round 1, at commit 2c9060f: passed.
+  Level quick di sini: jalan uji dibawa dari pengerja (tidak diulang), lalu diff dibaca butir demi butir terhadap `Done when`. Tidak ada eskalasi.
+  - Jalan uji: `test-run.sh --check 261028102201` → SAME; jalan 2026-10-28 11:03:41, `node --test --test-timeout=900000 --import=./tests/complete-runs.mjs` keluar 0, sidik jari 0ed22031f39504f4075fc317c85e89d5c8fa22df. Tidak dijalankan ulang.
+  - Butir 1 (aturan di tiga definisi agen): kalimat yang sama ada di `agents/kerjaan-worker.md` langkah 3, `agents/kerjaan-reviewer.md` dan `agents/kerjaan-planner.md` sesudah kalimat `description`; menyebut latar depan dengan batas waktu panjang, memecah yang lebih lama, melarang perulangan cek-dan-tidur dan jalan memutar `sleep`. Langkah 7 pengerja kini merujuk ke langkah 3. Dibaca dari diff.
+  - Butir 2 (alasan satu kalimat): "an agent that ends its turn to wait looks finished to its sender, and a loop clutters the owner's terminal and dodges a limit set on purpose" — bisa dipahami tanpa konteks kejadian. Dibaca dari diff.
+  - Butir 3 (panduan mandor): `references/foreman.md` langkah utus pengerja: notifikasi datang sendiri untuk agen dan perintah latar, tidak ditunggu dengan perulangan. Dibaca dari diff.
+  - Butir 4 (uji gagal bila aturan hilang): `tests/bash-description.test.mjs` menghitung kalimat itu tepat sekali di tiap definisi agen, ditambah uji mandor dan langkah 7; uji itu lulus dalam jalan yang dibawa. Bahwa ia merah bila aturan dihapus hanya klaim pengerja di Notes — pada level quick tidak disabotase; dari bacaan, `split(WAIT).length - 1 === 1` memang gagal bila kalimatnya hilang.
+  - Butir 5 (pengamatan agen sungguhan): menunggu mirza; keputusan pemilik 2026-10-28 10:48:03 tercatat, skenario tangan di Notes berisi langkah yang bisa diikuti dan berakhir pada apa yang harus terlihat, dan butir ini memang butuh rilis serta agen sungguhan.
+  - Catatan: pemangkasan kalimat di definisi pengerja dan peninjau (sesuai jawaban pemilik #1) tidak membuang larangan penting yang dicek: larangan pengerja mengutus peninjau tetap ada di `description` dan daftar larangan. Beberapa baris hasil pemangkasan jadi lebih panjang dari lebar biasa (mis. "Commit your verdict" di definisi peninjau) — kosmetik saja.
