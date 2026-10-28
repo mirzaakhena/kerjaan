@@ -6,7 +6,7 @@ labels: [sesi-a185f853]
 reporter: mirza
 assign_to: claude
 created: 2026-10-28 19:58:49
-updated: 2026-10-28 19:59:12
+updated: 2026-10-28 20:10:51
 related: [261028172801, 261028185603]
 blocked_by: []
 ---
@@ -44,6 +44,7 @@ yang sama seperti bagian papan lainnya.
 ## History
 - 2026-10-28 19:58:49 a185f853-6a65-4f44-919d-97ba97774e43 backlog
 - 2026-10-28 19:59:12 a185f853-6a65-4f44-919d-97ba97774e43 todo
+- 2026-10-28 20:10:51 a185f853-6a65-4f44-919d-97ba97774e43 in_progress
 
 ## Notes
 - Dicatat atas pilihan mirza, 2026-10-28, sesi a185f853-6a65-4f44-919d-97ba97774e43 ("Jadikan tiket, langsung kerjakan"), dari saran lanjutan peninjau 261028185603 dan temuan pengerjanya.
