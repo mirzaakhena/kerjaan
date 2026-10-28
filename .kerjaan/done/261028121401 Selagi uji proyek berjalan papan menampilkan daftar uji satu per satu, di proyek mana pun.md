@@ -6,7 +6,7 @@ labels: [viewer, agen]
 reporter: mirza
 assign_to: claude
 created: 2026-10-28 12:14:46
-updated: 2026-10-28 17:41:22
+updated: 2026-10-28 17:50:49
 related: [261028112701, 261028121402]
 blocked_by: [261028112701]
 ---
@@ -48,6 +48,7 @@ uji; tidak ada yang gagal karenanya.
 - 2026-10-28 12:47:44 a185f853-6a65-4f44-919d-97ba97774e43 todo
 - 2026-10-28 17:06:06 a185f853-6a65-4f44-919d-97ba97774e43 in_progress
 - 2026-10-28 17:41:22 a185f853-6a65-4f44-919d-97ba97774e43 review
+- 2026-10-28 17:50:49 a185f853-6a65-4f44-919d-97ba97774e43 done
 
 ## Notes
 - Dipecah dari 261028112701 oleh planner (28 Okt 2026, sesi a185f853-6a65-4f44-919d-97ba97774e43), karena tiket itu memuat 11 butir. Butir dari sana: "jumlah hijau dan merah bila keluarannya hasil uji yang dikenali", "daftar uji satu per satu", dan "berlaku di proyek mana pun, cara ikut melapor tertulis di panduan". Permintaan asli pemilik dan contoh rujukannya (nukitu-mockup `test/uji-ui.mjs`, `test/laporan.mjs`, `test/laporan-halaman.mjs`) ada di Notes 261028112701.
@@ -81,3 +82,20 @@ uji; tidak ada yang gagal karenanya.
   - `tests/time-limits.test.mjs` menjalankan test_command di folder sementara: jalur `--test-reporter=./...` kini dijadikan mutlak, dan `KERJAAN_TEST_REPORT` dikosongkan; tanpa itu uji sampel di dalamnya tercatat di daftar run luar (dicoba: 6 baris "sample" masuk ke laporan luar, dengan pengosongan tidak ada).
   - Dicek dengan tangan: selama jalan uji penuh lewat `test-run.sh` repo, penampil (`viewer/server.mjs --scan ~/Workspace`) di `api/progress/261028121401` memberi daftar uji kerjaan sendiri per berkas dengan hitungan hijau/merah dan uji yang sedang berjalan (jalan uji terakhir, detik 45: 21 lulus, 1 berjalan di tests/board-lock.test.mjs; detik 120: 73 lulus di 38 berkas; penghubung sendiri tidak terdaftar sebagai berkas uji).
 - 2026-10-28 17:41:09: test run — `node --test --test-timeout=900000 --import=./tests/complete-runs.mjs --test-reporter=tap --test-reporter-destination=stdout --test-reporter=./skills/kerjaan/scripts/reporters/node.mjs --test-reporter-destination=/dev/null` exited 0 after 5m14s, on content fingerprint 09c4f9e0c224de1aaf6e1fc623dfadc7cdaddd95 (the same before and after the run; .kerjaan/ left out).
+- 2026-10-28: Reviewed at level normal, round 1, at commit 6132f9c: passed.
+  Level normal di sini: jalan uji pengerja dibawa lewat `test-run.sh --check` (SAME), tiap butir dibuktikan dengan menjalankan sesuatu (dua proyek contoh di folder sementara dan uji kerjaan sendiri, diamati lewat penampil yang berjalan), dan uji baru dibaca untuk mencari pernyataan yang tak bisa gagal.
+  - Perintah: `test-run.sh --check 261028121401 6132f9c` -> SAME (jalan 2026-10-28 17:41:09, sidik 09c4f9e0c224de1aaf6e1fc623dfadc7cdaddd95, keluar 0). Tambahan sebagai bukti butir 3: `skills/kerjaan/scripts/test-run.sh --review 261028121401` (salinan repo) -> 784 uji, 784 lulus, 0 dilewati (uji peramban ikut berjalan, Chrome ada), keluar 0 setelah 4m47s; folder `.git/kerjaan-progress/` kosong lagi sesudahnya.
+  - Butir 1 (daftar per berkas, nama, berjalan/hijau/merah, lama, bertambah sendiri): proyek contoh dengan `test_command` persis dari SETTINGS.md, dijalankan lewat `test-run.sh` repo; `api/progress` penampil di detik 5 memberi `an empty cart costs nothing` pass 3002 ms dan `checkout > adds tax` running dengan `at`, di detik 11 bertambah `checkout > rejects a negative price` fail dan `slow one` running, dikelompokkan per `tests/a.test.mjs`/`tests/b.test.mjs`. Gambar di halaman dan pertambahan tanpa muat ulang dibuktikan uji peramban "window 1280x800 / phone 390x844: the Progress lists the run's tests one by one, which grow and count on by themselves" (ok 746, 747), yang dibaca: menambah baris ke berkas `.tests` lalu menunggu halaman berubah.
+  - Butir 2 (jumlah hijau dan merah): `counts` {pass 2, fail 1, running 1} selagi berjalan; laporan lengkap proyek contoh {pass 4, fail 1, skip 1}, sama dengan ringkasan node sendiri (pass 4, fail 1, skipped 1).
+  - Butir 3 (uji kerjaan sendiri): selama jalan penuh di atas, `api/progress/261028121401` penampil (`--scan ~/Workspace`) memberi daftar per berkas kerjaan, misalnya `tests/bash-description.test.mjs` dengan `kerjaan-worker asks for a description of every com...` pass, hitungan naik 8 -> 16 -> 21 -> 73 lulus.
+  - Butir 4 (panduan alat lain): SETTINGS.md "Reporting each test to the board" memberi bentuk baris, arti tiap kolom, dan aturan kode keluar; perintah node di panduan dipakai apa adanya di proyek contoh dan bekerja tanpa mengubah kerjaan. Dinilai cukup untuk diikuti; tidak dicoba dengan alat uji lain sungguhan.
+  - Butir 5 (proyek belum melapor): proyek contoh dengan `test_command` shell biasa: `api/progress` memberi `testsSize -1`, `tests null`, log hidup `line 1..3`; `test-run.sh` keluar 0 dan `--check` SAME. Kalimat di halaman dibuktikan uji peramban ok 748. Kalimatnya berbahasa Inggris ("This project does not report per test yet; its live output is below."): sesuai, karena seluruh penampil berbahasa Inggris dan itu dijaga `tests/english-only.test.mjs`; isinya sama dengan yang diminta.
+  - Kode keluar dan sidik: proyek contoh dengan uji gagal keluar 1 lewat `test-run.sh` dan 1 dengan `node --test` biasa; berkas `.tests` di bawah `.git/`, tidak dibaca `test-run.sh`, jadi di luar sidik. Uji "keeps its exit status and its output" dibaca: membandingkan keluaran dan kode dengan dan tanpa penghubung, termasuk berkas yang tak bisa ditulis dan pipa yang ditutup pembaca.
+  - Uji baru dibaca (reporters, runs, test-run): tidak ada pernyataan yang tak bisa gagal; semuanya memeriksa isi baris laporan, HTML, atau ukuran yang dikirim lewat SSE.
+  - Catatan: di repo ini daftar uji baru muncul di papan bila uji dijalankan dengan `test-run.sh` yang mengenal `KERJAAN_TEST_REPORT`; plugin terpasang (1.17.0) belum, jadi sampai versi plugin berikutnya terpasang, jalan uji pengerja lewat `$K/test-run.sh` tetap tampil sebagai log saja, di bawah kalimat "This project does not report per test yet", karena skrip lama tidak memberi berkas `.tests` (kalimat itu keliru untuk repo ini sampai plugin diperbarui). Bukan pelanggaran butir: butir 3 terpenuhi dengan skrip di tiket ini.
+  - Catatan: karena urutan pelaporan node (tertulis di panduan), berkas kedua dan seterusnya tampil "running"/"done" dengan daftar kosong sampai berkas sebelumnya selesai; terlihat di proyek contoh (`tests/b.test.mjs` "ended" tanpa uji selama `a` berjalan).
+  - Tidak ada CLAUDE.md/AGENTS.md di akar repo.
+
+### Suggested follow-up
+
+- **Berkas yang sudah selesai tampil "done" tanpa uji selagi berkas sebelumnya masih berjalan.** Penghubung node meneruskan urutan laporan node, sehingga pemilik melihat berkas kosong berlabel selesai lalu ujinya muncul belakangan. Layak tiket: beri label "uji menyusul" pada berkas yang selesai tetapi belum ada ujinya, atau sembunyikan sampai ujinya datang.
