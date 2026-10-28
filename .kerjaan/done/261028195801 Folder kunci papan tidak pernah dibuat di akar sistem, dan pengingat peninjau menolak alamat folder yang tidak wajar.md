@@ -6,7 +6,7 @@ labels: [sesi-a185f853]
 reporter: mirza
 assign_to: claude
 created: 2026-10-28 19:58:49
-updated: 2026-10-28 20:20:07
+updated: 2026-10-28 20:22:20
 related: [261028172801, 261028185603]
 blocked_by: []
 ---
@@ -46,6 +46,7 @@ yang sama seperti bagian papan lainnya.
 - 2026-10-28 19:59:12 a185f853-6a65-4f44-919d-97ba97774e43 todo
 - 2026-10-28 20:10:51 a185f853-6a65-4f44-919d-97ba97774e43 in_progress
 - 2026-10-28 20:20:07 a185f853-6a65-4f44-919d-97ba97774e43 review
+- 2026-10-28 20:22:20 a185f853-6a65-4f44-919d-97ba97774e43 done
 
 ## Notes
 - Dicatat atas pilihan mirza, 2026-10-28, sesi a185f853-6a65-4f44-919d-97ba97774e43 ("Jadikan tiket, langsung kerjakan"), dari saran lanjutan peninjau 261028185603 dan temuan pengerjanya.
@@ -56,3 +57,12 @@ yang sama seperti bagian papan lainnya.
 - Pemeriksaan `[ -n "$kerjaan_locks" ]` sebelum `kerjaan_make_dir` sempat ditambahkan lalu dibuang: dirusak, uji tetap hijau, karena `kerjaan_make_dir ""` sudah menolak alamat yang tidak absolut.
 - Sabotase: `mkdir -p` dikembalikan di on-ticket-review.sh -> 3 uji alamat tidak wajar (relatif, berisi baris baru, induk tidak ada) merah; `case /?*` dibuang -> 3 uji folder git tidak wajar merah; cek nama kosong dibuang -> uji "is not named" merah (kunci terbuat di akar repo).
 - 2026-10-28 20:19:47: test run — `node --test --test-timeout=900000 --import=./tests/complete-runs.mjs --test-reporter=tap --test-reporter-destination=stdout --test-reporter=./skills/kerjaan/scripts/reporters/node.mjs --test-reporter-destination=/dev/null` exited 0 after 5m5s, on content fingerprint 61469de187e94e8856ff8fcc5b59f723372d2c78 (the same before and after the run; .kerjaan/ left out).
+- 2026-10-28: Reviewed at level normal, round 1, at commit d117d50: passed.
+  Level normal di sini: uji proyek dibawa dari jalannya pengerja (sama persis isinya), setiap kriteria dibuktikan dengan menjalankan sesuatu, dan uji baru dibaca untuk memastikan bisa merah. Tidak ada CLAUDE.md/AGENTS.md di akar repo.
+  - Perintah: `test-run.sh --check 261028195801 d117d50` -> SAME: isi d117d50 sama dengan jalannya 2026-10-28 20:19:47 (sidik jari 61469de187e94e8856ff8fcc5b59f723372d2c78, 811/811, keluar 0); `test_command` tidak dijalankan ulang. Lalu `test-run.sh --review 261028195801 -- node --test --test-timeout=900000 tests/board-lock.test.mjs tests/on-ticket-review.test.mjs` -> 123/123 lulus, keluar 0, 48 detik.
+  - Kriteria 1 (folder git tak ditemukan -> kunci ditolak, tanpa membuat folder di akar sistem): dibuktikan di repo buangan dengan `git` palsu yang menjawab `rev-parse --git-common-dir` dan `mkdir` palsu yang mencatat. Kode baru dengan folder git kosong, `/`, dan `gone`: status 1, pesan "Could not find the folder for kerjaan's locks", dan tidak ada `mkdir` sama sekali; dengan `.git` asli kunci dibuat di `.git/kerjaan-locks`. Kode sebelumnya (d117d50~1) pada kasus yang sama mencoba `mkdir /kerjaan-locks` dan `mkdir //kerjaan-locks`, dan dengan nama kosong membuat `kerjaan-locks` di akar repo. Terpenuhi.
+  - Kriteria 2 (uji tanpa bergantung pada akar sistem yang tak bisa ditulisi): uji baru 18-21 di `tests/board-lock.test.mjs` memakai `git`/`mkdir` palsu dan menegaskan log `mkdir` tidak memuat `kerjaan-locks`; ini menjadi merah pada kode lama walau akar sistem tak bisa ditulisi (log mencatat percobaan `/kerjaan-locks`, seperti yang saya lihat di atas). Uji pembanding 21 membuktikan palsunya sendiri tidak menyebabkan penolakan. Terpenuhi.
+  - Kriteria 3 (pengingat peninjau menolak alamat tak wajar, tetap mengingatkan dengan alamat wajar): `on-ticket-review.sh` kini memanggil `load_lib` lalu `kerjaan_make_dir` untuk folder induk dan folder sesi di dalam syarat `if`, jadi penolakan tidak menghentikan hook di bawah `set -e` dan pesan "Finish now with your report" tetap keluar. Uji 88-90 (relatif, berisi baris baru, induk tidak ada) lulus dan akan merah pada `mkdir -p` lama karena folder terbuat di tmp; uji 91 (TMPDIR bawaan berakhiran `/`) dan 92 lulus: catatan dibuat dan mandor mendapat "Dispatch one subagent right now". Terpenuhi.
+  - Kriteria 4 (uji proyek lulus termasuk uji baru): SAME di atas, plus jalannya saya pada dua berkas uji terkait. Terpenuhi.
+  - Catatan: perilaku kunci dengan alamat biasa tidak berubah: semua uji `board-lock.test.mjs` lain lulus.
+  - Catatan kecil (tidak memblokir): `state_base="${state_base%/}"` membuang satu garis miring saja; `KERJAAN_HOOK_STATE=//` akan menjadi `/` dan folder sesi dibuat langsung di akar sistem. Itu setelan yang sengaja salah, bukan keluaran terpotong, jadi tidak perlu tiket.
