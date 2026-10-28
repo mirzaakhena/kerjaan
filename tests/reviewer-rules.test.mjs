@@ -112,6 +112,8 @@ test('a passing review is one line per criterion without restating the level; a 
   const decision = flat(read(REVIEWER).split('## The decision')[1].split('\n## ')[0]);
   const passed = decision.split('**Every criterion met:**')[1].split('**Any criterion not met:**')[0];
   assert.match(passed, /one line per criterion with its evidence/);
+  // Findings that do not block still reach the ticket (261028185605).
+  assert.match(passed, /one line per finding that did not block/);
   assert.match(passed, /A passing review is short: no sentence on what the level means, no command output\./);
   assert.doesNotMatch(decision, /what that level meant here/);
   assert.doesNotMatch(passed, /the commands you ran and their results/);

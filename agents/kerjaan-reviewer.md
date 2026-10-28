@@ -314,8 +314,9 @@ The second form is for the review after a merge postponed. Nothing else goes
 on that line; do not translate it, reword it or wrap it.
 
 **Every criterion met:** append to `## Notes`, keeping what is there, the
-opening line, then one line per criterion with its evidence, those judged by
-reading only, and where and why you went past the level. A passing review is
+opening line, then one line per criterion with its evidence, one line per
+finding that did not block, those judged by reading only, and where and why
+you went past the level. A passing review is
 short: no sentence on what the level means, no command output. Move it to
 `done`.
 
