@@ -6,7 +6,7 @@ labels: [viewer, sesi-a185f853]
 reporter: mirza
 assign_to: claude
 created: 2026-10-28 18:56:44
-updated: 2026-10-28 19:18:08
+updated: 2026-10-28 19:19:03
 related: [261028112701, 261028121401]
 blocked_by: []
 ---
@@ -42,6 +42,7 @@ apa pun jenisnya, tanpa menyentuh berkas jalan uji yang masih berjalan.
 - 2026-10-28 18:59:30 a185f853-6a65-4f44-919d-97ba97774e43 todo
 - 2026-10-28 19:09:21 a185f853-6a65-4f44-919d-97ba97774e43 in_progress
 - 2026-10-28 19:18:08 a185f853-6a65-4f44-919d-97ba97774e43 review
+- 2026-10-28 19:19:03 a185f853-6a65-4f44-919d-97ba97774e43 done
 
 ## Notes
 - Saran lanjutan peninjau 261028112701 dan 261028121401; dicatat atas pilihan mirza, 2026-10-28, sesi a185f853-6a65-4f44-919d-97ba97774e43. Yang tertinggal: berkas `.log`, `.tmp`, dan `.tests` di `<git common dir>/kerjaan-progress/`; pembersihan sekarang hanya dipicu oleh `.json`.
@@ -50,3 +51,13 @@ apa pun jenisnya, tanpa menyentuh berkas jalan uji yang masih berjalan.
 - Uji baru (tests/test-run.test.mjs): tiap jenis berkas yang tertinggal sendirian (pid mati dihapus, pid hidup dan berkas lain di folder tetap), dan jalan uji sungguhan yang di-SIGKILL di tengah perintah lalu jalan berikutnya tidak menyisakan apa pun, sementara berkas jalan hidup tetap.
 - Sabotase: loop kembali ke `*.json` saja → 6 uji merah (uji .log, .tests, .tmp tertinggal dan uji SIGKILL); cek `kill -0` dibuang → 6 uji merah (semua yang memastikan berkas jalan hidup tetap).
 - 2026-10-28 19:17:57: test run — `node --test --test-timeout=900000 --import=./tests/complete-runs.mjs --test-reporter=tap --test-reporter-destination=stdout --test-reporter=./skills/kerjaan/scripts/reporters/node.mjs --test-reporter-destination=/dev/null` exited 0 after 6m49s, on content fingerprint 99d398246cd91e71b89b4aa5296cd1233208fed4 (the same before and after the run; .kerjaan/ left out).
+- 2026-10-28: Reviewed at level quick, round 1, at commit 881c586: passed.
+  Level quick: uji proyek tidak dijalankan ulang (lihat di bawah), perubahan dibaca baris demi baris terhadap tiap kriteria.
+  - Uji: `test-run.sh --check 261028185602` → SAME, jalan 2026-10-28 19:17:57 (exit 0, 6m49s) pada sidik 99d398246cd91e71b89b4aa5296cd1233208fed4; tidak dijalankan lagi.
+  - Kriteria 1 (tak ada berkas tertinggal): loop di `progress_start` kini menelusuri `*.*.*`, menerima `.json/.log/.tests/.tmp`, mengambil pid dari bagian sebelum akhiran, dan menghapus berkas itu sendiri bila pid mati — tak lagi bergantung pada `.json`. Uji baru: tiap jenis yang tertinggal sendirian, dan jalan sungguhan yang di-SIGKILL di tengah perintah lalu jalan berikutnya tidak menyisakan apa pun. Terpenuhi.
+  - Kriteria 2 (berkas jalan hidup tetap): penghapusan hanya terjadi bila `kill -0 <pid>` gagal; berkas di luar pola `<id>.<pid>.<jenis>` dan pid bukan angka dilewati. Uji baru memeriksa berkas pid hidup (`process.pid`) dan `notes.txt` tetap ada. Terpenuhi.
+  - Kriteria 3 (uji lulus, termasuk uji baru): jalan yang dibawa (SAME) lulus dan memuat lima uji baru di `tests/test-run.test.mjs`. Terpenuhi.
+  - Kode keluar test-run.sh: loop berada di bawah `set -e`; `kill -0 … || rm -f` hanya bisa menghentikan skrip bila `rm -f` gagal karena folder tak bisa ditulis — pola yang sama sudah ada sebelum perubahan ini, jadi tidak ada regresi.
+  - Catatan (tidak menahan): seperti sebelumnya, pid yang dipakai ulang oleh proses lain membuat berkas mati tetap tersimpan sampai pid itu berakhir; dan `kill -0` pada proses milik pengguna lain dianggap mati. Keduanya sudah ada sebelum tiket ini.
+  - Klaim sabotase pekerja di Notes tidak diperiksa (level quick).
+  - Dinilai hanya dengan membaca: kriteria 1 dan 2 (bukti dari uji yang lulus, tanpa dijalankan sendiri).
