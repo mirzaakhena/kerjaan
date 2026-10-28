@@ -228,3 +228,130 @@ test('third, never run', () => {});
   assert.equal(chk.code, 2, chk.out);
   assert.match(chk.out, /^NO EVIDENCE: the latest run \(.*\) exited [1-9]/m);
 });
+
+// ---------------------------------------------------------------------------
+// The copy of a run's output, for the viewer's Progress section (261028112701)
+// ---------------------------------------------------------------------------
+// While a run goes, test-run.sh copies what it prints to
+// <git common dir>/kerjaan-progress/<id>.<pid>.log, beside a .json saying whose
+// run it is, and removes both when it ends. The copy must never change what
+// the run reports: its exit status, and what reaches stdout and stderr.
+
+const progressDir = (root) => path.join(root, '.git', 'kerjaan-progress');
+const progressFiles = (root) => (fs.existsSync(progressDir(root)) ? fs.readdirSync(progressDir(root)).sort() : []);
+
+// A test command that, half-way, copies what the progress folder holds to
+// <seen>, outside the repository, so the test can read it afterwards.
+const peek = (seen, tail = 'exit 7') =>
+  `echo to-out-1; echo to-err-1 >&2; sleep 0.3; d="$KERJAAN_MAIN_TREE/.git/kerjaan-progress"; ls "$d" > ${seen}/ls; cat "$d"/*.json > ${seen}/json; cat "$d"/*.log > ${seen}/log; echo to-out-2; ${tail}`;
+
+const scratch = () => fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'kerjaan-seen-')));
+
+test('a worker\'s run: its output is copied as it comes, under .git/, and the copy is gone once it ends', () => {
+  const seen = scratch();
+  const cmd = peek(seen);
+  const root = repo(cmd, '(none yet)');
+  const r = run(root, A);
+  assert.equal(r.code, 7, r.err);
+  assert.ok(records(root)[0].includes(`\`${cmd}\` exited 7 after `), records(root)[0]);
+  const names = fs.readFileSync(path.join(seen, 'ls'), 'utf8').trim().split('\n');
+  assert.equal(names.length, 2, names.join(' '));
+  assert.match(names[0], new RegExp(`^${A}\\.\\d+\\.json$`));
+  assert.equal(names[1], names[0].replace(/json$/, 'log'));
+  const meta = JSON.parse(fs.readFileSync(path.join(seen, 'json'), 'utf8'));
+  assert.deepEqual([meta.ticket, meta.who, meta.command], [A, 'worker', cmd]);
+  assert.equal(`${A}.${meta.pid}.json`, names[0]);
+  assert.ok(Math.abs(meta.startedAt - Date.now()) < 60000, String(meta.startedAt));
+  const log = fs.readFileSync(path.join(seen, 'log'), 'utf8');
+  assert.match(log, /to-out-1\n/);
+  assert.match(log, /to-err-1\n/);
+  assert.deepEqual(progressFiles(root), [], 'nothing is kept');
+  // What the run printed still reaches the same streams as before.
+  assert.match(r.out, /to-out-1\n[^]*to-out-2\n/);
+  assert.doesNotMatch(r.out, /to-err-1/);
+  assert.match(r.err, /to-err-1\n/);
+  assert.doesNotMatch(r.err, /^to-out-1$/m);
+  // The command's last line comes out before the script's own record line.
+  assert.ok(r.out.endsWith('to-out-2\n'), JSON.stringify(r.out.slice(-40)));
+});
+
+test('a reviewer\'s run, sabotage included: copied as the reviewer\'s, its exit status its own, the copy gone after', () => {
+  const seen = scratch();
+  const root = repo('true', '(none yet)');
+  const copy = scratch();
+  fs.writeFileSync(path.join(copy, 'a.js'), 'broken on purpose\n');
+  const cmd = peek(seen, 'exit 5');
+  const r = run(root, '--review', A, '--dir', copy, '--', cmd);
+  assert.equal(r.code, 5, r.err);
+  assert.match(r.err, /Reviewer's run in .*exited 5 after/);
+  const meta = JSON.parse(fs.readFileSync(path.join(seen, 'json'), 'utf8'));
+  assert.deepEqual([meta.ticket, meta.who, meta.command], [A, 'reviewer', cmd]);
+  assert.match(fs.readFileSync(path.join(seen, 'log'), 'utf8'), /to-out-1\n[^]*to-err-1\n|to-err-1\n[^]*to-out-1\n/);
+  assert.deepEqual(progressFiles(root), []);
+  assert.equal(records(root).length, 0, 'the reviewer\'s run records nothing');
+  // And a passing one, with test_command itself.
+  const ok = run(root, '--review', A);
+  assert.equal(ok.code, 0, ok.err);
+  assert.deepEqual(progressFiles(root), []);
+});
+
+// The exit status is what every review relies on: no way the copy can fail
+// may turn a failing run into a passing one, or change its status at all.
+for (const [what, setup, cmd] of [
+  ['the copy cannot be made (the folder is taken by a file)', (root) => fs.writeFileSync(progressDir(root), 'not a folder\n'), 'echo out; echo err >&2; exit 7'],
+  ['the command removes the copy while it runs', () => {}, 'echo out; rm -rf "$(git rev-parse --git-common-dir)/kerjaan-progress"; echo more; exit 7'],
+  ['the command closes its own output and fails', () => {}, 'echo out; exec 1>&- 2>&-; exit 7'],
+  ['the command fails without printing anything', () => {}, 'exit 7'],
+  ['the command is killed by a signal', () => {}, 'echo out; kill -9 $$'],
+]) {
+  test(`a failing run stays failed, with its own status, when ${what}`, () => {
+    const root = repo(cmd, '(none yet)');
+    setup(root);
+    const r = run(root, A);
+    const want = cmd.includes('kill -9') ? 137 : 7;
+    assert.equal(r.code, want, r.err);
+    assert.ok(records(root)[0].includes(` exited ${want} after `), records(root)[0]);
+    const chk = run(root, '--check', A);
+    assert.equal(chk.code, 2, chk.out);
+    assert.match(chk.out, new RegExp(`^NO EVIDENCE: the latest run \\(.*\\) exited ${want}\\.`, 'm'));
+    const rv = run(root, '--review', A);
+    assert.equal(rv.code, want, rv.err);
+    if (fs.statSync(progressDir(root), { throwIfNoEntry: false })?.isDirectory()) assert.deepEqual(progressFiles(root), []);
+  });
+}
+
+test('a passing run passes, with the copy made', () => {
+  const root = repo('echo fine', '(none yet)');
+  const r = run(root, A);
+  assert.equal(r.code, 0, r.err);
+  assert.equal(r.out, 'fine\n');
+  assert.equal(run(root, '--check', A).code, 0);
+});
+
+test('a copy left by a run that was killed is removed by the next run; a live run\'s copy is left alone', () => {
+  const root = repo('true', '(none yet)');
+  fs.mkdirSync(progressDir(root));
+  const dead = spawnSync('true').pid;
+  const live = process.pid;
+  for (const pid of [dead, live]) {
+    fs.writeFileSync(path.join(progressDir(root), `${A}.${pid}.json`), JSON.stringify({ ticket: A, pid }));
+    fs.writeFileSync(path.join(progressDir(root), `${A}.${pid}.log`), 'x\n');
+  }
+  assert.equal(run(root, A).code, 0);
+  assert.deepEqual(progressFiles(root), [`${A}.${live}.json`, `${A}.${live}.log`]);
+});
+
+test('a process the command leaves behind, holding its output open, does not keep the run waiting', () => {
+  const seen = scratch();
+  const root = repo(`sleep 30 & echo $! > ${seen}/pid; echo started; exit 3`, '(none yet)');
+  const out = fs.openSync(path.join(seen, 'out'), 'w');
+  const t0 = Date.now();
+  const r = spawnSync('bash', [testRun, A], { cwd: root, env: gitEnv, stdio: ['ignore', out, out] });
+  const took = Date.now() - t0;
+  fs.closeSync(out);
+  try { process.kill(Number(fs.readFileSync(path.join(seen, 'pid'), 'utf8')), 'SIGKILL'); } catch {}
+  assert.equal(r.status, 3);
+  assert.ok(took < 20000, `${took} ms`);
+  assert.match(fs.readFileSync(path.join(seen, 'out'), 'utf8'), /started\n/);
+  assert.deepEqual(progressFiles(root), []);
+});

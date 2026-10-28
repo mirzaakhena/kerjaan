@@ -43,6 +43,18 @@
 # reviewer's runs (--review) wait for the same lock: a reviewer's suite
 # running beside a worker's shares exactly what two workers' suites would.
 #
+# While a run goes, the viewer can show it (viewer/runs.mjs): what it has
+# printed so far, how long it has run, and when it last printed. What the
+# command prints still reaches stdout and stderr as before; a copy goes to
+# <git common dir>/kerjaan-progress/<id>.<pid>.log, beside <id>.<pid>.json
+# saying whose run it is. The worker's runs and the reviewer's (--review) are
+# copied alike. Both files are removed when the run ends, passed or failed:
+# nothing is kept. Under .git/ they are never committed and stay outside the
+# fingerprint. The exit status is still the command's own: the copy is made by
+# process substitutions beside the command, never by a pipe whose status could
+# stand in for the command's. Making the copy is best-effort: when it cannot
+# be made, the run goes exactly as it would without it.
+#
 # The test command sees, in its environment:
 #   KERJAAN_TICKET     the ticket ID given to this script
 #   KERJAAN_SLOT       0 in the main tree; 1, 2, ... in linked worktrees, never
@@ -126,7 +138,12 @@ ticket="$(kerjaan_find_ticket "$board" "$id")" || exit 2
 test_command="$(kerjaan_setting "$board/settings.md" test_command)"
 
 tmpdir="$(mktemp -d)"
-trap 'rm -rf "$tmpdir"' EXIT
+progress=""
+progress_end() {
+  [ -z "$progress" ] || rm -f "$progress.json" "$progress.log" "$progress.tmp" 2> /dev/null || true
+  progress=""
+}
+trap 'progress_end; rm -rf "$tmpdir"' EXIT
 
 # Fingerprint of the working tree. A private index, seeded from the real one so
 # unchanged files are not rehashed, takes in every change git would see with
@@ -225,7 +242,7 @@ waited_note=""
 case "$(kerjaan_setting "$board/settings.md" parallel_tests)" in
   true | yes) ;;
   *)
-    trap 'kerjaan_lock_release tests; rm -rf "$tmpdir"' EXIT
+    trap 'progress_end; kerjaan_lock_release tests; rm -rf "$tmpdir"' EXIT
     if ! kerjaan_lock_acquire tests "$holder" "$(kerjaan_lock_timeout "$board" test_lock_timeout 3600)"; then
       echo "Nothing was run. The limit is test_lock_timeout in $board/settings.md." >&2
       exit 2
@@ -239,15 +256,69 @@ esac
 
 export KERJAAN_TICKET="$id" KERJAAN_SLOT="$slot" KERJAAN_WORKTREE="$top" KERJAAN_MAIN_TREE="$main_tree"
 
+# The copy of the output, for the viewer (see the top of this file).
+progress_start() {  # <who: worker | reviewer>
+  local dir f pid
+  dir="$(cd "$(git rev-parse --git-common-dir)" 2> /dev/null && pwd -P)" || return 0
+  dir="$dir/kerjaan-progress"
+  mkdir -p "$dir" 2> /dev/null || return 0
+  # Files left by a run that was killed before it could remove them.
+  for f in "$dir"/*.json; do
+    [ -e "$f" ] || continue
+    pid="${f%.json}"
+    pid="${pid##*.}"
+    case "$pid" in '' | *[!0-9]*) continue ;; esac
+    kill -0 "$pid" 2> /dev/null || rm -f "$f" "${f%.json}.log"
+  done
+  progress="$dir/$id.$$"
+  if ! { : > "$progress.log"; } 2> /dev/null \
+      || ! printf '{"ticket":"%s","pid":%s,"who":"%s","startedAt":%s000,"command":"%s"}\n' \
+        "$id" "$$" "$1" "$(date +%s)" "$(json_text "$test_command")" > "$progress.tmp" 2> /dev/null \
+      || ! mv "$progress.tmp" "$progress.json" 2> /dev/null; then
+    rm -f "$progress.tmp" "$progress.log" 2> /dev/null || true
+    progress=""
+  fi
+  return 0
+}
+# A string as JSON may hold it between quotes: control characters become
+# spaces, backslashes and quotes are escaped.
+json_text() {
+  printf '%s' "$1" | LC_ALL=C tr '\000-\037' ' ' | sed 's/\\/\\\\/g; s/"/\\"/g'
+}
+# Runs `bash -c "$test_command"` in <dir>, its output copied as it comes, and
+# returns the command's own status: the copies run beside it, so neither their
+# failure nor their status can stand in for it. Then waits, a few seconds at
+# most, for the copies to pass on what they still hold, so the command's last
+# lines come out before this script's own; a process the command left behind,
+# still holding its output open, does not keep the run waiting longer.
+run_command() {  # <dir>
+  local code i=0
+  if [ -z "$progress" ]; then
+    (cd "$1" && bash -c "$test_command")
+    return
+  fi
+  (cd "$1" && bash -c "$test_command") \
+    > >(tee -a "$progress.log"; : > "$tmpdir/copied.out") \
+    2> >(tee -a "$progress.log" >&2; : > "$tmpdir/copied.err")
+  code=$?
+  while [ "$i" -lt 100 ] && { [ ! -e "$tmpdir/copied.out" ] || [ ! -e "$tmpdir/copied.err" ]; }; do
+    sleep 0.05
+    i=$((i + 1))
+  done
+  return "$code"
+}
+
 # The reviewer's run proves nothing to anyone but the reviewer, so it leaves no
 # record: the ticket's latest run stays the worker's, which --check compares.
 if [ "$review" -eq 1 ]; then
   export KERJAAN_WORKTREE="$run_dir"
+  progress_start reviewer
   start="$SECONDS"
   set +e
-  (cd "$run_dir" && bash -c "$test_command")
+  run_command "$run_dir"
   code=$?
   set -e
+  progress_end
   elapsed=$(( SECONDS - start ))
   echo "Reviewer's run in $run_dir: \`$test_command\` exited $code after $(( elapsed / 60 ))m$(( elapsed % 60 ))s.$waited_note" >&2
   exit "$code"
@@ -256,11 +327,13 @@ fi
 # Taken after the wait, so content changed while waiting is not mistaken for
 # content changed by the run.
 before="$(worktree_fingerprint before)"
+progress_start worker
 start="$SECONDS"
 set +e
-bash -c "$test_command"
+run_command "$top"
 code=$?
 set -e
+progress_end
 elapsed=$(( SECONDS - start ))
 after="$(worktree_fingerprint after)"
 
@@ -285,7 +358,7 @@ fi
 # copy it read. The ticket is looked up again inside the lock, since it may
 # have changed folders while the tests ran. Should the wait run out, the result
 # is still printed below, so the run is not lost to the person watching.
-trap 'kerjaan_lock_release board; kerjaan_lock_release tests; rm -rf "$tmpdir"' EXIT
+trap 'progress_end; kerjaan_lock_release board; kerjaan_lock_release tests; rm -rf "$tmpdir"' EXIT
 if ! kerjaan_board_lock_try "$board" "test-run.sh $id recording its result"; then
   echo "The run was not recorded in $id; this is its result:" >&2
   echo "$note" >&2

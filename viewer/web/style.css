@@ -292,6 +292,54 @@ body.board-page .bar .live { flex: none; }
 .drawer .agent-steps .tool { font: 11.5px/1.6 var(--mono); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .drawer .agent-steps .step-label { overflow-wrap: anywhere; }
 
+/* ---------- a test run going on ---------- */
+/* While a test run goes for a ticket, a button hangs under its card (a button
+   cannot sit inside the card's own): the dot, how long the run has gone, and
+   how long since it last printed, which always stays in view. Green while it
+   prints, yellow after a quiet minute, red once it has printed nothing for
+   minutes. It opens the Progress section of the drawer: each run's head, its
+   command and its latest output, as a terminal shows it. */
+.run-slot:empty, .run-block:empty { display: none; }
+.cards li.with-run > .card { border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
+.run-open {
+  --tone: var(--faint);
+  display: flex; align-items: center; gap: 0 6px; width: 100%; min-width: 0;
+  margin-top: -1px; padding: 3px 10px; border: 1px solid var(--line); border-radius: 0 0 8px 8px;
+  background: var(--sunk); color: var(--muted); font: 11.5px/1.5 var(--sans);
+  white-space: nowrap; text-align: left; cursor: pointer; overflow: hidden;
+}
+.run-open:hover { border-color: var(--faint); color: var(--ink); }
+.run-open:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.run-open.working, .run-state.working { --tone: var(--agent-working); }
+.run-open.quiet, .run-state.quiet { --tone: var(--agent-quiet); }
+.run-open.stopped, .run-state.stopped { --tone: var(--agent-stopped); }
+.run-open.stopped { background: var(--stop-bg); color: var(--ink); border-color: var(--agent-stopped); }
+.run-open .signal, .run-state .signal { flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--tone); }
+.run-open.working .signal, .run-state.working .signal { animation: pulse 1.6s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .run-open.working .signal, .run-state.working .signal { animation: none; } }
+.run-open .what { flex: none; font-weight: 600; color: var(--ink); }
+.run-open .state, .run-state .state { flex: none; font-weight: 600; color: var(--tone); }
+.run-open .count, .run-open .time { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.run-open .ago { flex: none; margin-left: auto; font-variant-numeric: tabular-nums; }
+.run-open .count::before, .run-open .state::before, .run-open .time::before,
+.run-state .state::before, .run-state .time::before, .run-state .ago::before { content: "·"; margin-right: 6px; color: var(--muted); font-weight: 400; }
+.drawer .run-block { margin: 12px 0 0; }
+.drawer .runs { font: 12.5px/1.45 var(--sans); border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px 8px; scroll-margin-top: 8px; }
+.drawer .runs:focus { outline: none; }
+.drawer .runs h3 { margin: 0 0 4px; font-size: 12.5px; font-weight: 600; }
+.drawer .run + .run { margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--line); }
+.drawer .run-head { margin: 0; }
+.drawer .run-state { display: flex; flex-wrap: wrap; align-items: center; gap: 0 6px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.drawer .run-state .who { color: var(--ink); }
+.drawer .run-command { margin: 2px 0 6px; overflow-wrap: anywhere; }
+.drawer .run-command code { font: 11.5px/1.5 var(--mono); color: var(--muted); }
+.drawer .run-output {
+  margin: 0; max-height: min(60vh, 520px); overflow: auto; padding: 8px 10px; border-radius: 6px;
+  background: var(--sunk); color: var(--ink); font: 11.5px/1.5 var(--mono);
+  white-space: pre-wrap; overflow-wrap: anywhere;
+}
+.drawer .run-output .cut, .drawer .run-output .muted { color: var(--muted); font-style: italic; }
+
 /* ---------- ticket drawer ---------- */
 .drawer {
   position: fixed; top: 0; right: 0; bottom: 0; z-index: 20;

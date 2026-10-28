@@ -434,6 +434,20 @@ browser) is a button, by name, the open one marked, so another board is one
 click away. When they do not fit on one line the row scrolls sideways; on a
 phone it gets a line of its own under the name.
 
+While a test run goes through `test-run.sh` — the worker's, or any of the
+reviewer's (`--review`), deliberate breaks included — the card of a ticket in
+`in_progress` or `review` carries a Progress button under it: how long the run
+has gone and how long since it last printed, green while it prints, yellow
+after a quiet minute, red once it has printed nothing for five. It opens the
+ticket at its Progress section: each run, whose it is, its command, and its
+last 200 lines of output, which grow as the run prints and stay at the end
+unless scrolled up. The output is shown as the run printed it, as a terminal
+shows it, so whatever a test prints, a secret included, is on the page (and,
+with `--lan`, on the network). `test-run.sh` copies the output to
+`.git/kerjaan-progress/` while the run goes and removes the copy when it ends,
+passed or failed: nothing is kept, and the ticket's Notes still hold the
+run's one line.
+
 A card in `done` whose code is not on the main line yet says so: "not
 merged", with the name of every branch that carries its ID and holds
 commits outside `HEAD` — the same rule `update-ticket.sh` applies when it
