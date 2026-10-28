@@ -385,6 +385,27 @@ test('the tests, as the page draws them: grouped by file, each with its mark, na
   assert.deepEqual([testTime(0), testTime(999), testTime(1000), testTime(9949), testTime(12000), testTime(61000)], ['0 ms', '999 ms', '1.0 s', '9.9 s', '12 s', '1 min']);
 });
 
+test('a file that ended while an earlier one runs, its tests not reported yet, says they are to follow; once they arrive it is drawn like any done file', () => {
+  const now = Date.now();
+  const head = (html, file) => html.match(new RegExp(`<li class="test-file ([\\w -]+)"><p class="file-head"><code>${file}</code>(.*?)</p>`)).slice(1);
+  const lines = [
+    L({ file: 'a.js', state: 'start' }), L({ file: 'a.js', name: 'slow', state: 'start' }),
+    L({ file: 'b.js', state: 'start' }), L({ file: 'b.js', state: 'end' }),
+  ];
+  let html = runTests({ run: 'r', tests: readTestLines(lines.join('')) }, now);
+  assert.deepEqual(head(html, 'b\\.js'), ['ended to-follow', '<span class="file-state">tests to follow</span>']);
+  assert.deepEqual(head(html, 'a\\.js'), ['running', '<span class="file-state">running</span>']);
+  assert.doesNotMatch(html, /tests to follow<\/span><\/p><ul>/, 'no list under it');
+  lines.push(L({ file: 'a.js', name: 'slow', state: 'pass', ms: 5 }), L({ file: 'a.js', state: 'end' }), L({ file: 'b.js', name: 'quick', state: 'pass', ms: 1 }));
+  html = runTests({ run: 'r', tests: readTestLines(lines.join('')) }, now);
+  assert.deepEqual(head(html, 'b\\.js'), ['ended', '']);
+  assert.deepEqual(head(html, 'a\\.js'), ['ended', '']);
+  assert.doesNotMatch(html, /to follow/);
+  assert.match(html, /<code>b\.js<\/code><\/p><ul><li class="test pass"[^>]*>.*?quick/);
+  // A file that failed on its own with no tests listed still says it failed.
+  assert.match(runTests({ run: 'r', tests: readTestLines(L({ file: 'c.js', state: 'fail' })) }, now), /<li class="test-file failed"><p class="file-head"><code>c\.js<\/code><span class="file-state">failed on its own<\/span>/);
+});
+
 test('a project that does not report per test: the Progress says so, and shows its output as before', () => {
   const now = Date.now();
   const html = runSection([{ run: 'a', who: 'reviewer', command: 'make check', startedAt: now - MIN, lastAt: now, size: 3, testsSize: -1, lines: ['all fine'], cut: false, tests: null }], now);
@@ -581,6 +602,33 @@ for (const [name, w, h] of [['window 1280×800', 1280, 800], ['phone 390×844', 
     await page.until(`() => document.querySelector('#drawer-body .test.running .test-time').textContent !== ${JSON.stringify(first)}`, 4000);
     fs.appendFileSync(s.runs.worker.tests, JSON.stringify({ file: 'tests/pay.test.mjs', name: 'a refund', state: 'fail', ms: 4100 }) + '\n');
     await page.until(`() => document.querySelector('#drawer-body .test-counts').textContent.includes('2 failed')`, 8000);
+    assert.equal(await page.eval('() => window.__kept'), 1, 'the page was not reloaded');
+  });
+}
+
+for (const [name, w, h] of [['window 1280×800', 1280, 800], ['phone 390×844', 390, 844]]) {
+  browserTest(`${name}: a file done before its tests are reported says they are to follow, then shows them without a reload`, async (s, v, page) => {
+    await page.size(w, h);
+    // tests/pay.test.mjs still runs; tests/zip.test.mjs, after it, is done.
+    fs.appendFileSync(s.runs.worker.tests, [{ file: 'tests/zip.test.mjs', state: 'start', at: Date.now() }, { file: 'tests/zip.test.mjs', state: 'end' }].map((l) => JSON.stringify(l) + '\n').join(''));
+    await page.goto(`${v.base}/alpha/ticket/${ID.worker}`);
+    await page.until(`() => !!document.querySelector('#drawer-body .run-tests')`);
+    await page.eval(`() => { window.__kept = 1; }`);
+    const zip = () => {
+      const f = [...document.querySelectorAll('#drawer-body .test-file')].find((el) => el.querySelector('code').textContent === 'tests/zip.test.mjs');
+      const st = f.querySelector('.file-state');
+      return {
+        state: st?.textContent || '', seen: !!st && st.getBoundingClientRect().width > 0,
+        tests: [...f.querySelectorAll('.test-name')].map((t) => t.textContent),
+        wide: document.documentElement.scrollWidth > innerWidth,
+      };
+    };
+    let got = await page.eval(zip);
+    assert.deepEqual(got, { state: 'tests to follow', seen: true, tests: [], wide: false });
+    fs.appendFileSync(s.runs.worker.tests, JSON.stringify({ file: 'tests/zip.test.mjs', name: 'a zip code is checked', state: 'pass', ms: 4 }) + '\n');
+    await page.until(`() => [...document.querySelectorAll('#drawer-body .test-file')].some((el) => el.querySelector('.test-name')?.textContent === 'a zip code is checked')`, 8000);
+    got = await page.eval(zip);
+    assert.deepEqual(got, { state: '', seen: false, tests: ['a zip code is checked'], wide: false }, 'drawn like the other done file');
     assert.equal(await page.eval('() => window.__kept'), 1, 'the page was not reloaded');
   });
 }

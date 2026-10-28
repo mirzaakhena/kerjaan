@@ -103,6 +103,19 @@ export function testCounts(counts) {
     `</p>`;
 }
 
+// One test file: its name, its state unless it is done, and its tests. A
+// runner such as node --test reports each file's tests in file order, so a
+// file that ended while an earlier one still runs has none listed yet: it says
+// they are to follow rather than look done and empty, and is drawn like any
+// done file once they arrive.
+function testFile(f, now) {
+  const toFollow = f.state === 'ended' && !f.tests.length;
+  const word = toFollow ? 'tests to follow' : f.state === 'ended' ? '' : FILE_WORD[f.state] || f.state;
+  return `<li class="test-file ${f.state}${toFollow ? ' to-follow' : ''}"><p class="file-head"><code>${esc(f.file)}</code>` +
+    (word ? `<span class="file-state">${esc(word)}</span>` : '') + `</p>` +
+    (f.tests.length ? `<ul>${f.tests.map((t) => testItem(t, now)).join('')}</ul>` : '') + `</li>`;
+}
+
 // The run's tests, one by one, under the file each is in; or, for a project
 // that does not report per test, a line saying so, its output shown below as
 // for any run.
@@ -112,11 +125,7 @@ export function runTests(run, now) {
       `This project does not report per test yet; its live output is below.</p>`;
   }
   const { files, counts } = run.tests;
-  const list = files.length
-    ? files.map((f) => `<li class="test-file ${f.state}"><p class="file-head"><code>${esc(f.file)}</code>` +
-        (f.state === 'ended' ? '' : `<span class="file-state">${esc(FILE_WORD[f.state] || f.state)}</span>`) + `</p>` +
-        (f.tests.length ? `<ul>${f.tests.map((t) => testItem(t, now)).join('')}</ul>` : '') + `</li>`).join('')
-    : '<li class="muted">No test has started yet.</li>';
+  const list = files.length ? files.map((f) => testFile(f, now)).join('') : '<li class="muted">No test has started yet.</li>';
   return `<div class="run-tests" data-run-tests="${esc(run.run)}">${testCounts(counts)}` +
     `<ul class="test-files">${list}</ul></div>`;
 }
