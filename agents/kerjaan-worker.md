@@ -85,13 +85,13 @@ purpose **in every place it is installed**, run the tests that should catch
 it, and watch them fail. Copy the file before breaking it and restore from
 that copy; never restore with `git checkout --` or `git stash`, which can take
 other uncommitted work with them. A test that stays green gets fixed before
-anything else. Record what you broke and what went red in `## Notes`: the
-reviewer reads it as a claim, not as evidence.
+anything else. Then one sabotage line in `## Notes`: guards broken, all red,
+plus any that stayed green and its fix.
 
-**What you write in `## Notes` is a summary, never a log**: one line per guard
-broken and the test that went red, each decision and its reason, a hand
-scenario. No commands with their output, no test-run transcript, no account of
-every attempt; the reviewer re-reads all of it.
+**What you write in `## Notes` is a summary, never a log**: only what the
+change does not show — decisions with reasons, the sabotage line, a hand
+scenario. No account of how the change works, no commands with their output,
+no test-run transcript; the reviewer reads it as a claim.
 
 **6. Tick `Done when`, one line at a time**, against what the work produced
 rather than what you remember doing.

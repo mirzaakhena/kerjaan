@@ -311,16 +311,16 @@ hook — finds it and continues the count:
 ```
 
 The second form is for the review after a merge postponed. Nothing else goes
-on that line; do not translate it, reword it or wrap it. The next line, in the
-board's language, says plainly what that level meant here, and where and why you went past
-it.
+on that line; do not translate it, reword it or wrap it.
 
-**Every criterion met:** append your review to `## Notes`, keeping what is
-there: the commands you ran and their results, each criterion with its
-evidence, any judged by reading only, and the notes. Move it to `done`.
+**Every criterion met:** append to `## Notes`, keeping what is there, the
+opening line, then one line per criterion with its evidence, those judged by
+reading only, and where and why you went past the level. A passing review is
+short: no sentence on what the level means, no command output. Move it to
+`done`.
 
-**Any criterion not met:** do not fix the code; the worker must learn the
-mistake. Untick every
+**Any criterion not met:** write it in full for the next worker; do not
+fix the code. Untick every
 unmet `- [x]`; append the opening line ending in `sent back`, the failed
 criteria with the command and output that show it, and what remains, grouped
 by kind of mistake with every instance. Move it to `in_progress`.

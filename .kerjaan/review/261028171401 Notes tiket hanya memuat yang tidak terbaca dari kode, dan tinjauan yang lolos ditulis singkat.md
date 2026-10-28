@@ -6,7 +6,7 @@ labels: [agen, sesi-a185f853]
 reporter: mirza
 assign_to: claude
 created: 2026-10-28 17:14:00
-updated: 2026-10-28 18:30:44
+updated: 2026-10-28 18:36:42
 related: []
 blocked_by: []
 ---
@@ -37,17 +37,18 @@ dibaca dari kode atau dari baris yang ditulis skrip, sehingga tiket yang
 selesai jauh lebih pendek tanpa kehilangan keputusan dan alasannya.
 
 ## Done when
-- [ ] Panduan pengerja meminta catatan hanya berisi keputusan dan alasannya yang tidak terlihat dari perubahan, tanpa penjelasan cara kerja yang mengulang perubahan itu
-- [ ] Panduan pengerja meminta hasil sabotase diringkas dalam satu baris (berapa penjaga dirusak, semuanya merah), ditambah penjaga yang sempat tetap hijau beserta perbaikannya
-- [ ] Panduan peninjau meminta tinjauan yang lolos ditulis satu baris per butir, tanpa kalimat pembuka yang mengulang arti level tinjauan; tinjauan yang menolak tetap rinci
-- [ ] Batas jumlah kata skill dan batas kata panduan peninjau tidak dinaikkan: aturan baru menggantikan kalimat lama
-- [ ] Uji otomatis gagal bila aturan singkat itu hilang dari panduan pengerja atau peninjau
-- [ ] Tiket yang sudah selesai sebelumnya tidak diubah
+- [x] Panduan pengerja meminta catatan hanya berisi keputusan dan alasannya yang tidak terlihat dari perubahan, tanpa penjelasan cara kerja yang mengulang perubahan itu
+- [x] Panduan pengerja meminta hasil sabotase diringkas dalam satu baris (berapa penjaga dirusak, semuanya merah), ditambah penjaga yang sempat tetap hijau beserta perbaikannya
+- [x] Panduan peninjau meminta tinjauan yang lolos ditulis satu baris per butir, tanpa kalimat pembuka yang mengulang arti level tinjauan; tinjauan yang menolak tetap rinci
+- [x] Batas jumlah kata skill dan batas kata panduan peninjau tidak dinaikkan: aturan baru menggantikan kalimat lama
+- [x] Uji otomatis gagal bila aturan singkat itu hilang dari panduan pengerja atau peninjau
+- [x] Tiket yang sudah selesai sebelumnya tidak diubah
 
 ## History
 - 2026-10-28 17:14:00 a185f853-6a65-4f44-919d-97ba97774e43 backlog
 - 2026-10-28 17:17:09 a185f853-6a65-4f44-919d-97ba97774e43 todo
 - 2026-10-28 18:30:44 a185f853-6a65-4f44-919d-97ba97774e43 in_progress
+- 2026-10-28 18:36:42 a185f853-6a65-4f44-919d-97ba97774e43 review
 
 ## Notes
 - Diminta mirza, 2026-10-28, sesi a185f853-6a65-4f44-919d-97ba97774e43, setelah bertanya apakah isi tiket (terutama catatan) bermanfaat bagi agen atau hanya memboroskan token. Pemilik memilih membuat tiket ini ke backlog; tiket lama dibiarkan.
@@ -55,3 +56,7 @@ selesai jauh lebih pendek tanpa kehilangan keputusan dan alasannya.
 - Yang tetap dipertahankan: jawaban dan keputusan pemilik, keputusan pengerja beserta alasannya, baris mekanis yang ditulis skrip, dan temuan peninjau saat menolak (bahan pengerja di ronde berikutnya).
 - Batas kata hampir penuh: skill 17.925 dari 18.000 kata, panduan peninjau 2.994 dari 3.000 kata (per 2026-10-28; 261028121401 mungkin mengubahnya).
 - 2026-10-28 17:17:01: files estimated to change: `agents/kerjaan-reviewer.md`, `agents/kerjaan-worker.md`, `tests/bash-description.test.mjs`
+- Keputusan: baris pembuka `Reviewed at level` dibiarkan apa adanya, karena on-ticket-review.sh dan peninjau baru mencarinya; tidak ada skrip atau viewer yang membaca isi tinjauan lolos, jadi isinya aman diringkas.
+- Jumlah kata: skill 17.922 dari 18.000 (sebelumnya 17.925), panduan peninjau 2.992 dari 3.000 (sebelumnya 2.994). Uji lama "No commands with their output" dilonggarkan huruf besarnya karena kalimat itu kini di tengah kalimat.
+- Sabotase: 7 penjaga dirusak (4 di panduan pengerja, 3 di panduan peninjau), semuanya merah.
+- 2026-10-28 18:36:34: test run — `node --test --test-timeout=900000 --import=./tests/complete-runs.mjs --test-reporter=tap --test-reporter-destination=stdout --test-reporter=./skills/kerjaan/scripts/reporters/node.mjs --test-reporter-destination=/dev/null` exited 0 after 3m42s, on content fingerprint 177e938e4187eb456a3dcd91c6fc6ed812793b69 (the same before and after the run; .kerjaan/ left out).

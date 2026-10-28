@@ -52,7 +52,17 @@ test('the README gives the budget and the rule that a new rule names what it rem
 test('the worker writes its Notes as a summary, not a full log', () => {
   const step = flat(read('agents/kerjaan-worker.md').split('**5. Prove the tests can go red.**')[1].split('**6. ')[0]);
   assert.match(step, /What you write in `## Notes` is a summary, never a log/);
-  assert.match(step, /No commands with their output/);
+  assert.match(step, /[Nn]o commands with their output/);
+});
+
+// Notes hold only what the change does not show (261028171401): no account of
+// how the change works, and breaking the guards is reported in one line.
+test('the worker keeps Notes to what the change does not show, sabotage in one line', () => {
+  const step = flat(read('agents/kerjaan-worker.md').split('**5. Prove the tests can go red.**')[1].split('**6. ')[0]);
+  assert.match(step, /only what the change does not show — decisions with reasons/);
+  assert.match(step, /No account of how the change works/);
+  assert.match(step, /one sabotage line in `## Notes`: guards broken, all red, plus any that stayed green and its fix/);
+  assert.doesNotMatch(step, /one line per guard/);
 });
 
 const quickReference = () => read(SKILL).split('## Quick reference')[1].match(/```bash\n([\s\S]*?)```/)[1];

@@ -104,3 +104,18 @@ test('the case of a ticket branch already merged before review is gone', () => {
   assert.doesNotMatch(text, /for a merged branch/);
   assert.match(text, /merged only after `done`/);
 });
+
+// A passing review is short and a rejection stays in full (261028171401): one
+// line per criterion, no sentence on what the level means, no command output;
+// the next worker starts from a rejection, so it keeps the command and output.
+test('a passing review is one line per criterion without restating the level; a rejection stays in full', () => {
+  const decision = flat(read(REVIEWER).split('## The decision')[1].split('\n## ')[0]);
+  const passed = decision.split('**Every criterion met:**')[1].split('**Any criterion not met:**')[0];
+  assert.match(passed, /one line per criterion with its evidence/);
+  assert.match(passed, /A passing review is short: no sentence on what the level means, no command output\./);
+  assert.doesNotMatch(decision, /what that level meant here/);
+  assert.doesNotMatch(passed, /the commands you ran and their results/);
+  const rejected = decision.split('**Any criterion not met:**')[1].split('**Commit your verdict**')[0];
+  assert.match(rejected, /write it in full for the next worker/);
+  assert.match(rejected, /the failed criteria with the command and output that show it/);
+});
