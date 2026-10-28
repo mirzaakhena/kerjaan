@@ -6,7 +6,7 @@ labels: [viewer, agen]
 reporter: mirza
 assign_to: claude
 created: 2026-10-28 12:06:46
-updated: 2026-10-28 12:47:43
+updated: 2026-10-28 16:32:33
 related: [261028112701, 261016084202]
 blocked_by: []
 ---
@@ -43,6 +43,7 @@ keadaan itu, tanpa isi pikirannya ditampilkan.
 ## History
 - 2026-10-28 12:06:46 2894605e-2452-4259-b7ae-7187f1df18cb backlog
 - 2026-10-28 12:47:43 a185f853-6a65-4f44-919d-97ba97774e43 todo
+- 2026-10-28 16:32:33 a185f853-6a65-4f44-919d-97ba97774e43 in_progress
 
 ## Notes
 - Diminta Mirza 28 Okt 2026 dari sesi nukitu-mockup, dipisah dari 261028112701 karena tiket itu sudah berisi 8 butir Done when.
