@@ -52,16 +52,35 @@ export function clock(at, now) {
 
 const stepText = (step) => (step ? step.label || step.tool : 'no step yet');
 
-// One line: dot, kind, state when not simply working, last step, how long ago.
+// What the agent is doing now, for an agent still at it (working or quiet):
+// running a tool, or thinking and writing between two steps. The server says
+// which (`phase`) and since when (`phaseAt`). An agent that has ended or gone
+// silent has no phase here: it shows its last step and how long ago.
+export function agentPhase(a, status, now) {
+  const st = agentState(a, status, now);
+  if (a.ended || st.tone === 'stopped' || a.phaseAt == null) return null;
+  if (a.phase === 'tool' && a.step) return { phase: 'tool', text: stepText(a.step), title: stepText(a.step), how: `running ${span(now - a.phaseAt)}` };
+  if (a.phase === 'thinking') {
+    const after = a.step ? `Thinking or writing since its last step ended: ${stepText(a.step)}` : 'Thinking or writing; no step yet';
+    return { phase: 'thinking', text: 'thinking or writing', title: after, how: `for ${span(now - a.phaseAt)}` };
+  }
+  return null;
+}
+
+// One line: dot, kind, state when not simply working, then what it is doing
+// and for how long; or, once it has stopped, its last step and how long ago.
 export function agentLine(a, status, now) {
   const st = agentState(a, status, now);
+  const ph = agentPhase(a, status, now);
   const at = a.step?.at ?? a.lastAt;
+  const step = ph
+    ? `<span class="step ${ph.phase}" title="${esc(ph.title)}">${esc(ph.text)}</span><span class="ago">${esc(ph.how)}</span>`
+    : `<span class="step" title="${esc(stepText(a.step))}">${esc(stepText(a.step))}</span><span class="ago">${ago(at, now)}</span>`;
   return `<span class="agent ${st.tone}" title="${esc(st.why)}">` +
     `<span class="signal" aria-hidden="true"></span>` +
     `<span class="kind">${esc(a.kind)}</span>` +
     (st.word ? `<span class="state">${esc(st.word)}</span>` : '') +
-    `<span class="step" title="${esc(stepText(a.step))}">${esc(stepText(a.step))}</span>` +
-    `<span class="ago">${ago(at, now)}</span></span>`;
+    step + `</span>`;
 }
 
 // How long the agent has been at it: until now while it works, until its

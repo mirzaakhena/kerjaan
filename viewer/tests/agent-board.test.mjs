@@ -67,6 +67,8 @@ test('kanban: tickets in progress and in review carry their agent; todo, done an
   try {
     const t = byId(await (await v.get('/alpha/api/board')).json());
     assert.deepEqual([t[ID.working].agent.kind, t[ID.working].agent.step.label, t[ID.working].agent.ended], ['worker', 'Update README API sections', null]);
+    assert.deepEqual([t[ID.working].agent.phase, t[ID.working].agent.phaseAt], ['tool', s.now - 5000], 'running its last step');
+    for (const id of [ID.interrupted, ID.finished, ID.passed]) assert.equal(t[id].agent.phase, null, `${id}: ended, so no phase`);
     assert.deepEqual([t[ID.review].agent.kind, t[ID.review].agent.step.label], ['reviewer', 'viewer/app.mjs']);
     assert.equal(t[ID.interrupted].agent.ended, 'interrupted');
     assert.equal(t[ID.finished].agent.ended, 'finished');
@@ -216,7 +218,7 @@ browserTest('card: the agent\'s kind, its last step, and how long ago, under the
   await page.until(`() => !!document.querySelector('.card[data-id="${ID.working}"] .agent')`);
   const working = await page.eval(cardAgent, ID.working);
   assert.deepEqual([working.tone, working.kind, working.word, working.step], ['working', 'worker', '', 'Update README API sections']);
-  assert.match(working.ago, /^\d+ s ago$/);
+  assert.match(working.ago, /^running \d+ s$/, 'its last call is not answered yet: running, and for how long');
   assert.equal(working.belowTitle, true);
   assert.equal(working.agoSeen, true);
   const review = await page.eval(cardAgent, ID.review);
@@ -243,6 +245,43 @@ browserTest('card: changes by itself when the agent takes a step, and "x ago" ke
   assert.equal(await page.eval(`() => document.activeElement?.dataset.id`), ID.working, 'the card keeps its focus');
   const before = (await page.eval(cardAgent, ID.working)).ago;
   await page.until(`() => document.querySelector('.card[data-id="${ID.working}"] .agent .ago').textContent !== ${JSON.stringify(before)}`, 4000);
+});
+
+browserTest('card: turns from the running step to "thinking or writing" and back by itself, each with how long, without a reload', async (s, v, page) => {
+  await page.size(1280, 800);
+  await page.goto(`${v.base}/alpha/`);
+  await page.until(`() => !!document.querySelector('.card[data-id="${ID.working}"] .agent')`);
+  await page.eval(`() => { window.__kept = 1; }`);
+  const now = () => page.eval(cardAgent, ID.working);
+  assert.deepEqual([(await now()).step], ['Update README API sections']);
+  // The running step's answer comes in: thinking or writing, counted from then.
+  let t0 = Date.now();
+  appendLog(s.logs.working, line.result(Date.now(), 'SECRET-RESULT-3', `toolu_${s.now - 5000}`));
+  await page.until(`() => document.querySelector('.card[data-id="${ID.working}"] .agent .step')?.textContent === 'thinking or writing'`, 6000);
+  assert.ok(Date.now() - t0 < 6000, `${Date.now() - t0} ms`);
+  const thinking = await now();
+  assert.equal(thinking.tone, 'working');
+  assert.match(thinking.ago, /^for \d+ s$/);
+  assert.equal(await page.eval(`() => getComputedStyle(document.querySelector('.card[data-id="${ID.working}"] .agent .step')).fontStyle`), 'italic');
+  // A new step: running again, under its own label.
+  const at = Date.now();
+  t0 = Date.now();
+  appendLog(s.logs.working, line.step(at, 'Bash', { description: 'Run the whole suite', command: 'SECRET-COMMAND-3' }));
+  await page.until(`() => document.querySelector('.card[data-id="${ID.working}"] .agent .step')?.textContent === 'Run the whole suite'`, 6000);
+  assert.ok(Date.now() - t0 < 6000, `${Date.now() - t0} ms`);
+  assert.match((await now()).ago, /^running \d+ s$/);
+  // Its answer: thinking again, and the time keeps counting.
+  appendLog(s.logs.working, line.result(Date.now(), 'SECRET-RESULT-4', `toolu_${at}`));
+  await page.until(`() => document.querySelector('.card[data-id="${ID.working}"] .agent .step')?.textContent === 'thinking or writing'`, 6000);
+  const before = (await now()).ago;
+  await page.until(`() => document.querySelector('.card[data-id="${ID.working}"] .agent .ago').textContent !== ${JSON.stringify(before)}`, 4000);
+  assert.equal(await page.eval('() => window.__kept'), 1, 'the page was not reloaded');
+  assert.ok(!(await page.eval('() => document.body.innerHTML')).includes('SECRET'));
+  // Agents that have stopped never read as thinking.
+  for (const id of [ID.gone, ID.interrupted, ID.finished, ID.passed]) {
+    const c = await page.eval(cardAgent, id);
+    assert.ok(c.step !== 'thinking or writing' && /ago$/.test(c.ago), `${id}: ${c.step} · ${c.ago}`);
+  }
 });
 
 browserTest('the mark: each state of an agent looks different; one stopped in progress stands out most', async (s, v, page) => {
@@ -301,7 +340,7 @@ for (const [name, w, h] of [['window 1280×800', 1280, 800], ['phone 390×844', 
     await openTicket(v, page, ID.working);
     const m = await page.eval(drawerAgent);
     assert.deepEqual([m.line.kind, m.line.step, m.line.seen], ['worker', 'Update README API sections', true]);
-    assert.match(m.line.ago, /s ago$/);
+    assert.match(m.line.ago, /^running \d+ s$/);
     assert.ok(m.head <= m.drawer / 5, `fixed part ${m.head} px > ${m.drawer / 5}`);
     assert.equal(m.details.first, true, 'the step list opens the scrolling part');
     assert.equal(m.details.open, false, 'folded at first');
