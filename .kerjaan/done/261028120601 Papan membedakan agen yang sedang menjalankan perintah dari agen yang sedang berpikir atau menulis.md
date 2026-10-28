@@ -6,7 +6,7 @@ labels: [viewer, agen]
 reporter: mirza
 assign_to: claude
 created: 2026-10-28 12:06:46
-updated: 2026-10-28 16:46:05
+updated: 2026-10-28 16:47:08
 related: [261028112701, 261016084202]
 blocked_by: []
 ---
@@ -45,6 +45,7 @@ keadaan itu, tanpa isi pikirannya ditampilkan.
 - 2026-10-28 12:47:43 a185f853-6a65-4f44-919d-97ba97774e43 todo
 - 2026-10-28 16:32:33 a185f853-6a65-4f44-919d-97ba97774e43 in_progress
 - 2026-10-28 16:46:05 a185f853-6a65-4f44-919d-97ba97774e43 review
+- 2026-10-28 16:47:08 a185f853-6a65-4f44-919d-97ba97774e43 done
 
 ## Notes
 - Diminta Mirza 28 Okt 2026 dari sesi nukitu-mockup, dipisah dari 261028112701 karena tiket itu sudah berisi 8 butir Done when.
@@ -61,3 +62,15 @@ keadaan itu, tanpa isi pikirannya ditampilkan.
 
 - 2026-10-28 16:45:55: test run — `node --test --test-timeout=900000 --import=./tests/complete-runs.mjs` exited 0 after 4m8s, on content fingerprint 7046c869ec197c722d8beadb5da52b1543fa4d54 (the same before and after the run; .kerjaan/ left out).
 - 2026-10-28 16:46:05: review covers branch ticket-261028120601 at 427738b0ad7a1850f1b320fa4a459cc4e32fa09b, which holds main at ec241cff16fb5cc25b339c04e5ba6148c739ee96 (code outside .kerjaan/); the latest test run passed on exactly this content.
+
+- 2026-10-28: Reviewed at level quick, round 1, at commit 427738b: passed.
+  Level quick di sini: uji proyek tidak dijalankan ulang, karena `test-run.sh --check 261028120601 427738b` menjawab SAME (jalan uji 2026-10-28 16:45:55 keluar 0 pada sidik 7046c869ec197c722d8beadb5da52b1543fa4d54, isinya persis yang ditinjau); perubahan `git diff ec241cf...427738b` (6 berkas di `viewer/`) dibaca butir demi butir terhadap Done when. Tidak ada server yang dinyalakan, tidak ada sabotase.
+  - Butir 1 (alat berjalan → langkah dan lamanya): terpenuhi. `viewer/agents.mjs` menyimpan panggilan yang belum dijawab di `open`; ada yang terbuka → `phase: 'tool'`, `phaseAt` = waktu langkah terakhir. `agentPhase` di `viewer/web/agent.js` menampilkan "<langkah> · running N". Diuji di `agents.test.mjs` dan uji peramban kartu/laci (`running \d+ s`).
+  - Butir 2 (di antara langkah → berpikir atau menulis dan lamanya): terpenuhi. Semua panggilan terjawab → `phase: 'thinking'` sejak jawaban terakhir; kartu "thinking or writing · for N", miring. Diuji di uji peramban "card: turns from the running step…".
+  - Butir 3 (berganti sendiri dalam beberapa detik, tanpa memuat ulang): terpenuhi. Uji peramban yang sama menambah baris ke catatan agen dan menunggu kartu berganti ke "thinking or writing", lalu ke langkah baru, lalu kembali, tiap kali di bawah 6 detik, dengan penanda `window.__kept` yang membuktikan halaman tidak dimuat ulang.
+  - Butir 4 (isi pikiran, pesan, hasil alat tidak tampil): terpenuhi. Dari baris `user` hanya `tool_use_id` yang dibaca; uji peramban memastikan teks `SECRET-RESULT-*`/`SECRET-COMMAND-*` tidak ada di halaman.
+  - Butir 5 (agen berhenti tetap ditandai berhenti): terpenuhi. Server memberi `phase: null` bila `ended`; halaman juga menolak fase bila nada `stopped` (senyap). Diuji di "an agent that has stopped is marked so…" dan di ujung uji peramban untuk agen gone/interrupted/finished/passed.
+  - Butir 6: dicoret pemilik 28 Okt 2026; tidak dinilai.
+  Catatan (tidak memblokir): warna kuning "quiet" tetap dihitung dari tanda hidup terakhir, jadi alat yang berjalan lebih dari 2 menit tampil kuning dengan "running N min" — keputusan pengerja yang tercatat di atas, masuk akal, dan bagian perintah panjang memang milik 261028112701.
+  Tidak diverifikasi dengan menjalankan apa pun oleh peninjau: kelima butir dinilai dari membaca diff dan uji, ditambah jalan uji pengerja yang lulus (SAME).
+- 2026-10-28 16:47:08: merge queue: joined as number 1, behind nobody.
