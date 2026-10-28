@@ -6,7 +6,7 @@ labels: [agen, sesi-a185f853]
 reporter: mirza
 assign_to: claude
 created: 2026-10-28 17:14:00
-updated: 2026-10-28 18:36:42
+updated: 2026-10-28 18:38:09
 related: []
 blocked_by: []
 ---
@@ -49,6 +49,7 @@ selesai jauh lebih pendek tanpa kehilangan keputusan dan alasannya.
 - 2026-10-28 17:17:09 a185f853-6a65-4f44-919d-97ba97774e43 todo
 - 2026-10-28 18:30:44 a185f853-6a65-4f44-919d-97ba97774e43 in_progress
 - 2026-10-28 18:36:42 a185f853-6a65-4f44-919d-97ba97774e43 review
+- 2026-10-28 18:38:09 a185f853-6a65-4f44-919d-97ba97774e43 done
 
 ## Notes
 - Diminta mirza, 2026-10-28, sesi a185f853-6a65-4f44-919d-97ba97774e43, setelah bertanya apakah isi tiket (terutama catatan) bermanfaat bagi agen atau hanya memboroskan token. Pemilik memilih membuat tiket ini ke backlog; tiket lama dibiarkan.
@@ -60,3 +61,16 @@ selesai jauh lebih pendek tanpa kehilangan keputusan dan alasannya.
 - Jumlah kata: skill 17.922 dari 18.000 (sebelumnya 17.925), panduan peninjau 2.992 dari 3.000 (sebelumnya 2.994). Uji lama "No commands with their output" dilonggarkan huruf besarnya karena kalimat itu kini di tengah kalimat.
 - Sabotase: 7 penjaga dirusak (4 di panduan pengerja, 3 di panduan peninjau), semuanya merah.
 - 2026-10-28 18:36:34: test run — `node --test --test-timeout=900000 --import=./tests/complete-runs.mjs --test-reporter=tap --test-reporter-destination=stdout --test-reporter=./skills/kerjaan/scripts/reporters/node.mjs --test-reporter-destination=/dev/null` exited 0 after 3m42s, on content fingerprint 177e938e4187eb456a3dcd91c6fc6ed812793b69 (the same before and after the run; .kerjaan/ left out).
+- 2026-10-28: Reviewed at level normal, round 1, at commit 2aa462d: passed.
+- Uji proyek: dibawa dari jalan pengerja 2026-10-28 18:36:34 (`test-run.sh --check` SAME, sidik 177e938e). Uji `reviewer-rules` dan `skill-size` dijalankan ulang di salinan bersih: 91 lulus.
+- Butir 1: panduan pengerja langkah 5 kini "only what the change does not show — decisions with reasons … No account of how the change works".
+- Butir 2: panduan pengerja meminta "one sabotage line … guards broken, all red, plus any that stayed green and its fix".
+- Butir 3: panduan peninjau, bagian keputusan: lolos "one line per criterion", tanpa kalimat arti level dan keluaran perintah; menolak tetap "in full" dengan perintah dan keluarannya. Baris pembuka `Reviewed at level` tidak berubah, dan pola pencarinya di on-ticket-review.sh tetap cocok.
+- Butir 4: batas 18.000 dan 3.000 di uji tidak diubah; panduan peninjau 2.992 kata (sebelumnya 2.994), uji jumlah kata skill lulus.
+- Butir 5: kalimat aturan dihapus di salinan bersih (2 di panduan peninjau, 2 di panduan pengerja): kedua uji baru merah.
+- Butir 6: commit hanya mengubah tiket ini di `.kerjaan/`.
+- Catatan: daftar isi tinjauan lolos tidak lagi menyebut "the notes" (temuan yang tidak menghalangi, misalnya uji lemah atau pelanggaran aturan proyek), padahal panduan masih menyebut hal itu sebagai catatan. Peninjau bisa tidak menuliskannya lagi di tiket.
+
+### Suggested follow-up
+
+- **Tinjauan lolos tidak lagi diminta mencatat temuan yang tidak menghalangi.** Kalimat lama "…, and the notes" hilang dari paragraf "Every criterion met" di panduan peninjau, sehingga uji lemah atau pelanggaran aturan proyek pada tiket yang lolos bisa hanya masuk ke laporan ke mandor, tidak ke tiket. Layak dibuat tiket: kembalikan satu frasa yang meminta catatan itu ditulis singkat, satu baris per temuan.
