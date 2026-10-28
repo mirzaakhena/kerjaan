@@ -11,10 +11,14 @@
 // A ticket in progress or in review also shows its agent: one line in the
 // fixed head, and its last steps first thing in the scrolling part. Both sit
 // in slots the page refills as the agent works (see agent.js).
+//
+// While a test run goes for such a ticket, its Progress section follows the
+// agent's steps, in a slot the page refills as the run prints (see run.js).
 
 import { esc } from './markdown.js';
 import { pills } from './pills.js';
 import { agentLine, agentSteps, AGENT_STATUSES } from './agent.js';
+import { runSection } from './run.js';
 
 const nowOf = (ctx) => (ctx.now ? ctx.now() : Date.now());
 
@@ -46,6 +50,12 @@ export function drawerHead(t, ctx) {
 // The agent's last steps, first in the scrolling part; folded unless `open`.
 export function drawerAgent(t, ctx, { open = false } = {}) {
   return AGENT_STATUSES.includes(t.status) ? `<div class="agent-block" data-agent-body>${agentBodyHtml(t, t.agent, ctx, { open })}</div>` : '';
+}
+
+// The Progress section, from the runs the page holds for the open ticket.
+export const runBodyHtml = (t, runs, ctx) => (AGENT_STATUSES.includes(t.status) ? runSection(runs, nowOf(ctx)) : '');
+export function drawerRuns(t, runs, ctx) {
+  return AGENT_STATUSES.includes(t.status) ? `<div class="run-block" data-run-body>${runBodyHtml(t, runs, ctx)}</div>` : '';
 }
 
 const refLinks = (ids, ctx) =>

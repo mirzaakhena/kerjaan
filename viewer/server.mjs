@@ -14,6 +14,8 @@
 // Tickets in progress and in review also show what their Claude Code agent is
 // doing, read from the logs under $CLAUDE_CONFIG_DIR (default ~/.claude)/projects;
 // see agents.mjs. Without those logs the board looks as it always did.
+// A test run going on through test-run.sh shows its output so far, read from
+// the copy it keeps under .git/kerjaan-progress/ while it runs; see runs.mjs.
 //
 // Read-only: it never writes to any board. No dependencies beyond Node 18+.
 

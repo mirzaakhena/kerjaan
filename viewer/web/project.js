@@ -2,8 +2,9 @@ import { STATUSES, statusName, statusColor, getJson, liveIndicator } from './com
 import { render, esc } from './markdown.js';
 import { readFilter, writeFilter, matches, columnOrder, choices, FILTER_KEYS, readHidden } from './filter.js';
 import { pills } from './pills.js';
-import { drawerHead, drawerFacts, drawerAgent, agentHeadHtml, agentBodyHtml } from './drawer.js';
+import { drawerHead, drawerFacts, drawerAgent, drawerRuns, agentHeadHtml, agentBodyHtml, runBodyHtml } from './drawer.js';
 import { agentLine, AGENT_STATUSES } from './agent.js';
+import { runButton, runHead, runsMark } from './run.js';
 import { ARCHIVED_KEY, loadArchived } from './archive.js';
 import { switchList } from './switcher.js';
 
@@ -48,6 +49,10 @@ const state = {
   // The open ticket's agent, with its steps, and whether the step list is open.
   openAgent: null,
   stepsOpen: false,
+  // The open ticket's test runs, with their output, and whether its Progress
+  // section is to be brought into view once the drawer is drawn.
+  openRuns: [],
+  showRuns: false,
 };
 
 document.title = `${project} — kerjaan`;
@@ -134,7 +139,12 @@ function card(t, place) {
   const agent = AGENT_STATUSES.includes(t.status)
     ? `<div class="agent-slot" data-agent-for="${t.id}">${t.agent ? agentLine(t.agent, t.status, Date.now()) : ''}</div>`
     : '';
-  return `<li><button class="card" data-id="${t.id}" aria-current="${t.id === state.openId}">
+  // The button to a test run's progress sits beside the card, not inside it:
+  // a button cannot hold another.
+  const run = AGENT_STATUSES.includes(t.status)
+    ? `<div class="run-slot" data-run-for="${t.id}">${runButton(t.id, t.runs, Date.now())}</div>`
+    : '';
+  return `<li${run ? ' class="with-run"' : ''}><button class="card" data-id="${t.id}" aria-current="${t.id === state.openId}">
     <div class="title">${esc(t.title)}</div>${agent}${unmergedLine(t)}
     <div class="meta">
       ${placeBadge(place)}
@@ -144,7 +154,7 @@ function card(t, place) {
       ${t.priority ? `<span class="prio ${esc(t.priority)}">${esc(t.priority)}</span>` : ''}
       ${labels}
       ${pills(t.doneWhen, { className: 'progress' })}
-    </div></button></li>`;
+    </div></button>${run}</li>`;
 }
 
 const tickets = (n) => `${n} ${n === 1 ? 'ticket' : 'tickets'}`;
@@ -203,6 +213,11 @@ $('board').addEventListener('click', (e) => {
   if (order && !e.metaKey && !e.ctrlKey && !e.shiftKey) {
     e.preventDefault();
     open(ORDER);
+    return;
+  }
+  const run = e.target.closest('[data-run-open]');
+  if (run) {
+    openProgress(run.dataset.runOpen);
     return;
   }
   const more = e.target.closest('[data-more]');
@@ -349,13 +364,33 @@ async function showTicket(id, { keepScroll = false } = {}) {
   if (state.openId !== id) return;
   const t = files[0];
   state.openAgent = t.agent || null;
+  state.openRuns = t.runs || [];
   $('drawer-head').innerHTML = drawerHead(t, drawerCtx);
-  body.innerHTML = drawerAgent(t, drawerCtx, { open: state.stepsOpen }) + drawerFacts(t, drawerCtx, { dup: files }) + render(t.body, { ticket: lookup, href: ticketHref });
+  body.innerHTML = drawerAgent(t, drawerCtx, { open: state.stepsOpen }) + drawerRuns(t, [], drawerCtx) + drawerFacts(t, drawerCtx, { dup: files }) + render(t.body, { ticket: lookup, href: ticketHref });
+  drawRuns(t, Date.now());
   if (!keepScroll) drawer.classList.remove('scrolled');
   showFullTitle();
   body.scrollTop = scroll;
   foldTitle();
   if (!keepScroll) drawer.querySelector('[data-close]').focus({ preventScroll: true });
+  showProgress();
+}
+
+// A card's progress button: the ticket opens, scrolled to its Progress
+// section, which takes the focus.
+function openProgress(id) {
+  state.showRuns = true;
+  if (state.openId === id && !$('drawer').hidden) showProgress();
+  else open(id);
+}
+function showProgress() {
+  if (!state.showRuns) return;
+  state.showRuns = false;
+  const section = document.querySelector('#drawer-body [data-run-body] .runs');
+  if (!section) return;
+  section.scrollIntoView({ block: 'start' });
+  section.focus({ preventScroll: true });
+  foldTitle();
 }
 
 $('drawer').addEventListener('click', (e) => {
@@ -396,6 +431,11 @@ function refreshAgents() {
     const t = lookup(slot.dataset.agentFor);
     fill(slot, t?.agent ? agentLine(t.agent, t.status, now) : '');
   }
+  for (const slot of document.querySelectorAll('[data-run-for]')) {
+    const t = lookup(slot.dataset.runFor);
+    fill(slot, runButton(slot.dataset.runFor, t?.runs, now));
+    slot.parentElement.classList.toggle('with-run', !!t?.runs?.length);
+  }
   const t = state.openId && state.openId !== ORDER ? lookup(state.openId) : null;
   if (!t) return;
   const ctx = { ...drawerCtx, now: () => now };
@@ -403,6 +443,30 @@ function refreshAgents() {
   const body = document.querySelector('#drawer-body [data-agent-body]');
   fill(head, agentHeadHtml(t, state.openAgent, ctx));
   fill(body, agentBodyHtml(t, state.openAgent, ctx, { open: state.stepsOpen }));
+  drawRuns(t, now);
+}
+
+// The open ticket's Progress section. Drawn again only when the runs printed
+// something or came and went; otherwise only each run's times are refilled, so
+// output being read or selected is left alone. An output scrolled to its end
+// stays at its end as lines arrive; one scrolled up stays where it is.
+function drawRuns(t, now) {
+  const slot = document.querySelector('#drawer-body [data-run-body]');
+  if (!slot) return;
+  const mark = runsMark(state.openRuns);
+  if (slot.dataset.mark !== mark) {
+    const kept = new Map();
+    for (const pre of slot.querySelectorAll('[data-run-output]')) {
+      if (pre.scrollHeight - pre.scrollTop - pre.clientHeight > 4) kept.set(pre.dataset.runOutput, pre.scrollTop);
+    }
+    slot.innerHTML = runBodyHtml(t, state.openRuns, { ...drawerCtx, now: () => now });
+    slot.dataset.mark = mark;
+    for (const pre of slot.querySelectorAll('[data-run-output]')) {
+      pre.scrollTop = kept.has(pre.dataset.runOutput) ? kept.get(pre.dataset.runOutput) : pre.scrollHeight;
+    }
+    return;
+  }
+  for (const r of state.openRuns) fill(slot.querySelector(`[data-run-head="${CSS.escape(r.run)}"]`), runHead(r, now));
 }
 setInterval(refreshAgents, 1000);
 
@@ -429,6 +493,32 @@ async function agentsMoved(data) {
       if (state.openId === id) state.openAgent = got.agent;
     } catch {
       // keeps the steps it had
+    }
+  }
+  refreshAgents();
+}
+
+// The server says the test runs changed: `data` holds each active ticket's
+// runs, without their output. The open ticket's output is fetched again only
+// when one of its runs printed something, started or ended.
+async function runsMoved(data) {
+  if (!state.board) return;
+  for (const t of state.board.tickets) {
+    if (!AGENT_STATUSES.includes(t.status)) continue;
+    if (data[t.id]) t.runs = data[t.id];
+    else delete t.runs;
+  }
+  const id = state.openId;
+  const t = id && id !== ORDER ? lookup(id) : null;
+  if (t && runsMark(t.runs) !== runsMark(state.openRuns)) {
+    if (!t.runs) state.openRuns = [];
+    else {
+      try {
+        const got = await getJson(`${base}api/progress/${id}`);
+        if (state.openId === id) state.openRuns = got.runs;
+      } catch {
+        // keeps the output it had
+      }
     }
   }
   refreshAgents();
@@ -490,6 +580,11 @@ source.addEventListener('agent', (e) => {
   let data;
   try { data = JSON.parse(e.data); } catch { return; }
   agentsMoved(data);
+});
+source.addEventListener('progress', (e) => {
+  let data;
+  try { data = JSON.parse(e.data); } catch { return; }
+  runsMoved(data);
 });
 source.addEventListener('change', async () => {
   await load();

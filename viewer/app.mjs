@@ -18,6 +18,8 @@
 //   /<project>/api/order           order.md, and the files its groups share
 //   /<project>/api/ticket/<id>     one ticket in full
 //   /<project>/api/agent/<id>      the agent on one ticket, with its steps
+//   /<project>/api/progress/<id>   the test runs going on for one ticket, with
+//                                  their latest output (see runs.mjs)
 //   /<project>/events              live changes (server-sent events)
 
 import http from 'node:http';
@@ -28,6 +30,7 @@ import { STATUSES, readBoard, watchBoard, sharedInGroups } from '../skills/kerja
 import { readAgents, summary, defaultClaudeDir } from './agents.mjs';
 import { AGENT_STATUSES } from './web/agent.js';
 import { unmergedBranches } from './unmerged.mjs';
+import { readRuns } from './runs.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const web = path.join(here, 'web');
@@ -44,6 +47,7 @@ const ASSETS = {
   'pills.js': 'text/javascript; charset=utf-8',
   'drawer.js': 'text/javascript; charset=utf-8',
   'agent.js': 'text/javascript; charset=utf-8',
+  'run.js': 'text/javascript; charset=utf-8',
   'common.js': 'text/javascript; charset=utf-8',
   'archive.js': 'text/javascript; charset=utf-8',
   'switcher.js': 'text/javascript; charset=utf-8',
@@ -107,6 +111,11 @@ const projectDir = (project) => path.dirname(project.board);
 // Claude Code's logs are missing or unreadable.
 const agentsOf = (project, claudeDir) => readAgents(projectDir(project), { claudeDir, ids: [...activeIds(project).keys()] });
 
+// The test runs going on for the active tickets: Map<id, run[]>, without
+// their output unless `withLines` (see runs.mjs).
+const runsOf = (project, withLines = false, ids = [...activeIds(project).keys()]) => readRuns(projectDir(project), { ids, withLines });
+const runSummaries = (project) => Object.fromEntries(runsOf(project));
+
 // Branches holding work outside the main line, by the ticket ID they carry:
 // Map<id, branch names[]> (see unmerged.mjs). Only done tickets are marked with
 // them; a board with none skips git altogether.
@@ -115,11 +124,13 @@ const unmergedFor = (project, tickets) =>
 
 // The kanban needs every card but no ticket's full text; the text is fetched
 // one ticket at a time when a card is opened. Tickets in progress or in review
-// carry what their agent last did, without the step list; tickets in done
+// carry what their agent last did, without the step list, and their test runs
+// going on, without their output; tickets in done
 // whose branch is not merged into main carry that branch's name.
 async function boardSummary(project, claudeDir) {
   const data = readBoard(project.board);
   const agents = agentsOf(project, claudeDir);
+  const runs = runsOf(project);
   const unmerged = await unmergedFor(project, data.tickets);
   return {
     name: project.name,
@@ -131,6 +142,7 @@ async function boardSummary(project, claudeDir) {
     tickets: data.tickets.map(({ body, meta, ...t }) => {
       const a = AGENT_STATUSES.includes(t.status) && agents.get(t.id);
       if (a) t.agent = summary(a);
+      if (AGENT_STATUSES.includes(t.status) && runs.has(t.id)) t.runs = runs.get(t.id);
       if (t.status === 'done' && unmerged.has(t.id)) t.unmerged = unmerged.get(t.id);
       return t;
     }),
@@ -173,6 +185,10 @@ export function createViewer({ root, claudeDir = defaultClaudeDir() }) {
       // Agents write to Claude Code's logs, not to the board, so those are
       // looked at every AGENT_POLL ms; the page hears only of a change.
       let last = JSON.stringify(agentSummaries(project, claudeDir));
+      // Test runs write their output under .git/, so they are looked at on
+      // the same beat; the page hears what runs there are and how far each
+      // has got, and fetches the output of the ticket it has open.
+      let lastRuns = JSON.stringify(runSummaries(project));
       // A branch merged or deleted changes git, not the board, so the
       // unmerged branches are looked at on the same beat (one git call, none
       // for a folder that is not a repository); when they change the page
@@ -187,6 +203,11 @@ export function createViewer({ root, claudeDir = defaultClaudeDir() }) {
         if (now !== last) {
           last = now;
           for (const c of clients) c.write(`event: agent\ndata: ${now}\n\n`);
+        }
+        const runs = JSON.stringify(runSummaries(project));
+        if (runs !== lastRuns) {
+          lastRuns = runs;
+          for (const c of clients) c.write(`event: progress\ndata: ${runs}\n\n`);
         }
         if (checking) return;
         checking = true;
@@ -265,8 +286,14 @@ export function createViewer({ root, claudeDir = defaultClaudeDir() }) {
     if (rest[0] === 'api' && rest[1] === 'ticket' && rest.length === 3 && /^\d{12}$/.test(rest[2])) {
       const ticket = readBoard(project.board).tickets.filter((t) => t.id === rest[2]);
       if (ticket.length === 0) return send(res, 404, 'application/json; charset=utf-8', JSON.stringify({ error: 'not found' }));
-      const a = AGENT_STATUSES.includes(ticket[0].status) && agentsOf(project, claudeDir).get(rest[2]);
-      return json(res, a ? [{ ...ticket[0], agent: a }, ...ticket.slice(1)] : ticket);
+      const active = AGENT_STATUSES.includes(ticket[0].status);
+      const a = active && agentsOf(project, claudeDir).get(rest[2]);
+      const runs = active && runsOf(project, true, [rest[2]]).get(rest[2]);
+      if (!a && !runs) return json(res, ticket);
+      return json(res, [{ ...ticket[0], ...(a ? { agent: a } : {}), ...(runs ? { runs } : {}) }, ...ticket.slice(1)]);
+    }
+    if (rest[0] === 'api' && rest[1] === 'progress' && rest.length === 3 && /^\d{12}$/.test(rest[2])) {
+      return json(res, { runs: activeIds(project).has(rest[2]) ? runsOf(project, true, [rest[2]]).get(rest[2]) || [] : [] });
     }
     if (rest[0] === 'api' && rest[1] === 'agent' && rest.length === 3 && /^\d{12}$/.test(rest[2])) {
       return json(res, { agent: activeIds(project).has(rest[2]) ? agentsOf(project, claudeDir).get(rest[2]) || null : null });
