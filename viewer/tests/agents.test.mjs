@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { readAgents, encodeProject, stepLabel, programName, STEPS } from '../agents.mjs';
-import { agentState, agentLine, agentSteps, span, ago, clock, QUIET, GONE } from '../web/agent.js';
+import { agentState, agentLine, agentPhase, agentSteps, span, ago, clock, QUIET, GONE } from '../web/agent.js';
 import { tempRoot, agentLog, appendLog, line } from './helpers.mjs';
 
 const ID = { a: '260101000001', b: '260101000002', c: '260101000003' };
@@ -268,6 +268,53 @@ test('logs missing, unreadable, or in another format: no agent, no error', () =>
   }
 });
 
+test('running a tool or thinking: an unanswered call is running since its step, an answered one leaves the agent thinking since the answer', () => {
+  const { project, claude } = setup();
+  const t0 = Date.now() - 10 * MIN;
+  const tid = (at) => `toolu_${at}`;
+  const cases = [
+    // [name, lines, phase, phaseAt]
+    ['just started', [line.prompt(t0, 'x')], 'thinking', t0],
+    ['thought, no step yet', [line.prompt(t0, 'x'), line.think(t0 + 5, 'SECRET')], 'thinking', t0],
+    ['a call not yet answered', [line.prompt(t0, 'x'), line.step(t0 + 10, 'Bash', { description: 'Run the tests' }, 'm1')], 'tool', t0 + 10],
+    ['its answer in', [line.prompt(t0, 'x'), line.step(t0 + 10, 'Bash', { description: 'd' }, 'm1'), line.result(t0 + 90, 'SECRET', tid(t0 + 10))], 'thinking', t0 + 90],
+    ['thinking and text after the answer change nothing', [line.prompt(t0, 'x'), line.step(t0 + 10, 'Read', { file_path: '/a' }, 'm1'), line.result(t0 + 20, 'r', tid(t0 + 10)), line.think(t0 + 30, 'SECRET'), line.say(t0 + 40, 'SECRET')], 'thinking', t0 + 20],
+    ['two calls together, one answered', [line.prompt(t0, 'x'), line.step(t0 + 10, 'Read', { file_path: '/a' }, 'm1'), line.step(t0 + 11, 'Bash', { description: 'b' }, 'm1'), line.result(t0 + 12, 'r', tid(t0 + 10))], 'tool', t0 + 11],
+    ['two calls together, both answered', [line.prompt(t0, 'x'), line.step(t0 + 10, 'Read', { file_path: '/a' }, 'm1'), line.step(t0 + 11, 'Bash', { description: 'b' }, 'm1'), line.result(t0 + 12, 'r', tid(t0 + 11)), line.result(t0 + 13, 'r', tid(t0 + 10))], 'thinking', t0 + 13],
+    ['an answer for another call', [line.prompt(t0, 'x'), line.step(t0 + 10, 'Bash', { description: 'd' }, 'm1'), line.result(t0 + 20, 'r', 'toolu_other')], 'tool', t0 + 10],
+    ['a call whose answer the log lost, then a new message', [line.prompt(t0, 'x'), line.step(t0 + 10, 'Bash', { description: 'd' }, 'm1'), line.step(t0 + 30, 'Read', { file_path: '/b' }, 'm2'), line.result(t0 + 40, 'r', tid(t0 + 30))], 'thinking', t0 + 40],
+    ['the next step after thinking', [line.prompt(t0, 'x'), line.step(t0 + 10, 'Bash', { description: 'd' }, 'm1'), line.result(t0 + 20, 'r', tid(t0 + 10)), line.step(t0 + 50, 'Bash', { description: 'e' }, 'm2')], 'tool', t0 + 50],
+    // Ended: never thinking, whatever the calls.
+    ['report handed back', [line.prompt(t0, 'x'), line.step(t0 + 10, 'SubagentHandback', { message: 'r' }, 'm1')], null, null],
+    ['closing message', [line.prompt(t0, 'x'), line.step(t0 + 10, 'Bash', { description: 'd' }, 'm1'), line.result(t0 + 20, 'r', tid(t0 + 10)), line.say(t0 + 30, 'Done.', 'end_turn')], null, null],
+    ['interrupted mid-call', [line.prompt(t0, 'x'), line.step(t0 + 10, 'Bash', { description: 'd' }, 'm1'), line.interrupt(t0 + 20)], null, null],
+  ];
+  const ids = cases.map((_, i) => `2601010001${String(i).padStart(2, '0')}`);
+  cases.forEach(([, lines], i) => agentLog(claude, project, { id: `p${i}`, description: `Work ticket ${ids[i]}`, lines }));
+  agentLog(claude, project, { id: 'meta', description: 'Work ticket 260101000199', finished: true, lines: [line.prompt(t0, 'x'), line.step(t0 + 10, 'Bash', { description: 'd' }, 'm1')] });
+  const all = readAgents(project, { claudeDir: claude });
+  cases.forEach(([name, , phase, phaseAt], i) => assert.deepEqual([all.get(ids[i]).phase, all.get(ids[i]).phaseAt], [phase, phaseAt], name));
+  assert.deepEqual([all.get('260101000199').phase, all.get('260101000199').ended], [null, 'finished'], 'marked finished in its meta');
+  assert.ok(!JSON.stringify([...all.values()]).includes('SECRET'), 'nothing a result, thought or text held');
+});
+
+test('running, then thinking, then running again, read as the log grows', () => {
+  const { project, claude } = setup();
+  const t0 = Date.now() - 10 * MIN;
+  const log = agentLog(claude, project, { id: 'g', description: `Work ticket ${ID.a}`, lines: [line.prompt(t0, 'x'), line.step(t0 + 1000, 'Bash', { description: 'Run the tests' }, 'm1')] });
+  const read = () => { const a = readAgents(project, { claudeDir: claude }).get(ID.a); return [a.phase, a.phaseAt, a.step.label]; };
+  assert.deepEqual(read(), ['tool', t0 + 1000, 'Run the tests']);
+  appendLog(log, line.result(t0 + 60000, 'ok', `toolu_${t0 + 1000}`));
+  assert.deepEqual(read(), ['thinking', t0 + 60000, 'Run the tests']);
+  appendLog(log, line.think(t0 + 70000, 'hmm'));
+  assert.deepEqual(read(), ['thinking', t0 + 60000, 'Run the tests']);
+  appendLog(log, line.step(t0 + 80000, 'Edit', { file_path: path.join(project, 'a.js') }, 'm2'));
+  assert.deepEqual(read(), ['tool', t0 + 80000, 'a.js']);
+  appendLog(log, line.result(t0 + 81000, 'ok', `toolu_${t0 + 80000}`));
+  assert.deepEqual(read(), ['thinking', t0 + 81000, 'a.js']);
+});
+
+
 // ---------- what the page makes of it ----------
 
 const now = Date.parse('2026-10-16T05:00:00Z');
@@ -300,6 +347,39 @@ test('the agent line: kind, last step (escaped), and how long ago', () => {
   assert.ok(!html.includes('class="state"'), 'a working agent gets no state word');
   assert.match(agentLine(agent({ step: { at: now - 5 * MIN, tool: 'Grep', label: '' }, lastAt: now - 5 * MIN }), 'review', now), /state">quiet<\/span><span class="step" title="Grep">Grep<\/span><span class="ago">5 min ago/, 'without a label: the tool\'s name');
   assert.match(agentLine(agent({ step: null }), 'review', now), /no step yet/);
+});
+
+test('the agent line: running a tool names the step and how long it runs; between steps "thinking or writing" and for how long', () => {
+  const tool = agent({ phase: 'tool', phaseAt: now - 3 * MIN, lastAt: now - 3 * MIN + 1000, step: { at: now - 3 * MIN, tool: 'Bash', label: 'Run the tests <all>' } });
+  const html = agentLine(tool, 'in_progress', now);
+  assert.match(html, /<span class="step tool" title="Run the tests &lt;all&gt;">Run the tests &lt;all&gt;<\/span><span class="ago">running 3 min<\/span>/);
+  assert.ok(!html.includes('thinking'));
+
+  const think = agent({ phase: 'thinking', phaseAt: now - 12000 });
+  const t = agentLine(think, 'in_progress', now);
+  assert.match(t, /<span class="step thinking" title="[^"]*Update README &lt;API&gt;">thinking or writing<\/span><span class="ago">for 12 s<\/span>/);
+  assert.ok(!t.includes('class="state"'), 'still working: no state word');
+  assert.match(agentLine(agent({ phase: 'thinking', phaseAt: now - 5000, step: null }), 'in_progress', now), /thinking or writing<\/span><span class="ago">for 5 s</);
+  // Quiet a few minutes: still said, with the yellow word.
+  assert.match(agentLine(agent({ phase: 'thinking', phaseAt: now - 5 * MIN, lastAt: now - 5 * MIN }), 'in_progress', now), /state">quiet<\/span><span class="step thinking"[^>]*>thinking or writing<\/span><span class="ago">for 5 min/);
+  assert.match(agentLine(agent({ phase: 'tool', phaseAt: now - 5 * MIN, lastAt: now - 5 * MIN }), 'review', now), /state">quiet<\/span><span class="step tool"[^>]*>Update README &lt;API&gt;<\/span><span class="ago">running 5 min/);
+});
+
+test('an agent that has stopped is marked so, never "thinking or writing", whatever phase it was last in', () => {
+  for (const phase of ['thinking', 'tool', null]) {
+    const cases = [
+      [agent({ phase, phaseAt: now - 1000, ended: 'finished' }), 'in_progress', 'stopped'],
+      [agent({ phase, phaseAt: now - 1000, ended: 'finished' }), 'review', 'done'],
+      [agent({ phase, phaseAt: now - 1000, ended: 'interrupted' }), 'in_progress', 'interrupted'],
+      [agent({ phase, phaseAt: now - GONE, lastAt: now - GONE }), 'in_progress', 'silent'],
+    ];
+    for (const [a, status, word] of cases) {
+      const html = agentLine(a, status, now);
+      assert.equal(agentPhase(a, status, now), null, `${phase} ${word}`);
+      assert.ok(!html.includes('thinking') && !html.includes('running'), `${phase} ${word}: ${html}`);
+      assert.match(html, new RegExp(`state">${word}</span><span class="step" title="Update README &lt;API&gt;">Update README &lt;API&gt;</span><span class="ago">[^<]+ ago</span>`), `${phase} ${word}`);
+    }
+  }
 });
 
 test('the step list: newest on top, each step\'s time, how long it ran, and it opens', () => {

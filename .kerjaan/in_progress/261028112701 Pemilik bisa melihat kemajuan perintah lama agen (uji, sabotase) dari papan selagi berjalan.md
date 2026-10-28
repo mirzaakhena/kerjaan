@@ -6,7 +6,7 @@ labels: [viewer, agen]
 reporter: mirza
 assign_to: claude
 created: 2026-10-28 11:27:23
-updated: 2026-10-28 12:47:44
+updated: 2026-10-28 16:32:33
 related: [261016084202, 261017155801, 261028102201, 261028121401]
 blocked_by: []
 ---
@@ -67,6 +67,7 @@ review; jalan uji yang sudah selesai tidak disimpan.
 ## History
 - 2026-10-28 11:27:23 2894605e-2452-4259-b7ae-7187f1df18cb backlog
 - 2026-10-28 12:47:44 a185f853-6a65-4f44-919d-97ba97774e43 todo
+- 2026-10-28 16:32:33 a185f853-6a65-4f44-919d-97ba97774e43 in_progress
 
 ## Notes
 - Diminta Mirza 28 Okt 2026 dari sesi nukitu-mockup, sambil menunggu pengerja tiket POC tarif. Usulnya sendiri: SSE ke web, terpadu dengan papan, tombol untuk melihat log atau hijau/merah tiap uji. Viewer sudah memakai SSE (`viewer/app.mjs`).

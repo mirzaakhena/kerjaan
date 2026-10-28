@@ -248,8 +248,9 @@ body.board-page .bar .live { flex: none; }
 .more { border: 0; background: none; color: var(--accent); cursor: pointer; padding: 6px; font-size: 12px; }
 
 /* ---------- the agent on a ticket ---------- */
-/* One line: dot, kind, state, last step (cut short when it does not fit), and
-   how long ago, which always stays in view. Green while the agent works,
+/* One line: dot, kind, state, the step it runs or "thinking or writing" in
+   italics (cut short when it does not fit), and for how long, which always
+   stays in view. Green while the agent works,
    yellow once it has been quiet a few minutes, red when it has stopped and
    the ticket is still waiting on it; grey when it finished its part. */
 .agent-slot:empty, .agent-row:empty, .agent-block:empty { display: none; }
@@ -268,6 +269,7 @@ body.board-page .bar .live { flex: none; }
 .agent .state { flex: none; font-weight: 600; color: var(--tone); }
 .agent.done .state { color: var(--muted); }
 .agent .step { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.agent .step.thinking { font-style: italic; }
 .agent .state::before, .agent .step::before { content: "·"; margin-right: 6px; color: var(--muted); font-weight: 400; }
 .agent .ago { flex: none; margin-left: auto; font-variant-numeric: tabular-nums; }
 .agent.working .signal { animation: pulse 1.6s ease-in-out infinite; }

@@ -84,10 +84,12 @@ const iso = (at) => new Date(at).toISOString();
 // Log lines. `at` is a time in ms.
 export const line = {
   prompt: (at, text) => ({ parentUuid: null, isSidechain: true, type: 'user', message: { role: 'user', content: text }, timestamp: iso(at) }),
-  step: (at, name, input = {}) => ({ isSidechain: true, type: 'assistant', message: { role: 'assistant', content: [{ type: 'tool_use', id: `toolu_${at}`, name, input }], stop_reason: null }, timestamp: iso(at) }),
+  // A step's call ID is `toolu_<at>`, which result() takes to answer it; `msg`
+  // is the ID of the message making it, shared by calls made together.
+  step: (at, name, input = {}, msg) => ({ isSidechain: true, type: 'assistant', message: { role: 'assistant', ...(msg ? { id: msg } : {}), content: [{ type: 'tool_use', id: `toolu_${at}`, name, input }], stop_reason: null }, timestamp: iso(at) }),
   think: (at, thinking) => ({ type: 'assistant', message: { role: 'assistant', content: [{ type: 'thinking', thinking, signature: 'x' }] }, timestamp: iso(at) }),
   say: (at, text, stop = null) => ({ type: 'assistant', message: { role: 'assistant', content: [{ type: 'text', text }], stop_reason: stop }, timestamp: iso(at) }),
-  result: (at, text) => ({ type: 'user', message: { role: 'user', content: [{ tool_use_id: 'toolu_x', type: 'tool_result', content: [{ type: 'text', text }] }] }, toolUseResult: { stdout: text }, timestamp: iso(at) }),
+  result: (at, text, id = 'toolu_x') => ({ type: 'user', message: { role: 'user', content: [{ tool_use_id: id, type: 'tool_result', content: [{ type: 'text', text }] }] }, toolUseResult: { stdout: text }, timestamp: iso(at) }),
   interrupt: (at) => ({ type: 'user', message: { role: 'user', content: [{ type: 'text', text: '[Request interrupted by user]' }] }, timestamp: iso(at) }),
   request: (at, body) => ({ type: 'api-request', timestamp: iso(at), params: { messages: body } }),
 };
