@@ -6,7 +6,7 @@ labels: [viewer, agen]
 reporter: mirza
 assign_to: claude
 created: 2026-10-28 11:27:23
-updated: 2026-10-28 17:05:29
+updated: 2026-10-28 17:06:01
 related: [261016084202, 261017155801, 261028102201, 261028121401]
 blocked_by: []
 ---
@@ -126,3 +126,4 @@ review; jalan uji yang sudah selesai tidak disimpan.
 
 - **Sisa berkas kemajuan yang yatim tidak pernah dibersihkan.** Bila `test-run.sh` dimatikan tepat sesudah membuat `.log` tetapi sebelum `.json` (atau meninggalkan `.tmp`), berkas itu tetap di `.git/kerjaan-progress/` selamanya karena pembersihan hanya melihat `*.json`. Layak satu tiket kecil: bersihkan juga `.log`/`.tmp` yang pid-nya sudah mati.
 - 2026-10-28 17:05:29: merge queue: joined as number 2, behind nobody.
+- 2026-10-28 17:06:01: landed on main as 359ff4dbfb71a8029896136fa35605c7cacf6b08, merging ticket-261028112701 at 60d22824a0e71a670f0ccd15350f8613b058f15a; tests carried from the run on this exact content, not run again.
