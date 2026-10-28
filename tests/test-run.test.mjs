@@ -406,6 +406,41 @@ test('a report left by a run that was killed is removed with its copy', () => {
   assert.deepEqual(progressFiles(root), []);
 });
 
+// A run killed half-way may leave any of its files without the others: the
+// .json may already be gone, or never written (261028185602).
+for (const ext of ['json', 'log', 'tests', 'tmp']) {
+  test(`a .${ext} left alone by a killed run is removed by the next run; a live run's .${ext} is left alone`, () => {
+    const root = repo('true', '(none yet)');
+    fs.mkdirSync(progressDir(root));
+    const dead = spawnSync('true').pid;
+    const live = process.pid;
+    for (const pid of [dead, live]) fs.writeFileSync(path.join(progressDir(root), `${A}.${pid}.${ext}`), 'x\n');
+    fs.writeFileSync(path.join(progressDir(root), 'notes.txt'), 'not a run\n');
+    assert.equal(run(root, A).code, 0);
+    assert.deepEqual(progressFiles(root), [`${A}.${live}.${ext}`, 'notes.txt'].sort());
+  });
+}
+
+test('a run killed while its command runs leaves nothing behind once the next run ends; a live run beside it keeps its files', async () => {
+  const seen = scratch();
+  const root = repo(`touch ${seen}/started; echo '{"state":"start"}' >> "$KERJAAN_TEST_REPORT"; echo half; sleep 30`, '(none yet)');
+  const child = spawn('bash', [testRun, A], { cwd: root, env: gitEnv, stdio: 'ignore', detached: true });
+  for (let i = 0; i < 200 && !fs.existsSync(path.join(seen, 'started')); i++) await new Promise((r) => setTimeout(r, 50));
+  assert.ok(fs.existsSync(path.join(seen, 'started')), 'the command started');
+  const killed = progressFiles(root);
+  assert.ok(killed.length >= 2, killed.join(' '));
+  const gone = new Promise((r) => child.on('exit', r));
+  process.kill(-child.pid, 'SIGKILL');
+  await gone;
+  // What a kill at another moment leaves: the .json gone, the rest kept.
+  fs.rmSync(path.join(progressDir(root), killed.find((n) => n.endsWith('.json'))));
+  const live = process.pid;
+  for (const ext of ['json', 'log', 'tests']) fs.writeFileSync(path.join(progressDir(root), `${A}.${live}.${ext}`), ext === 'json' ? JSON.stringify({ ticket: A, pid: live }) : 'x\n');
+  fs.writeFileSync(path.join(root, '.kerjaan', 'settings.md'), fs.readFileSync(path.join(root, '.kerjaan', 'settings.md'), 'utf8').replace(/^test_command: .*$/m, 'test_command: true'));
+  assert.equal(run(root, A).code, 0);
+  assert.deepEqual(progressFiles(root), [`${A}.${live}.json`, `${A}.${live}.log`, `${A}.${live}.tests`]);
+});
+
 test('a report left under this run\'s own name (a pid used again) is cleared before the command starts', async () => {
   const seen = scratch();
   const root = repo(`if [ -e "$KERJAAN_TEST_REPORT" ]; then cat "$KERJAAN_TEST_REPORT"; else echo none; fi > ${seen}/found`, '(none yet)');
