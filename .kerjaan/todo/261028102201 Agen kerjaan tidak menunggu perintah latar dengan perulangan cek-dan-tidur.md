@@ -6,7 +6,7 @@ labels: [agen]
 reporter: mirza
 assign_to: claude
 created: 2026-10-28 10:22:50
-updated: 2026-10-28 10:23:28
+updated: 2026-10-28 10:48:03
 related: []
 blocked_by: []
 ---
@@ -52,9 +52,15 @@ proyek atau ingatan sesi utama.
 
 ## History
 - 2026-10-28 10:22:50 2894605e-2452-4259-b7ae-7187f1df18cb backlog
+- 2026-10-28 10:48:03 a185f853-6a65-4f44-919d-97ba97774e43 todo
 
 ## Notes
 - Diminta Mirza 28 Okt 2026 dari sesi nukitu-mockup: aturan ini harus hidup di skill, bukan di CLAUDE.md atau memori proyek, supaya berlaku di semua proyek.
 - Perintah yang terlihat (nukitu-mockup, pengerja 261028095701): `for i in $(seq 1 100); do pgrep -f sabotase2.mjs >/dev/null || break; perl -e 'select(undef,undef,undef,5)'; done; cat <berkas keluaran> | sed -n '18,$p'`.
 - Akar yang diduga (belum diukur): bagi subagen, notifikasi perintah latar tidak membantu, karena mengakhiri giliran untuk menunggunya membuat mandor mengira pengerja sudah selesai (alasan yang sama dengan aturan jalan uji di langkah 7 definisi pengerja). Jadi pengerja yang terlanjur menaruh perintah di latar terdorong membuat perulangan. Aturan yang benar untuk subagen: latar depan, bukan "latar lalu tunggu notifikasi".
 - Versi terpasang di nukitu-mockup 1.15.0, sumber sudah 1.16.0 — perbaikannya baru terasa sesudah rilis dan pembaruan plugin.
+- 2026-10-28 10:27:23: answered question: Anggaran kata aturan skill (18.000 kata, tests/skill-size.test.mjs) sekarang terpakai 17.998, dan README mewajibkan aturan baru menyebut aturan yang diganti atau dibuang. Aturan menunggu ini masuk ke tiga definisi agen dan panduan mandor (kira-kira 120-150 kata). Pilihan: (a) aturan baru menggantikan kalimat jalan uji di langkah 7 definisi pengerja, dan pengerja memangkas kalimat lain di berkas yang sama sampai total kembali di bawah 18.000; (b) anggaran dinaikkan secukupnya (misal 18.200) di uji dan README. Saran: (a), karena anggaran itu dibuat justru untuk memaksa pertukaran ini dan aturan lama jalan uji memang tercakup aturan baru.
+  answer, 2026-10-28 10:48:03: Ganti & rapikan: aturan baru menggantikan kalimat jalan uji di langkah 7 definisi pengerja, dan pengerja memangkas kalimat lain di berkas yang sama sampai total kembali di bawah 18.000 kata; anggaran tidak dinaikkan.
+- 2026-10-28 10:27:24: answered question: Butir terakhir Done when (pengerja yang diberi skrip pemeriksaan beberapa menit tidak lagi memunculkan perulangan) hanya bisa dilihat dengan menjalankan agen sungguhan, dan baru terasa di proyek lain sesudah rilis dan pembaruan plugin. Pilihan: (a) ditunda — pengerja menulis skenario tangan di Notes, rantai jalan terus; (b) menahan rantai sampai pemilik mencobanya. Saran: (a), karena tidak ada tiket lain yang menunggu tiket ini dan pemeriksaannya butuh rilis lebih dulu.
+  answer, 2026-10-28 10:48:03: Ditunda: pengerja menulis skenario tangan di Notes, rantai jalan terus.
+- 2026-10-28 10:27:24: files estimated to change: `agents/kerjaan-planner.md`, `agents/kerjaan-reviewer.md`, `agents/kerjaan-worker.md`, `skills/kerjaan/references/foreman.md`, `tests/bash-description.test.mjs`
