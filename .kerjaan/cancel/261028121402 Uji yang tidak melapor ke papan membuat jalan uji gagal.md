@@ -6,7 +6,7 @@ labels: [viewer, agen]
 reporter: mirza
 assign_to: claude
 created: 2026-10-28 12:14:46
-updated: 2026-10-28 12:47:29
+updated: 2026-10-28 12:48:10
 related: [261028112701, 261028121401]
 blocked_by: []
 ---
@@ -34,6 +34,7 @@ peninjauan sampai ujinya ikut melapor.
 
 ## History
 - 2026-10-28 12:14:46 a185f853-6a65-4f44-919d-97ba97774e43 backlog
+- 2026-10-28 12:48:10 a185f853-6a65-4f44-919d-97ba97774e43 cancel
 
 ## Notes
 - Dipecah dari 261028112701 oleh planner (28 Okt 2026, sesi a185f853-6a65-4f44-919d-97ba97774e43). Butir dari sana: "uji baru yang tidak melapor ke papan membuat jalan uji gagal atau ditolak peninjau". Kata-kata pemilik: "Harus ada jaminan agar test selalu menyertakan sse event ini" (Notes 261028112701).
