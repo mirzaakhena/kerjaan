@@ -6,7 +6,7 @@ labels: []
 reporter: mirza
 assign_to: claude
 created: 2026-10-28 17:28:43
-updated: 2026-10-28 17:28:43
+updated: 2026-10-28 17:32:47
 related: []
 blocked_by: []
 ---
@@ -33,8 +33,10 @@ Ada folder baru bernama `Estimated and changed:` diikuti baris baru, berisi fold
 
 ## History
 - 2026-10-28 17:28:43 d771d2d5-e699-4565-8927-73760abccc14 backlog
+- 2026-10-28 17:32:47 a185f853-6a65-4f44-919d-97ba97774e43 todo
 
 ## Notes
 - Ditemukan 2026-10-28 di /Users/mirza/Workspace/video-system-design oleh planner (kerjaan 1.15.0). Langkah di atas dijalankan ulang oleh foreman di repo itu dan memunculkan folder yang sama; foldernya dihapus.
 - Dugaan penyebab dari membaca kode, belum dibuktikan: saat pipa ditutup, `queue.sh` berhenti dan trap EXIT-nya (`rm -rf "$tmpdir"; kerjaan_lock_release board`) tetap melepas kunci, padahal `compare`, `overlap`, dan `check` tidak pernah mengambilnya. `kerjaan_lock_release` memanggil `kerjaan_locks_dir`, yang entah kenapa jatuh ke cabang "bukan repo git" (`common="$(pwd -P)/.kerjaan/.locks"; mkdir -p "$common"`), dan sisa keluaran yang tidak terkirim ikut masuk ke nama jalurnya. Kenapa `git rev-parse --git-common-dir` gagal di situ belum diketahui.
 - Arah perbaikan yang terpikir (keputusan tetap di worker): lepas kunci hanya bila proses ini benar-benar memegangnya; tolak jalur kunci yang tidak absolut atau memuat baris baru sebelum `mkdir -p`.
+- 2026-10-28 17:32:46: files estimated to change: `skills/kerjaan/scripts/lib.sh`, `skills/kerjaan/scripts/queue.sh`, `tests/board-lock.test.mjs`
