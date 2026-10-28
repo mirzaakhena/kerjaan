@@ -6,7 +6,7 @@ labels: [viewer, agen]
 reporter: mirza
 assign_to: claude
 created: 2026-10-28 12:14:46
-updated: 2026-10-28 12:47:44
+updated: 2026-10-28 17:06:06
 related: [261028112701, 261028121402]
 blocked_by: [261028112701]
 ---
@@ -46,6 +46,7 @@ uji; tidak ada yang gagal karenanya.
 ## History
 - 2026-10-28 12:14:46 a185f853-6a65-4f44-919d-97ba97774e43 backlog
 - 2026-10-28 12:47:44 a185f853-6a65-4f44-919d-97ba97774e43 todo
+- 2026-10-28 17:06:06 a185f853-6a65-4f44-919d-97ba97774e43 in_progress
 
 ## Notes
 - Dipecah dari 261028112701 oleh planner (28 Okt 2026, sesi a185f853-6a65-4f44-919d-97ba97774e43), karena tiket itu memuat 11 butir. Butir dari sana: "jumlah hijau dan merah bila keluarannya hasil uji yang dikenali", "daftar uji satu per satu", dan "berlaku di proyek mana pun, cara ikut melapor tertulis di panduan". Permintaan asli pemilik dan contoh rujukannya (nukitu-mockup `test/uji-ui.mjs`, `test/laporan.mjs`, `test/laporan-halaman.mjs`) ada di Notes 261028112701.
