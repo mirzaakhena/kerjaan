@@ -37,7 +37,9 @@ function fakeRun(project, id, { pid = process.pid, who = 'worker', startedAt = D
 
 const T0 = Date.now() - 2 * MIN;
 // What the worker's run has reported so far: two files, one test running.
-const WORKER_TESTS = [
+// Built per setup(): a test started 65 s ago must still read "1 min" when a
+// browser test late in a busy suite looks at it.
+const workerTests = () => [
   { file: 'tests/cart.test.mjs', state: 'start', at: T0 },
   { file: 'tests/cart.test.mjs', name: 'an empty cart costs nothing', state: 'start', at: T0 },
   { file: 'tests/cart.test.mjs', name: 'an empty cart costs nothing', state: 'pass', ms: 12 },
@@ -64,7 +66,7 @@ function setup() {
   const project = path.dirname(board);
   const lines = Array.from({ length: 30 }, (_, i) => `ok ${i + 1} - test number ${i + 1}`).join('\n') + '\n';
   const runs = {
-    worker: fakeRun(project, ID.worker, { output: `\x1b[32m${lines}\x1b[0m<script>alert(1)</script>\n`, tests: WORKER_TESTS }),
+    worker: fakeRun(project, ID.worker, { output: `\x1b[32m${lines}\x1b[0m<script>alert(1)</script>\n`, tests: workerTests() }),
     reviewer: fakeRun(project, ID.reviewer, { who: 'reviewer', command: 'node --test viewer/tests/runs.test.mjs', output: 'sabotage run\n' }),
     todo: fakeRun(project, ID.todo, { output: 'x\n' }),
     done: fakeRun(project, ID.done, { output: 'x\n' }),

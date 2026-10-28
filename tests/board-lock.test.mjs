@@ -398,6 +398,123 @@ test('KERJAAN_HELD_LOCKS counts only while the lock is still held by the process
 });
 
 // ---------------------------------------------------------------------------
+// Output cut short leaves nothing behind
+//
+// An agent reading a long board listing cuts it with `| head`. Bash 3.2 keeps
+// the text it could not write into the closed pipe and writes it out again
+// from the next subshell, so a lock path read through $(...) after that point
+// held the cut output, and `mkdir -p` built it as folders in the repo root.
+
+const readOnly = [
+  ['queue.sh', 'compare', X], ['queue.sh', 'overlap'], ['queue.sh', 'check'], ['queue.sh', 'check', Z],
+  ['merge.sh', 'queue'], ['merge.sh', 'check', X], ['merge.sh', 'resolution', X],
+  ['release.sh', 'unreleased'], ['repair.sh', 'duplicate-id'], ['test-run.sh', '--check', X],
+];
+
+// X and Y done, X's commit changing many files; its estimate names one.
+function doneRepo() {
+  const r = repo({ status: 'done' });
+  fs.appendFileSync(fileOf(r, X), '- 2026-10-16 20:00:00: files estimated to change: `f1.txt`\n');
+  for (let i = 1; i <= 60; i++) fs.writeFileSync(path.join(r.root, `f${i}.txt`), `${i}\n`);
+  git(r.root, 'add', '-A');
+  git(r.root, 'commit', '-q', '-m', `Work (${X})`);
+  return r;
+}
+
+// Every path under the repo root, .git/ included, with the folders' names.
+function tree(dir, rel = '') {
+  const out = [];
+  for (const e of fs.readdirSync(path.join(dir, rel), { withFileTypes: true })) {
+    const p = path.join(rel, e.name);
+    if (p === path.join('.git', 'objects') || p === path.join('.git', 'logs')) continue;
+    out.push(p);
+    if (e.isDirectory()) out.push(...tree(dir, p));
+  }
+  return out.sort();
+}
+
+// <script> <args> run twice in a row, everything into a pipe cut after one
+// line, from the repo root: the reproduction from ticket 261028172801.
+// ignorePipe: SIGPIPE ignored, as under Claude Code, where a write into the
+// closed pipe fails instead of ending the script.
+function cut(cwd, [script, ...args], ignorePipe) {
+  const cmd = `${ignorePipe ? 'trap "" PIPE; ' : ''}for i in 1 2; do bash "$0" "$@"; done 2>&1 | head -1`;
+  return spawnSync('bash', ['-c', cmd, path.join(scripts, script), ...args], {
+    cwd, encoding: 'utf8', env: { ...process.env, ...gitEnv }, timeout: 60000,
+  });
+}
+
+test('a read-only board script whose output is cut leaves the repo as it was, SIGPIPE ignored or not', () => {
+  const r = doneRepo();
+  const before = tree(r.root);
+  for (const ignorePipe of [true, false]) {
+    for (const c of readOnly) {
+      const res = cut(r.root, c, ignorePipe);
+      assert.equal(res.status, 0, `${c.join(' ')}: ${res.stderr}`);
+      assert.deepEqual(tree(r.root), before, `${c.join(' ')}, SIGPIPE ${ignorePipe ? 'ignored' : 'default'}`);
+    }
+  }
+});
+
+test('a read-only board script run normally creates no lock folder, in a git repo or a plain folder', () => {
+  const r = doneRepo();
+  for (const c of readOnly) {
+    run(path.join(scripts, c[0]), r.root, c.slice(1));
+    assert.equal(fs.existsSync(path.join(r.root, '.git', 'kerjaan-locks')), false, c.join(' '));
+  }
+  const plain = fs.mkdtempSync(path.join(os.tmpdir(), 'kerjaan-plain-'));
+  fs.cpSync(r.k, path.join(plain, '.kerjaan'), { recursive: true });
+  const before = tree(plain);
+  for (const sub of [['overlap'], ['check'], ['check', Z]]) {
+    run(queue, plain, sub);
+    for (const ignorePipe of [true, false]) cut(plain, ['queue.sh', ...sub], ignorePipe);
+    assert.deepEqual(tree(plain), before, sub.join(' '));
+  }
+});
+
+// A script that takes a lock after its output was cut gets a path holding that
+// output: it is refused, not built, and the lock is not taken.
+test('a lock taken after the output was cut is refused rather than built from the cut text', () => {
+  const r = repo();
+  fs.mkdirSync(path.join(r.outside, '.kerjaan'));
+  // Whole lines, and a piece of a line with no newline, as `queue.sh overlap` left.
+  for (const leak of ['echo "Cut text:"; echo more', 'printf "%s" "A (backlog) and B (backlog) share:"']) {
+    const script = `trap "" PIPE; . "$1"; sleep 0.3; ${leak}
+      kerjaan_lock_acquire board "the test" 1; echo "acquire=$?" >&2`;
+    for (const cwd of [r.root, r.outside]) {
+      const before = tree(cwd);
+      const res = spawnSync('bash', ['-c', `bash -c '${script}' _ "$0" | true`, lib],
+        { cwd, encoding: 'utf8', env: { ...process.env, ...gitEnv } });
+      assert.match(res.stderr, /acquire=1/, `${leak} in ${cwd}: ${res.stderr}`);
+      assert.match(res.stderr, /Could not find the folder for kerjaan's locks/);
+      assert.deepEqual(tree(cwd), before, `${leak} in ${cwd}`);
+    }
+  }
+});
+
+// A process releases only what it took: the lock another live process holds
+// stays, whatever the releasing script is.
+test('releasing a lock this process never took leaves the holder\'s lock alone', () => {
+  const r = repo();
+  const release = hold(r, 'board');
+  try {
+    const res = spawnSync('bash', ['-c', '. "$0"; kerjaan_lock_release board', lib], { cwd: r.root, encoding: 'utf8' });
+    assert.equal(res.status, 0, res.stderr);
+    assert.equal(fs.existsSync(lockDir(r, 'board')), true);
+    run(queue, r.root, ['check']);
+    assert.equal(fs.existsSync(lockDir(r, 'board')), true, 'queue.sh check released it');
+    // A stale entry naming this process (a PID used again) is not a hold: the
+    // owner file names someone else.
+    const stale = spawnSync('bash', ['-c', 'export KERJAAN_HELD_LOCKS="$1=$$"; . "$0"; kerjaan_lock_release board',
+      lib, fs.realpathSync(lockDir(r, 'board'))], { cwd: r.root, encoding: 'utf8' });
+    assert.equal(stale.status, 0, stale.stderr);
+    assert.equal(fs.existsSync(lockDir(r, 'board')), true, 'a stale entry released it');
+  } finally {
+    release();
+  }
+});
+
+// ---------------------------------------------------------------------------
 // The limits are settings, and their defaults are the ones the guide states
 
 function timeoutOf(settingsBody, key, dflt) {

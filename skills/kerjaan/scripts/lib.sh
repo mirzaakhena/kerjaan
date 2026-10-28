@@ -296,20 +296,34 @@ kerjaan_blockers() {
 # spaces); a child finding its lock there, still owned by that live PID, goes
 # ahead without taking it again, and its release leaves it alone.
 
+# Sets kerjaan_locks to the folder the locks live in, creating that folder but
+# never the ones above it. Called without $(...): once a pipe the script
+# writes to is closed (output cut short with `| head`), bash 3.2 keeps the
+# text it could not write and hands it to the next subshell, which writes it
+# into whatever that subshell's output is captured into. Such a path is
+# refused, so it can never become a folder; the lock is then not taken.
 kerjaan_locks_dir() {
-  local common
-  if ! common="$(git rev-parse --git-common-dir 2> /dev/null)"; then
+  local base
+  kerjaan_locks=""
+  if base="$(git rev-parse --git-common-dir 2> /dev/null)"; then
+    base="$(cd "$base" 2> /dev/null && pwd -P)"  # physical: the same lock is one path from every tree
+    kerjaan_locks="$base/kerjaan-locks"
+  else
     # A board outside any git repository: nothing is committed there, so the
     # board folder itself can hold the locks. Every script that writes the
     # board runs from the folder holding .kerjaan/.
-    common="$(pwd -P)/.kerjaan/.locks"
-    mkdir -p "$common"
-    printf '%s\n' "$common"
-    return 0
+    base="$(pwd -P)/.kerjaan"
+    kerjaan_locks="$base/.locks"
   fi
-  common="$(cd "$common" && pwd -P)"  # physical: the same lock is one path from every tree
-  mkdir -p "$common/kerjaan-locks"
-  printf '%s\n' "$common/kerjaan-locks"
+  case "$base" in
+    *$'\n'*) ;;
+    /*) if [ -d "$base" ]; then
+          mkdir "$kerjaan_locks" 2> /dev/null || [ -d "$kerjaan_locks" ] && return 0
+        fi ;;
+  esac
+  echo "Could not find the folder for kerjaan's locks (got '$base'); no lock was taken." >&2
+  kerjaan_locks=""
+  return 1
 }
 
 # Removes <lock> if its owner file still reads <seen>, i.e. nobody claimed it
@@ -342,7 +356,8 @@ kerjaan_lock_break() {
 kerjaan_lock_acquire() {
   local name="$1" who="$2" limit="${3:-0}" poll="${KERJAAN_LOCK_POLL:-${4:-1}}"
   local lock owner pid start ownerless=0 waited=0 entry
-  lock="$(kerjaan_locks_dir)/$name.lock"
+  kerjaan_locks_dir || return 1
+  lock="$kerjaan_locks/$name.lock"
   KERJAAN_LOCK_WAITED=""
   KERJAAN_LOCK_HOLDER=""
   case "$limit" in '' | *[!0-9]*) limit=0 ;; esac
@@ -404,11 +419,18 @@ kerjaan_lock_acquire() {
 }
 
 # Releases the lock called <name>, but only when this process holds it — not
-# when it only rode on a parent's.
+# when it only rode on a parent's, nor when it never took it. The lock's path
+# comes from KERJAAN_HELD_LOCKS, written when it was taken, so a script that
+# never held it (a command that only reads the board, whose exit trap releases
+# all the same) touches no folder at all.
 kerjaan_lock_release() {
-  local lock owner entry kept=""
-  lock="$(kerjaan_locks_dir)/$1.lock"
-  owner="$(cat "$lock/owner" 2> /dev/null || true)"
+  local lock="" owner entry kept=""
+  while IFS= read -r entry; do
+    case "$entry" in */"$1.lock=$$") lock="${entry%=*}" ;; esac
+  done <<< "${KERJAAN_HELD_LOCKS:-}"
+  [ -n "$lock" ] || return 0
+  # read, not $(cat ...): no subshell to pick up text left by a cut-off pipe.
+  IFS= read -r owner 2> /dev/null < "$lock/owner" || owner=""
   [ "${owner%%$'\t'*}" = "$$" ] || return 0
   rm -rf "$lock"
   while IFS= read -r entry; do
