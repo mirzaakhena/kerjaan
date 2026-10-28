@@ -6,7 +6,7 @@ labels: [viewer, agen]
 reporter: mirza
 assign_to: claude
 created: 2026-10-28 11:27:23
-updated: 2026-10-28 16:32:33
+updated: 2026-10-28 16:58:34
 related: [261016084202, 261017155801, 261028102201, 261028121401]
 blocked_by: []
 ---
@@ -52,13 +52,13 @@ satu per satu ada di 261028121401; jaminannya dibatalkan pemilik
 review; jalan uji yang sudah selesai tidak disimpan.
 
 ## Done when
-- [ ] Selagi pengerja menjalankan uji proyek, kartu tiketnya punya tombol yang membuka bagian Kemajuan di laci kanan tiket
-- [ ] Kemajuan menampilkan baris-baris keluaran terbaru dan bertambah sendiri tanpa memuat ulang halaman
-- [ ] Kemajuan menunjukkan sudah berapa lama perintah berjalan dan berapa detik sejak keluaran terakhir, sehingga perintah yang macet terlihat berbeda dari yang bekerja
+- [x] Selagi pengerja menjalankan uji proyek, kartu tiketnya punya tombol yang membuka bagian Kemajuan di laci kanan tiket
+- [x] Kemajuan menampilkan baris-baris keluaran terbaru dan bertambah sendiri tanpa memuat ulang halaman
+- [x] Kemajuan menunjukkan sudah berapa lama perintah berjalan dan berapa detik sejak keluaran terakhir, sehingga perintah yang macet terlihat berbeda dari yang bekerja
 - [ ] ~~Bila keluarannya berbentuk hasil uji yang dikenali, kemajuan menunjukkan jumlah hijau dan merah sejauh ini~~ (pindah ke 261028121401)
-- [ ] Hal yang sama berlaku untuk jalan uji peninjau, termasuk sabotase, bukan hanya jalan uji pengerja
+- [x] Hal yang sama berlaku untuk jalan uji peninjau, termasuk sabotase, bukan hanya jalan uji pengerja
 - [ ] ~~Sesudah perintah selesai, hasil akhirnya (lulus atau gagal, lama berjalan) tetap bisa dibuka dari tiket~~ (dibatalkan pemilik 28 Okt 2026: jalan uji tidak disimpan, hanya dilihat selagi tiket di in_progress atau review; ringkasan lulus/gagal tetap tercatat di Notes oleh test-run.sh)
-- [ ] Rahasia yang mungkin ada di keluaran diperlakukan sesuai keputusan pemilik (lihat Notes)
+- [x] Rahasia yang mungkin ada di keluaran diperlakukan sesuai keputusan pemilik (lihat Notes)
 - [ ] ~~Pemilik melihat kemajuan sebuah uji yang sedang berjalan dari papan (langkah di Notes)~~ (dibatalkan pemilik 28 Okt 2026: butir yang hanya bisa dicek orang dihapus)
 - [ ] ~~Selagi uji proyek berjalan, papan menampilkan daftar uji satu per satu: apa yang diuji masing-masing, yang sedang berjalan, yang sudah hijau atau merah, dan lama masing-masing, bertambah sendiri~~ (pindah ke 261028121401)
 - [ ] ~~Hal itu berlaku di proyek mana pun yang memakai papan, apa pun alat ujinya, dan cara sebuah proyek ikut melapor tertulis di panduan~~ (pindah ke 261028121401)
@@ -68,6 +68,7 @@ review; jalan uji yang sudah selesai tidak disimpan.
 - 2026-10-28 11:27:23 2894605e-2452-4259-b7ae-7187f1df18cb backlog
 - 2026-10-28 12:47:44 a185f853-6a65-4f44-919d-97ba97774e43 todo
 - 2026-10-28 16:32:33 a185f853-6a65-4f44-919d-97ba97774e43 in_progress
+- 2026-10-28 16:58:34 a185f853-6a65-4f44-919d-97ba97774e43 review
 
 ## Notes
 - Diminta Mirza 28 Okt 2026 dari sesi nukitu-mockup, sambil menunggu pengerja tiket POC tarif. Usulnya sendiri: SSE ke web, terpadu dengan papan, tombol untuk melihat log atau hijau/merah tiap uji. Viewer sudah memakai SSE (`viewer/app.mjs`).
@@ -90,3 +91,13 @@ review; jalan uji yang sudah selesai tidak disimpan.
   answer, 2026-10-28 12:47:01: Tidak ada yang disimpan. jalan uji hanya dilihat saat status progress dan review.
 - 2026-10-28 12:16:49: answered question: Butir 'Pemilik melihat kemajuan sebuah uji yang sedang berjalan dari papan' hanya bisa dicek orang. Saran: ditunda, yaitu pengerja menulis langkahnya sebagai skenario tangan dan rantai berjalan terus, karena tiket berikutnya tidak bergantung pada pengecekan ini. Pilihan lain: rantai berhenti sampai pemilik mengeceknya sendiri.
   answer, 2026-10-28 12:47:01: Hapus semua: setiap butir yang hanya bisa dicek orang dicoret, dibatalkan pemilik, tanpa skenario tangan.
+- 2026-10-28 (pengerja, cabang ticket-261028112701): dikerjakan.
+  - Jalur: `test-run.sh` (jalan pengerja dan setiap `--review`, termasuk sabotase) menyalin keluaran perintah ke `<git common dir>/kerjaan-progress/<id>.<pid>.log`, dengan `<id>.<pid>.json` (tiket, pid, `who` worker/reviewer, mulai, perintah). Keduanya dihapus saat jalan selesai, lulus atau gagal; salinan sisa proses yang mati dihapus jalan berikutnya. Di bawah `.git/`, jadi tidak ikut commit dan di luar sidik jari.
+  - Kode keluar: salinan dibuat lewat process substitution di samping perintah, bukan pipa, jadi `$?` tetap milik perintah; stdout dan stderr tetap ke aliran masing-masing. Script menunggu salinan paling lama 5 dtk agar baris terakhir keluar sebelum baris catatannya; proses latar yang menahan keluaran tidak membuat jalan menggantung.
+  - Viewer: `viewer/runs.mjs` membaca map itu (nama berkas hanya dari daftar map, pid harus hidup, isi .json harus cocok dengan namanya), 200 baris terakhir dari 64 KiB ujung, kode warna/kursor dibuang dan `\r` ditampilkan seperti terminal. Papan memuat `runs` (tanpa keluaran) untuk tiket in_progress/review; `api/progress/<id>` (ID 12 digit, harus tiket aktif) dan `api/ticket/<id>` memuat keluaran; SSE `progress` tiap 2 dtk saat ada perubahan.
+  - Halaman: tombol Progress tergantung di bawah kartu (tombol tidak boleh di dalam tombol kartu): titik, lama berjalan, "output N s ago"; hijau < 1 mnt, kuning, merah sesudah 5 mnt tanpa keluaran. Tombol membuka laci di bagian Progress (digulir ke sana, fokus di sana); keluaran mengikuti ujung kecuali digulir ke atas; waktu diperbarui tiap detik tanpa menggambar ulang keluaran. Daftar uji 261028121401 bisa masuk per jalan di `runPart` (`viewer/web/run.js`).
+  - Rahasia: keluaran tampil apa adanya sesuai jawaban pemilik; README menyebut bahwa isinya ada di halaman dan, dengan `--lan`, di jaringan.
+  - Penjaga yang dirusak dan uji yang merah (semua dikembalikan dari salinan): kode keluar di jalur salinan (`return 0`) -> 3 uji "a failing run stays failed"; kode keluar di jalur tanpa salinan -> "copy cannot be made"; penghapusan salinan -> uji pengerja, peninjau, dan sisa proses mati; stderr ke stdout -> uji pengerja; pembersihan sisa mati (dua arah) -> uji sisa; batas tunggu 5 dtk -> "leaves behind"; `who` peninjau dan salinan jalan peninjau -> uji peninjau; cek pid hidup, cek tiket di .json, saring ID, buang kode ANSI, `\r`, tanda potong, buang baris setengah, `.git` berkas worktree -> uji runs.mjs masing-masing; keluaran di papan, saring tiket aktif di api/progress dan api/ticket, regex ID -> uji server; event SSE -> uji live; escape keluaran, ambang kuning/merah, baris potong -> uji tampilan; tombol kartu, scrollIntoView, fokus, ikut ujung, tetap saat digulir, ambil ulang, hilang saat jalan selesai, waktu di laci, fokus saat dibuka dari kartu -> uji peramban.
+  - Saring status aktif dipasang di dua tempat (`runsOf` hanya ID aktif, dan `boardSummary` per status); merusak satu saja tetap hijau karena yang lain menahan, merusak keduanya -> uji kanban merah.
+- 2026-10-28 16:58:00: test run — `node --test --test-timeout=900000 --import=./tests/complete-runs.mjs` exited 0 after 3m52s, on content fingerprint 2f90190eaa8dfd1f4fb7b37b061755e3365fec78 (the same before and after the run; .kerjaan/ left out).
+- 2026-10-28 16:58:34: review covers branch ticket-261028112701 at 60d22824a0e71a670f0ccd15350f8613b058f15a, which holds main at ed456777cb607a3e820cddf56f0235e7988bc155 (code outside .kerjaan/); the latest test run passed on exactly this content.
