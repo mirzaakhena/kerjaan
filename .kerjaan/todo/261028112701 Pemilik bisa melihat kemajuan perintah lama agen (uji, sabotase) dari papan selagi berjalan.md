@@ -1,13 +1,13 @@
 ---
 type: feature
 priority: medium
-review: normal
+review: strict
 labels: [viewer, agen]
 reporter: mirza
 assign_to: claude
 created: 2026-10-28 11:27:23
-updated: 2026-10-28 12:16:49
-related: [261016084202, 261017155801, 261028102201, 261028121401, 261028121402]
+updated: 2026-10-28 12:47:44
+related: [261016084202, 261017155801, 261028102201, 261028121401]
 blocked_by: []
 ---
 
@@ -31,8 +31,10 @@ pengerja benar-benar bekerja: melihat log uji yang sedang berjalan, atau
 hijau/merah tiap uji, dari papan.
 
 ## Request
-Selagi agen menjalankan perintah yang lama, pemilik bisa membuka kemajuannya
-dari kartu tiket di papan dan melihatnya bergerak sendiri: keluaran
+Selagi agen menjalankan jalan uji lewat jalur uji kerjaan (jalan uji pengerja,
+dan setiap jalan uji peninjau termasuk sabotase), pemilik bisa membuka
+kemajuannya dari kartu tiket di papan, di bagian Kemajuan pada laci kanan
+tiket, dan melihatnya bergerak sendiri: keluaran
 terbarunya, berapa lama sudah berjalan, kapan terakhir ada keluaran, dan bila
 keluarannya berbentuk hasil uji, berapa yang hijau dan merah (daftar ujinya
 satu per satu: 261028121401).
@@ -45,23 +47,26 @@ papan, bukan hanya di proyek yang kebetulan memakai satu alat uji tertentu.
 Setiap uji yang dibuat harus melaporkan dirinya ke papan selagi berjalan, dan
 harus ada jaminan bahwa uji yang tidak melapor tidak bisa lolos diam-diam.
 Tiket ini memuat bagian pertama: kemajuan perintah itu sendiri. Daftar uji
-satu per satu ada di 261028121401, jaminannya di 261028121402.
+satu per satu ada di 261028121401; jaminannya dibatalkan pemilik
+(261028121402). Kemajuan hanya terlihat selagi tiket di in_progress atau
+review; jalan uji yang sudah selesai tidak disimpan.
 
 ## Done when
-- [ ] Selagi pengerja menjalankan uji proyek, kartu tiketnya punya tombol yang membuka kemajuan perintah itu
+- [ ] Selagi pengerja menjalankan uji proyek, kartu tiketnya punya tombol yang membuka bagian Kemajuan di laci kanan tiket
 - [ ] Kemajuan menampilkan baris-baris keluaran terbaru dan bertambah sendiri tanpa memuat ulang halaman
 - [ ] Kemajuan menunjukkan sudah berapa lama perintah berjalan dan berapa detik sejak keluaran terakhir, sehingga perintah yang macet terlihat berbeda dari yang bekerja
 - [ ] ~~Bila keluarannya berbentuk hasil uji yang dikenali, kemajuan menunjukkan jumlah hijau dan merah sejauh ini~~ (pindah ke 261028121401)
-- [ ] Hal yang sama berlaku untuk perintah lama lain yang dijalankan agen, misalnya skrip sabotase, bukan hanya uji proyek
-- [ ] Sesudah perintah selesai, hasil akhirnya (lulus atau gagal, lama berjalan) tetap bisa dibuka dari tiket
+- [ ] Hal yang sama berlaku untuk jalan uji peninjau, termasuk sabotase, bukan hanya jalan uji pengerja
+- [ ] ~~Sesudah perintah selesai, hasil akhirnya (lulus atau gagal, lama berjalan) tetap bisa dibuka dari tiket~~ (dibatalkan pemilik 28 Okt 2026: jalan uji tidak disimpan, hanya dilihat selagi tiket di in_progress atau review; ringkasan lulus/gagal tetap tercatat di Notes oleh test-run.sh)
 - [ ] Rahasia yang mungkin ada di keluaran diperlakukan sesuai keputusan pemilik (lihat Notes)
-- [ ] Pemilik melihat kemajuan sebuah uji yang sedang berjalan dari papan (langkah di Notes)
+- [ ] ~~Pemilik melihat kemajuan sebuah uji yang sedang berjalan dari papan (langkah di Notes)~~ (dibatalkan pemilik 28 Okt 2026: butir yang hanya bisa dicek orang dihapus)
 - [ ] ~~Selagi uji proyek berjalan, papan menampilkan daftar uji satu per satu: apa yang diuji masing-masing, yang sedang berjalan, yang sudah hijau atau merah, dan lama masing-masing, bertambah sendiri~~ (pindah ke 261028121401)
 - [ ] ~~Hal itu berlaku di proyek mana pun yang memakai papan, apa pun alat ujinya, dan cara sebuah proyek ikut melapor tertulis di panduan~~ (pindah ke 261028121401)
-- [ ] ~~Uji baru yang tidak melapor ke papan membuat jalan uji gagal atau ditolak peninjau, sehingga tidak ada uji yang lolos tanpa terlihat di papan~~ (pindah ke 261028121402)
+- [ ] ~~Uji baru yang tidak melapor ke papan membuat jalan uji gagal atau ditolak peninjau, sehingga tidak ada uji yang lolos tanpa terlihat di papan~~ (dibatalkan pemilik bersama 261028121402)
 
 ## History
 - 2026-10-28 11:27:23 2894605e-2452-4259-b7ae-7187f1df18cb backlog
+- 2026-10-28 12:47:44 a185f853-6a65-4f44-919d-97ba97774e43 todo
 
 ## Notes
 - Diminta Mirza 28 Okt 2026 dari sesi nukitu-mockup, sambil menunggu pengerja tiket POC tarif. Usulnya sendiri: SSE ke web, terpadu dengan papan, tombol untuk melihat log atau hijau/merah tiap uji. Viewer sudah memakai SSE (`viewer/app.mjs`).
@@ -76,7 +81,11 @@ satu per satu ada di 261028121401, jaminannya di 261028121402.
 - Dengan perluasan ini tiket memuat 11 butir, di atas batas 8: planner memecahnya per hasil.
 - Dipecah oleh planner (28 Okt 2026, sesi a185f853-6a65-4f44-919d-97ba97774e43) per hasil: tiket ini tetap kemajuan perintah lama (log hidup, lama berjalan, hasil akhir); daftar uji satu per satu dan jumlah hijau/merah pindah ke 261028121401; jaminan bahwa uji yang tidak melapor membuat jalan uji gagal pindah ke 261028121402. Butir yang pindah dicoret di Done when.
 - 2026-10-28 12:15:49: files estimated to change: `README.md`, `skills/kerjaan/scripts/test-run.sh`, `tests/test-run.test.mjs`, `viewer/app.mjs`, `viewer/runs.mjs`, `viewer/tests/helpers.mjs`, `viewer/tests/runs.test.mjs`, `viewer/web/drawer.js`, `viewer/web/project.js`, `viewer/web/run.js`, `viewer/web/style.css`
-- 2026-10-28 12:16:48: open question: Perintah lama mana saja yang kemajuannya tampil di papan? Saran: semua jalan uji yang lewat jalur uji kerjaan, yaitu jalan uji pengerja dan setiap jalan uji peninjau, termasuk sabotase (peninjau sudah wajib menjalankan sabotase lewat jalur itu), karena tidak perlu aturan baru untuk agen yang aturannya sudah hampir penuh; butir Done when ke-5 lalu ditulis ulang sebagai 'jalan uji peninjau, termasuk sabotase'. Pilihan lain: juga perintah lama apa pun di luar uji (memasang paket, build), yang butuh jalur baru dan aturan baru di ketiga definisi agen, sehingga aturan lain harus dipangkas dulu.
-- 2026-10-28 12:16:48: open question: Tombol di kartu membuka kemajuan di mana? Saran: di laci kanan tiket itu, langsung di bagian Kemajuan, karena pemilik sudah biasa membuka tiket di sana dan langkah agen sudah tampil di laci yang sama. Pilihan lain: halaman sendiri yang bisa dibuka di tab lain dan dibiarkan terbuka.
-- 2026-10-28 12:16:48: open question: Berapa lama hasil sebuah jalan uji disimpan agar tetap bisa dibuka dari tiket? Saran: 10 jalan terakhir per tiket, tetap bisa dibuka sesudah tiket selesai, disimpan di folder git proyek (tidak ikut commit, tidak di .kerjaan/), karena cukup untuk melihat ronde tinjauan terakhir tanpa memenuhi disk. Pilihan lain: hanya jalan terakhir per tiket; atau semua jalan tanpa batas.
-- 2026-10-28 12:16:49: open question: Butir 'Pemilik melihat kemajuan sebuah uji yang sedang berjalan dari papan' hanya bisa dicek orang. Saran: ditunda, yaitu pengerja menulis langkahnya sebagai skenario tangan dan rantai berjalan terus, karena tiket berikutnya tidak bergantung pada pengecekan ini. Pilihan lain: rantai berhenti sampai pemilik mengeceknya sendiri.
+- 2026-10-28 12:16:48: answered question: Perintah lama mana saja yang kemajuannya tampil di papan? Saran: semua jalan uji yang lewat jalur uji kerjaan, yaitu jalan uji pengerja dan setiap jalan uji peninjau, termasuk sabotase (peninjau sudah wajib menjalankan sabotase lewat jalur itu), karena tidak perlu aturan baru untuk agen yang aturannya sudah hampir penuh; butir Done when ke-5 lalu ditulis ulang sebagai 'jalan uji peninjau, termasuk sabotase'. Pilihan lain: juga perintah lama apa pun di luar uji (memasang paket, build), yang butuh jalur baru dan aturan baru di ketiga definisi agen, sehingga aturan lain harus dipangkas dulu.
+  answer, 2026-10-28 12:47:00: Semua jalan uji: setiap jalan uji lewat jalur uji kerjaan, yaitu jalan uji pengerja dan setiap jalan uji peninjau, termasuk sabotase. Tanpa aturan agen baru.
+- 2026-10-28 12:16:48: answered question: Tombol di kartu membuka kemajuan di mana? Saran: di laci kanan tiket itu, langsung di bagian Kemajuan, karena pemilik sudah biasa membuka tiket di sana dan langkah agen sudah tampil di laci yang sama. Pilihan lain: halaman sendiri yang bisa dibuka di tab lain dan dibiarkan terbuka.
+  answer, 2026-10-28 12:47:01: Laci tiket: bagian Kemajuan di laci kanan tiket.
+- 2026-10-28 12:16:48: answered question: Berapa lama hasil sebuah jalan uji disimpan agar tetap bisa dibuka dari tiket? Saran: 10 jalan terakhir per tiket, tetap bisa dibuka sesudah tiket selesai, disimpan di folder git proyek (tidak ikut commit, tidak di .kerjaan/), karena cukup untuk melihat ronde tinjauan terakhir tanpa memenuhi disk. Pilihan lain: hanya jalan terakhir per tiket; atau semua jalan tanpa batas.
+  answer, 2026-10-28 12:47:01: Tidak ada yang disimpan. jalan uji hanya dilihat saat status progress dan review.
+- 2026-10-28 12:16:49: answered question: Butir 'Pemilik melihat kemajuan sebuah uji yang sedang berjalan dari papan' hanya bisa dicek orang. Saran: ditunda, yaitu pengerja menulis langkahnya sebagai skenario tangan dan rantai berjalan terus, karena tiket berikutnya tidak bergantung pada pengecekan ini. Pilihan lain: rantai berhenti sampai pemilik mengeceknya sendiri.
+  answer, 2026-10-28 12:47:01: Hapus semua: setiap butir yang hanya bisa dicek orang dicoret, dibatalkan pemilik, tanpa skenario tangan.
