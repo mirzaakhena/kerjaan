@@ -67,7 +67,9 @@ agent_id=$(field '.agent_id // ""')
 safe() { printf '%s' "$1" | tr -cd 'A-Za-z0-9_-'; }
 session=$(safe "$(field '.session_id // ""')")
 [ -n "$session" ] || session=nosession
-state_dir="${KERJAAN_HOOK_STATE:-${TMPDIR:-/tmp}/kerjaan-review-hook}/$session"
+state_base="${KERJAAN_HOOK_STATE:-${TMPDIR:-/tmp}/kerjaan-review-hook}"
+state_base="${state_base%/}"
+state_dir="$state_base/$session"
 
 # The shared pieces of the board scripts (lib.sh) are read only once the hook
 # is about to fire: every prompt and every Bash call runs this hook, and nearly
@@ -383,9 +385,14 @@ fi
 # report, not to summon a reviewer of its own. What it moved is written down
 # so the foreman is reminded when the worker ends (remind_for_agent). Losing
 # that note -- an unwritable folder -- costs the reminder, never the move.
+# The folder, and the one above it, are each made only where the folder above
+# already exists (kerjaan_make_dir, lib.sh), as handoff.sh makes the same
+# folders: a path that holds a newline or is not absolute is refused, and with
+# it only the note is lost.
 if [ -n "$agent_id" ]; then
   agent=$(safe "$agent_id")
-  if [ -n "$agent" ] && mkdir -p "$state_dir" 2>/dev/null; then
+  load_lib
+  if [ -n "$agent" ] && kerjaan_make_dir "$state_base" && kerjaan_make_dir "$state_dir"; then
     if ! grep -qxF -- "$ticket" "$state_dir/$agent" 2>/dev/null; then
       printf '%s\n' "$ticket" >> "$state_dir/$agent" 2>/dev/null || true
     fi

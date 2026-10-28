@@ -320,12 +320,21 @@ kerjaan_make_dir() {  # <path>
 # text it could not write and hands it to the next subshell, which writes it
 # into whatever that subshell's output is captured into. Such a path is
 # refused, so it can never become a folder; the lock is then not taken.
+#
+# A git folder that is not named or cannot be entered (cut output again, or a
+# repository gone from under the script) leaves no folder to put the locks in,
+# and is refused before anything is made: built on an empty name, the path
+# would be /kerjaan-locks, one folder at the root of the system that every
+# repository on the machine would share, wherever root can write it.
 kerjaan_locks_dir() {
   local base
   kerjaan_locks=""
   if base="$(git rev-parse --git-common-dir 2> /dev/null)"; then
-    base="$(cd "$base" 2> /dev/null && pwd -P)"  # physical: the same lock is one path from every tree
-    kerjaan_locks="$base/kerjaan-locks"
+    # physical: the same lock is one path from every tree
+    { [ -n "$base" ] && base="$(cd "$base" 2> /dev/null && pwd -P)"; } || base=""
+    case "$base" in
+      /?*) kerjaan_locks="$base/kerjaan-locks" ;;
+    esac
   else
     # A board outside any git repository: nothing is committed there, so the
     # board folder itself can hold the locks. Every script that writes the

@@ -691,6 +691,53 @@ test('a state folder that cannot be written costs the reminder, not the worker\'
   assert.equal(runIn(blocker, notification()), null);
 });
 
+// The state folder is made the way handoff.sh makes the same folders
+// (kerjaan_make_dir, lib.sh): only where the folder above it exists, never
+// from a path that holds a newline or is not absolute. A refused path costs
+// the reminder, never the worker's message, and creates nothing.
+function runWith(env, payload, cwd) {
+  const r = spawnSync('bash', [hook], {
+    input: JSON.stringify(payload), encoding: 'utf8', cwd,
+    // A variable given as undefined is left out, not passed as empty.
+    env: Object.fromEntries(Object.entries({ ...process.env, CLAUDE_PROJECT_DIR: '', ...env })
+      .filter(([, v]) => v !== undefined)),
+  });
+  assert.equal(r.status, 0, r.stderr);
+  return r.stdout.trim() ? JSON.parse(r.stdout) : null;
+}
+
+for (const [what, state] of [
+  ['is relative', () => 'relative-state'],
+  ['holds a newline', (tmp) => path.join(tmp, 'a\nb')],
+  ['sits in a folder that does not exist', (tmp) => path.join(tmp, 'missing', 'state')],
+]) {
+  test(`a state folder path that ${what} is refused: nothing is made, the worker is still told to stop, no reminder`, () => {
+    const tmp = stateDir();
+    const { root, ticket } = board(firstRound);
+    const env = { KERJAAN_HOOK_STATE: state(tmp) };
+    const out = runWith(env, workerMoves(root, ticket), tmp);
+    assert.match(out.hookSpecificOutput.additionalContext, /Finish now with your report/);
+    assert.deepEqual(fs.readdirSync(tmp), [], 'a folder was made');
+    assert.equal(runWith(env, notification(), tmp), null);
+  });
+}
+
+for (const [what, env, folder] of [
+  ['the default under TMPDIR, which ends in a slash',
+    (tmp) => ({ KERJAAN_HOOK_STATE: undefined, TMPDIR: tmp + '/' }), 'kerjaan-review-hook'],
+  ['a folder not made yet, in one that exists', (tmp) => ({ KERJAAN_HOOK_STATE: path.join(tmp, 'state') }), 'state'],
+]) {
+  test(`a state folder at ${what}: it is made, and the foreman is reminded as usual`, () => {
+    const tmp = stateDir();
+    const { root, ticket } = board(firstRound);
+    runWith(env(tmp), workerMoves(root, ticket), tmp);
+    assert.ok(fs.existsSync(path.join(tmp, folder, SESSION, WORKER)), 'no note of the move');
+    const out = runWith(env(tmp), notification(), tmp);
+    assert.ok(out, 'the foreman got no reminder');
+    assert.match(out.hookSpecificOutput.additionalContext, /Dispatch one subagent right now/);
+  });
+}
+
 // Every way of writing the move to review. Each is run through the real
 // update-ticket.sh by a real shell, so the quotes are the shell's to strip,
 // and the hook then reads the command text and the output it printed.

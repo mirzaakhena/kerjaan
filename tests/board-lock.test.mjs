@@ -492,6 +492,64 @@ test('a lock taken after the output was cut is refused rather than built from th
   }
 });
 
+// A git folder that is not named, is the root, or cannot be entered leaves no
+// folder for the locks: the lock is refused before any folder is made, rather
+// than built at /kerjaan-locks where every repository on the machine would
+// share it. A fake `git` names such a folder, and a fake `mkdir` records every
+// folder asked for, so the test holds wherever the root can be written.
+function fakeBin(r, commonDir) {
+  const bin = path.join(r.base, 'bin');
+  fs.mkdirSync(bin, { recursive: true });
+  const realGit = spawnSync('bash', ['-c', 'command -v git'], { encoding: 'utf8' }).stdout.trim();
+  const realMkdir = spawnSync('bash', ['-c', 'command -v mkdir'], { encoding: 'utf8' }).stdout.trim();
+  const log = path.join(r.base, 'mkdir.log');
+  fs.writeFileSync(log, '');
+  fs.writeFileSync(path.join(bin, 'git'), `#!/bin/bash
+if [ "$1 $2" = "rev-parse --git-common-dir" ]; then printf '%s\n' ${JSON.stringify(commonDir)}; exit 0; fi
+exec ${JSON.stringify(realGit)} "$@"
+`, { mode: 0o755 });
+  fs.writeFileSync(path.join(bin, 'mkdir'), `#!/bin/bash
+printf '%s\n' "$*" >> ${JSON.stringify(log)}
+exec ${JSON.stringify(realMkdir)} "$@"
+`, { mode: 0o755 });
+  return { env: { PATH: `${bin}:${process.env.PATH}` }, log };
+}
+
+for (const [what, commonDir] of [
+  ['cannot be entered', 'gone-git-dir'],
+  ['is the root of the system', '/'],
+  ['is not named', ''],
+]) {
+  test(`a git folder that ${what}: no lock is taken, no folder is made, and the board is left as it was`, () => {
+    const r = repo();
+    const fake = fakeBin(r, commonDir);
+    const direct = spawnSync('bash', ['-c', '. "$0"; kerjaan_locks_dir; echo "status=$? locks=[$kerjaan_locks]"', lib], {
+      cwd: r.root, encoding: 'utf8', env: { ...process.env, ...gitEnv, ...fake.env },
+    });
+    assert.match(direct.stdout, /^status=1 locks=\[\]$/m, direct.stdout + direct.stderr);
+    assert.match(direct.stderr, /Could not find the folder for kerjaan's locks/);
+    const before = tree(r.root);
+    const res = run(update, r.root, [X, '--status', 'in_progress'], fake.env);
+    assert.notEqual(res.code, 0, res.out + res.err);
+    assert.match(res.err, /Could not find the folder for kerjaan's locks/);
+    assert.equal(statusOf(r, X), 'todo');
+    assert.deepEqual(tree(r.root), before);
+    assert.doesNotMatch(fs.readFileSync(fake.log, 'utf8'), /kerjaan-locks/);
+  });
+}
+
+// The fakes themselves: with a git folder that can be entered, the same
+// script takes the lock in it and moves the ticket, so the refusal above is
+// the git folder's doing and nothing else.
+test('the same fakes with the real git folder: the lock is made in it and the move goes through', () => {
+  const r = repo();
+  const fake = fakeBin(r, '.git');
+  const res = run(update, r.root, [X, '--status', 'in_progress'], fake.env);
+  assert.equal(res.code, 0, res.err);
+  assert.equal(statusOf(r, X), 'in_progress');
+  assert.match(fs.readFileSync(fake.log, 'utf8'), new RegExp(`^${path.join(r.root, '.git', 'kerjaan-locks')}$`, 'm'));
+});
+
 // A process releases only what it took: the lock another live process holds
 // stays, whatever the releasing script is.
 test('releasing a lock this process never took leaves the holder\'s lock alone', () => {
