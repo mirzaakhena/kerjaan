@@ -6,7 +6,7 @@ labels: [agen, sesi-a185f853]
 reporter: mirza
 assign_to: claude
 created: 2026-10-28 18:56:45
-updated: 2026-10-28 18:57:29
+updated: 2026-10-28 18:59:29
 related: [261028171401]
 blocked_by: []
 ---
@@ -32,6 +32,8 @@ yang lolos kembali panjang.
 
 ## History
 - 2026-10-28 18:56:45 a185f853-6a65-4f44-919d-97ba97774e43 backlog
+- 2026-10-28 18:59:29 a185f853-6a65-4f44-919d-97ba97774e43 todo
 
 ## Notes
 - Saran lanjutan peninjau 261028171401; dicatat atas pilihan mirza, 2026-10-28, sesi a185f853-6a65-4f44-919d-97ba97774e43. Tempatnya paragraf "Every criterion met" di `agents/kerjaan-reviewer.md`. Panduan peninjau 2.992 dari 3.000 kata per 2026-10-28, jadi frasa baru harus menggantikan kata lain.
+- 2026-10-28 18:59:15: files estimated to change: `agents/kerjaan-reviewer.md`, `tests/reviewer-rules.test.mjs`

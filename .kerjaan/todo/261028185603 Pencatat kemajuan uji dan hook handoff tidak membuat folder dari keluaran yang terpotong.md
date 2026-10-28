@@ -6,7 +6,7 @@ labels: [sesi-a185f853]
 reporter: mirza
 assign_to: claude
 created: 2026-10-28 18:56:44
-updated: 2026-10-28 18:57:29
+updated: 2026-10-28 18:59:30
 related: [261028172801]
 blocked_by: []
 ---
@@ -33,7 +33,9 @@ menjadi folder di repo.
 
 ## History
 - 2026-10-28 18:56:44 a185f853-6a65-4f44-919d-97ba97774e43 backlog
+- 2026-10-28 18:59:30 a185f853-6a65-4f44-919d-97ba97774e43 todo
 
 ## Notes
 - Saran lanjutan peninjau 261028172801; dicatat atas pilihan mirza, 2026-10-28, sesi a185f853-6a65-4f44-919d-97ba97774e43. Tempatnya: `progress_start` di `test-run.sh` dan `handoff.sh`; keduanya mengambil alamat lewat `$(...)` lalu `mkdir -p`. Pemeriksaan yang dipakai 261028172801 di `kerjaan_locks_dir`: alamat diawali `/`, tanpa baris baru, induknya ada, dibuat dengan `mkdir` bukan `mkdir -p`.
 - Bila jalan uji tidak bisa menyiapkan folder kemajuan, jalan uji itu sendiri tetap harus berjalan dan kode keluarnya tidak berubah (261028112701).
+- 2026-10-28 18:59:16: files estimated to change: `skills/kerjaan/scripts/handoff.sh`, `skills/kerjaan/scripts/test-run.sh`, `tests/handoff.test.mjs`, `tests/test-run.test.mjs`

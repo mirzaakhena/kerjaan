@@ -6,7 +6,7 @@ labels: [viewer, sesi-a185f853]
 reporter: mirza
 assign_to: claude
 created: 2026-10-28 18:56:44
-updated: 2026-10-28 18:57:28
+updated: 2026-10-28 18:59:30
 related: [261028112701, 261028121401]
 blocked_by: []
 ---
@@ -39,6 +39,8 @@ apa pun jenisnya, tanpa menyentuh berkas jalan uji yang masih berjalan.
 
 ## History
 - 2026-10-28 18:56:44 a185f853-6a65-4f44-919d-97ba97774e43 backlog
+- 2026-10-28 18:59:30 a185f853-6a65-4f44-919d-97ba97774e43 todo
 
 ## Notes
 - Saran lanjutan peninjau 261028112701 dan 261028121401; dicatat atas pilihan mirza, 2026-10-28, sesi a185f853-6a65-4f44-919d-97ba97774e43. Yang tertinggal: berkas `.log`, `.tmp`, dan `.tests` di `<git common dir>/kerjaan-progress/`; pembersihan sekarang hanya dipicu oleh `.json`.
+- 2026-10-28 18:59:16: files estimated to change: `skills/kerjaan/scripts/test-run.sh`, `tests/test-run.test.mjs`, `viewer/runs.mjs`

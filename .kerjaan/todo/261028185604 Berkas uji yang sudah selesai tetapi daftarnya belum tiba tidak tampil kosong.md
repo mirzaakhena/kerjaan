@@ -6,7 +6,7 @@ labels: [viewer, sesi-a185f853]
 reporter: mirza
 assign_to: claude
 created: 2026-10-28 18:56:45
-updated: 2026-10-28 18:57:29
+updated: 2026-10-28 18:59:31
 related: [261028121401]
 blocked_by: []
 ---
@@ -38,6 +38,8 @@ kosong.
 
 ## History
 - 2026-10-28 18:56:45 a185f853-6a65-4f44-919d-97ba97774e43 backlog
+- 2026-10-28 18:59:31 a185f853-6a65-4f44-919d-97ba97774e43 todo
 
 ## Notes
 - Saran lanjutan peninjau 261028121401; dicatat atas pilihan mirza, 2026-10-28, sesi a185f853-6a65-4f44-919d-97ba97774e43. Usul peninjau: label seperti "tests to follow", atau sembunyikan berkas itu sampai ujinya tiba. Urutan pelaporan node sudah dijelaskan di panduan `SETTINGS.md` ("Reporting each test to the board"). Teks di viewer berbahasa Inggris.
+- 2026-10-28 18:59:17: files estimated to change: `viewer/tests/runs.test.mjs`, `viewer/web/run.js`
