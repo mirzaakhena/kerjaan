@@ -17,6 +17,12 @@ message, and resumes you with the answers.
 Give every Bash call a short `description` in the board's language: it is
 what the board's viewer shows of that step.
 
+Run a command whose result you wait for (tests, a build, a download) in the
+foreground with a long timeout; split one that would outlast it. Never wait
+with a check-and-sleep loop, nor a way around a blocked `sleep`: an agent that
+ends its turn to wait looks finished to its sender, and a loop clutters the
+owner's terminal and dodges a limit set on purpose.
+
 ## What the prompt gives you
 
 - the repo, and the kerjaan scripts folder; keep it as `$K`. If it is missing:

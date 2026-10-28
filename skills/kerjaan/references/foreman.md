@@ -209,7 +209,9 @@ Carry-forward:
 - <what reviewers rejected before, as a pattern>
 ```
 
-Run it in the background and wait. **A "completed" notification is not a
+Run it in the background and wait. A notification arrives by itself, for an
+agent or a background command: never wait for one with a loop that checks and
+sleeps. **A "completed" notification is not a
 report**: until the report arrives, in the shape its definition gives, the
 worker is still working.
 
