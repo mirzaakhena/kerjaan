@@ -6,7 +6,7 @@ labels: [agen]
 reporter: mirza
 assign_to: claude
 created: 2026-10-28 10:22:50
-updated: 2026-10-28 10:48:03
+updated: 2026-10-28 10:48:19
 related: []
 blocked_by: []
 ---
@@ -53,6 +53,7 @@ proyek atau ingatan sesi utama.
 ## History
 - 2026-10-28 10:22:50 2894605e-2452-4259-b7ae-7187f1df18cb backlog
 - 2026-10-28 10:48:03 a185f853-6a65-4f44-919d-97ba97774e43 todo
+- 2026-10-28 10:48:19 a185f853-6a65-4f44-919d-97ba97774e43 in_progress
 
 ## Notes
 - Diminta Mirza 28 Okt 2026 dari sesi nukitu-mockup: aturan ini harus hidup di skill, bukan di CLAUDE.md atau memori proyek, supaya berlaku di semua proyek.
