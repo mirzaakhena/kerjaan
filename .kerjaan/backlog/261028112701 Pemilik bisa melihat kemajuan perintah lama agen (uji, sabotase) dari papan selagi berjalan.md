@@ -6,7 +6,7 @@ labels: [viewer, agen]
 reporter: mirza
 assign_to: claude
 created: 2026-10-28 11:27:23
-updated: 2026-10-28 11:27:52
+updated: 2026-10-28 11:28:43
 related: [261016084202, 261017155801, 261028102201]
 blocked_by: []
 ---
@@ -55,4 +55,5 @@ keluarannya berbentuk hasil uji, berapa yang hijau dan merah.
 - Kait dengan 261028102201 (agen menjalankan perintah lama di latar depan, bukan latar + perulangan): jalur pencatat yang sama bisa jadi cara yang diwajibkan untuk perintah lama, jadi kedua tiket sebaiknya tidak saling bertabrakan.
 - Hijau/merah tiap uji bergantung pada bentuk keluaran proyek. Usulan: kenali bentuk umum (TAP, `node --test`) dan sisanya tampil sebagai log saja. Proyek seperti nukitu-mockup sudah punya halaman log hidup sendiri (`npm run uji` mencetak alamatnya di baris pertama); menautkan alamat seperti itu bisa jadi bagian dari ini.
 - Pertanyaan terbuka untuk Mirza (dicatat dengan `queue.sh ask`).
-- 2026-10-28 11:27:52: open question: Keluaran perintah selama ini tidak pernah tampil di papan karena bisa memuat rahasia. Untuk kemajuan perintah: tampilkan keluaran apa adanya (papan tetap hanya bisa dibuka dari komputer ini, dan dengan --lan siapa pun di jaringan itu), sembunyikan baris yang tampak seperti rahasia, atau tanpa log sama sekali (hanya lama berjalan, detik sejak keluaran terakhir, jumlah hijau/merah)?
+- 2026-10-28 11:27:52: answered question: Keluaran perintah selama ini tidak pernah tampil di papan karena bisa memuat rahasia. Untuk kemajuan perintah: tampilkan keluaran apa adanya (papan tetap hanya bisa dibuka dari komputer ini, dan dengan --lan siapa pun di jaringan itu), sembunyikan baris yang tampak seperti rahasia, atau tanpa log sama sekali (hanya lama berjalan, detik sejak keluaran terakhir, jumlah hijau/merah)?
+  answer, 2026-10-28 11:28:43: Log apa adanya: keluaran tampil seperti di terminal. Papan hanya terbuka dari Mac ini; dengan --lan siapa pun di jaringan itu ikut membaca, dan papan sudah memperingatkannya.
