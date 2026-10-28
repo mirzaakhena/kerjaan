@@ -6,7 +6,7 @@ labels: []
 reporter: mirza
 assign_to: claude
 created: 2026-10-28 17:28:43
-updated: 2026-10-28 17:32:47
+updated: 2026-10-28 17:51:34
 related: []
 blocked_by: []
 ---
@@ -34,6 +34,7 @@ Ada folder baru bernama `Estimated and changed:` diikuti baris baru, berisi fold
 ## History
 - 2026-10-28 17:28:43 d771d2d5-e699-4565-8927-73760abccc14 backlog
 - 2026-10-28 17:32:47 a185f853-6a65-4f44-919d-97ba97774e43 todo
+- 2026-10-28 17:51:34 a185f853-6a65-4f44-919d-97ba97774e43 in_progress
 
 ## Notes
 - Ditemukan 2026-10-28 di /Users/mirza/Workspace/video-system-design oleh planner (kerjaan 1.15.0). Langkah di atas dijalankan ulang oleh foreman di repo itu dan memunculkan folder yang sama; foldernya dihapus.
